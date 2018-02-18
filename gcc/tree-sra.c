@@ -3848,7 +3848,10 @@ sra_modify_function_body (void)
 
 	  if (modified)
 	    {
-	      update_stmt (stmt);
+	      /* XXX Use proper gimple operand setter to update
+	         operands instead of in-place modifications, so no
+		 update_stmt is necessary.  */
+	      update_stmt_for_real (stmt);
 	      if (maybe_clean_eh_stmt (stmt)
 		  && gimple_purge_dead_eh_edges (gimple_bb (stmt)))
 		cfg_changed = true;
@@ -5113,7 +5116,10 @@ ipa_sra_modify_function_body (ipa_parm_adjustment_vec adjustments)
 
 	  if (modified)
 	    {
-	      update_stmt (stmt);
+	      /* XXX Use proper gimple operand setter to update
+	         operands instead of in-place modifications, so no
+		 update_stmt is necessary.  */
+	      update_stmt_for_real (stmt);
 	      if (maybe_clean_eh_stmt (stmt)
 		  && gimple_purge_dead_eh_edges (gimple_bb (stmt)))
 		cfg_changed = true;

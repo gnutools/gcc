@@ -5417,6 +5417,7 @@ eliminate_dom_walker::before_dom_children (basic_block b)
       tree sprime = NULL_TREE;
       gimple *stmt = gsi_stmt (gsi);
       tree lhs = gimple_get_lhs (stmt);
+      int old_call_flags = is_gimple_call (stmt) ? gimple_call_flags (stmt) : 0;
       if (lhs && TREE_CODE (lhs) == SSA_NAME
 	  && !gimple_has_volatile_ops (stmt)
 	  /* See PR43491.  Do not replace a global register variable when
@@ -5761,7 +5762,7 @@ eliminate_dom_walker::before_dom_children (basic_block b)
 
       /* Visit indirect calls and turn them into direct calls if
 	 possible using the devirtualization machinery.  Do this before
-	 checking for required EH/abnormal/noreturn cleanup as devird
+	 checking for required EH/abnormal/noreturn cleanup as devirt
 	 may expose more of those.  */
       if (gcall *call_stmt = dyn_cast <gcall *> (stmt))
 	{
@@ -5851,7 +5852,13 @@ eliminate_dom_walker::before_dom_children (basic_block b)
 	      if (dump_file && (dump_flags & TDF_DETAILS))
 		fprintf (dump_file, "  Removed AB side-effects.\n");
 	    }
-	  update_stmt (stmt);
+	  /* XXX the updating fixes the vops in case an indirect call
+	     became direct and known const/pure.  */
+	  if (is_gimple_call (stmt)
+	      && old_call_flags != gimple_call_flags (stmt))
+	    update_stmt_for_real (stmt);
+	  else
+	    update_stmt (stmt);
 	  if (vdef != gimple_vdef (stmt))
 	    VN_INFO (vdef)->valnum = vuse;
 	}

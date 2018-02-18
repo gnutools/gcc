@@ -1594,6 +1594,8 @@ void
 gimple_set_bb (gimple *stmt, basic_block bb)
 {
   stmt->bb = bb;
+  if (flag_try_patch && bb)
+    update_stmt_for_real (stmt);
 
   if (gimple_code (stmt) != GIMPLE_LABEL)
     return;
@@ -1744,6 +1746,8 @@ gimple_copy (gimple *stmt)
   /* Shallow copy all the fields from STMT.  */
   memcpy (copy, stmt, gimple_size (code));
   gimple_init_singleton (copy);
+  copy->bb = NULL;
+  //gimple_set_bb (copy, NULL); // XXX deactivate operand updating in _set_op
 
   /* If STMT has sub-statements, deep-copy them as well.  */
   if (gimple_has_substatements (stmt))

@@ -56,7 +56,7 @@ check_loadstore (gimple *stmt, tree op, tree, void *data)
     {
       TREE_THIS_VOLATILE (op) = 1;
       TREE_SIDE_EFFECTS (op) = 1;
-      update_stmt (stmt);
+      gimple_set_has_volatile_ops (stmt, true);
       return true;
     }
   return false;

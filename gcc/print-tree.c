@@ -369,6 +369,8 @@ print_node (FILE *file, const char *prefix, tree node, int indent,
       if (code == TYPE_DECL && TYPE_DECL_SUPPRESS_DEBUG (node))
 	fputs (" suppress-debug", file);
 
+      if (code == FUNCTION_DECL && DECL_PURE_P (node))
+	fputs (" pure", file);
       if (code == FUNCTION_DECL
 	  && DECL_FUNCTION_SPECIFIC_TARGET (node))
 	fputs (" function-specific-target", file);
@@ -383,7 +385,7 @@ print_node (FILE *file, const char *prefix, tree node, int indent,
 	fputs (" built-in", file);
       if (code == FUNCTION_DECL && DECL_STATIC_CHAIN (node))
 	fputs (" static-chain", file);
-      if (TREE_CODE (node) == FUNCTION_DECL && decl_is_tm_clone (node))
+      if (code == FUNCTION_DECL && decl_is_tm_clone (node))
 	fputs (" tm-clone", file);
 
       if (code == FIELD_DECL && DECL_PACKED (node))

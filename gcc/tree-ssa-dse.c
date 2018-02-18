@@ -388,7 +388,8 @@ increment_start_addr (gimple *stmt, tree *where, int increment)
       gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
       gsi_insert_before (&gsi, newop, GSI_SAME_STMT);
       *where = tem;
-      update_stmt (gsi_stmt (gsi));
+      /* XXX don't use direct operand change via pointer.  */
+      update_stmt_for_real (gsi_stmt (gsi));
       return;
     }
 

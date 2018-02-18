@@ -1992,7 +1992,9 @@ replace_ref (tree *expr, slsr_cand_t c)
 				/*before=*/true, GSI_SAME_STMT);
   copy_ref_info (mem_ref, *expr);
   *expr = mem_ref;
-  update_stmt (c->cand_stmt);
+  /* XXX change gimple operands via proper wrappers not via
+     pointer store, so no update_stmt would be needed.  */
+  update_stmt_for_real (c->cand_stmt);
 }
 
 /* Replace CAND_REF candidate C, each sibling of candidate C, and each

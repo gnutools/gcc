@@ -9758,7 +9758,10 @@ free_stmt_vec_info (gimple *stmt)
 	{
 	  gimple_seq seq = STMT_VINFO_PATTERN_DEF_SEQ (patt_info);
 	  gimple *patt_stmt = STMT_VINFO_STMT (patt_info);
+	  /* XXX This resets BB, but patt_stmt still is linked
+	     in the imm-use lists of all operands */
 	  gimple_set_bb (patt_stmt, NULL);
+	  delink_stmt_imm_use (patt_stmt);
 	  tree lhs = gimple_get_lhs (patt_stmt);
 	  if (lhs && TREE_CODE (lhs) == SSA_NAME)
 	    release_ssa_name (lhs);
@@ -9769,6 +9772,7 @@ free_stmt_vec_info (gimple *stmt)
 		{
 		  gimple *seq_stmt = gsi_stmt (si);
 		  gimple_set_bb (seq_stmt, NULL);
+		  delink_stmt_imm_use (seq_stmt);
 		  lhs = gimple_get_lhs (seq_stmt);
 		  if (lhs && TREE_CODE (lhs) == SSA_NAME)
 		    release_ssa_name (lhs);

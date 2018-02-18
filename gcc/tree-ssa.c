@@ -479,7 +479,9 @@ insert_debug_temp_for_var_def (gimple_stmt_iterator *gsi, tree var)
       else
 	gimple_debug_bind_reset_value (stmt);
 
-      update_stmt (stmt);
+      /* XXX nested debug expressions are hard for SSA operands.
+         Forcibly update the whole statement.  */
+      update_stmt_for_real (stmt);
     }
 }
 
@@ -2021,7 +2023,9 @@ execute_update_addresses_taken (void)
 
 	    if (gimple_references_memory_p (stmt)
 		|| is_gimple_debug (stmt))
-	      update_stmt (stmt);
+	      /* XXX maybe find better way of removing vops for statements
+	         which now no longer refer to memory due to non-address-taken */
+	      update_stmt_for_real (stmt);
 
 	    gsi_next (&gsi);
 	  }

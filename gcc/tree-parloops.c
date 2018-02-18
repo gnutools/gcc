@@ -739,8 +739,10 @@ eliminate_local_variables_stmt (edge entry, gimple_stmt_iterator *gsi,
       walk_gimple_op (stmt, eliminate_local_variables_1, &dta.info);
     }
 
+  /* XXX If we weren't changing the gimple ops via direct pointer
+     access we wouldn't need to do this:  */
   if (dta.changed)
-    update_stmt (stmt);
+    update_stmt_for_real (stmt);
 }
 
 /* Eliminates the references to local variables from the single entry

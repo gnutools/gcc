@@ -7217,7 +7217,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_nonlinear_expr (data, group->vuses[j], cand);
-	      update_stmt (group->vuses[j]->stmt);
+	      update_stmt_for_real (group->vuses[j]->stmt);
 	    }
 	}
       else if (address_p (group->type))
@@ -7225,7 +7225,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_address (data, group->vuses[j], cand);
-	      update_stmt (group->vuses[j]->stmt);
+	      update_stmt_for_real (group->vuses[j]->stmt);
 	    }
 	}
       else
@@ -7235,7 +7235,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_compare (data, group->vuses[j], cand);
-	      update_stmt (group->vuses[j]->stmt);
+	      update_stmt_for_real (group->vuses[j]->stmt);
 	    }
 	}
     }
@@ -7365,7 +7365,8 @@ remove_unused_ivs (struct ivopts_data *data)
 		  FOR_EACH_IMM_USE_ON_STMT (use_p, imm_iter)
 		    SET_USE (use_p, comp);
 
-		  update_stmt (stmt);
+		  /* XXX blaeh, debug statement operands are complicated. */
+		  update_stmt_for_real (stmt);
 		}
 	    }
 	}

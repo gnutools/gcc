@@ -1687,6 +1687,7 @@ record_equivalences_from_stmt (gimple *stmt, int may_optimize_p,
         }
       else
         new_stmt = gimple_build_assign (rhs, lhs);
+      /* XXX jeez, the above might construct statements like '3 = *p_42' */
 
       gimple_set_vuse (new_stmt, gimple_vdef (stmt));
 

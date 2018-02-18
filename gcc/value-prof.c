@@ -1336,7 +1336,8 @@ gimple_ic (gcall *icall_stmt, struct cgraph_node *direct_call,
     }
   gimple_set_vdef (icall_stmt, NULL_TREE);
   gimple_set_vuse (icall_stmt, NULL_TREE);
-  update_stmt (icall_stmt);
+  /* XXX only needed to reset vops. */
+  update_stmt_for_real (icall_stmt);
   dcall_stmt = as_a <gcall *> (gimple_copy (icall_stmt));
   gimple_call_set_fndecl (dcall_stmt, direct_call->decl);
   dflags = flags_from_decl_or_type (direct_call->decl);
@@ -1422,7 +1423,8 @@ gimple_ic (gcall *icall_stmt, struct cgraph_node *direct_call,
 		}
 	      gimple_set_vdef (iretbnd_stmt, NULL_TREE);
 	      gimple_set_vuse (iretbnd_stmt, NULL_TREE);
-	      update_stmt (iretbnd_stmt);
+	      /* XXX only needed to reset vops. */
+	      update_stmt_for_real (iretbnd_stmt);
 
 	      result = gimple_call_lhs (iretbnd_stmt);
 	      phi = create_phi_node (result, join_bb);
@@ -1655,7 +1657,8 @@ gimple_stringop_fixed_value (gcall *vcall_stmt, tree icall_size, profile_probabi
     }
   gimple_set_vdef (vcall_stmt, NULL);
   gimple_set_vuse (vcall_stmt, NULL);
-  update_stmt (vcall_stmt);
+  /* XXX only needed to reset vops. */
+  update_stmt_for_real (vcall_stmt);
   icall_stmt = as_a <gcall *> (gimple_copy (vcall_stmt));
   gimple_call_set_arg (icall_stmt, size_arg,
 		       fold_convert (optype, icall_size));

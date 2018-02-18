@@ -779,6 +779,10 @@ forward_propagate_addr_expr_1 (tree name, tree def_rhs,
 	  TREE_OPERAND (lhs, 1)
 	    = wide_int_to_tree (TREE_TYPE (TREE_OPERAND (lhs, 1)), off);
 	  tidy_after_forward_propagate_addr (use_stmt);
+	  /* XXX fix the horrible in-place changes of tree operands, instead use
+	     SET_USE and friends, so no update_stmt is necessary.
+	     E.g. &TREE_OPERAND(lhs,0) will be some ssa use operand on use_stmt. */
+	  update_stmt_for_real (use_stmt);
 	  /* Continue propagating into the RHS if this was not the only use.  */
 	  if (single_use_p)
 	    return true;
@@ -825,6 +829,7 @@ forward_propagate_addr_expr_1 (tree name, tree def_rhs,
 	  TREE_SIDE_EFFECTS (new_lhs) = TREE_SIDE_EFFECTS (lhs);
 	  *def_rhs_basep = saved;
 	  tidy_after_forward_propagate_addr (use_stmt);
+	  update_stmt_for_real (use_stmt);
 	  /* Continue propagating into the RHS if this was not the
 	     only use.  */
 	  if (single_use_p)
@@ -871,6 +876,7 @@ forward_propagate_addr_expr_1 (tree name, tree def_rhs,
 	    = wide_int_to_tree (TREE_TYPE (TREE_OPERAND (rhs, 1)), off);
 	  fold_stmt_inplace (use_stmt_gsi);
 	  tidy_after_forward_propagate_addr (use_stmt);
+	  update_stmt_for_real (use_stmt);
 	  return res;
 	}
       /* If the RHS is a plain dereference and the value type is the same as
@@ -912,6 +918,7 @@ forward_propagate_addr_expr_1 (tree name, tree def_rhs,
 	  *def_rhs_basep = saved;
 	  fold_stmt_inplace (use_stmt_gsi);
 	  tidy_after_forward_propagate_addr (use_stmt);
+	  update_stmt_for_real (use_stmt);
 	  return res;
 	}
     }
@@ -1939,9 +1946,8 @@ simplify_permutation (gimple_stmt_iterator *gsi)
 	return 0;
       orig = (ident == 1) ? gimple_assign_rhs1 (def_stmt)
 			  : gimple_assign_rhs2 (def_stmt);
-      gimple_assign_set_rhs1 (stmt, unshare_expr (orig));
-      gimple_assign_set_rhs_code (stmt, TREE_CODE (orig));
-      gimple_set_num_ops (stmt, 2);
+      gimple_assign_set_rhs_with_ops (gsi, TREE_CODE (orig),
+				      unshare_expr (orig));
       update_stmt (stmt);
       return remove_prop_source_from_use (op0) ? 2 : 1;
     }

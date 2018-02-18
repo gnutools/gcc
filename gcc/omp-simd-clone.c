@@ -1012,7 +1012,9 @@ ipa_simd_modify_function_body (struct cgraph_node *node,
 
 	  if (info.modified)
 	    {
-	      update_stmt (stmt);
+	      /* XXX direct operand changes via walk_gimple_op make
+	         this necessary:  */
+	      update_stmt_for_real (stmt);
 	      if (maybe_clean_eh_stmt (stmt))
 		gimple_purge_dead_eh_edges (gimple_bb (stmt));
 	    }

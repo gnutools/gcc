@@ -646,7 +646,7 @@ mark_def_sites (basic_block bb, gimple *stmt, bitmap kills)
 
   /* Since this is the first time that we rewrite the program into SSA
      form, force an operand scan on every statement.  */
-  update_stmt (stmt);
+  update_stmt_for_real (stmt);
 
   gcc_checking_assert (blocks_to_update == NULL);
   set_register_defs (stmt, false);

@@ -835,6 +835,9 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
 
     case BIT_INSERT_EXPR:
     case COMPOUND_EXPR:
+      //abort(); // happens in debug insns
+      /* FALLTHRU */
+
     case OBJ_TYPE_REF:
     case ASSERT_EXPR:
     do_binary:
@@ -851,6 +854,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
     case WIDEN_MULT_MINUS_EXPR:
     case FMA_EXPR:
       {
+	abort(); // hmm, but might exist hidden down in debug stmts? yes!
 	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
 	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), flags);
 	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 2), flags);
@@ -865,12 +869,15 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
       return;
 
     default:
+      if (codeclass == tcc_constant || codeclass == tcc_type)
+	return;
+      /*fprintf(stderr, "XXX");
+      debug_tree (expr);
+      fputs ("\n", stderr);*/
       if (codeclass == tcc_unary)
 	goto do_unary;
       if (codeclass == tcc_binary || codeclass == tcc_comparison)
 	goto do_binary;
-      if (codeclass == tcc_constant || codeclass == tcc_type)
-	return;
     }
 
   /* If we get here, something has gone wrong.  */
@@ -1084,6 +1091,32 @@ update_stmt_operands (struct function *fn, gimple *stmt)
   timevar_pop (TV_TREE_OPS);
 }
 
+void
+update_stmt (gimple *s)
+{
+  if (gimple_has_ops (s) && ssa_operands_active (cfun))
+    {
+      if (!flag_try_patch)
+	update_stmt_for_real (s);
+      else
+	{
+	  /* Cleanup stale per-statement operands.  Those happen
+	     when non-SSA-names are placed into operands via SET_USE. */
+	  gimple_statement_with_ops *ops_stmt =
+	      dyn_cast <gimple_statement_with_ops *> (s);
+	  use_optype_p *ptr = &ops_stmt->use_ops;
+	  while (*ptr)
+	    {
+	      if (!USE_OP_PTR(*ptr)->prev && !SSA_VAR_P (USE_OP (*ptr)))
+		*ptr = (*ptr)->next;
+	      else
+		ptr = &((*ptr)->next);
+	    }
+	  if (verify_ssa_operands (cfun, s))
+	    print_gimple_stmt (stderr, s, 0, TDF_VOPS);
+	}
+    }
+}
 
 /* Swap operands EXP0 and EXP1 in statement STMT.  No attempt is done
    to test the validity of the swap operation.  */

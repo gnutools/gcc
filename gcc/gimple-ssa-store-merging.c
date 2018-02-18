@@ -1014,8 +1014,8 @@ bswap_replace (gimple_stmt_iterator gsi, gimple *ins_stmt, tree fndecl,
 	    }
 	  else if (cur_stmt)
 	    {
-	      gimple_assign_set_rhs_with_ops (&gsi, MEM_REF, val_expr);
 	      gimple_set_vuse (cur_stmt, n->vuse);
+	      gimple_assign_set_rhs_with_ops (&gsi, MEM_REF, val_expr);
 	      update_stmt (cur_stmt);
 	    }
 	  else

@@ -715,7 +715,9 @@ tree_profiling (void)
 	node->set_pure_flag (false, false);
       }
 
-  /* Update call statements and rebuild the cgraph.  */
+  /* As callees const/pure status might have changed we now may need
+     vdefs or vuses on call statements, so update all of them
+     a nd rebuild the cgraph.  */
   FOR_EACH_DEFINED_FUNCTION (node)
     {
       basic_block bb;
@@ -738,7 +740,7 @@ tree_profiling (void)
 	    {
 	      gimple *stmt = gsi_stmt (gsi);
 	      if (is_gimple_call (stmt))
-		update_stmt (stmt);
+		update_stmt_for_real (stmt);
 	    }
 	}
 

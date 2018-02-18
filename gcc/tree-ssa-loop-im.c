@@ -1666,8 +1666,12 @@ struct rewrite_mem_ref_loc
 bool
 rewrite_mem_ref_loc::operator () (mem_ref_loc *loc)
 {
+  /* XXX should use proper gimple operand setters so that
+     update_stmt isn't needed. (At this point we replace a real
+     memref (in top-level operand) with a tmp VAR_DECL which is
+     going to become an SSA name) */
   *loc->ref = tmp_var;
-  update_stmt (loc->stmt);
+  update_stmt_for_real (loc->stmt);
   return false;
 }
 

@@ -4417,7 +4417,8 @@ vect_mark_pattern_stmts (gimple *orig_stmt, gimple *pattern_stmt,
       pattern_stmt_info = new_stmt_vec_info (pattern_stmt, vinfo);
       set_vinfo_for_stmt (pattern_stmt, pattern_stmt_info);
     }
-  gimple_set_bb (pattern_stmt, gimple_bb (orig_stmt));
+  //gimple_set_bb (pattern_stmt, gimple_bb (orig_stmt));
+  pattern_stmt->bb = gimple_bb (orig_stmt); // XXX
 
   STMT_VINFO_RELATED_STMT (pattern_stmt_info) = orig_stmt;
   STMT_VINFO_DEF_TYPE (pattern_stmt_info)
@@ -4440,7 +4441,8 @@ vect_mark_pattern_stmts (gimple *orig_stmt, gimple *pattern_stmt,
 	      def_stmt_info = new_stmt_vec_info (def_stmt, vinfo);
 	      set_vinfo_for_stmt (def_stmt, def_stmt_info);
 	    }
-	  gimple_set_bb (def_stmt, gimple_bb (orig_stmt));
+	  //gimple_set_bb (def_stmt, gimple_bb (orig_stmt));
+	  def_stmt->bb = gimple_bb (orig_stmt); // XXX
 	  STMT_VINFO_RELATED_STMT (def_stmt_info) = orig_stmt;
 	  STMT_VINFO_DEF_TYPE (def_stmt_info) = vect_internal_def;
 	  if (STMT_VINFO_VECTYPE (def_stmt_info) == NULL_TREE)

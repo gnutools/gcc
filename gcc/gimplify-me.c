@@ -316,7 +316,10 @@ gimple_regimplify_operands (gimple *stmt, gimple_stmt_iterator *gsi_p)
 
   pop_gimplify_context (NULL);
 
-  update_stmt (stmt);
+  /* XXX some of the above transforms directly change gimple ops
+     instead of going through setters.  Once rewritten, update_stmt
+     isn't necessary.  */
+  update_stmt_for_real (stmt);
 }
 
 

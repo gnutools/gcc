@@ -1238,7 +1238,8 @@ chkp_reduce_bounds_lifetime (void)
 
 	      gimple_set_vdef (stmt, NULL_TREE);
 	      gimple_set_vuse (stmt, NULL_TREE);
-	      update_stmt (stmt);
+	      /* XXX only needed to reset vops. */
+	      update_stmt_for_real (stmt);
 	    }
 	}
       else

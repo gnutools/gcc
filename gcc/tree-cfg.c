@@ -7033,7 +7033,7 @@ move_block_to_fn (struct function *dest_cfun, basic_block bb,
 	 the current function.  */
       free_stmt_operands (cfun, stmt);
       push_cfun (dest_cfun);
-      update_stmt (stmt);
+      update_stmt_for_real (stmt);
       pop_cfun ();
     }
 
@@ -9367,10 +9367,10 @@ execute_fixup_cfg (void)
 		  if (gimple_purge_dead_abnormal_call_edges (bb))
 		    todo |= TODO_cleanup_cfg;
 
-		  if (gimple_in_ssa_p (cfun))
+		  if (gimple_in_ssa_p (cfun) && gimple_vuse (stmt))
 		    {
 		      todo |= TODO_update_ssa | TODO_cleanup_cfg;
-		      update_stmt (stmt);
+		      update_stmt_for_real (stmt);
 		    }
 		}
 

@@ -158,6 +158,8 @@ propagate_rhs_into_lhs (gimple *stmt, tree lhs, tree rhs,
 	      continue;
 	    }
 
+	  int old_call_flags
+	        = is_gimple_call (use_stmt) ? gimple_call_flags (use_stmt) : 0;
 	  /* Dump details.  */
 	  if (dump_file && (dump_flags & TDF_DETAILS))
 	    {
@@ -208,7 +210,13 @@ propagate_rhs_into_lhs (gimple *stmt, tree lhs, tree rhs,
 
 	  /* Sometimes propagation can expose new operands to the
 	     renamer.  */
-	  update_stmt (use_stmt);
+	  /* XXX the updating fixes the vops in case an indirect call
+	     became direct and known const/pure.  */
+	  if (is_gimple_call (use_stmt)
+	      && old_call_flags != gimple_call_flags (use_stmt))
+	    update_stmt_for_real (use_stmt);
+	  else
+	    update_stmt (use_stmt);
 
 	  /* Dump details.  */
 	  if (dump_file && (dump_flags & TDF_DETAILS))

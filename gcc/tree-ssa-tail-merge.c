@@ -702,7 +702,14 @@ find_same_succ_bb (basic_block bb, same_succ **same_p)
   edge_iterator ei;
   edge e;
 
-  if (bb == NULL)
+  /* Ignore blocks without successors here.  Merging them potentially
+     merges syntactic scopes and destroys sharing of local variables because
+     the clobbers stopping the scope aren't reachable.
+     If the blocks do have successors the clobbers will be reachable and
+     the problem doesn't happen.
+
+     Those blocks can still be merged later by RTL cross jumping.  */
+  if (bb == NULL || !EDGE_COUNT (bb->succs))
     return;
   bitmap_set_bit (same->bbs, bb->index);
   FOR_EACH_EDGE (e, ei, bb->succs)

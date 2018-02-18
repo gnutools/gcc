@@ -167,7 +167,7 @@ gimple_vdef_op (gimple *g)
 /* Mark statement S as modified, and update it.  */
 
 static inline void
-update_stmt (gimple *s)
+update_stmt_for_real (gimple *s)
 {
   if (gimple_has_ops (s))
     {
@@ -175,6 +175,8 @@ update_stmt (gimple *s)
       update_stmt_operands (cfun, s);
     }
 }
+
+void update_stmt (gimple *);
 
 /* Update statement S if it has been optimized.  */
 

@@ -1359,7 +1359,7 @@ split_function (basic_block return_bb, struct split_point *split_point,
 	    if (gimple_vuse (stmt))
 	      {
 		gimple_set_vuse (stmt, NULL_TREE);
-		update_stmt (stmt);
+		update_stmt_for_real (stmt); // XXX find better way to set vuse
 	      }
 	    if (gimple_vdef (stmt))
 	      break;

@@ -2919,7 +2919,7 @@ copy_debug_stmt (gdebug *stmt, copy_body_data *id)
 
   processing_debug_stmt = 0;
 
-  update_stmt (stmt);
+  update_stmt_for_real (stmt);
 }
 
 /* Process deferred debug stmts.  In order to give values better odds

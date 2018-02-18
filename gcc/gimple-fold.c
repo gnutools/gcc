@@ -2882,6 +2882,9 @@ gimple_fold_builtin_snprintf_chk (gimple_stmt_iterator *gsi,
   for (unsigned i = 3; i < gimple_call_num_args (stmt) - 2; ++i)
     gimple_call_set_arg (stmt, i, gimple_call_arg (stmt, i + 2));
   gimple_set_num_ops (stmt, gimple_num_ops (stmt) - 2);
+  /* XXX gimple_set_num_ops removes arguments which requires updating
+     the operand cache.  Make that implicit.  */
+  update_stmt_for_real (stmt);
   fold_stmt (gsi);
   return true;
 }
@@ -2978,6 +2981,9 @@ gimple_fold_builtin_sprintf_chk (gimple_stmt_iterator *gsi,
   for (unsigned i = 2; i < gimple_call_num_args (stmt) - 2; ++i)
     gimple_call_set_arg (stmt, i, gimple_call_arg (stmt, i + 2));
   gimple_set_num_ops (stmt, gimple_num_ops (stmt) - 2);
+  /* XXX gimple_set_num_ops removes arguments which requires updating
+     the operand cache.  Make that implicit.  */
+  update_stmt_for_real (stmt);
   fold_stmt (gsi);
   return true;
 }
@@ -3944,6 +3950,7 @@ fold_builtin_atomic_compare_exchange (gimple_stmt_iterator *gsi)
     }
   gimple_call_set_nothrow (as_a <gcall *> (g),
 			   gimple_call_nothrow_p (as_a <gcall *> (stmt)));
+  stmt->bb = NULL; // XXX disable operand updating (makes expected addressable again)
   gimple_call_set_lhs (stmt, NULL_TREE);
   gsi_replace (gsi, g, true);
   if (oldlhs)

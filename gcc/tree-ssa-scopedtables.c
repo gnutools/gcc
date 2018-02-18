@@ -20,6 +20,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
+#include "options.h"
 #include "function.h"
 #include "basic-block.h"
 #include "tree.h"
@@ -33,7 +34,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-eh.h"
 #include "internal-fn.h"
 #include "tree-dfa.h"
-#include "options.h"
 #include "params.h"
 
 static bool hashable_expr_equal_p (const struct hashable_expr *,
