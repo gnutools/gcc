@@ -195,11 +195,11 @@ if { [info exists env(GCC_RUNTEST_PARALLELIZE_DIR)] \
 
 	# Only test the filesystem every 10th iteration
 	incr gcc_runtest_parallelize_counter_minor
-	if { $gcc_runtest_parallelize_counter_minor == 10 } {
+	if { $gcc_runtest_parallelize_counter_minor == 2 } {
 	    set gcc_runtest_parallelize_counter_minor 0
 	}
 	if { $gcc_runtest_parallelize_counter_minor != 1 } {
-	    #verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter $gcc_runtest_parallelize_last"
+	    verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter $gcc_runtest_parallelize_last"
 	    return $gcc_runtest_parallelize_last
 	}
 
@@ -208,12 +208,12 @@ if { [info exists env(GCC_RUNTEST_PARALLELIZE_DIR)] \
 	if {![catch {open $path {RDWR CREAT EXCL} 0600} fd]} {
 	    close $fd
 	    set gcc_runtest_parallelize_last 1
-	    #verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter 1"
+	    verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter 1"
 	    incr gcc_runtest_parallelize_counter
 	    return 1
 	}
 	set gcc_runtest_parallelize_last 0
-	#verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter 0"
+	verbose -log "gcc_parallel_test_run_p $testcase $gcc_runtest_parallelize_counter 0"
 	incr gcc_runtest_parallelize_counter
 	return 0
     }
