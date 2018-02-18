@@ -2795,6 +2795,10 @@ ftree-scev-cprop
 Common Report Var(flag_tree_scev_cprop) Init(1) Optimization
 Enable copy propagation of scalar-evolution information.
 
+ftry-patch
+Common Report Var(flag_try_patch) Init(1) Optimization
+Try the patch.
+
 ; -fverbose-asm causes extra commentary information to be produced in
 ; the generated assembly code (to make it more readable).  This option
 ; is generally only of use to those who actually need to read the
