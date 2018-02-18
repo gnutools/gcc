@@ -164,7 +164,8 @@ tcc_declaration = tree_code_class_dict['tcc_declaration']
 # on 32-bit hosts but remote targets may have 64-bit pointers there; Python2
 # long() is always 64-bit but Python3 no longer has anything named long.
 def intptr(gdbval):
-    return long(gdbval) if sys.version_info.major == 2 else int(gdbval)
+    return long(gdbval)
+    #return long(gdbval) if sys.version_info.major == 2 else int(gdbval)
 
 class Tree:
     """
