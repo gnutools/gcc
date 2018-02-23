@@ -2882,9 +2882,7 @@ gimple_fold_builtin_snprintf_chk (gimple_stmt_iterator *gsi,
   for (unsigned i = 3; i < gimple_call_num_args (stmt) - 2; ++i)
     gimple_call_set_arg (stmt, i, gimple_call_arg (stmt, i + 2));
   gimple_set_num_ops (stmt, gimple_num_ops (stmt) - 2);
-  /* XXX gimple_set_num_ops removes arguments which requires updating
-     the operand cache.  Make that implicit.  */
-  update_stmt_for_real (stmt);
+  update_stmt (stmt);
   fold_stmt (gsi);
   return true;
 }
@@ -2981,9 +2979,7 @@ gimple_fold_builtin_sprintf_chk (gimple_stmt_iterator *gsi,
   for (unsigned i = 2; i < gimple_call_num_args (stmt) - 2; ++i)
     gimple_call_set_arg (stmt, i, gimple_call_arg (stmt, i + 2));
   gimple_set_num_ops (stmt, gimple_num_ops (stmt) - 2);
-  /* XXX gimple_set_num_ops removes arguments which requires updating
-     the operand cache.  Make that implicit.  */
-  update_stmt_for_real (stmt);
+  update_stmt (stmt);
   fold_stmt (gsi);
   return true;
 }

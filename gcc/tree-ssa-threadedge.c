@@ -377,7 +377,12 @@ record_temporary_equivalences_from_stmts_at_dest (edge e,
 	      copy = XALLOCAVEC (tree, num);
 
 	      /* Make a copy of the uses & vuses into USES_COPY, then cprop into
-		 the operands.  */
+		 the operands.
+		 XXX This is horrible!  It requires that SET_USE doesn't
+		 change the operand lists in any way (which it could e.g.
+		 for putting a constant in place of an SSA name), because
+		 iterating in the second loop below requires to iterate
+		 over the exact same use-ops as the first loop.  */
 	      FOR_EACH_SSA_USE_OPERAND (use_p, stmt, iter, SSA_OP_ALL_USES)
 		{
 		  tree tmp = NULL;
@@ -387,7 +392,7 @@ record_temporary_equivalences_from_stmts_at_dest (edge e,
 		  if (TREE_CODE (use) == SSA_NAME)
 		    tmp = SSA_NAME_VALUE (use);
 		  if (tmp)
-		    SET_USE (use_p, tmp);
+		    SET_USE_NO_UPDATE (use_p, tmp);
 		}
 
 	      cached_lhs = (*simplify) (stmt, stmt, avail_exprs_stack, e->src);
@@ -395,7 +400,7 @@ record_temporary_equivalences_from_stmts_at_dest (edge e,
 	      /* Restore the statement's original uses/defs.  */
 	      i = 0;
 	      FOR_EACH_SSA_USE_OPERAND (use_p, stmt, iter, SSA_OP_ALL_USES)
-		SET_USE (use_p, copy[i++]);
+		SET_USE_NO_UPDATE (use_p, copy[i++]);
 	    }
 	}
 

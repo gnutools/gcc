@@ -65,6 +65,7 @@ struct GTY(()) ssa_operands {
 #define USE_FROM_PTR(PTR)	get_use_from_ptr (PTR)
 #define DEF_FROM_PTR(PTR)	get_def_from_ptr (PTR)
 #define SET_USE(USE, V)		set_ssa_use_from_ptr (USE, V)
+#define SET_USE_NO_UPDATE(USE, V) xxx_ohmy_set_ssa_use_from_ptr (USE, V)
 #define SET_DEF(DEF, V)		((*(DEF)) = (V))
 
 #define USE_STMT(USE)		(USE)->loc.stmt

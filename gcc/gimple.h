@@ -2074,13 +2074,15 @@ gimple_vdef_ptr (gimple *g)
 
 /* Set the single VUSE operand of the statement G.  */
 
-static inline void
+
+void gimple_set_vuse (gimple *g, tree vuse);
+/*static inline void
 gimple_set_vuse (gimple *g, tree vuse)
 {
   gimple_statement_with_memory_ops *mem_ops_stmt =
     as_a <gimple_statement_with_memory_ops *> (g);
   mem_ops_stmt->vuse = vuse;
-}
+}*/
 
 /* Set the single VDEF operand of the statement G.  */
 
@@ -2348,11 +2350,18 @@ gimple_num_ops (const gimple *gs)
 }
 
 
+void gimple_set_op_update (gimple *, unsigned, tree);
+
 /* Set the number of operands for statement GS.  */
 
 static inline void
 gimple_set_num_ops (gimple *gs, unsigned num_ops)
 {
+  while (gs->num_ops > num_ops)
+    {
+      gimple_set_op_update (gs, gs->num_ops - 1, NULL);
+      --gs->num_ops;
+    }
   gs->num_ops = num_ops;
 }
 
@@ -2403,14 +2412,6 @@ gimple_op_ptr (gimple *gs, unsigned i)
 }
 
 #include "gimple-ssa.h"
-static inline void
-gimple_set_op_update (gimple *gs, unsigned i, tree val)
-{
-  tree *pop = gimple_op_ptr (gs, i);
-  *pop = val;
-  if (flag_try_patch && gs->bb)
-    update_stmt_for_real (gs);
-}
 
 /* Set operand I of statement GS to OP.  */
 

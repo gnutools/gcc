@@ -1173,7 +1173,10 @@ input_function (tree fn_decl, struct data_in *data_in,
 		    {
 		      gimple_call_set_internal_fn (as_a <gcall *> (stmt),
 						   IFN_NOP);
-		      update_stmt (stmt);
+		      /* XXX replacing statement could also be done at
+		         read-in time (input_gimple_stmt), then this
+			 update wouldn't be needed.  */
+		      update_stmt_for_real (stmt);
 		    }
 		}
 	    }

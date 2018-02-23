@@ -285,6 +285,16 @@ link_imm_use (ssa_use_operand_t *linknode, tree def)
     }
 }
 
+void update_stmt_use (use_operand_p use);
+
+static inline void
+xxx_ohmy_set_ssa_use_from_ptr (use_operand_p use, tree val)
+{
+  delink_imm_use (use);
+  *(use->use) = val;
+  link_imm_use (use, val);
+}
+
 /* Set the value of a use pointed to by USE to VAL.  */
 static inline void
 set_ssa_use_from_ptr (use_operand_p use, tree val)
@@ -292,6 +302,21 @@ set_ssa_use_from_ptr (use_operand_p use, tree val)
   delink_imm_use (use);
   *(use->use) = val;
   link_imm_use (use, val);
+  if (!use->prev)
+    update_stmt_use (use);
+  if (val && TREE_CODE (val) == ADDR_EXPR)
+    {
+      tree var = get_base_address (TREE_OPERAND (val, 0));
+      if (var)
+	{
+	  if (DECL_P (var))
+	    TREE_ADDRESSABLE (var) = 1;
+	  else if (TREE_CODE (var) == MEM_REF
+		   && TREE_CODE (TREE_OPERAND (var, 0)) == ADDR_EXPR
+		   && DECL_P (TREE_OPERAND (TREE_OPERAND (var, 0), 0)))
+	    TREE_ADDRESSABLE (TREE_OPERAND (TREE_OPERAND (var, 0), 0)) = 1;
+	}
+    }
 }
 
 /* Link ssa_imm_use node LINKNODE into the chain for DEF, with use occurring

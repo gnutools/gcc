@@ -598,7 +598,8 @@ is_gimple_lvalue (tree t)
   return (is_gimple_addressable (t)
 	  || TREE_CODE (t) == WITH_SIZE_EXPR
 	  /* These are complex lvalues, but don't have addresses, so they
-	     go here.  */
+	     go here.  ??? BIT_FIELD_REF _is_ addressable due to
+	     handled_component_p.  */
 	  || TREE_CODE (t) == BIT_FIELD_REF);
 }
 

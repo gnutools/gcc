@@ -717,7 +717,7 @@ tree_profiling (void)
 
   /* As callees const/pure status might have changed we now may need
      vdefs or vuses on call statements, so update all of them
-     a nd rebuild the cgraph.  */
+     and rebuild the cgraph.  */
   FOR_EACH_DEFINED_FUNCTION (node)
     {
       basic_block bb;

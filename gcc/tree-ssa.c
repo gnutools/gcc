@@ -474,14 +474,15 @@ insert_debug_temp_for_var_def (gimple_stmt_iterator *gsi, tree var)
 	    {
 	      gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
 	      fold_stmt_inplace (&gsi);
+	      /* XXX if SET_USE would also handle nested trees, this
+	         wouldn't be necessary:  */
+	      update_stmt_for_real (stmt);
 	    }
 	}
       else
 	gimple_debug_bind_reset_value (stmt);
 
-      /* XXX nested debug expressions are hard for SSA operands.
-         Forcibly update the whole statement.  */
-      update_stmt_for_real (stmt);
+      update_stmt (stmt);
     }
 }
 
@@ -1564,7 +1565,12 @@ maybe_optimize_var (tree var, bitmap addresses_taken, bitmap not_reg_needs,
       && (!is_gimple_reg_type (TREE_TYPE (var))
 	  || TREE_CODE (TREE_TYPE (var)) == VECTOR_TYPE
 	  || TREE_CODE (TREE_TYPE (var)) == COMPLEX_TYPE
-	  || !bitmap_bit_p (not_reg_needs, DECL_UID (var))))
+	  /* XXX this should be test one outer level with && it seems,
+	     currently regresses some testcases (e.g. tree-ssa/alias-31.c)
+	     but fixes others */
+	  || !bitmap_bit_p (not_reg_needs, DECL_UID (var)))
+      /* XXX here: && !bitmap_bit_p (not_reg_needs, DECL_UID (var)) */
+      )
     {
       TREE_ADDRESSABLE (var) = 0;
       if (is_gimple_reg (var))
@@ -1721,7 +1727,14 @@ execute_update_addresses_taken (void)
 				 require we do not need any.  */
 			      || !useless_type_conversion_p
 			            (TREE_TYPE (lhs), TREE_TYPE (decl))))
-			bitmap_set_bit (not_reg_needs, DECL_UID (decl));
+			{
+			  bitmap_set_bit (not_reg_needs, DECL_UID (decl));
+			  /* Our operand scanner wants to mark these
+			     as TREE_ADDRESSABLE.  See also above in
+			     maybe_optimize_var about the usage of
+			     non_reg_needs.  */
+			  bitmap_set_bit (addresses_taken, DECL_UID (decl));
+			}
 		    }
 		}
 	      for (i = 0; i < gimple_asm_ninputs (asm_stmt); ++i)
