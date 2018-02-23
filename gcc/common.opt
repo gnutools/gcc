@@ -2799,6 +2799,10 @@ ftry-patch
 Common Report Var(flag_try_patch) Init(1) Optimization
 Try the patch.
 
+ftry-patch=
+Common RejectNegative Joined UInteger Optimization
+Try the patch N.
+
 ; -fverbose-asm causes extra commentary information to be produced in
 ; the generated assembly code (to make it more readable).  This option
 ; is generally only of use to those who actually need to read the

@@ -2037,6 +2037,10 @@ common_handle_option (struct gcc_options *opts,
 				   opts->x_flag_sanitize_coverage, value, true);
       break;
 
+    case OPT_ftry_patch_:
+      opts->x_flag_try_patch = value;
+      break;
+
     case OPT_O:
     case OPT_Os:
     case OPT_Ofast:
