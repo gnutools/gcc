@@ -1356,13 +1356,13 @@ split_function (basic_block return_bb, struct split_point *split_point,
 	     gsi_next (&gsi))
 	  {
 	    gimple *stmt = gsi_stmt (gsi);
+	    /* We are simple-minded and just rename the VOP if it's used. */
 	    if (gimple_vuse (stmt))
 	      {
-		gimple_set_vuse (stmt, NULL_TREE);
-		update_stmt_for_real (stmt); // XXX find better way to set vuse
+		gimple_set_vuse (stmt, gimple_vop (cfun));
+		mark_virtual_operands_for_renaming (cfun);
+		break;
 	      }
-	    if (gimple_vdef (stmt))
-	      break;
 	  }
     }
 

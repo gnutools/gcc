@@ -4508,7 +4508,7 @@ replace_stmt_with_simplification (gimple_stmt_iterator *gsi,
 /* Canonicalize MEM_REFs invariant address operand after propagation.  */
 
 static bool
-maybe_canonicalize_mem_ref_addr (tree *t)
+maybe_canonicalize_mem_ref_addr (gimple *stmt, tree *op_ptr, tree *t)
 {
   bool res = false;
 
@@ -4541,11 +4541,13 @@ maybe_canonicalize_mem_ref_addr (tree *t)
 		    = wi::add (idx, wi::to_widest (TYPE_SIZE (TREE_TYPE (*t))));
 		  if (wi::les_p (ext, wi::to_widest (TYPE_SIZE (vtype))))
 		    {
-		      *t = build3_loc (EXPR_LOCATION (*t), BIT_FIELD_REF,
-				       TREE_TYPE (*t),
-				       TREE_OPERAND (TREE_OPERAND (*t, 0), 0),
-				       TYPE_SIZE (TREE_TYPE (*t)),
-				       wide_int_to_tree (bitsizetype, idx));
+		      tree val
+			  = build3_loc (EXPR_LOCATION (*t), BIT_FIELD_REF,
+					TREE_TYPE (*t),
+					TREE_OPERAND (TREE_OPERAND (*t, 0), 0),
+					TYPE_SIZE (TREE_TYPE (*t)),
+					wide_int_to_tree (bitsizetype, idx));
+		      gimple_change_in_op (stmt, op_ptr, t, val);
 		      res = true;
 		    }
 		}
@@ -4573,7 +4575,8 @@ maybe_canonicalize_mem_ref_addr (tree *t)
 	  if (!base)
 	    gcc_unreachable ();
 
-	  TREE_OPERAND (*t, 0) = build_fold_addr_expr (base);
+	  gimple_change_in_op (stmt, op_ptr, &TREE_OPERAND (*t, 0),
+			       build_fold_addr_expr (base));
 	  TREE_OPERAND (*t, 1) = int_const_binop (PLUS_EXPR,
 						  TREE_OPERAND (*t, 1),
 						  size_int (coffset));
@@ -4606,7 +4609,8 @@ maybe_canonicalize_mem_ref_addr (tree *t)
 	     compatibility.  */
 	  && types_compatible_p (TREE_TYPE (*t), TREE_TYPE (decl)))
 	{
-	  *t = TREE_OPERAND (TREE_OPERAND (*t, 0), 0);
+	  gimple_change_in_op (stmt, op_ptr, t,
+			       TREE_OPERAND (TREE_OPERAND (*t, 0), 0));
 	  res = true;
 	}
     }
@@ -4618,7 +4622,7 @@ maybe_canonicalize_mem_ref_addr (tree *t)
       tree tem = maybe_fold_tmr (*t);
       if (tem)
 	{
-	  *t = tem;
+	  gimple_change_in_op (stmt, op_ptr, t, tem);
 	  res = true;
 	}
     }
@@ -4652,11 +4656,11 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree))
 	  tree *rhs = gimple_assign_rhs1_ptr (stmt);
 	  if ((REFERENCE_CLASS_P (*rhs)
 	       || TREE_CODE (*rhs) == ADDR_EXPR)
-	      && maybe_canonicalize_mem_ref_addr (rhs))
+	      && maybe_canonicalize_mem_ref_addr (stmt, rhs, rhs))
 	    changed = true;
 	  tree *lhs = gimple_assign_lhs_ptr (stmt);
 	  if (REFERENCE_CLASS_P (*lhs)
-	      && maybe_canonicalize_mem_ref_addr (lhs))
+	      && maybe_canonicalize_mem_ref_addr (stmt, lhs, lhs))
 	    changed = true;
 	}
       else
@@ -4687,13 +4691,13 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree))
 	  {
 	    tree *arg = gimple_call_arg_ptr (stmt, i);
 	    if (REFERENCE_CLASS_P (*arg)
-		&& maybe_canonicalize_mem_ref_addr (arg))
+		&& maybe_canonicalize_mem_ref_addr (stmt, arg, arg))
 	      changed = true;
 	  }
 	tree *lhs = gimple_call_lhs_ptr (stmt);
 	if (*lhs
 	    && REFERENCE_CLASS_P (*lhs)
-	    && maybe_canonicalize_mem_ref_addr (lhs))
+	    && maybe_canonicalize_mem_ref_addr (stmt, lhs, lhs))
 	  changed = true;
 	break;
       }
@@ -4702,19 +4706,21 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree))
 	gasm *asm_stmt = as_a <gasm *> (stmt);
 	for (i = 0; i < gimple_asm_noutputs (asm_stmt); ++i)
 	  {
-	    tree link = gimple_asm_output_op (asm_stmt, i);
-	    tree op = TREE_VALUE (link);
+	    tree *link = gimple_asm_output_op_ptr (asm_stmt, i);
+	    tree op = TREE_VALUE (*link);
 	    if (REFERENCE_CLASS_P (op)
-		&& maybe_canonicalize_mem_ref_addr (&TREE_VALUE (link)))
+		&& maybe_canonicalize_mem_ref_addr (stmt, link,
+						    &TREE_VALUE (*link)))
 	      changed = true;
 	  }
 	for (i = 0; i < gimple_asm_ninputs (asm_stmt); ++i)
 	  {
-	    tree link = gimple_asm_input_op (asm_stmt, i);
-	    tree op = TREE_VALUE (link);
+	    tree *link = gimple_asm_input_op_ptr (asm_stmt, i);
+	    tree op = TREE_VALUE (*link);
 	    if ((REFERENCE_CLASS_P (op)
 		 || TREE_CODE (op) == ADDR_EXPR)
-		&& maybe_canonicalize_mem_ref_addr (&TREE_VALUE (link)))
+		&& maybe_canonicalize_mem_ref_addr (stmt, link,
+						    &TREE_VALUE (*link)))
 	      changed = true;
 	  }
       }
@@ -4726,7 +4732,7 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree))
 	  if (*val
 	      && (REFERENCE_CLASS_P (*val)
 		  || TREE_CODE (*val) == ADDR_EXPR)
-	      && maybe_canonicalize_mem_ref_addr (val))
+	      && maybe_canonicalize_mem_ref_addr (stmt, val, val))
 	    changed = true;
 	}
       break;

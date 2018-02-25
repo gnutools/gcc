@@ -316,10 +316,14 @@ gimple_regimplify_operands (gimple *stmt, gimple_stmt_iterator *gsi_p)
 
   pop_gimplify_context (NULL);
 
-  /* XXX some of the above transforms directly change gimple ops
-     instead of going through setters.  Once rewritten, update_stmt
-     isn't necessary.  */
+  /* The above uses direct pointer access to change operands, so we
+     need to reparse all operands.
+
+     It might look tempting to call gimplify_expr and an operand setter
+     only when !is_gimple_val (op) (or the other predicates).  That
+     doesn't work because DECLs might have DECL_VALUE_EXPR set,
+     which isn't checked by the predicates.  So we must always
+     invoke gimplify_expr on all operands and so can just as well
+     only update once at the end.  */
   update_stmt_for_real (stmt);
 }
-
-

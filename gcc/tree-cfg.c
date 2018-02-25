@@ -1976,6 +1976,11 @@ replace_uses_by (tree name, tree val)
 
   FOR_EACH_IMM_USE_STMT (stmt, imm_iter, name)
     {
+      int oldcf = 0;
+      gcall *call;
+      if ((call = dyn_cast <gcall *> (stmt)))
+	oldcf = gimple_call_flags (call);
+
       /* Mark the block if we change the last stmt in it.  */
       if (cfgcleanup_altered_bbs
 	  && stmt_ends_bb_p (stmt))
@@ -2028,7 +2033,14 @@ replace_uses_by (tree name, tree val)
 	  if (maybe_clean_or_replace_eh_stmt (orig_stmt, stmt))
 	    gimple_purge_dead_eh_edges (gimple_bb (stmt));
 
-	  update_stmt (stmt);
+	  /* SET_USE (within replace_exp) update all operand caches
+	     and VOPs, except when we change the call target from e.g.
+	     unknown to pure/const.  */
+	  if ((call = dyn_cast <gcall *> (stmt))
+	      && oldcf != gimple_call_flags (call))
+	    update_stmt_for_real (stmt);
+	  else
+	    update_stmt (stmt);
 	}
     }
 

@@ -2351,6 +2351,7 @@ gimple_num_ops (const gimple *gs)
 
 
 void gimple_set_op_update (gimple *, unsigned, tree);
+void gimple_change_in_op (gimple *, tree *, tree *, tree);
 
 /* Set the number of operands for statement GS.  */
 
@@ -3872,6 +3873,13 @@ gimple_asm_input_op (const gasm *asm_stmt, unsigned index)
   return asm_stmt->op[index + asm_stmt->no];
 }
 
+static inline tree *
+gimple_asm_input_op_ptr (gasm *asm_stmt, unsigned index)
+{
+  gcc_gimple_checking_assert (index < asm_stmt->ni);
+  return &asm_stmt->op[index + asm_stmt->no];
+}
+
 /* Set IN_OP to be input operand INDEX in GIMPLE_ASM ASM_STMT.  */
 
 static inline void
@@ -3891,6 +3899,13 @@ gimple_asm_output_op (const gasm *asm_stmt, unsigned index)
 {
   gcc_gimple_checking_assert (index < asm_stmt->no);
   return asm_stmt->op[index];
+}
+
+static inline tree *
+gimple_asm_output_op_ptr (gasm *asm_stmt, unsigned index)
+{
+  gcc_gimple_checking_assert (index < asm_stmt->no);
+  return &asm_stmt->op[index];
 }
 
 /* Set OUT_OP to be output operand INDEX in GIMPLE_ASM ASM_STMT.  */
@@ -3914,6 +3929,13 @@ gimple_asm_clobber_op (const gasm *asm_stmt, unsigned index)
   return asm_stmt->op[index + asm_stmt->ni + asm_stmt->no];
 }
 
+static inline tree *
+gimple_asm_clobber_op_ptr (gasm *asm_stmt, unsigned index)
+{
+  gcc_gimple_checking_assert (index < asm_stmt->nc);
+  return &asm_stmt->op[index + asm_stmt->ni + asm_stmt->no];
+}
+
 
 /* Set CLOBBER_OP to be clobber operand INDEX in GIMPLE_ASM ASM_STMT.  */
 
@@ -3934,6 +3956,13 @@ gimple_asm_label_op (const gasm *asm_stmt, unsigned index)
 {
   gcc_gimple_checking_assert (index < asm_stmt->nl);
   return asm_stmt->op[index + asm_stmt->ni + asm_stmt->nc];
+}
+
+static inline tree *
+gimple_asm_label_op_ptr (gasm *asm_stmt, unsigned index)
+{
+  gcc_gimple_checking_assert (index < asm_stmt->nl);
+  return &asm_stmt->op[index + asm_stmt->ni + asm_stmt->nc];
 }
 
 /* Set LABEL_OP to be label operand INDEX in GIMPLE_ASM ASM_STMT.  */

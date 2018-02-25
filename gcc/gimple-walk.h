@@ -30,6 +30,9 @@ struct walk_stmt_info
   gimple_stmt_iterator gsi;
   gimple *stmt;
 
+  /* Pointer to the gimple operand currently being walked.  */
+  tree *op_ptr;
+
   /* Additional data that the callback functions may want to carry
      through the recursion.  */
   void *info;

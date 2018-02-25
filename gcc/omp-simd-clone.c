@@ -882,15 +882,15 @@ ipa_simd_modify_stmt_ops (tree *tp, int *walk_subtrees, void *data)
 	}
       gimple_stmt_iterator gsi = gsi_for_stmt (info->stmt);
       gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
-      *orig_tp = repl;
+      gimple_change_in_op (wi->stmt, wi->op_ptr, orig_tp, repl);
     }
   else if (!useless_type_conversion_p (TREE_TYPE (*tp), TREE_TYPE (repl)))
     {
       tree vce = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (*tp), repl);
-      *tp = vce;
+      gimple_change_in_op (wi->stmt, wi->op_ptr, tp, vce);
     }
   else
-    *tp = repl;
+    gimple_change_in_op (wi->stmt, wi->op_ptr, tp, repl);
 
   info->modified = true;
   return NULL_TREE;
@@ -1014,7 +1014,7 @@ ipa_simd_modify_function_body (struct cgraph_node *node,
 	    {
 	      /* XXX direct operand changes via walk_gimple_op make
 	         this necessary:  */
-	      update_stmt_for_real (stmt);
+	      update_stmt (stmt);
 	      if (maybe_clean_eh_stmt (stmt))
 		gimple_purge_dead_eh_edges (gimple_bb (stmt));
 	    }

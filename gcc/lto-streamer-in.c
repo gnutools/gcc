@@ -1122,8 +1122,7 @@ input_function (tree fn_decl, struct data_in *data_in,
 	     we're not supposed to have debug stmts, remove them now.
 	     We can't remove them earlier because this would cause uid
 	     mismatches in fixups, but we can do it at this point, as
-	     long as debug stmts don't require fixups.
-	     Similarly remove all IFN_*SAN_* internal calls   */
+	     long as debug stmts don't require fixups.  */
 	  if (!flag_wpa)
 	    {
 	      if (is_gimple_debug (stmt)
@@ -1131,54 +1130,6 @@ input_function (tree fn_decl, struct data_in *data_in,
 		      ? !MAY_HAVE_DEBUG_MARKER_STMTS
 		      : !MAY_HAVE_DEBUG_BIND_STMTS))
 		remove = true;
-	      if (is_gimple_call (stmt)
-		  && gimple_call_internal_p (stmt))
-		{
-		  bool replace = false;
-		  switch (gimple_call_internal_fn (stmt))
-		    {
-		    case IFN_UBSAN_NULL:
-		      if ((flag_sanitize
-			  & (SANITIZE_NULL | SANITIZE_ALIGNMENT)) == 0)
-			replace = true;
-		      break;
-		    case IFN_UBSAN_BOUNDS:
-		      if ((flag_sanitize & SANITIZE_BOUNDS) == 0)
-			replace = true;
-		      break;
-		    case IFN_UBSAN_VPTR:
-		      if ((flag_sanitize & SANITIZE_VPTR) == 0)
-			replace = true;
-		      break;
-		    case IFN_UBSAN_OBJECT_SIZE:
-		      if ((flag_sanitize & SANITIZE_OBJECT_SIZE) == 0)
-			replace = true;
-		      break;
-		    case IFN_UBSAN_PTR:
-		      if ((flag_sanitize & SANITIZE_POINTER_OVERFLOW) == 0)
-			replace = true;
-		      break;
-		    case IFN_ASAN_MARK:
-		      if ((flag_sanitize & SANITIZE_ADDRESS) == 0)
-			replace = true;
-		      break;
-		    case IFN_TSAN_FUNC_EXIT:
-		      if ((flag_sanitize & SANITIZE_THREAD) == 0)
-			replace = true;
-		      break;
-		    default:
-		      break;
-		    }
-		  if (replace)
-		    {
-		      gimple_call_set_internal_fn (as_a <gcall *> (stmt),
-						   IFN_NOP);
-		      /* XXX replacing statement could also be done at
-		         read-in time (input_gimple_stmt), then this
-			 update wouldn't be needed.  */
-		      update_stmt_for_real (stmt);
-		    }
-		}
 	    }
 	  if (remove)
 	    {

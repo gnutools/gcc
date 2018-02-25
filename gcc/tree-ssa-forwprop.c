@@ -2463,8 +2463,6 @@ pass_forwprop::execute (function *fun)
 		if (gimple_cond_true_p (cond)
 		    || gimple_cond_false_p (cond))
 		  cfg_changed = true;
-	      /* XXX for_real only necessary with update_stmt_use??? 
-	      update_stmt_for_real (stmt); */
 	      update_stmt (stmt);
 	    }
 

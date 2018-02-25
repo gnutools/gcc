@@ -1961,19 +1961,19 @@ dump_incr_vec (void)
     }
 }
 
-/* Replace *EXPR in candidate C with an equivalent strength-reduced
+/* For EXPR in candidate C return an equivalent strength-reduced
    data reference.  */
 
-static void
-replace_ref (tree *expr, slsr_cand_t c)
+static tree
+replace_ref (tree expr, slsr_cand_t c)
 {
-  tree add_expr, mem_ref, acc_type = TREE_TYPE (*expr);
+  tree add_expr, mem_ref, acc_type = TREE_TYPE (expr);
   unsigned HOST_WIDE_INT misalign;
   unsigned align;
 
   /* Ensure the memory reference carries the minimum alignment
      requirement for the data type.  See PR58041.  */
-  get_object_alignment_1 (*expr, &align, &misalign);
+  get_object_alignment_1 (expr, &align, &misalign);
   if (misalign != 0)
     align = least_bit_hwi (misalign);
   if (align < TYPE_ALIGN (acc_type))
@@ -1990,11 +1990,8 @@ replace_ref (tree *expr, slsr_cand_t c)
     = force_gimple_operand_gsi (&gsi, TREE_OPERAND (mem_ref, 0),
 				/*simple_p=*/true, NULL,
 				/*before=*/true, GSI_SAME_STMT);
-  copy_ref_info (mem_ref, *expr);
-  *expr = mem_ref;
-  /* XXX change gimple operands via proper wrappers not via
-     pointer store, so no update_stmt would be needed.  */
-  update_stmt_for_real (c->cand_stmt);
+  copy_ref_info (mem_ref, expr);
+  return mem_ref;
 }
 
 /* Replace CAND_REF candidate C, each sibling of candidate C, and each
@@ -2012,14 +2009,15 @@ replace_refs (slsr_cand_t c)
 
   if (gimple_vdef (c->cand_stmt))
     {
-      tree *lhs = gimple_assign_lhs_ptr (c->cand_stmt);
-      replace_ref (lhs, c);
+      tree lhs = gimple_assign_lhs (c->cand_stmt);
+      gimple_assign_set_lhs (c->cand_stmt, replace_ref (lhs, c));
     }
   else
     {
-      tree *rhs = gimple_assign_rhs1_ptr (c->cand_stmt);
-      replace_ref (rhs, c);
+      tree rhs = gimple_assign_rhs1 (c->cand_stmt);
+      gimple_assign_set_rhs1 (c->cand_stmt, replace_ref (rhs, c));
     }
+  update_stmt (c->cand_stmt);
 
   if (dump_file && (dump_flags & TDF_DETAILS))
     {

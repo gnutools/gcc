@@ -1169,6 +1169,10 @@ update_stmt_use (use_operand_p use)
       gcc_assert (gimple_code (stmt) == GIMPLE_PHI);
       return;
     }
+  gcc_assert (is_gimple_debug (stmt)
+	      || !USE_FROM_PTR (use)
+	      || is_gimple_min_invariant (USE_FROM_PTR (use)));
+
   use_optype_p *puse, stmtuse;
   for (puse = &ops_stmt->use_ops; USE_OP_PTR (*puse) != use; puse = &((*puse)->next))
     ;
@@ -1209,11 +1213,19 @@ easy_stmt_p (gimple *stmt, unsigned i)
 	  return 2;
 	/* Also, if we ignore the LHS or have none there can only be a
 	   vdef if the function isn't pure (or const).  */
-	if ((i == 0 || !gimple_call_lhs (stmt))
-	    && !(call_flags & ECF_NOVOPS)
-	    && (call_flags & (ECF_PURE | ECF_CONST)))
-	  return 1;
-
+	if ((i == 0 || !gimple_call_lhs (stmt)) && !(call_flags & ECF_NOVOPS))
+	    {
+	      /* If it's pure we definitely need a vuse.  */
+	      if ((call_flags & (ECF_PURE | ECF_CONST)) == ECF_PURE)
+		return 1;
+	      /* If it's const and we have no arguments, or we ignore
+	         the single argument (and hence have no LHS), then
+		 there won't be a vop.  */
+	      if ((call_flags & ECF_CONST)
+		  && (!gimple_call_num_args (stmt)
+		      || (gimple_call_num_args (stmt) == 1 && i == 3)))
+		return 0;
+	    }
 	return -1;
       }
 
@@ -1274,7 +1286,10 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
     }
 
   if (newvop)
-    ensure_vop (stmt, newvop >= 2 ? opf_def : opf_use);
+    {
+      gcc_assert (!is_gimple_debug (stmt));
+      ensure_vop (stmt, newvop >= 2 ? opf_def : opf_use);
+    }
   else if (gimple_vuse (stmt))
     gimple_set_vuse (stmt, NULL_TREE);
 
@@ -1287,7 +1302,7 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   gimple_statement_with_ops *ops_stmt =
       dyn_cast <gimple_statement_with_ops *> (stmt);
   use_optype_p *puse = NULL;
-  int was_vop = 0;
+  int was_vop = 0, newvop;
   /* We'd like to search the cache only
        if (*pop && SSA_VAR_P (*pop))
      but we can't currently, because the list might contain stale entries
@@ -1303,8 +1318,20 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 
   /* If there's the danger that we replace the last operand that caused
      a vop with one that doesn't we need to revisit everything.  */
-  if (*pop && SSA_VAR_P (*pop) && !is_gimple_reg (*pop) && !virtual_operand_p (*pop))
+  if (!(flags & opf_no_vops) && *pop && SSA_VAR_P (*pop)
+      && !is_gimple_reg (*pop) && !virtual_operand_p (*pop))
     was_vop = (flags & opf_def) ? 2 : 1;
+  if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
+    {
+      int call_flags = gimple_call_flags (stmt);
+      if (!(call_flags & ECF_NOVOPS))
+	{
+	  if (!(call_flags & (ECF_PURE | ECF_CONST)))
+	    was_vop = 2;
+	  else if (!(call_flags & ECF_CONST))
+	    was_vop = 1;
+	}
+    }
 
   *pop = val;
 
@@ -1354,7 +1381,19 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
       gcc_assert (!val || is_gimple_min_invariant (val));
       if (puse && *puse)
 	*puse = (*puse)->next;
-      if (was_vop && diddle_vops (stmt, was_vop, 0, nop) < 0)
+      newvop = 0;
+      if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
+	{
+	  int call_flags = gimple_call_flags (stmt);
+	  if (!(call_flags & ECF_NOVOPS))
+	    {
+	      if (!(call_flags & (ECF_PURE | ECF_CONST)))
+		newvop = 2;
+	      else if (!(call_flags & ECF_CONST))
+		newvop = 1;
+	    }
+	}
+      if (was_vop && diddle_vops (stmt, was_vop, newvop, nop) < 0)
 	return 1;
       /* And check for addresses in val.  */
       if (val && TREE_CODE (val) == ADDR_EXPR && !is_gimple_debug (stmt))
@@ -1371,6 +1410,11 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 static void
 ensure_vop (gimple *stmt, int flags)
 {
+  if (flags & opf_no_vops)
+    {
+      gcc_assert (!gimple_vuse (stmt));
+      return;
+    }
   if (flags & opf_def)
     {
       if (!gimple_vdef (stmt))
@@ -1406,11 +1450,13 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   int oldvop, newvop;
 
   start_ssa_stmt_operands ();
-  get_expr_operands (cfun, stmt, pop, flags);
+  get_expr_operands (cfun, stmt, gimple_op_ptr (stmt, nop), flags);
+  if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
+    maybe_add_call_vops (cfun, as_a <gcall *> (stmt));
   was_volatile = !!(build_flags & BF_VOLATILE);
   oldvop = build_vdef ? 2 : build_vuse ? 1 : 0;
 
-  /* Remove all use ops for things in *pop.  */
+  /* Remove all use ops for things in op[nop].  */
   for (i = 0; i < build_uses.length (); i++)
     {
       tree *op = build_uses[i];
@@ -1441,7 +1487,9 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 
   /* Now inspect the new value.  */
   start_ssa_stmt_operands ();
-  get_expr_operands (cfun, stmt, pop, flags);
+  get_expr_operands (cfun, stmt, gimple_op_ptr (stmt, nop), flags);
+  if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
+    maybe_add_call_vops (cfun, as_a <gcall *> (stmt));
   newvop = build_vdef ? 2 : build_vuse ? 1 : 0;
 
   /* If the op was volatile and now isn't we need to recheck everything.  */
@@ -1452,7 +1500,10 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
     }
 
   if (diddle_vops (stmt, oldvop, newvop, nop) < 0)
-    return 1;
+    {
+      cleanup_build_arrays ();
+      return 1;
+    }
 
   for (i = 0; i < build_uses.length (); i++)
     {
@@ -1567,6 +1618,48 @@ gimple_set_op_update (gimple *gs, unsigned i, tree val)
 	  *pop = val;
 do_full_update:
 	  fprintf (stderr, " XXX replace ");
+	  print_generic_expr (stderr, old, TDF_VOPS|TDF_MEMSYMS);
+	  fprintf (stderr, " with ");
+	  print_generic_expr (stderr, val, TDF_VOPS|TDF_MEMSYMS);
+	  fprintf (stderr, " in ");
+	  print_gimple_stmt (stderr, gs, 0, 0);
+	  update_stmt_for_real (gs);
+	}
+    }
+}
+
+void
+gimple_change_in_op (gimple *gs, tree *op_ptr, tree *pop, tree val)
+{
+  unsigned i = op_ptr - gimple_op_ptr (gs, 0);
+  gcc_assert (i < gimple_num_ops (gs));
+  if (!flag_try_patch || !gs->bb || !ssa_operands_active (cfun))
+    *pop = val;
+  else
+    {
+      tree old = *pop;
+      if (gimple_code (gs) != GIMPLE_ASM)
+	{
+	  if (gimple_code (gs) != GIMPLE_DEBUG
+	      /* GIMPLE_DEBUG only has opcache for debug_bind and operand 1! .*/
+	      || (gimple_debug_bind_p (gs) && i == 1))
+	    {
+	      int flags = opf_use;
+	      if (i == 0 && (is_gimple_assign (gs) || is_gimple_call (gs)))
+		flags = opf_def;
+	      if (gimple_code (gs) == GIMPLE_DEBUG)
+		flags |= opf_no_vops;
+	      if (exchange_complex_op (gs, pop, val, i, flags))
+		goto do_full_update;
+	    }
+	  else
+	    *pop = val;
+	}
+      else
+	{
+	  *pop = val;
+do_full_update:
+	  fprintf (stderr, " YYY replace ");
 	  print_generic_expr (stderr, old, TDF_VOPS|TDF_MEMSYMS);
 	  fprintf (stderr, " with ");
 	  print_generic_expr (stderr, val, TDF_VOPS|TDF_MEMSYMS);

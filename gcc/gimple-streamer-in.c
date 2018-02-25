@@ -186,8 +186,47 @@ input_gimple_stmt (struct lto_input_block *ib, struct data_in *data_in,
       if (gcall *call_stmt = dyn_cast <gcall *> (stmt))
 	{
 	  if (gimple_call_internal_p (call_stmt))
-	    gimple_call_set_internal_fn
-	      (call_stmt, streamer_read_enum (ib, internal_fn, IFN_LAST));
+	    {
+	      enum internal_fn ifn
+		= streamer_read_enum (ib, internal_fn, IFN_LAST);
+	      /* Patch out all *SAN calls if we're not supposed
+	         to have them due to compiling with different flags now.  */
+	      switch (ifn)
+		{
+		  case IFN_UBSAN_NULL:
+		      if ((flag_sanitize
+			   & (SANITIZE_NULL | SANITIZE_ALIGNMENT)) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_UBSAN_BOUNDS:
+		      if ((flag_sanitize & SANITIZE_BOUNDS) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_UBSAN_VPTR:
+		      if ((flag_sanitize & SANITIZE_VPTR) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_UBSAN_OBJECT_SIZE:
+		      if ((flag_sanitize & SANITIZE_OBJECT_SIZE) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_UBSAN_PTR:
+		      if ((flag_sanitize & SANITIZE_POINTER_OVERFLOW) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_ASAN_MARK:
+		      if ((flag_sanitize & SANITIZE_ADDRESS) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  case IFN_TSAN_FUNC_EXIT:
+		      if ((flag_sanitize & SANITIZE_THREAD) == 0)
+			ifn = IFN_NOP;
+		      break;
+		  default:
+		      break;
+		}
+	      gimple_call_set_internal_fn (call_stmt, ifn);
+	    }
 	  else
 	    gimple_call_set_fntype (call_stmt, stream_read_tree (ib, data_in));
 	}

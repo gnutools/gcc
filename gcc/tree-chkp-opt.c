@@ -28,6 +28,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple.h"
 #include "tree-pass.h"
 #include "ssa.h"
+#include "tree-into-ssa.h"
 #include "gimple-pretty-print.h"
 #include "diagnostic.h"
 #include "fold-const.h"
@@ -1215,7 +1216,7 @@ chkp_reduce_bounds_lifetime (void)
 	      || (dom_use && gimple_bb (dom_use) == bb))
 	    {
 		  if (dump_file && (dump_flags & TDF_DETAILS))
-		    fprintf (dump_file, "Cannot move statement bacause there is no "
+		    fprintf (dump_file, "Cannot move statement because there is no "
 			     "suitable dominator block other than entry block.\n");
 
 		  gsi_next (&i);
@@ -1236,10 +1237,11 @@ chkp_reduce_bounds_lifetime (void)
 		  gsi_move_before (&i, &gsi);
 		}
 
-	      gimple_set_vdef (stmt, NULL_TREE);
-	      gimple_set_vuse (stmt, NULL_TREE);
-	      /* XXX only needed to reset vops. */
-	      update_stmt_for_real (stmt);
+	      if (gimple_vuse (stmt))
+		{
+		  gimple_set_vuse (stmt, gimple_vop (cfun));
+		  mark_virtual_operands_for_renaming (cfun);
+		}
 	    }
 	}
       else
