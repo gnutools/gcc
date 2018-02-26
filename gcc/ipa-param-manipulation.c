@@ -618,6 +618,8 @@ ipa_get_adjustment_candidate (tree **expr, bool *convert,
 			      ipa_parm_adjustment_vec adjustments,
 			      bool ignore_default_def)
 {
+  if (TREE_CODE (**expr) == TREE_LIST)
+    *expr = &TREE_VALUE (**expr);
   if (TREE_CODE (**expr) == BIT_FIELD_REF
       || TREE_CODE (**expr) == IMAGPART_EXPR
       || TREE_CODE (**expr) == REALPART_EXPR)
@@ -671,9 +673,10 @@ ipa_get_adjustment_candidate (tree **expr, bool *convert,
    was modified. */
 
 bool
-ipa_modify_expr (tree *expr, bool convert,
+ipa_modify_expr (gimple *stmt, tree *expr, bool convert,
 		 ipa_parm_adjustment_vec adjustments)
 {
+  tree *op_ptr = expr;
   struct ipa_parm_adjustment *cand
     = ipa_get_adjustment_candidate (&expr, &convert, adjustments, false);
   if (!cand)
@@ -700,10 +703,10 @@ ipa_modify_expr (tree *expr, bool convert,
   if (convert && !useless_type_conversion_p (TREE_TYPE (*expr), cand->type))
     {
       tree vce = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (*expr), src);
-      *expr = vce;
+      gimple_change_in_op (stmt, op_ptr, expr, vce);
     }
   else
-    *expr = src;
+    gimple_change_in_op (stmt, op_ptr, expr, src);
   return true;
 }
 

@@ -2919,6 +2919,12 @@ copy_debug_stmt (gdebug *stmt, copy_body_data *id)
 
   processing_debug_stmt = 0;
 
+  /* remap_gimple_op_r doesn't use normal operand setters but direct
+     access for remapping, which is okay at stmt-copy time because
+     then the copy doesn't yet belong to a BB.  But here the debug
+     stmts are already part of a function and hence have operand caches,
+     so that direct modification clobbers the operands.  Hence recheck
+     the whole stmt.  */
   update_stmt_for_real (stmt);
 }
 

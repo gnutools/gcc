@@ -3128,12 +3128,16 @@ sra_modify_expr (tree *expr, gimple_stmt_iterator *gsi, bool write)
   location_t loc;
   struct access *access;
   tree type, bfr, orig_expr;
+  tree *op_ptr = expr;
+  gimple *stmt = gsi_stmt (*gsi);
 
   if (TREE_CODE (*expr) == BIT_FIELD_REF)
     {
       bfr = *expr;
       expr = &TREE_OPERAND (*expr, 0);
     }
+  else if (TREE_CODE (*expr) == TREE_LIST)
+    expr = &TREE_VALUE (*expr), bfr = NULL_TREE;
   else
     bfr = NULL_TREE;
 
@@ -3196,7 +3200,7 @@ sra_modify_expr (tree *expr, gimple_stmt_iterator *gsi, bool write)
 	    }
 	}
       else
-	*expr = repl;
+	gimple_change_in_op (stmt, op_ptr, expr, repl);
       sra_stats.exprs++;
     }
   else if (write && access->grp_to_be_debug_replaced)
@@ -3831,12 +3835,12 @@ sra_modify_function_body (void)
 		gasm *asm_stmt = as_a <gasm *> (stmt);
 		for (i = 0; i < gimple_asm_ninputs (asm_stmt); i++)
 		  {
-		    t = &TREE_VALUE (gimple_asm_input_op (asm_stmt, i));
+		    t = gimple_asm_input_op_ptr (asm_stmt, i);
 		    modified |= sra_modify_expr (t, &gsi, false);
 		  }
 		for (i = 0; i < gimple_asm_noutputs (asm_stmt); i++)
 		  {
-		    t = &TREE_VALUE (gimple_asm_output_op (asm_stmt, i));
+		    t = gimple_asm_output_op_ptr (asm_stmt, i);
 		    modified |= sra_modify_expr (t, &gsi, true);
 		  }
 	      }
@@ -3848,10 +3852,7 @@ sra_modify_function_body (void)
 
 	  if (modified)
 	    {
-	      /* XXX Use proper gimple operand setter to update
-	         operands instead of in-place modifications, so no
-		 update_stmt is necessary.  */
-	      update_stmt_for_real (stmt);
+	      update_stmt (stmt);
 	      if (maybe_clean_eh_stmt (stmt)
 		  && gimple_purge_dead_eh_edges (gimple_bb (stmt)))
 		cfg_changed = true;
@@ -4976,8 +4977,8 @@ sra_ipa_modify_assign (gimple *stmt, gimple_stmt_iterator *gsi,
   rhs_p = gimple_assign_rhs1_ptr (stmt);
   lhs_p = gimple_assign_lhs_ptr (stmt);
 
-  any = ipa_modify_expr (rhs_p, false, adjustments);
-  any |= ipa_modify_expr (lhs_p, false, adjustments);
+  any = ipa_modify_expr (stmt, rhs_p, false, adjustments);
+  any |= ipa_modify_expr (stmt, lhs_p, false, adjustments);
   if (any)
     {
       tree new_rhs = NULL_TREE;
@@ -4988,10 +4989,9 @@ sra_ipa_modify_assign (gimple *stmt, gimple_stmt_iterator *gsi,
 	    {
 	      /* V_C_Es of constructors can cause trouble (PR 42714).  */
 	      if (is_gimple_reg_type (TREE_TYPE (*lhs_p)))
-		*rhs_p = build_zero_cst (TREE_TYPE (*lhs_p));
+		new_rhs = build_zero_cst (TREE_TYPE (*lhs_p));
 	      else
-		*rhs_p = build_constructor (TREE_TYPE (*lhs_p),
-					    NULL);
+		new_rhs = build_constructor (TREE_TYPE (*lhs_p), NULL);
 	    }
 	  else
 	    new_rhs = fold_build1_loc (gimple_location (stmt),
@@ -5058,7 +5058,7 @@ ipa_sra_modify_function_body (ipa_parm_adjustment_vec adjustments)
 	    case GIMPLE_RETURN:
 	      t = gimple_return_retval_ptr (as_a <greturn *> (stmt));
 	      if (*t != NULL_TREE)
-		modified |= ipa_modify_expr (t, true, adjustments);
+		modified |= ipa_modify_expr (stmt, t, true, adjustments);
 	      break;
 
 	    case GIMPLE_ASSIGN:
@@ -5070,13 +5070,13 @@ ipa_sra_modify_function_body (ipa_parm_adjustment_vec adjustments)
 	      for (i = 0; i < gimple_call_num_args (stmt); i++)
 		{
 		  t = gimple_call_arg_ptr (stmt, i);
-		  modified |= ipa_modify_expr (t, true, adjustments);
+		  modified |= ipa_modify_expr (stmt, t, true, adjustments);
 		}
 
 	      if (gimple_call_lhs (stmt))
 		{
 		  t = gimple_call_lhs_ptr (stmt);
-		  modified |= ipa_modify_expr (t, false, adjustments);
+		  modified |= ipa_modify_expr (stmt, t, false, adjustments);
 		}
 	      break;
 
@@ -5085,13 +5085,13 @@ ipa_sra_modify_function_body (ipa_parm_adjustment_vec adjustments)
 		gasm *asm_stmt = as_a <gasm *> (stmt);
 		for (i = 0; i < gimple_asm_ninputs (asm_stmt); i++)
 		  {
-		    t = &TREE_VALUE (gimple_asm_input_op (asm_stmt, i));
-		    modified |= ipa_modify_expr (t, true, adjustments);
+		    t = gimple_asm_input_op_ptr (asm_stmt, i);
+		    modified |= ipa_modify_expr (stmt, t, true, adjustments);
 		  }
 		for (i = 0; i < gimple_asm_noutputs (asm_stmt); i++)
 		  {
-		    t = &TREE_VALUE (gimple_asm_output_op (asm_stmt, i));
-		    modified |= ipa_modify_expr (t, false, adjustments);
+		    t = gimple_asm_output_op_ptr (asm_stmt, i);
+		    modified |= ipa_modify_expr (stmt, t, false, adjustments);
 		  }
 	      }
 	      break;
@@ -5116,10 +5116,7 @@ ipa_sra_modify_function_body (ipa_parm_adjustment_vec adjustments)
 
 	  if (modified)
 	    {
-	      /* XXX Use proper gimple operand setter to update
-	         operands instead of in-place modifications, so no
-		 update_stmt is necessary.  */
-	      update_stmt_for_real (stmt);
+	      update_stmt (stmt);
 	      if (maybe_clean_eh_stmt (stmt)
 		  && gimple_purge_dead_eh_edges (gimple_bb (stmt)))
 		cfg_changed = true;

@@ -112,7 +112,7 @@ ipa_parm_adjustment_vec ipa_combine_adjustments (ipa_parm_adjustment_vec,
 						 ipa_parm_adjustment_vec);
 void ipa_dump_param_adjustments (FILE *, ipa_parm_adjustment_vec, tree);
 
-bool ipa_modify_expr (tree *, bool, ipa_parm_adjustment_vec);
+bool ipa_modify_expr (gimple *, tree *, bool, ipa_parm_adjustment_vec);
 ipa_parm_adjustment *ipa_get_adjustment_candidate (tree **, bool *,
 						   ipa_parm_adjustment_vec,
 						   bool);

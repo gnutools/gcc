@@ -649,7 +649,8 @@ eliminate_local_variables_1 (tree *tp, int *walk_subtrees, void *data)
 	  return NULL_TREE;
 	}
 
-      *tp = build_simple_mem_ref (addr);
+      gimple_change_in_op (dta->info.stmt, dta->info.op_ptr, tp,
+			   build_simple_mem_ref (addr));
 
       dta->changed = true;
       return NULL_TREE;
@@ -685,7 +686,7 @@ eliminate_local_variables_1 (tree *tp, int *walk_subtrees, void *data)
 	  dta->reset = true;
 	  return NULL_TREE;
 	}
-      *tp = addr;
+      gimple_change_in_op (dta->info.stmt, dta->info.op_ptr, tp, addr);
 
       dta->changed = true;
       return NULL_TREE;
@@ -718,6 +719,8 @@ eliminate_local_variables_stmt (edge entry, gimple_stmt_iterator *gsi,
   if (gimple_debug_bind_p (stmt))
     {
       dta.gsi = NULL;
+      dta.info.stmt = stmt;
+      dta.info.op_ptr = gimple_debug_bind_get_value_ptr (stmt);
       walk_tree (gimple_debug_bind_get_value_ptr (stmt),
 		 eliminate_local_variables_1, &dta.info, NULL);
       if (dta.reset)
@@ -742,7 +745,7 @@ eliminate_local_variables_stmt (edge entry, gimple_stmt_iterator *gsi,
   /* XXX If we weren't changing the gimple ops via direct pointer
      access we wouldn't need to do this:  */
   if (dta.changed)
-    update_stmt_for_real (stmt);
+    update_stmt (stmt);
 }
 
 /* Eliminates the references to local variables from the single entry

@@ -376,27 +376,24 @@ decrement_count (gimple *stmt, int decrement)
 
 }
 
-static void
-increment_start_addr (gimple *stmt, tree *where, int increment)
+static tree
+increment_start_addr (gimple *stmt, tree where, int increment)
 {
-  if (TREE_CODE (*where) == SSA_NAME)
+  if (TREE_CODE (where) == SSA_NAME)
     {
-      tree tem = make_ssa_name (TREE_TYPE (*where));
+      tree tem = make_ssa_name (TREE_TYPE (where));
       gassign *newop
-        = gimple_build_assign (tem, POINTER_PLUS_EXPR, *where,
+        = gimple_build_assign (tem, POINTER_PLUS_EXPR, where,
 			       build_int_cst (sizetype, increment));
       gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
       gsi_insert_before (&gsi, newop, GSI_SAME_STMT);
-      *where = tem;
-      /* XXX don't use direct operand change via pointer.  */
-      update_stmt_for_real (gsi_stmt (gsi));
-      return;
+      return tem;
     }
 
-  *where = build_fold_addr_expr (fold_build2 (MEM_REF, char_type_node,
-                                             *where,
-                                             build_int_cst (ptr_type_node,
-                                                            increment)));
+  return build_fold_addr_expr (fold_build2 (MEM_REF, char_type_node,
+					    where,
+					    build_int_cst (ptr_type_node,
+							   increment)));
 }
 
 /* STMT is builtin call that writes bytes in bitmap ORIG, some bytes are dead
@@ -425,11 +422,14 @@ maybe_trim_memstar_call (ao_ref *ref, sbitmap live, gimple *stmt)
 	/* Head trimming requires adjusting all the arguments.  */
         if (head_trim)
           {
-	    tree *dst = gimple_call_arg_ptr (stmt, 0);
-	    increment_start_addr (stmt, dst, head_trim);
-	    tree *src = gimple_call_arg_ptr (stmt, 1);
-	    increment_start_addr (stmt, src, head_trim);
+	    tree dst = gimple_call_arg(stmt, 0);
+	    gimple_call_set_arg (stmt, 0,
+				 increment_start_addr (stmt, dst, head_trim));
+	    tree src = gimple_call_arg(stmt, 1);
+	    gimple_call_set_arg (stmt, 1,
+				 increment_start_addr (stmt, src, head_trim));
 	    decrement_count (stmt, head_trim);
+	    update_stmt (stmt);
 	  }
         break;
       }
@@ -446,9 +446,11 @@ maybe_trim_memstar_call (ao_ref *ref, sbitmap live, gimple *stmt)
 	/* Head trimming requires adjusting all the arguments.  */
         if (head_trim)
           {
-	    tree *dst = gimple_call_arg_ptr (stmt, 0);
-	    increment_start_addr (stmt, dst, head_trim);
+	    tree dst = gimple_call_arg (stmt, 0);
+	    gimple_call_set_arg (stmt, 0,
+				 increment_start_addr (stmt, dst, head_trim));
 	    decrement_count (stmt, head_trim);
+	    update_stmt (stmt);
 	  }
 	break;
       }

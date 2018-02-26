@@ -474,9 +474,6 @@ insert_debug_temp_for_var_def (gimple_stmt_iterator *gsi, tree var)
 	    {
 	      gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
 	      fold_stmt_inplace (&gsi);
-	      /* XXX if SET_USE would also handle nested trees, this
-	         wouldn't be necessary:  */
-	      update_stmt_for_real (stmt);
 	    }
 	}
       else
@@ -2037,7 +2034,8 @@ execute_update_addresses_taken (void)
 	    if (gimple_references_memory_p (stmt)
 		|| is_gimple_debug (stmt))
 	      /* XXX maybe find better way of removing vops for statements
-	         which now no longer refer to memory due to non-address-taken */
+	         which now no longer refer to memory due to non-address-taken
+		 maybe_rewrite_mem_ref_base also does direct pointer access*/
 	      update_stmt_for_real (stmt);
 
 	    gsi_next (&gsi);

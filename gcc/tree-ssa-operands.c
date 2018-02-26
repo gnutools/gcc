@@ -1169,9 +1169,10 @@ update_stmt_use (use_operand_p use)
       gcc_assert (gimple_code (stmt) == GIMPLE_PHI);
       return;
     }
+  tree *pnewval = use->use;
   gcc_assert (is_gimple_debug (stmt)
-	      || !USE_FROM_PTR (use)
-	      || is_gimple_min_invariant (USE_FROM_PTR (use)));
+	      || !*pnewval
+	      || is_gimple_min_invariant (*pnewval));
 
   use_optype_p *puse, stmtuse;
   for (puse = &ops_stmt->use_ops; USE_OP_PTR (*puse) != use; puse = &((*puse)->next))
@@ -1180,6 +1181,35 @@ update_stmt_use (use_operand_p use)
   *puse = (*puse)->next;
   stmtuse->next = gimple_ssa_operands (cfun)->free_uses;
   gimple_ssa_operands (cfun)->free_uses = stmtuse;
+
+  if (gimple_debug_bind_p (stmt)
+      && pnewval == gimple_debug_bind_get_value_ptr (stmt)
+      && *pnewval
+      && !is_gimple_min_invariant (*pnewval))
+    {
+      start_ssa_stmt_operands ();
+      get_expr_operands (cfun, stmt, pnewval, opf_no_vops | opf_use);
+      for (unsigned i = 0; i < build_uses.length (); i++)
+	{
+	  tree *op = build_uses[i];
+	  use_optype_p *insert_point;
+	  use_optype_p new_use;
+
+	  new_use = alloc_use (cfun);
+	  USE_OP_PTR (new_use)->use = op;
+	  link_imm_use_stmt (USE_OP_PTR (new_use), *op, stmt);
+	  /* Ensure vop use is in front. */
+	  insert_point = &ops_stmt->use_ops;
+	  if (*insert_point)
+	    insert_point = &((*insert_point)->next);
+	  new_use->next = *insert_point;
+	  *insert_point = new_use;
+	}
+
+      if (build_flags & BF_RENAME)
+	cfun->gimple_df->ssa_renaming_needed = 1;
+      cleanup_build_arrays ();
+    }
 }
 
 /* Check if it's easy to determine if STMT needs a vuse
@@ -1617,12 +1647,12 @@ gimple_set_op_update (gimple *gs, unsigned i, tree val)
 	{
 	  *pop = val;
 do_full_update:
-	  fprintf (stderr, " XXX replace ");
+	  /*fprintf (stderr, " XXX replace ");
 	  print_generic_expr (stderr, old, TDF_VOPS|TDF_MEMSYMS);
 	  fprintf (stderr, " with ");
 	  print_generic_expr (stderr, val, TDF_VOPS|TDF_MEMSYMS);
 	  fprintf (stderr, " in ");
-	  print_gimple_stmt (stderr, gs, 0, 0);
+	  print_gimple_stmt (stderr, gs, 0, 0);*/
 	  update_stmt_for_real (gs);
 	}
     }
@@ -1659,12 +1689,12 @@ gimple_change_in_op (gimple *gs, tree *op_ptr, tree *pop, tree val)
 	{
 	  *pop = val;
 do_full_update:
-	  fprintf (stderr, " YYY replace ");
+	  /*fprintf (stderr, " YYY replace ");
 	  print_generic_expr (stderr, old, TDF_VOPS|TDF_MEMSYMS);
 	  fprintf (stderr, " with ");
 	  print_generic_expr (stderr, val, TDF_VOPS|TDF_MEMSYMS);
 	  fprintf (stderr, " in ");
-	  print_gimple_stmt (stderr, gs, 0, 0);
+	  print_gimple_stmt (stderr, gs, 0, 0);*/
 	  update_stmt_for_real (gs);
 	}
     }

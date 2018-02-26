@@ -7145,7 +7145,18 @@ rewrite_use_address (struct ivopts_data *data,
   else
     copy_ref_info (ref, *use->op_p);
 
-  *use->op_p = ref;
+  if (gcall *call = dyn_cast <gcall *> (use->stmt))
+    {
+      gcc_assert (use->op_p == gimple_call_arg_ptr (call, 0));
+      gimple_call_set_arg (call, 0, ref);
+    }
+  else if (use->op_p == gimple_assign_lhs_ptr (use->stmt))
+    gimple_assign_set_lhs (use->stmt, ref);
+  else
+    {
+      gcc_assert (use->op_p == gimple_assign_rhs1_ptr (use->stmt));
+      gimple_assign_set_rhs1 (use->stmt, ref);
+    }
 }
 
 /* Rewrites USE (the condition such that one of the arguments is an iv) using
@@ -7193,9 +7204,27 @@ rewrite_use_compare (struct ivopts_data *data,
   comp = get_computation_at (data->current_loop, use->stmt, use, cand);
   gcc_assert (comp != NULL_TREE);
   gcc_assert (use->op_p != NULL);
-  *use->op_p = force_gimple_operand_gsi (&bsi, comp, true,
-					 SSA_NAME_VAR (*use->op_p),
-					 true, GSI_SAME_STMT);
+  comp = force_gimple_operand_gsi (&bsi, comp, true,
+				   SSA_NAME_VAR (*use->op_p),
+				   true, GSI_SAME_STMT);
+  if (gimple_code (use->stmt) == GIMPLE_COND)
+    {
+      gcond *cond_stmt = as_a <gcond *> (use->stmt);
+      if (use->op_p == gimple_cond_lhs_ptr (cond_stmt))
+	gimple_cond_set_lhs (cond_stmt, comp);
+      else
+	{
+	  gcc_assert (use->op_p == gimple_cond_rhs_ptr (cond_stmt));
+	  gimple_cond_set_rhs (cond_stmt, comp);
+	}
+    }
+  else if (use->op_p == gimple_assign_rhs1_ptr (use->stmt))
+    gimple_assign_set_rhs1 (use->stmt, comp);
+  else
+    {
+      gcc_assert (use->op_p == gimple_assign_rhs2_ptr (use->stmt));
+      gimple_assign_set_rhs2 (use->stmt, comp);
+    }
 }
 
 /* Rewrite the groups using the selected induction variables.  */
@@ -7217,7 +7246,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_nonlinear_expr (data, group->vuses[j], cand);
-	      update_stmt_for_real (group->vuses[j]->stmt);
+	      update_stmt (group->vuses[j]->stmt);
 	    }
 	}
       else if (address_p (group->type))
@@ -7225,7 +7254,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_address (data, group->vuses[j], cand);
-	      update_stmt_for_real (group->vuses[j]->stmt);
+	      update_stmt (group->vuses[j]->stmt);
 	    }
 	}
       else
@@ -7235,7 +7264,7 @@ rewrite_groups (struct ivopts_data *data)
 	  for (j = 0; j < group->vuses.length (); j++)
 	    {
 	      rewrite_use_compare (data, group->vuses[j], cand);
-	      update_stmt_for_real (group->vuses[j]->stmt);
+	      update_stmt (group->vuses[j]->stmt);
 	    }
 	}
     }
@@ -7365,8 +7394,7 @@ remove_unused_ivs (struct ivopts_data *data)
 		  FOR_EACH_IMM_USE_ON_STMT (use_p, imm_iter)
 		    SET_USE (use_p, comp);
 
-		  /* XXX blaeh, debug statement operands are complicated. */
-		  update_stmt_for_real (stmt);
+		  update_stmt (stmt);
 		}
 	    }
 	}

@@ -1593,8 +1593,9 @@ gimple_assign_unary_nop_p (gimple *gs)
 void
 gimple_set_bb (gimple *stmt, basic_block bb)
 {
+  basic_block oldbb = stmt->bb;
   stmt->bb = bb;
-  if (flag_try_patch && bb)
+  if (flag_try_patch && !oldbb && bb)
     update_stmt_for_real (stmt);
 
   if (gimple_code (stmt) != GIMPLE_LABEL)

@@ -2033,7 +2033,7 @@ replace_uses_by (tree name, tree val)
 	  if (maybe_clean_or_replace_eh_stmt (orig_stmt, stmt))
 	    gimple_purge_dead_eh_edges (gimple_bb (stmt));
 
-	  /* SET_USE (within replace_exp) update all operand caches
+	  /* SET_USE (within replace_exp) updates all operand caches
 	     and VOPs, except when we change the call target from e.g.
 	     unknown to pure/const.  */
 	  if ((call = dyn_cast <gcall *> (stmt))
@@ -9382,6 +9382,9 @@ execute_fixup_cfg (void)
 		  if (gimple_in_ssa_p (cfun) && gimple_vuse (stmt))
 		    {
 		      todo |= TODO_update_ssa | TODO_cleanup_cfg;
+		      /* XXX Maybe find nicer way to recheck VOPs when
+		         only call targets might have changed, instead
+			 of rechecking the whole stmt.  */
 		      update_stmt_for_real (stmt);
 		    }
 		}
@@ -9389,7 +9392,7 @@ execute_fixup_cfg (void)
 	      if (flags & ECF_NORETURN
 		  && fixup_noreturn_call (stmt))
 		todo |= TODO_cleanup_cfg;
-	     }
+	    }
 
 	  /* Remove stores to variables we marked write-only.
 	     Keep access when store has side effect, i.e. in case when source
