@@ -112,7 +112,6 @@ static tree build_vuse;
 #define BF_RENAME     2
 #define BF_RENAME_VOP 4
 static int build_flags;
-static vec<tree> build_addressable;
 
 /* Bitmap obstack for our datastructures that needs to survive across
    compilations of multiple functions.  */
@@ -193,7 +192,6 @@ init_ssa_operands (struct function *fn)
       build_vuse = NULL_TREE;
       build_vdef = NULL_TREE;
       build_flags = 0;
-      build_addressable.create (10);
       bitmap_obstack_initialize (&operands_bitmap_obstack);
     }
 
@@ -215,7 +213,6 @@ fini_ssa_operands (struct function *fn)
 
   if (!--n_initialized)
     {
-      build_addressable.release ();
       build_flags = 0;
       build_uses.release ();
       build_vdef = NULL_TREE;
@@ -433,7 +430,6 @@ cleanup_build_arrays (void)
   build_vuse = NULL_TREE;
   build_uses.truncate (0);
   build_flags = 0;
-  build_addressable.truncate (0);
 }
 
 
@@ -452,12 +448,6 @@ finalize_ssa_stmt_operands (struct function *fn, gimple *stmt)
     fn->gimple_df->ssa_renaming_needed = 1;
   if (build_flags & BF_RENAME_VOP)
     fn->gimple_df->rename_vops = 1;
-  if (0)
-  for (i = 0; i < build_addressable.length (); i++)
-    {
-      tree var = build_addressable[i];
-      TREE_ADDRESSABLE (var) = 1;
-    }
 
   cleanup_build_arrays ();
 }
@@ -472,7 +462,6 @@ start_ssa_stmt_operands (void)
   gcc_assert (build_vuse == NULL_TREE);
   gcc_assert (build_vdef == NULL_TREE);
   gcc_assert (build_flags == 0);
-  gcc_assert (build_addressable.length () == 0);
 }
 
 
@@ -1002,13 +991,6 @@ verify_ssa_operands (struct function *fn, gimple *stmt)
   start_ssa_stmt_operands ();
   parse_ssa_operands (fn, stmt);
 
-  for (i = 0; i < build_addressable.length (); i++)
-    if (!TREE_ADDRESSABLE (build_addressable[i]))
-      {
-	error ("operand isn't marked addressable but should be");
-	return true;
-      }
-
   /* Now verify the built operands are the same as present in STMT.  */
   def = gimple_vdef (stmt);
   if (def
@@ -1432,13 +1414,6 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 	}
       if (was_vop && diddle_vops (stmt, was_vop, newvop, nop) < 0)
 	return 1;
-      /* And check for addresses in val.  */
-      if (0 && val && TREE_CODE (val) == ADDR_EXPR && !is_gimple_debug (stmt))
-	{
-	  mark_address_taken (TREE_OPERAND (val, 0));
-	  if (build_addressable.length ())
-	    TREE_ADDRESSABLE (build_addressable.pop ()) = 1;
-	}
     }
 
   return 0;
@@ -1577,12 +1552,6 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
     cfun->gimple_df->ssa_renaming_needed = 1;
   if (build_flags & BF_RENAME_VOP)
     cfun->gimple_df->rename_vops = 1;
-  if (0)
-  for (i = 0; i < build_addressable.length (); i++)
-    {
-      tree var = build_addressable[i];
-      TREE_ADDRESSABLE (var) = 1;
-    }
 
   cleanup_build_arrays ();
   return 0;
