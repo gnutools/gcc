@@ -90,14 +90,8 @@ along with GCC; see the file COPYING3.  If not see
    VUSE for 'b'.  */
 #define opf_no_vops 	(1 << 1)
 
-/* Operand is in a place where address-taken does not imply addressable.  */
-#define opf_non_addressable (1 << 3)
-
-/* Operand is in a place where opf_non_addressable does not apply.  */
-#define opf_not_non_addressable (1 << 4)
-
 /* Operand is having its address taken.  */
-#define opf_address_taken (1 << 5)
+#define opf_address_taken (1 << 2)
 
 /* Array for building all the use operands.  */
 static vec<tree *> build_uses;
@@ -316,7 +310,6 @@ add_use_op (struct function *fn, gimple *stmt, tree *op, use_optype_p last)
   new_use->next = NULL;
   return new_use;
 }
-
 
 
 /* Takes elements from build_defs and turns them into def operands of STMT.
@@ -555,38 +548,6 @@ add_stmt_operand (struct function *fn, tree *var_p, gimple *stmt, int flags)
     }
 }
 
-/* Mark the base address of REF as having its address taken.
-   REF may be a single variable whose address has been taken or any
-   other valid GIMPLE memory reference (structure reference, array,
-   etc).  */
-
-static void
-mark_address_taken (tree ref)
-{
-  tree var;
-
-  /* Note that it is *NOT OKAY* to use the target of a COMPONENT_REF
-     as the only thing we take the address of.  If VAR is a structure,
-     taking the address of a field means that the whole structure may
-     be referenced using pointer arithmetic.  See PR 21407 and the
-     ensuing mailing list discussion.  */
-  if (flag_checking)
-    {
-      var = get_base_address (ref);
-      if (var)
-	{
-	  if (TREE_CODE (var) == MEM_REF
-		   && TREE_CODE (TREE_OPERAND (var, 0)) == ADDR_EXPR
-		   && DECL_P (TREE_OPERAND (TREE_OPERAND (var, 0), 0)))
-	     var = TREE_OPERAND (TREE_OPERAND (var, 0), 0);
-	  if (VAR_P (var)
-	      || TREE_CODE (var) == PARM_DECL
-	      || TREE_CODE (var) == RESULT_DECL)
-	    gcc_assert (TREE_ADDRESSABLE (var));
-	}
-    }
-}
-
 
 /* A subroutine of get_expr_operands to handle MEM_REF.
 
@@ -609,9 +570,7 @@ get_mem_ref_operands (struct function *fn,
   add_virtual_operand (fn, stmt, flags);
 
   /* If requested, add a USE operand for the base pointer.  */
-  get_expr_operands (fn, stmt, pptr,
-		     opf_non_addressable | opf_use
-		     | (flags & (opf_no_vops|opf_not_non_addressable)));
+  get_expr_operands (fn, stmt, pptr, opf_use | (flags & opf_no_vops));
 }
 
 
@@ -683,13 +642,7 @@ get_asm_stmt_operands (struct function *fn, gasm *stmt)
       /* This should have been split in gimplify_asm_expr.  */
       gcc_assert (!allows_reg || !is_inout);
 
-      /* Memory operands are addressable.  Note that STMT needs the
-	 address of this operand.  */
-      if (!allows_reg && allows_mem)
-	mark_address_taken (TREE_VALUE (link));
-
-      get_expr_operands (fn, stmt,
-			 &TREE_VALUE (link), opf_def | opf_not_non_addressable);
+      get_expr_operands (fn, stmt, &TREE_VALUE (link), opf_def);
     }
 
   /* Gather all input operands.  */
@@ -700,12 +653,7 @@ get_asm_stmt_operands (struct function *fn, gasm *stmt)
       parse_input_constraint (&constraint, 0, 0, noutputs, 0, oconstraints,
 	                      &allows_mem, &allows_reg);
 
-      /* Memory operands are addressable.  Note that STMT needs the
-	 address of this operand.  */
-      if (!allows_reg && allows_mem)
-	mark_address_taken (TREE_VALUE (link));
-
-      get_expr_operands (fn, stmt, &TREE_VALUE (link), opf_not_non_addressable);
+      get_expr_operands (fn, stmt, &TREE_VALUE (link), opf_use);
     }
 
   /* Clobber all memory and addressable symbols for asm ("" : : : "memory");  */
@@ -738,23 +686,14 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
   switch (code)
     {
     case ADDR_EXPR:
-      /* Taking the address of a variable does not represent a
-	 reference to it, but the fact that the statement takes its
-	 address will be of interest to some passes (e.g. alias
-	 resolution).  */
-      if ((!(flags & opf_non_addressable)
-	   || (flags & opf_not_non_addressable))
-	  && !is_gimple_debug (stmt))
-	mark_address_taken (TREE_OPERAND (expr, 0));
-
-      /* Otherwise, there may be variables referenced inside but there
+      /* There may be variables referenced inside but there
 	 should be no VUSEs created, since the referenced objects are
 	 not really accessed.  The only operands that we should find
 	 here are ARRAY_REF indices which will always be real operands
 	 (GIMPLE does not allow non-registers as array indices).  */
       flags |= opf_no_vops;
       get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0),
-			 flags | opf_not_non_addressable | opf_address_taken);
+			 flags | opf_address_taken);
       return;
 
     case SSA_NAME:
