@@ -602,6 +602,7 @@ ubsan_create_data (const char *name, int loccnt, const location_t *ploc, ...)
 			 ret);
   TREE_STATIC (var) = 1;
   TREE_PUBLIC (var) = 0;
+  TREE_ADDRESSABLE (var) = 1;
   DECL_ARTIFICIAL (var) = 1;
   DECL_IGNORED_P (var) = 1;
   DECL_EXTERNAL (var) = 0;
@@ -1477,8 +1478,7 @@ maybe_instrument_pointer_overflow (gimple_stmt_iterator *gsi, tree t)
 
   tree base_addr = base;
   if (decl_p)
-    base_addr = build1 (ADDR_EXPR,
-			build_pointer_type (TREE_TYPE (base)), base);
+    base_addr = build_addr (base);
   t = offset;
   if (maybe_ne (bytepos, 0))
     {
@@ -1685,7 +1685,7 @@ instrument_bool_enum_load (gimple_stmt_iterator *gsi)
   tree ptype = build_pointer_type (TREE_TYPE (rhs));
   tree atype = reference_alias_ptr_type (rhs);
   gimple *g = gimple_build_assign (make_ssa_name (ptype),
-				  build_fold_addr_expr (rhs));
+				  build_addr (rhs));
   gimple_set_location (g, loc);
   gsi_insert_before (gsi, g, GSI_SAME_STMT);
   tree mem = build2 (MEM_REF, utype, gimple_assign_lhs (g),

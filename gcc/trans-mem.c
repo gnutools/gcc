@@ -1181,8 +1181,9 @@ gimplify_addr (gimple_stmt_iterator *gsi, tree x)
   if (TREE_CODE (x) == TARGET_MEM_REF)
     x = tree_mem_ref_addr (build_pointer_type (TREE_TYPE (x)), x);
   else
-    x = build_fold_addr_expr (x);
-  return force_gimple_operand_gsi (gsi, x, true, NULL, true, GSI_SAME_STMT);
+    x = build_addr (x);
+  x = force_gimple_operand_gsi (gsi, x, true, NULL, true, GSI_SAME_STMT);
+  return x;
 }
 
 /* Instrument one address with the logging functions.
@@ -2431,14 +2432,14 @@ expand_assign_tm (struct tm_region *region, gimple_stmt_iterator *gsi)
       if (is_gimple_reg (lhs))
 	{
 	  ltmp = create_tmp_var (TREE_TYPE (lhs));
-	  lhs_addr = build_fold_addr_expr (ltmp);
+	  lhs_addr = build_addr (ltmp);
 	}
       else
 	lhs_addr = gimplify_addr (gsi, lhs);
       if (is_gimple_reg (rhs))
 	{
 	  tree rtmp = create_tmp_var (TREE_TYPE (rhs));
-	  rhs_addr = build_fold_addr_expr (rtmp);
+	  rhs_addr = build_addr (rtmp);
 	  gcall = gimple_build_assign (rtmp, rhs);
 	  gsi_insert_before (gsi, gcall, GSI_SAME_STMT);
 	}

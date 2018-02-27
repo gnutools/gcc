@@ -183,7 +183,7 @@ instrument_expr (gimple_stmt_iterator gsi, tree expr, bool is_write)
       expr = build_fold_addr_expr (unshare_expr (base));
       expr = build2 (MEM_REF, char_type_node, expr,
 		     build_int_cst (TREE_TYPE (expr), bitpos / BITS_PER_UNIT));
-      expr_ptr = build_fold_addr_expr (expr);
+      expr_ptr = build_addr (expr);
     }
   else
     {
@@ -192,7 +192,7 @@ instrument_expr (gimple_stmt_iterator gsi, tree expr, bool is_write)
       align = get_object_alignment (expr);
       if (align < BITS_PER_UNIT)
 	return false;
-      expr_ptr = build_fold_addr_expr (unshare_expr (expr));
+      expr_ptr = build_addr (unshare_expr (expr));
     }
   expr_ptr = force_gimple_operand (expr_ptr, &seq, true, NULL_TREE);
   if ((size & (size - 1)) != 0 || size > 16

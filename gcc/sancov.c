@@ -177,6 +177,7 @@ instrument_switch (gimple_stmt_iterator *gsi, gimple *stmt, function *fun)
   TREE_PUBLIC (case_array_var) = 0;
   TREE_CONSTANT (case_array_var) = 1;
   TREE_READONLY (case_array_var) = 1;
+  TREE_ADDRESSABLE (case_array_var) = 1;
   DECL_EXTERNAL (case_array_var) = 0;
   DECL_ARTIFICIAL (case_array_var) = 1;
   DECL_IGNORED_P (case_array_var) = 1;

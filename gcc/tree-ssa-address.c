@@ -1049,6 +1049,9 @@ copy_ref_info (tree new_ref, tree old_ref)
 	  pt_solution_set_var (&pi->pt, base);
 	}
     }
+
+  if (new_ptr_base && TREE_CODE (new_ptr_base) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (new_ptr_base, 0));
 }
 
 /* Move constants in target_mem_ref REF to offset.  Returns the new target

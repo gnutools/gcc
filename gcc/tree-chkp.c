@@ -1098,7 +1098,7 @@ chkp_build_addr_expr (tree obj)
   /* If not - return regular ADDR_EXPR.  */
   return TREE_CODE (obj) == TARGET_MEM_REF
     ? tree_mem_ref_addr (ptr_type_node, obj)
-    : build_fold_addr_expr (obj);
+    : build_addr (obj);
 }
 
 /* Helper function for chkp_finish_file.

@@ -452,6 +452,7 @@ finalize_ssa_stmt_operands (struct function *fn, gimple *stmt)
     fn->gimple_df->ssa_renaming_needed = 1;
   if (build_flags & BF_RENAME_VOP)
     fn->gimple_df->rename_vops = 1;
+  if (0)
   for (i = 0; i < build_addressable.length (); i++)
     {
       tree var = build_addressable[i];
@@ -580,15 +581,20 @@ mark_address_taken (tree ref)
      taking the address of a field means that the whole structure may
      be referenced using pointer arithmetic.  See PR 21407 and the
      ensuing mailing list discussion.  */
-  var = get_base_address (ref);
-  if (var)
+  if (flag_checking)
     {
-      if (DECL_P (var))
-	build_addressable.safe_push (var);
-      else if (TREE_CODE (var) == MEM_REF
-	       && TREE_CODE (TREE_OPERAND (var, 0)) == ADDR_EXPR
-	       && DECL_P (TREE_OPERAND (TREE_OPERAND (var, 0), 0)))
-	build_addressable.safe_push (TREE_OPERAND (TREE_OPERAND (var, 0), 0)) ;
+      var = get_base_address (ref);
+      if (var)
+	{
+	  if (TREE_CODE (var) == MEM_REF
+		   && TREE_CODE (TREE_OPERAND (var, 0)) == ADDR_EXPR
+		   && DECL_P (TREE_OPERAND (TREE_OPERAND (var, 0), 0)))
+	     var = TREE_OPERAND (TREE_OPERAND (var, 0), 0);
+	  if (VAR_P (var)
+	      || TREE_CODE (var) == PARM_DECL
+	      || TREE_CODE (var) == RESULT_DECL)
+	    gcc_assert (TREE_ADDRESSABLE (var));
+	}
     }
 }
 
@@ -1338,9 +1344,10 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
      but we can't currently, because the list might contain stale entries
      (from setting to constants or such via SET_USE).  We must reuse
      that entry in case it's there (or remove it and generate a new one). */
-  for (puse = &ops_stmt->use_ops; *puse; puse = &((*puse)->next))
-    if ((*puse)->use_ptr.use == pop)
-      break;
+  if (*pop && SSA_VAR_P (*pop))
+    for (puse = &ops_stmt->use_ops; *puse; puse = &((*puse)->next))
+      if ((*puse)->use_ptr.use == pop)
+	break;
   if (puse && *puse)
     {
       delink_imm_use (&((*puse)->use_ptr));
@@ -1426,7 +1433,7 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
       if (was_vop && diddle_vops (stmt, was_vop, newvop, nop) < 0)
 	return 1;
       /* And check for addresses in val.  */
-      if (val && TREE_CODE (val) == ADDR_EXPR && !is_gimple_debug (stmt))
+      if (0 && val && TREE_CODE (val) == ADDR_EXPR && !is_gimple_debug (stmt))
 	{
 	  mark_address_taken (TREE_OPERAND (val, 0));
 	  if (build_addressable.length ())
@@ -1570,6 +1577,7 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
     cfun->gimple_df->ssa_renaming_needed = 1;
   if (build_flags & BF_RENAME_VOP)
     cfun->gimple_df->rename_vops = 1;
+  if (0)
   for (i = 0; i < build_addressable.length (); i++)
     {
       tree var = build_addressable[i];
@@ -1961,4 +1969,3 @@ single_imm_use_1 (const ssa_use_operand_t *head,
 
   return single_use;
 }
-

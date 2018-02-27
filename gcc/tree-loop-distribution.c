@@ -1003,6 +1003,8 @@ generate_memset_builtin (struct loop *loop, partition *partition)
   mem = builtin->dst_base;
   mem = force_gimple_operand_gsi (&gsi, mem, true, NULL_TREE,
 				  false, GSI_CONTINUE_LINKING);
+  if (TREE_CODE (mem) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (mem, 0));
 
   /* This exactly matches the pattern recognition in classify_partition.  */
   val = gimple_assign_rhs1 (DR_STMT (builtin->dst_dr));
@@ -1062,8 +1064,12 @@ generate_memcpy_builtin (struct loop *loop, partition *partition)
 
   dest = force_gimple_operand_gsi (&gsi, dest, true, NULL_TREE,
 				   false, GSI_CONTINUE_LINKING);
+  if (TREE_CODE (dest) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (dest, 0));
   src = force_gimple_operand_gsi (&gsi, src, true, NULL_TREE,
 				  false, GSI_CONTINUE_LINKING);
+  if (TREE_CODE (src) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (src, 0));
   fn = build_fold_addr_expr (builtin_decl_implicit (kind));
   fn_call = gimple_build_call (fn, 3, dest, src, nb_bytes);
   gsi_insert_after (&gsi, fn_call, GSI_CONTINUE_LINKING);

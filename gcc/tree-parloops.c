@@ -509,7 +509,12 @@ take_address_of (tree obj, tree type, edge entry,
 
   /* Canonicalize the access to base on a MEM_REF.  */
   if (DECL_P (*var_p))
-    *var_p = build_simple_mem_ref (build_fold_addr_expr (*var_p));
+    {
+      if (gsi)
+	*var_p = build_simple_mem_ref (build_addr (*var_p));
+      else
+	*var_p = build_simple_mem_ref (build_fold_addr_expr (*var_p));
+    }
 
   /* Assign a canonical SSA name to the address of the base decl used
      in the address and share it for all accesses and addresses based
@@ -1223,7 +1228,7 @@ create_final_loads_for_reduction (reduction_info_table_type *reduction_list,
   gimple *stmt;
 
   gsi = gsi_after_labels (ld_st_data->load_bb);
-  t = build_fold_addr_expr (ld_st_data->store);
+  t = build_addr (ld_st_data->store);
   stmt = gimple_build_assign (ld_st_data->load, t);
 
   gsi_insert_before (&gsi, stmt, GSI_NEW_STMT);
@@ -2082,7 +2087,7 @@ create_parallel_loop (struct loop *loop, tree loop_fn, tree data,
 	  gsi = gsi_after_labels (bb);
 
 	  param = make_ssa_name (DECL_ARGUMENTS (loop_fn));
-	  assign_stmt = gimple_build_assign (param, build_fold_addr_expr (data));
+	  assign_stmt = gimple_build_assign (param, build_addr (data));
 	  gsi_insert_before (&gsi, assign_stmt, GSI_SAME_STMT);
 
 	  assign_stmt = gimple_build_assign (new_data,

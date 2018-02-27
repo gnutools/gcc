@@ -1925,6 +1925,8 @@ maybe_create_ssa_name (location_t loc, tree base, gimple_stmt_iterator *iter,
 {
   if (TREE_CODE (base) == SSA_NAME)
     return base;
+  if (TREE_CODE (base) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (base, 0));
   gimple *g = gimple_build_assign (make_ssa_name (TREE_TYPE (base)),
 				  TREE_CODE (base), base);
   gimple_set_location (g, loc);
@@ -2623,7 +2625,7 @@ asan_add_global (tree decl, tree type, vec<constructor_elt, va_gc> *v)
       ASM_GENERATE_INTERNAL_LABEL (buf, "LASAN", vec_safe_length (v) + 1);
       refdecl = build_decl (DECL_SOURCE_LOCATION (decl),
 			    VAR_DECL, get_identifier (buf), TREE_TYPE (decl));
-      TREE_ADDRESSABLE (refdecl) = TREE_ADDRESSABLE (decl);
+      TREE_ADDRESSABLE (refdecl) = 1;
       TREE_READONLY (refdecl) = TREE_READONLY (decl);
       TREE_THIS_VOLATILE (refdecl) = TREE_THIS_VOLATILE (decl);
       DECL_GIMPLE_REG_P (refdecl) = DECL_GIMPLE_REG_P (decl);
@@ -2669,6 +2671,7 @@ asan_add_global (tree decl, tree type, vec<constructor_elt, va_gc> *v)
 			     ubsan_get_source_location_type ());
       TREE_STATIC (var) = 1;
       TREE_PUBLIC (var) = 0;
+      TREE_ADDRESSABLE (var) = 1;
       DECL_ARTIFICIAL (var) = 1;
       DECL_IGNORED_P (var) = 1;
       pretty_printer filename_pp;
@@ -2946,6 +2949,7 @@ asan_finish_file (void)
 			type);
       TREE_STATIC (var) = 1;
       TREE_PUBLIC (var) = 0;
+      TREE_ADDRESSABLE (var) = 1;
       DECL_ARTIFICIAL (var) = 1;
       DECL_IGNORED_P (var) = 1;
       vec_alloc (v, gcount);
@@ -3347,6 +3351,7 @@ create_asan_shadow_var (tree var_decl,
       id.src_fn = id.dst_fn = current_function_decl;
       copy_decl_for_dup_finish (&id, var_decl, shadow_var);
 
+      TREE_ADDRESSABLE (shadow_var) = 1;
       DECL_ARTIFICIAL (shadow_var) = 1;
       DECL_IGNORED_P (shadow_var) = 1;
       DECL_SEEN_IN_BIND_EXPR_P (shadow_var) = 0;

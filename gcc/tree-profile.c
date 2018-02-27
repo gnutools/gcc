@@ -206,6 +206,8 @@ gimple_init_gcov_profiler (void)
       TREE_PUBLIC (tree_time_profiler_counter) = 1;
       DECL_EXTERNAL (tree_time_profiler_counter) = 1;
       TREE_STATIC (tree_time_profiler_counter) = 1;
+      if (flag_profile_update == PROFILE_UPDATE_ATOMIC)
+	TREE_ADDRESSABLE (tree_time_profiler_counter) = 1;
       DECL_ARTIFICIAL (tree_time_profiler_counter) = 1;
       DECL_INITIAL (tree_time_profiler_counter) = NULL;
 

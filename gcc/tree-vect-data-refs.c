@@ -4606,12 +4606,14 @@ vect_create_addr_base_for_vector_ref (gimple *stmt,
 
   /* base + base_offset */
   if (loop_vinfo)
-    addr_base = fold_build_pointer_plus (data_ref_base, base_offset);
+    {
+      if (TREE_CODE (data_ref_base) == ADDR_EXPR)
+	mark_addressable (TREE_OPERAND (data_ref_base, 0));
+      addr_base = fold_build_pointer_plus (data_ref_base, base_offset);
+    }
   else
     {
-      addr_base = build1 (ADDR_EXPR,
-			  build_pointer_type (TREE_TYPE (DR_REF (dr))),
-			  unshare_expr (DR_REF (dr)));
+      addr_base = build_addr (unshare_expr (DR_REF (dr)));
     }
 
   vect_ptr_type = build_pointer_type (STMT_VINFO_VECTYPE (stmt_info));

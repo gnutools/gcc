@@ -7686,6 +7686,16 @@ build_fold_addr_expr_loc (location_t loc, tree t)
   return build_fold_addr_expr_with_type_loc (loc, t, ptrtype);
 }
 
+/* Take the address of EXP to be used within function CONTEXT.
+   Mark it for addressability as necessary.  */
+
+tree
+build_addr (tree exp)
+{
+  mark_addressable (exp);
+  return build_fold_addr_expr (exp);
+}
+
 /* Fold a unary expression of code CODE and type TYPE with operand
    OP0.  Return the folded expression if folding is successful.
    Otherwise, return NULL_TREE.  */

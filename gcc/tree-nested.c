@@ -167,16 +167,6 @@ create_tmp_var_for (struct nesting_info *info, tree type, const char *prefix)
   return tmp_var;
 }
 
-/* Take the address of EXP to be used within function CONTEXT.
-   Mark it for addressability as necessary.  */
-
-tree
-build_addr (tree exp)
-{
-  mark_addressable (exp);
-  return build_fold_addr_expr (exp);
-}
-
 /* Insert FIELD into TYPE, sorted by alignment requirements.  */
 
 void

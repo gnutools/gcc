@@ -2192,7 +2192,7 @@ fold_builtin_alloca_with_align (gimple *stmt)
   }
 
   /* Fold alloca to the address of the array.  */
-  return fold_convert (TREE_TYPE (lhs), build_fold_addr_expr (var));
+  return fold_convert (TREE_TYPE (lhs), build_addr (var));
 }
 
 /* Fold the stmt at *GSI with CCP specific information that propagating

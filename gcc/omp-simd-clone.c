@@ -773,6 +773,7 @@ simd_clone_init_simd_arrays (struct cgraph_node *node,
 	    }
 	  continue;
 	}
+      TREE_ADDRESSABLE (array) = 1;
       if (simd_clone_subparts (TREE_TYPE (arg)) == node->simdclone->simdlen)
 	{
 	  tree ptype = build_pointer_type (TREE_TYPE (TREE_TYPE (array)));
@@ -864,7 +865,7 @@ ipa_simd_modify_stmt_ops (tree *tp, int *walk_subtrees, void *data)
 
   if (tp != orig_tp)
     {
-      repl = build_fold_addr_expr (repl);
+      repl = build_addr (repl);
       gimple *stmt;
       if (is_gimple_debug (info->stmt))
 	{
