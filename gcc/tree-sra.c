@@ -1760,7 +1760,7 @@ build_ref_for_offset (location_t loc, tree base, poly_int64 offset,
     {
       off = build_int_cst (reference_alias_ptr_type (prev_base),
 			   base_offset + byte_offset);
-      base = build_addr (unshare_expr (base));
+      base = build_fold_addr_expr (unshare_expr (base));
     }
 
   unsigned int align_bound = known_alignment (misalign + offset);
@@ -1841,7 +1841,7 @@ build_debug_ref_for_model (location_t loc, tree base, HOST_WIDE_INT offset,
     {
       off = build_int_cst (reference_alias_ptr_type (base),
 			   base_offset + offset / BITS_PER_UNIT);
-      base = build_addr (unshare_expr (base));
+      base = build_fold_addr_expr (unshare_expr (base));
     }
 
   return fold_build2_loc (loc, MEM_REF, model->type, base, off);

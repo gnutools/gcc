@@ -4607,13 +4607,11 @@ vect_create_addr_base_for_vector_ref (gimple *stmt,
   /* base + base_offset */
   if (loop_vinfo)
     {
-      if (TREE_CODE (data_ref_base) == ADDR_EXPR)
-	mark_addressable (TREE_OPERAND (data_ref_base, 0));
       addr_base = fold_build_pointer_plus (data_ref_base, base_offset);
     }
   else
     {
-      addr_base = build_addr (unshare_expr (DR_REF (dr)));
+      addr_base = build_fold_addr_expr (unshare_expr (DR_REF (dr)));
     }
 
   vect_ptr_type = build_pointer_type (STMT_VINFO_VECTYPE (stmt_info));
@@ -4990,6 +4988,8 @@ bump_vector_ptr (tree dataref_ptr, gimple *ptr_incr, gimple_stmt_iterator *gsi,
     new_dataref_ptr = copy_ssa_name (dataref_ptr);
   else
     new_dataref_ptr = make_ssa_name (TREE_TYPE (dataref_ptr));
+  if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+    mark_addressable (TREE_OPERAND (dataref_ptr, 0));
   incr_stmt = gimple_build_assign (new_dataref_ptr, POINTER_PLUS_EXPR,
 				   dataref_ptr, update);
   vect_finish_stmt_generation (stmt, incr_stmt, gsi);

@@ -6943,6 +6943,8 @@ vectorizable_store (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 				     VEC_ARRAY).  */
 	      unsigned int align = TYPE_ALIGN_UNIT (TREE_TYPE (vectype));
 	      tree alias_ptr = build_int_cst (ref_type, align);
+	      if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+		mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 	      call = gimple_build_call_internal (IFN_MASK_STORE_LANES, 4,
 						 dataref_ptr, alias_ptr,
 						 final_mask, vec_array);
@@ -6993,6 +6995,8 @@ vectorizable_store (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		{
 		  tree scale = size_int (gs_info.scale);
 		  gcall *call;
+		  if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+		    mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 		  if (loop_masks)
 		    call = gimple_build_call_internal
 		      (IFN_MASK_SCATTER_STORE, 5, dataref_ptr, vec_offset,
@@ -7057,6 +7061,8 @@ vectorizable_store (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		{
 		  align = least_bit_hwi (misalign | align);
 		  tree ptr = build_int_cst (ref_type, align);
+		  if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+		    mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 		  gcall *call
 		    = gimple_build_call_internal (IFN_MASK_STORE, 4,
 						  dataref_ptr, ptr,
@@ -8088,6 +8094,8 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		                                VEC_MASK).  */
 	      unsigned int align = TYPE_ALIGN_UNIT (TREE_TYPE (vectype));
 	      tree alias_ptr = build_int_cst (ref_type, align);
+	      if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+		mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 	      call = gimple_build_call_internal (IFN_MASK_LOAD_LANES, 3,
 						 dataref_ptr, alias_ptr,
 						 final_mask);
@@ -8148,6 +8156,8 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		      {
 			tree scale = size_int (gs_info.scale);
 			gcall *call;
+			if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+			  mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 			if (loop_masks)
 			  call = gimple_build_call_internal
 			    (IFN_MASK_GATHER_LOAD, 4, dataref_ptr,
@@ -8184,6 +8194,8 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		      {
 			align = least_bit_hwi (misalign | align);
 			tree ptr = build_int_cst (ref_type, align);
+			if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+			  mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 			gcall *call
 			  = gimple_build_call_internal (IFN_MASK_LOAD, 3,
 							dataref_ptr, ptr,
@@ -8218,6 +8230,8 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 
 		    tree vs = size_int (TYPE_VECTOR_SUBPARTS (vectype));
 
+		    if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+		      mark_addressable (TREE_OPERAND (dataref_ptr, 0));
 		    if (compute_in_loop)
 		      msq = vect_setup_realignment (first_stmt, gsi,
 						    &realignment_token,
@@ -8270,7 +8284,11 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 		    if (TREE_CODE (dataref_ptr) == SSA_NAME)
 		      new_temp = copy_ssa_name (dataref_ptr);
 		    else
-		      new_temp = make_ssa_name (TREE_TYPE (dataref_ptr));
+		      {
+			if (TREE_CODE (dataref_ptr) == ADDR_EXPR)
+			  mark_addressable (TREE_OPERAND (dataref_ptr, 0));
+			new_temp = make_ssa_name (TREE_TYPE (dataref_ptr));
+		      }
 		    unsigned int align = DR_TARGET_ALIGNMENT (first_dr);
 		    new_stmt = gimple_build_assign
 		      (new_temp, BIT_AND_EXPR, dataref_ptr,
