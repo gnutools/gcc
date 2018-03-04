@@ -1237,7 +1237,7 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 static int
 add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 {
-  use_optype_p *puse;
+  use_optype_p *puse, use;
   int was_vop = 0, newvop;
   if (*pop && SSA_VAR_P (*pop))
     {
@@ -1247,9 +1247,10 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
       if (!(flags & opf_no_vops)
 	  && !is_gimple_reg (*pop) && !virtual_operand_p (*pop))
 	was_vop = BF_VUSE | ((flags & opf_def) ? BF_VDEF : 0);
+      use = puse ? *puse : NULL;
     }
   else
-    puse = NULL;
+    use = NULL;
 
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
     was_vop = get_call_vop_flags (stmt);
@@ -1265,13 +1266,13 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 	  if (DECL_P (val) && !virtual_operand_p (val))
 	    cfun->gimple_df->ssa_renaming_needed = 1;
 	  if (flags & opf_def)
-	    gcc_assert (!puse);
+	    gcc_assert (!use);
 	  else
 	    {
-	      if (!puse)
+	      if (!use)
 		prepend_use_op (stmt, pop);
 	      else
-		link_imm_use_stmt (&((*puse)->use_ptr), *pop, stmt);
+		link_imm_use_stmt (&(use->use_ptr), *pop, stmt);
 	    }
 	}
       else
@@ -1284,9 +1285,8 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   else
     {
       gcc_assert (!val || is_gimple_min_invariant (val));
-      if (puse)
+      if (use)
 	{
-	  use_optype_p use = *puse;
 	  *puse = use->next;
 	  use->next = gimple_ssa_operands (cfun)->free_uses;
 	  gimple_ssa_operands (cfun)->free_uses = use;
@@ -1315,7 +1315,7 @@ ensure_vop (gimple *stmt, int flags)
 	  gimple_set_vdef (stmt, gimple_vop (cfun));
     }
   if (!gimple_vuse (stmt))
-    add_ssa_op (stmt, gimple_vuse_ptr (stmt), gimple_vop (cfun), -1, flags);
+    gimple_set_vuse (stmt, gimple_vop (cfun));
   if (gimple_vdef (stmt) && TREE_CODE (gimple_vdef (stmt)) != SSA_NAME)
     {
       cfun->gimple_df->rename_vops = 1;
@@ -1334,6 +1334,7 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   bool was_volatile;
   unsigned i;
   int oldvop, newvop;
+  use_optype_p *puse = NULL, use = NULL;
 
   start_ssa_stmt_operands ();
   get_expr_operands (stmt, gimple_op_ptr (stmt, nop), flags);
@@ -1343,18 +1344,18 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   oldvop = build_flags & (BF_VDEF | BF_VUSE);
 
   /* Remove all use ops for things in op[nop].  */
-  for (i = 0; i < build_uses.length (); i++)
+  for (i = build_uses.length (); i-- > 0;)
     {
       tree *op = build_uses[i];
-      use_optype_p *puse = find_delink_use_op (stmt, op);
+      puse = find_delink_use_op (stmt, op);
+      use = puse ? *puse : NULL;
       if (!puse)
 	/* Normally we should have found the old useop cache.  But debug
 	   statements might change from SOURCE_BIND (without opcache)
 	   to DEBUG_BIND (with opcache), so accept that here.  */
 	gcc_assert(is_gimple_debug (stmt));
-      else
+      else if (i)
 	{
-	  use_optype_p use = *puse;
 	  *puse = use->next;
 	  use->next = gimple_ssa_operands (cfun)->free_uses;
 	  gimple_ssa_operands (cfun)->free_uses = use;
@@ -1371,6 +1372,28 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
     maybe_add_call_vops (as_a <gcall *> (stmt));
   newvop = build_flags & (BF_VDEF | BF_VUSE);
 
+  /* If we want to reuse an useop, do it now before diddle_vops,
+     as that one might free useops, including the one where *puse
+     points into.  This is useless work if it turns out that
+     we need to revisit all operands, but that doesn't occur very
+     often.  */
+  i = 0;
+  if (use)
+    {
+      if (i < build_uses.length ())
+	{
+	  use->use_ptr.use = build_uses[i];
+	  link_imm_use_stmt (&(use->use_ptr), *build_uses[i], stmt);
+	  i++;
+	}
+      else
+	{
+	  *puse = use->next;
+	  use->next = gimple_ssa_operands (cfun)->free_uses;
+	  gimple_ssa_operands (cfun)->free_uses = use;
+	}
+    }
+
   /* If the op was volatile and now isn't we need to recheck everything.  */
   if (was_volatile && !(build_flags & BF_VOLATILE))
     {
@@ -1384,10 +1407,10 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
       return 1;
     }
 
-  for (i = 0; i < build_uses.length (); i++)
+  for (; i < build_uses.length (); i++)
     {
       tree *op = build_uses[i];
-      use_optype_p *puse = find_delink_use_op (stmt, op);
+      puse = find_delink_use_op (stmt, op);
       /* All ops should be new (or removed above), otherwise
          we'd create strange sharing.  */
       gcc_assert (!puse);
@@ -1413,7 +1436,42 @@ gimple_set_vuse (gimple *stmt, tree vuse)
   if (!flag_try_patch || !stmt->bb || !ssa_operands_active (cfun))
     mem_ops_stmt->vuse = vuse;
   else
-    add_ssa_op (stmt, &mem_ops_stmt->vuse, vuse, -1, opf_use);
+    {
+      //add_ssa_op (stmt, &mem_ops_stmt->vuse, vuse, -1, opf_use);
+      tree *pop = &mem_ops_stmt->vuse;
+
+      use_optype_p *puse, use;
+      if (*pop && gimple_use_ops (stmt))
+	{
+	  gcc_assert (SSA_VAR_P (*pop));
+	  puse = find_delink_use_op (stmt, pop);
+	  gcc_assert (&(dyn_cast <gimple_statement_with_ops *> (stmt))->use_ops == puse);
+	  use = *puse;
+	}
+      else
+	{
+	  gcc_assert (!gimple_use_ops (stmt)
+		      || gimple_use_ops (stmt)->use_ptr.use != pop);
+	  use = NULL;
+	}
+
+      *pop = vuse;
+
+      if (vuse)
+	{
+	  gcc_assert (SSA_VAR_P (vuse) && virtual_operand_p (vuse));
+	  if (!use)
+	    prepend_use_op (stmt, pop);
+	  else
+	    link_imm_use_stmt (&(use->use_ptr), *pop, stmt);
+	}
+      else if (use)
+	{
+	  *puse = use->next;
+	  use->next = gimple_ssa_operands (cfun)->free_uses;
+	  gimple_ssa_operands (cfun)->free_uses = use;
+	}
+    }
 }
 
 static void
@@ -1434,7 +1492,7 @@ do_change_in_op (gimple *gs, tree *op_ptr, tree *pop, tree val)
 	flags = opf_def;
       if (gimple_code (gs) == GIMPLE_DEBUG)
 	flags |= opf_no_vops;
-      if (1 && pop == op_ptr
+      if (flag_try_patch == 2 && pop == op_ptr
 	  && (!old || TREE_CODE (old) == SSA_NAME || is_gimple_val (old))
 	  && (!val || is_gimple_val (val)))
 	{

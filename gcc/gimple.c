@@ -1677,6 +1677,7 @@ gimple_assign_set_rhs_with_ops (gimple_stmt_iterator *gsi, enum tree_code code,
       gimple *new_stmt = gimple_alloc (gimple_code (stmt), new_rhs_ops + 1);
       memcpy (new_stmt, stmt, gimple_size (gimple_code (stmt)));
       gimple_init_singleton (new_stmt);
+      gimple_set_use_ops (new_stmt, NULL);
       gsi_replace (gsi, new_stmt, false);
       stmt = new_stmt;
 
