@@ -1125,7 +1125,7 @@ verify_ssa (bool check_modified_stmt, bool check_ssa_operands)
 	      goto err;
 	    }
 
-	  if (check_ssa_operands && verify_ssa_operands (cfun, stmt))
+	  if (check_ssa_operands && verify_ssa_operands (stmt))
 	    {
 	      print_gimple_stmt (stderr, stmt, 0, TDF_VOPS);
 	      goto err;

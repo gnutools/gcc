@@ -96,18 +96,14 @@ along with GCC; see the file COPYING3.  If not see
 /* Array for building all the use operands.  */
 static vec<tree *> build_uses;
 
-/* The built VDEF operand.  */
-static tree build_vdef;
-
-/* The built VUSE operand.  */
-static tree build_vuse;
-
-#define BF_VOLATILE   1
-#define BF_RENAME     2
-#define BF_RENAME_VOP 4
+#define BF_RENAME     1
+#define BF_RENAME_VOP 2
+#define BF_VUSE       4
+#define BF_VDEF       8
+#define BF_VOLATILE  16
 static int build_flags;
 
-static void get_expr_operands (struct function *, gimple *, tree *, int);
+static void get_expr_operands (gimple *, tree *, int);
 
 /* Number of functions with initialized ssa_operands.  */
 static int n_initialized = 0;
@@ -179,8 +175,6 @@ init_ssa_operands (struct function *fn)
   if (!n_initialized++)
     {
       build_uses.create (10);
-      build_vuse = NULL_TREE;
-      build_vdef = NULL_TREE;
       build_flags = 0;
     }
 
@@ -204,8 +198,6 @@ fini_ssa_operands (struct function *fn)
     {
       build_flags = 0;
       build_uses.release ();
-      build_vdef = NULL_TREE;
-      build_vuse = NULL_TREE;
     }
 
   gimple_ssa_operands (fn)->free_uses = NULL;
@@ -304,25 +296,18 @@ add_use_op (struct function *fn, gimple *stmt, tree *op, use_optype_p last)
 }
 
 
-/* Takes elements from build_defs and turns them into def operands of STMT.
-   TODO -- Make build_defs vec of tree *.  */
+/* Takes elements from build_defs and turns them into def operands of STMT.  */
 
 static inline void
 finalize_ssa_defs (struct function *fn, gimple *stmt)
 {
   /* Pre-pend the vdef we may have built.  */
-  if (build_vdef != NULL_TREE)
-    {
-      tree oldvdef = gimple_vdef (stmt);
-      if (oldvdef
-	  && TREE_CODE (oldvdef) == SSA_NAME)
-	oldvdef = SSA_NAME_VAR (oldvdef);
-      if (oldvdef != build_vdef)
-	gimple_set_vdef (stmt, build_vdef);
-    }
+  if (build_flags & BF_VDEF
+      && !gimple_vdef (stmt))
+    gimple_set_vdef (stmt, gimple_vop (fn));
 
   /* Clear and unlink a no longer necessary VDEF.  */
-  if (build_vdef == NULL_TREE
+  if (!(build_flags & BF_VDEF)
       && gimple_vdef (stmt) != NULL_TREE)
     {
       if (TREE_CODE (gimple_vdef (stmt)) == SSA_NAME)
@@ -352,27 +337,18 @@ finalize_ssa_uses (struct function *fn, gimple *stmt)
   use_optype_p old_ops, ptr, last;
 
   /* Pre-pend the VUSE we may have built.  */
-  if (build_vuse != NULL_TREE)
-    {
-      tree oldvuse = gimple_vuse (stmt);
-      if (oldvuse
-	  && TREE_CODE (oldvuse) == SSA_NAME)
-	oldvuse = SSA_NAME_VAR (oldvuse);
-      if (oldvuse != (build_vuse != NULL_TREE
-		      ? build_vuse : build_vdef))
-	gimple_set_vuse (stmt, NULL_TREE);
+  if (build_flags & BF_VUSE)
       build_uses.safe_insert (0, gimple_vuse_ptr (stmt));
-    }
+
+  /* Clear a no longer necessary VUSE.  */
+  if (!(build_flags & BF_VUSE)
+      && gimple_vuse (stmt) != NULL_TREE)
+    gimple_set_vuse (stmt, NULL_TREE);
 
   new_list.next = NULL;
   last = &new_list;
 
   old_ops = gimple_use_ops (stmt);
-
-  /* Clear a no longer necessary VUSE.  */
-  if (build_vuse == NULL_TREE
-      && gimple_vuse (stmt) != NULL_TREE)
-    gimple_set_vuse (stmt, NULL_TREE);
 
   /* If there is anything in the old list, free it.  */
   if (old_ops)
@@ -386,7 +362,7 @@ finalize_ssa_uses (struct function *fn, gimple *stmt)
 
   /* If we added a VUSE, make sure to set the operand if it is not already
      present and mark it for renaming.  */
-  if (build_vuse != NULL_TREE
+  if ((build_flags & BF_VUSE)
       && gimple_vuse (stmt) == NULL_TREE)
     {
       gimple_set_vuse (stmt, gimple_vop (fn));
@@ -411,8 +387,6 @@ finalize_ssa_uses (struct function *fn, gimple *stmt)
 static inline void
 cleanup_build_arrays (void)
 {
-  build_vdef = NULL_TREE;
-  build_vuse = NULL_TREE;
   build_uses.truncate (0);
   build_flags = 0;
 }
@@ -443,8 +417,6 @@ static inline void
 start_ssa_stmt_operands (void)
 {
   gcc_assert (build_uses.length () == 0);
-  gcc_assert (build_vuse == NULL_TREE);
-  gcc_assert (build_vdef == NULL_TREE);
   gcc_assert (build_flags == 0);
 }
 
@@ -461,34 +433,24 @@ append_use (tree *use_p)
 /* Add VAR to the set of variables that require a VDEF operator.  */
 
 static inline void
-append_vdef (tree var)
+append_vdef (void)
 {
-  gcc_assert ((build_vdef == NULL_TREE
-	       || build_vdef == var)
-	      && (build_vuse == NULL_TREE
-		  || build_vuse == var));
-
-  build_vdef = var;
-  build_vuse = var;
+  build_flags |= BF_VDEF | BF_VUSE;
 }
 
 
 /* Add VAR to the set of variables that require a VUSE operator.  */
 
 static inline void
-append_vuse (tree var)
+append_vuse (void)
 {
-  gcc_assert (build_vuse == NULL_TREE
-	      || build_vuse == var);
-
-  build_vuse = var;
+  build_flags |= BF_VUSE;
 }
 
 /* Add virtual operands for STMT.  FLAGS is as in get_expr_operands.  */
 
 static void
-add_virtual_operand (struct function *fn,
-		     gimple *stmt ATTRIBUTE_UNUSED, int flags)
+add_virtual_operand (gimple *stmt ATTRIBUTE_UNUSED, int flags)
 {
   /* Add virtual operands to the stmt, unless the caller has specifically
      requested not to do that (used when adding operands inside an
@@ -499,9 +461,9 @@ add_virtual_operand (struct function *fn,
   gcc_assert (!is_gimple_debug (stmt));
 
   if (flags & opf_def)
-    append_vdef (gimple_vop (fn));
+    append_vdef ();
   else
-    append_vuse (gimple_vop (fn));
+    append_vuse ();
 }
 
 
@@ -511,7 +473,7 @@ add_virtual_operand (struct function *fn,
    added to virtual operands.  */
 
 static void
-add_stmt_operand (struct function *fn, tree *var_p, gimple *stmt, int flags)
+add_stmt_operand (tree *var_p, gimple *stmt, int flags)
 {
   tree var = *var_p;
 
@@ -535,7 +497,7 @@ add_stmt_operand (struct function *fn, tree *var_p, gimple *stmt, int flags)
 	build_flags |= BF_VOLATILE;
 
       /* The variable is a memory access.  Add virtual operands.  */
-      add_virtual_operand (fn, stmt, flags);
+      add_virtual_operand (stmt, flags);
     }
 }
 
@@ -548,8 +510,7 @@ add_stmt_operand (struct function *fn, tree *var_p, gimple *stmt, int flags)
    FLAGS is as in get_expr_operands.  */
 
 static void
-get_mem_ref_operands (struct function *fn,
-		      gimple *stmt, tree expr, int flags)
+get_mem_ref_operands (gimple *stmt, tree expr, int flags)
 {
   tree *pptr = &TREE_OPERAND (expr, 0);
 
@@ -558,31 +519,50 @@ get_mem_ref_operands (struct function *fn,
     build_flags |= BF_VOLATILE;
 
   /* Add the VOP.  */
-  add_virtual_operand (fn, stmt, flags);
+  add_virtual_operand (stmt, flags);
 
   /* If requested, add a USE operand for the base pointer.  */
-  get_expr_operands (fn, stmt, pptr, opf_use | (flags & opf_no_vops));
+  get_expr_operands (stmt, pptr, opf_use | (flags & opf_no_vops));
 }
 
 
 /* A subroutine of get_expr_operands to handle TARGET_MEM_REF.  */
 
 static void
-get_tmr_operands (struct function *fn, gimple *stmt, tree expr, int flags)
+get_tmr_operands (gimple *stmt, tree expr, int flags)
 {
   if (!(flags & opf_no_vops)
       && TREE_THIS_VOLATILE (expr))
     build_flags |= BF_VOLATILE;
 
   /* First record the real operands.  */
-  get_expr_operands (fn, stmt,
+  get_expr_operands (stmt,
 		     &TMR_BASE (expr), opf_use | (flags & opf_no_vops));
-  get_expr_operands (fn, stmt,
+  get_expr_operands (stmt,
 		     &TMR_INDEX (expr), opf_use | (flags & opf_no_vops));
-  get_expr_operands (fn, stmt,
+  get_expr_operands (stmt,
 		     &TMR_INDEX2 (expr), opf_use | (flags & opf_no_vops));
 
-  add_virtual_operand (fn, stmt, flags);
+  add_virtual_operand (stmt, flags);
+}
+
+
+/* If STMT is a call that may clobber globals and other symbols that
+   escape, return an appropriate flag mask for the necessary VDEF/VUSEs.
+   Otherwise return zero.  */
+
+static int
+get_call_vop_flags (gimple *stmt)
+{
+  int call_flags = gimple_call_flags (stmt);
+  if (!(call_flags & ECF_NOVOPS))
+    {
+      if (!(call_flags & (ECF_PURE | ECF_CONST)))
+	return BF_VDEF | BF_VUSE;
+      else if (!(call_flags & ECF_CONST))
+	return BF_VUSE;
+    }
+  return 0;
 }
 
 
@@ -590,28 +570,16 @@ get_tmr_operands (struct function *fn, gimple *stmt, tree expr, int flags)
    escape, add them to the VDEF/VUSE lists for it.  */
 
 static void
-maybe_add_call_vops (struct function *fn, gcall *stmt)
+maybe_add_call_vops (gcall *stmt)
 {
-  int call_flags = gimple_call_flags (stmt);
-
-  /* If aliases have been computed already, add VDEF or VUSE
-     operands for all the symbols that have been found to be
-     call-clobbered.  */
-  if (!(call_flags & ECF_NOVOPS))
-    {
-      /* A 'pure' or a 'const' function never call-clobbers anything.  */
-      if (!(call_flags & (ECF_PURE | ECF_CONST)))
-	add_virtual_operand (fn, stmt, opf_def);
-      else if (!(call_flags & ECF_CONST))
-	add_virtual_operand (fn, stmt, opf_use);
-    }
+  build_flags |= get_call_vop_flags (stmt);
 }
 
 
 /* Scan operands in the ASM_EXPR stmt referred to in INFO.  */
 
 static void
-get_asm_stmt_operands (struct function *fn, gasm *stmt)
+get_asm_stmt_operands (gasm *stmt)
 {
   size_t i, noutputs;
   const char **oconstraints;
@@ -633,7 +601,7 @@ get_asm_stmt_operands (struct function *fn, gasm *stmt)
       /* This should have been split in gimplify_asm_expr.  */
       gcc_assert (!allows_reg || !is_inout);
 
-      get_expr_operands (fn, stmt, &TREE_VALUE (link), opf_def);
+      get_expr_operands (stmt, &TREE_VALUE (link), opf_def);
     }
 
   /* Gather all input operands.  */
@@ -644,12 +612,12 @@ get_asm_stmt_operands (struct function *fn, gasm *stmt)
       parse_input_constraint (&constraint, 0, 0, noutputs, 0, oconstraints,
 	                      &allows_mem, &allows_reg);
 
-      get_expr_operands (fn, stmt, &TREE_VALUE (link), opf_use);
+      get_expr_operands (stmt, &TREE_VALUE (link), opf_use);
     }
 
   /* Clobber all memory and addressable symbols for asm ("" : : : "memory");  */
   if (gimple_asm_clobbers_memory_p (stmt))
-    add_virtual_operand (fn, stmt, opf_def);
+    add_virtual_operand (stmt, opf_def);
 }
 
 
@@ -658,7 +626,7 @@ get_asm_stmt_operands (struct function *fn, gasm *stmt)
    interpret the operands found.  */
 
 static void
-get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
+get_expr_operands (gimple *stmt, tree *expr_p, int flags)
 {
   enum tree_code code;
   enum tree_code_class codeclass;
@@ -683,7 +651,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
 	 here are ARRAY_REF indices which will always be real operands
 	 (GIMPLE does not allow non-registers as array indices).  */
       flags |= opf_no_vops;
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0),
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 0),
 			 flags | opf_address_taken);
       return;
 
@@ -692,7 +660,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
     case PARM_DECL:
     case RESULT_DECL:
       if (!(flags & opf_address_taken))
-	add_stmt_operand (fn, expr_p, stmt, flags);
+	add_stmt_operand (expr_p, stmt, flags);
       return;
 
     case DEBUG_EXPR_DECL:
@@ -700,11 +668,11 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
       return;
 
     case MEM_REF:
-      get_mem_ref_operands (fn, stmt, expr, flags);
+      get_mem_ref_operands (stmt, expr, flags);
       return;
 
     case TARGET_MEM_REF:
-      get_tmr_operands (fn, stmt, expr, flags);
+      get_tmr_operands (stmt, expr, flags);
       return;
 
     case ARRAY_REF:
@@ -717,20 +685,20 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
 	    && TREE_THIS_VOLATILE (expr))
 	  build_flags |= BF_VOLATILE;
 
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
 
 	if (code == COMPONENT_REF)
 	  {
 	    if (!(flags & opf_no_vops)
 		&& TREE_THIS_VOLATILE (TREE_OPERAND (expr, 1)))
 	      build_flags |= BF_VOLATILE;
-	    get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 2), uflags);
+	    get_expr_operands (stmt, &TREE_OPERAND (expr, 2), uflags);
 	  }
 	else if (code == ARRAY_REF || code == ARRAY_RANGE_REF)
 	  {
-            get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), uflags);
-            get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 2), uflags);
-            get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 3), uflags);
+            get_expr_operands (stmt, &TREE_OPERAND (expr, 1), uflags);
+            get_expr_operands (stmt, &TREE_OPERAND (expr, 2), uflags);
+            get_expr_operands (stmt, &TREE_OPERAND (expr, 3), uflags);
 	  }
 
 	return;
@@ -739,16 +707,16 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
     case WITH_SIZE_EXPR:
       /* WITH_SIZE_EXPR is a pass-through reference to its first argument,
 	 and an rvalue reference to its second argument.  */
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), uflags);
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 1), uflags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
       return;
 
     case COND_EXPR:
     case VEC_COND_EXPR:
     case VEC_PERM_EXPR:
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), uflags);
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), uflags);
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 2), uflags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 0), uflags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 1), uflags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 2), uflags);
       return;
 
     case CONSTRUCTOR:
@@ -768,7 +736,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
 	for (idx = 0;
 	     vec_safe_iterate (CONSTRUCTOR_ELTS (expr), idx, &ce);
 	     idx++)
-	  get_expr_operands (fn, stmt, &ce->value, uflags);
+	  get_expr_operands (stmt, &ce->value, uflags);
 
 	return;
       }
@@ -781,7 +749,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
 
     case VIEW_CONVERT_EXPR:
     do_unary:
-      get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
+      get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
       return;
 
     case BIT_INSERT_EXPR:
@@ -793,8 +761,8 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
     case ASSERT_EXPR:
     do_binary:
       {
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 1), flags);
 	return;
       }
 
@@ -806,15 +774,15 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
     case FMA_EXPR:
       {
 	abort(); // hmm, but might exist hidden down in debug stmts? doesn't seem so at present!
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 0), flags);
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 1), flags);
-	get_expr_operands (fn, stmt, &TREE_OPERAND (expr, 2), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 0), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 1), flags);
+	get_expr_operands (stmt, &TREE_OPERAND (expr, 2), flags);
 	return;
       }
 
     case TREE_LIST:
       /* Operands of GIMPLE_ASM, real operand is in TREE_VALUE.  */
-      get_expr_operands (fn, stmt, &TREE_VALUE (expr), flags);
+      get_expr_operands (stmt, &TREE_VALUE (expr), flags);
       return;
 
     case FUNCTION_DECL:
@@ -851,7 +819,7 @@ get_expr_operands (struct function *fn, gimple *stmt, tree *expr_p, int flags)
    build_* operand vectors will have potential operands in them.  */
 
 static void
-parse_ssa_operands (struct function *fn, gimple *stmt)
+parse_ssa_operands (gimple *stmt)
 {
   enum gimple_code code = gimple_code (stmt);
   size_t i, n, start = 0;
@@ -859,32 +827,32 @@ parse_ssa_operands (struct function *fn, gimple *stmt)
   switch (code)
     {
     case GIMPLE_ASM:
-      get_asm_stmt_operands (fn, as_a <gasm *> (stmt));
+      get_asm_stmt_operands (as_a <gasm *> (stmt));
       break;
 
     case GIMPLE_TRANSACTION:
       /* The start of a transaction is a memory barrier.  */
-      add_virtual_operand (fn, stmt, opf_def | opf_use);
+      add_virtual_operand (stmt, opf_def | opf_use);
       break;
 
     case GIMPLE_DEBUG:
       if (gimple_debug_bind_p (stmt)
 	  && gimple_debug_bind_has_value_p (stmt))
-	get_expr_operands (fn, stmt, gimple_debug_bind_get_value_ptr (stmt),
+	get_expr_operands (stmt, gimple_debug_bind_get_value_ptr (stmt),
 			   opf_use | opf_no_vops);
       break;
 
     case GIMPLE_RETURN:
-      append_vuse (gimple_vop (fn));
+      append_vuse ();
       goto do_default;
 
     case GIMPLE_CALL:
       /* Add call-clobbered operands, if needed.  */
-      maybe_add_call_vops (fn, as_a <gcall *> (stmt));
+      maybe_add_call_vops (as_a <gcall *> (stmt));
       /* FALLTHRU */
 
     case GIMPLE_ASSIGN:
-      get_expr_operands (fn, stmt, gimple_op_ptr (stmt, 0), opf_def);
+      get_expr_operands (stmt, gimple_op_ptr (stmt, 0), opf_def);
       start = 1;
       /* FALLTHRU */
 
@@ -892,7 +860,7 @@ parse_ssa_operands (struct function *fn, gimple *stmt)
     do_default:
       n = gimple_num_ops (stmt);
       for (i = start; i < n; i++)
-	get_expr_operands (fn, stmt, gimple_op_ptr (stmt, i), opf_use);
+	get_expr_operands (stmt, gimple_op_ptr (stmt, i), opf_use);
       break;
     }
 }
@@ -907,14 +875,14 @@ build_ssa_operands (struct function *fn, gimple *stmt)
   gimple_set_has_volatile_ops (stmt, false);
 
   start_ssa_stmt_operands ();
-  parse_ssa_operands (fn, stmt);
+  parse_ssa_operands (stmt);
   finalize_ssa_stmt_operands (fn, stmt);
 }
 
 /* Verifies SSA statement operands.  */
 
 DEBUG_FUNCTION bool
-verify_ssa_operands (struct function *fn, gimple *stmt)
+verify_ssa_operands (gimple *stmt)
 {
   use_operand_p use_p;
   def_operand_p def_p;
@@ -924,14 +892,11 @@ verify_ssa_operands (struct function *fn, gimple *stmt)
 
   /* build_ssa_operands w/o finalizing them.  */
   start_ssa_stmt_operands ();
-  parse_ssa_operands (fn, stmt);
+  parse_ssa_operands (stmt);
 
   /* Now verify the built operands are the same as present in STMT.  */
   def = gimple_vdef (stmt);
-  if (def
-      && TREE_CODE (def) == SSA_NAME)
-    def = SSA_NAME_VAR (def);
-  if (build_vdef != def)
+  if (!!(build_flags & BF_VDEF) != !!def)
     {
       error ("virtual definition of statement not up-to-date");
       return true;
@@ -945,10 +910,7 @@ verify_ssa_operands (struct function *fn, gimple *stmt)
     }
 
   tree use = gimple_vuse (stmt);
-  if (use
-      && TREE_CODE (use) == SSA_NAME)
-    use = SSA_NAME_VAR (use);
-  if (build_vuse != use)
+  if (!!(build_flags & BF_VUSE) != !!use)
     {
       error ("virtual use of statement not up-to-date");
       return true;
@@ -1067,7 +1029,7 @@ update_stmt (gimple *s)
 	      else
 		ptr = &((*ptr)->next);
 	    }*/
-	  if (verify_ssa_operands (cfun, s))
+	  if (verify_ssa_operands (s))
 	    {
 	      print_gimple_stmt (stderr, s, 0, TDF_VOPS);
 	      abort ();
@@ -1077,15 +1039,18 @@ update_stmt (gimple *s)
 }
 
 static use_optype_p *
-find_use_op (gimple *stmt, tree *pop)
+find_delink_use_op (gimple *stmt, tree *pop)
 {
   gimple_statement_with_ops *ops_stmt =
       dyn_cast <gimple_statement_with_ops *> (stmt);
   use_optype_p *puse;
   for (puse = &ops_stmt->use_ops; *puse; puse = &((*puse)->next))
     if ((*puse)->use_ptr.use == pop)
-      break;
-  return puse;
+      {
+	delink_imm_use (&((*puse)->use_ptr));
+	return puse;
+      }
+  return NULL;
 }
 
 static void
@@ -1142,7 +1107,7 @@ update_stmt_use (use_operand_p use)
       && !is_gimple_min_invariant (*pnewval))
     {
       start_ssa_stmt_operands ();
-      get_expr_operands (cfun, stmt, pnewval, opf_no_vops | opf_use);
+      get_expr_operands (stmt, pnewval, opf_no_vops | opf_use);
       for (unsigned i = 0; i < build_uses.length (); i++)
 	{
 	  tree *op = build_uses[i];
@@ -1157,8 +1122,8 @@ update_stmt_use (use_operand_p use)
 
 /* Check if it's easy to determine if STMT needs a vuse
    or vdef if we ignore operand I.  Returns -1 if it's not easy
-   (and hence it's unknown), 0 if it won't need a vop, 1 if it
-   needs a vuse and 2 if it needs a vdef.  */
+   (and hence it's unknown), 0 if it won't need a vop, BF_VUSE if it
+   needs a vuse and BF_VDEF|BF_VUSE if it needs a vdef.  */
 static int
 easy_stmt_p (gimple *stmt, unsigned i)
 {
@@ -1170,10 +1135,10 @@ easy_stmt_p (gimple *stmt, unsigned i)
       gcc_assert (i == 0 || i == 1);
       if (i == 0 && gimple_assign_load_p (stmt))
 	/* LHS ignored, but RHS is load.  */
-	return 1;
+	return BF_VUSE;
       if (i == 1 && gimple_store_p (stmt))
 	/* RHS ignored, but LHS a store.  */
-	return 2;
+	return BF_VDEF | BF_VUSE;
       /* All other cases don't create VOPs (except perhaps for operand I).  */
       return 0;
 
@@ -1183,14 +1148,14 @@ easy_stmt_p (gimple *stmt, unsigned i)
 	/* For a call if we don't ignore the fndecl and that already
 	   requires a vdef, it's easy.  */
 	if (i != 1 && !(call_flags & (ECF_NOVOPS | ECF_PURE | ECF_CONST)))
-	  return 2;
+	  return BF_VDEF | BF_VUSE;
 	/* Also, if we ignore the LHS or have none there can only be a
 	   vdef if the function isn't pure (or const).  */
 	if ((i == 0 || !gimple_call_lhs (stmt)) && !(call_flags & ECF_NOVOPS))
 	    {
 	      /* If it's pure we definitely need a vuse.  */
 	      if ((call_flags & (ECF_PURE | ECF_CONST)) == ECF_PURE)
-		return 1;
+		return BF_VUSE;
 	      /* If it's const and we have no arguments, or we ignore
 	         the single argument (and hence have no LHS), then
 		 there won't be a vop.  */
@@ -1203,10 +1168,10 @@ easy_stmt_p (gimple *stmt, unsigned i)
       }
 
     case GIMPLE_TRANSACTION:
-      return 2;
+      return BF_VDEF | BF_VUSE;
 
     case GIMPLE_RETURN:
-      return 1;
+      return BF_VUSE;
 
     default:
       return -1;
@@ -1218,7 +1183,7 @@ static void ensure_vop (gimple *stmt, int flags);
 static int
 diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 {
-  int stmtvop = gimple_vdef (stmt) ? 2 : gimple_vuse (stmt) ? 1 : 0;
+  int stmtvop = gimple_vdef (stmt) ? BF_VDEF | BF_VUSE : gimple_vuse (stmt) ? BF_VUSE : 0;
   /* ??? The following might seem like a good test:
        gcc_assert (stmtvop >= oldvop)
      but our callers might have already set VOP to NULL in anticipation
@@ -1248,7 +1213,7 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
   else
     gcc_unreachable ();
 
-  if (newvop < 2 && gimple_vdef (stmt))
+  if (newvop < BF_VDEF && gimple_vdef (stmt))
     {
       if (TREE_CODE (gimple_vdef (stmt)) == SSA_NAME)
 	{
@@ -1258,10 +1223,10 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
       gimple_set_vdef (stmt, NULL_TREE);
     }
 
-  if (newvop)
+  if (newvop >= BF_VUSE)
     {
       gcc_assert (!is_gimple_debug (stmt));
-      ensure_vop (stmt, newvop >= 2 ? opf_def : opf_use);
+      ensure_vop (stmt, newvop >= BF_VDEF ? opf_def : opf_use);
     }
   else if (gimple_vuse (stmt))
     gimple_set_vuse (stmt, NULL_TREE);
@@ -1272,40 +1237,22 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 static int
 add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 {
-  gimple_statement_with_ops *ops_stmt =
-      dyn_cast <gimple_statement_with_ops *> (stmt);
-  use_optype_p *puse = NULL;
+  use_optype_p *puse;
   int was_vop = 0, newvop;
-  /* We'd like to search the cache only
-       if (*pop && SSA_VAR_P (*pop))
-     but we can't currently, because the list might contain stale entries
-     (from setting to constants or such via SET_USE).  We must reuse
-     that entry in case it's there (or remove it and generate a new one). */
   if (*pop && SSA_VAR_P (*pop))
-    for (puse = &ops_stmt->use_ops; *puse; puse = &((*puse)->next))
-      if ((*puse)->use_ptr.use == pop)
-	break;
-  if (puse && *puse)
     {
-      delink_imm_use (&((*puse)->use_ptr));
+      puse = find_delink_use_op (stmt, pop);
+      /* If there's the danger that we replace the last operand that caused
+	 a vop with one that doesn't we need to revisit everything.  */
+      if (!(flags & opf_no_vops)
+	  && !is_gimple_reg (*pop) && !virtual_operand_p (*pop))
+	was_vop = BF_VUSE | ((flags & opf_def) ? BF_VDEF : 0);
     }
+  else
+    puse = NULL;
 
-  /* If there's the danger that we replace the last operand that caused
-     a vop with one that doesn't we need to revisit everything.  */
-  if (!(flags & opf_no_vops) && *pop && SSA_VAR_P (*pop)
-      && !is_gimple_reg (*pop) && !virtual_operand_p (*pop))
-    was_vop = (flags & opf_def) ? 2 : 1;
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
-    {
-      int call_flags = gimple_call_flags (stmt);
-      if (!(call_flags & ECF_NOVOPS))
-	{
-	  if (!(call_flags & (ECF_PURE | ECF_CONST)))
-	    was_vop = 2;
-	  else if (!(call_flags & ECF_CONST))
-	    was_vop = 1;
-	}
-    }
+    was_vop = get_call_vop_flags (stmt);
 
   *pop = val;
 
@@ -1318,10 +1265,10 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 	  if (DECL_P (val) && !virtual_operand_p (val))
 	    cfun->gimple_df->ssa_renaming_needed = 1;
 	  if (flags & opf_def)
-	    gcc_assert (!puse || !*puse);
+	    gcc_assert (!puse);
 	  else
 	    {
-	      if (!puse || !*puse)
+	      if (!puse)
 		prepend_use_op (stmt, pop);
 	      else
 		link_imm_use_stmt (&((*puse)->use_ptr), *pop, stmt);
@@ -1329,9 +1276,7 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 	}
       else
 	{
-	  if (TREE_THIS_VOLATILE (val))
-	    gimple_set_has_volatile_ops (stmt, true);
-
+	  gcc_assert (!TREE_THIS_VOLATILE (val));
 	  /* The variable is a memory access.  Add virtual operands.  */
 	  ensure_vop (stmt, flags);
 	}
@@ -1339,20 +1284,16 @@ add_ssa_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   else
     {
       gcc_assert (!val || is_gimple_min_invariant (val));
-      if (puse && *puse)
-	*puse = (*puse)->next;
+      if (puse)
+	{
+	  use_optype_p use = *puse;
+	  *puse = use->next;
+	  use->next = gimple_ssa_operands (cfun)->free_uses;
+	  gimple_ssa_operands (cfun)->free_uses = use;
+	}
       newvop = 0;
       if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
-	{
-	  int call_flags = gimple_call_flags (stmt);
-	  if (!(call_flags & ECF_NOVOPS))
-	    {
-	      if (!(call_flags & (ECF_PURE | ECF_CONST)))
-		newvop = 2;
-	      else if (!(call_flags & ECF_CONST))
-		newvop = 1;
-	    }
-	}
+	newvop = get_call_vop_flags (stmt);
       if (was_vop && diddle_vops (stmt, was_vop, newvop, nop) < 0)
 	return 1;
     }
@@ -1374,11 +1315,7 @@ ensure_vop (gimple *stmt, int flags)
 	  gimple_set_vdef (stmt, gimple_vop (cfun));
     }
   if (!gimple_vuse (stmt))
-    {
-      gimple_statement_with_memory_ops *mem_ops_stmt =
-	  dyn_cast <gimple_statement_with_memory_ops *> (stmt);
-      add_ssa_op (stmt, &mem_ops_stmt->vuse, gimple_vop (cfun), -1, flags);
-    }
+    add_ssa_op (stmt, gimple_vuse_ptr (stmt), gimple_vop (cfun), -1, flags);
   if (gimple_vdef (stmt) && TREE_CODE (gimple_vdef (stmt)) != SSA_NAME)
     {
       cfun->gimple_df->rename_vops = 1;
@@ -1399,27 +1336,25 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   int oldvop, newvop;
 
   start_ssa_stmt_operands ();
-  get_expr_operands (cfun, stmt, gimple_op_ptr (stmt, nop), flags);
+  get_expr_operands (stmt, gimple_op_ptr (stmt, nop), flags);
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
-    maybe_add_call_vops (cfun, as_a <gcall *> (stmt));
+    maybe_add_call_vops (as_a <gcall *> (stmt));
   was_volatile = !!(build_flags & BF_VOLATILE);
-  oldvop = build_vdef ? 2 : build_vuse ? 1 : 0;
+  oldvop = build_flags & (BF_VDEF | BF_VUSE);
 
   /* Remove all use ops for things in op[nop].  */
   for (i = 0; i < build_uses.length (); i++)
     {
       tree *op = build_uses[i];
-      use_optype_p *puse = find_use_op (stmt, op);
-      use_optype_p use;
-      if (!*puse)
+      use_optype_p *puse = find_delink_use_op (stmt, op);
+      if (!puse)
 	/* Normally we should have found the old useop cache.  But debug
 	   statements might change from SOURCE_BIND (without opcache)
 	   to DEBUG_BIND (with opcache), so accept that here.  */
 	gcc_assert(is_gimple_debug (stmt));
       else
 	{
-	  delink_imm_use (&((*puse)->use_ptr));
-	  use = *puse;
+	  use_optype_p use = *puse;
 	  *puse = use->next;
 	  use->next = gimple_ssa_operands (cfun)->free_uses;
 	  gimple_ssa_operands (cfun)->free_uses = use;
@@ -1431,10 +1366,10 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 
   /* Now inspect the new value.  */
   start_ssa_stmt_operands ();
-  get_expr_operands (cfun, stmt, gimple_op_ptr (stmt, nop), flags);
+  get_expr_operands (stmt, gimple_op_ptr (stmt, nop), flags);
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
-    maybe_add_call_vops (cfun, as_a <gcall *> (stmt));
-  newvop = build_vdef ? 2 : build_vuse ? 1 : 0;
+    maybe_add_call_vops (as_a <gcall *> (stmt));
+  newvop = build_flags & (BF_VDEF | BF_VUSE);
 
   /* If the op was volatile and now isn't we need to recheck everything.  */
   if (was_volatile && !(build_flags & BF_VOLATILE))
@@ -1452,10 +1387,10 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   for (i = 0; i < build_uses.length (); i++)
     {
       tree *op = build_uses[i];
-      use_optype_p *puse = find_use_op (stmt, op);
+      use_optype_p *puse = find_delink_use_op (stmt, op);
       /* All ops should be new (or removed above), otherwise
          we'd create strange sharing.  */
-      gcc_assert (!*puse);
+      gcc_assert (!puse);
       prepend_use_op (stmt, op);
     }
 
@@ -1526,6 +1461,15 @@ do_full_update:
 }
 
 void
+gimple_change_in_op (gimple *gs, tree *op_ptr, tree *pop, tree val)
+{
+  if (!flag_try_patch || !gs->bb || !ssa_operands_active (cfun))
+    *pop = val;
+  else
+    do_change_in_op (gs, op_ptr, pop, val);
+}
+
+void
 gimple_set_op_update (gimple *gs, unsigned i, tree val)
 {
   tree *pop = gimple_op_ptr (gs, i);
@@ -1533,15 +1477,6 @@ gimple_set_op_update (gimple *gs, unsigned i, tree val)
     *pop = val;
   else
     do_change_in_op (gs, pop, pop, val);
-}
-
-void
-gimple_change_in_op (gimple *gs, tree *op_ptr, tree *pop, tree val)
-{
-  if (!flag_try_patch || !gs->bb || !ssa_operands_active (cfun))
-    *pop = val;
-  else
-    do_change_in_op (gs, op_ptr, pop, val);
 }
 
 /* Swap operands EXP0 and EXP1 in statement STMT.  No attempt is done
