@@ -9107,7 +9107,6 @@ dump_tree_statistics (void)
 		 get_tree_code_name ((enum tree_code) i), tree_code_counts[i]);
       mem_usage::print_dash_line (TREE_MEM_USAGE_SPACES);
       fprintf (stderr, "\n");
-      ssanames_print_statistics ();
       fprintf (stderr, "\n");
       phinodes_print_statistics ();
       fprintf (stderr, "\n");
@@ -9119,6 +9118,8 @@ dump_tree_statistics (void)
   print_debug_expr_statistics ();
   print_value_expr_statistics ();
   lang_hooks.print_statistics ();
+  ssanames_print_statistics ();
+  ssa_opcache_print_statistics ();
 }
 
 #define FILE_FUNCTION_FORMAT "_GLOBAL__%s_%s"

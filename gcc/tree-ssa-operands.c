@@ -107,6 +107,8 @@ static void get_expr_operands (gimple *, tree *, int);
 
 /* Number of functions with initialized ssa_operands.  */
 static int n_initialized = 0;
+static unsigned use_ops_created;
+static unsigned use_ops_reused;
 
 /* Accessor to tree-ssa-operands.c caches.  */
 static inline struct ssa_operands *
@@ -260,6 +262,12 @@ ssa_operand_alloc (struct function *fn, unsigned size)
   return ptr;
 }
 
+void
+ssa_opcache_print_statistics (void)
+{
+  fprintf (stderr, "SSA cache use-ops allocated: %u\n", use_ops_created);
+  fprintf (stderr, "SSA cache use-ops    reused: %u\n", use_ops_reused);
+}
 
 /* Allocate a USE operand.  */
 
@@ -272,10 +280,14 @@ alloc_use (struct function *fn)
       ret = gimple_ssa_operands (fn)->free_uses;
       gimple_ssa_operands (fn)->free_uses
 	= gimple_ssa_operands (fn)->free_uses->next;
+      use_ops_reused++;
     }
   else
-    ret = (struct use_optype_d *)
-          ssa_operand_alloc (fn, sizeof (struct use_optype_d));
+    {
+      ret = (struct use_optype_d *)
+	    ssa_operand_alloc (fn, sizeof (struct use_optype_d));
+      use_ops_created++;
+    }
   return ret;
 }
 

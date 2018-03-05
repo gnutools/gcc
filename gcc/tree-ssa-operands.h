@@ -103,6 +103,7 @@ extern void dump_immediate_uses_for (FILE *file, tree var);
 extern void dump_immediate_uses (FILE *file);
 extern void debug_immediate_uses (void);
 extern void debug_immediate_uses_for (tree var);
+extern void ssa_opcache_print_statistics (void);
 
 extern void unlink_stmt_vdef (gimple *);
 
