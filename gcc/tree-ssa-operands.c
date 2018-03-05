@@ -1183,7 +1183,12 @@ easy_stmt_p (gimple *stmt, unsigned i)
 static int
 diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 {
-  int stmtvop = gimple_vdef (stmt) ? BF_VDEF | BF_VUSE : gimple_vuse (stmt) ? BF_VUSE : 0;
+  /* XXX volatile really should imply VDEF always, but doesn't right now */
+  int stmtvop
+    = (gimple_has_volatile_ops (stmt) ? BF_VOLATILE : 0)
+      | (gimple_vdef (stmt) ? BF_VDEF | BF_VUSE
+         : gimple_vuse (stmt) ? BF_VUSE
+         : 0);
   /* ??? The following might seem like a good test:
        gcc_assert (stmtvop >= oldvop)
      but our callers might have already set VOP to NULL in anticipation
@@ -1198,20 +1203,24 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
   else if (newvop >= oldvop)
     /* So if new operand has more VOPs, it can overall only become more.  */
     newvop = newvop > stmtvop ? newvop : stmtvop;
-  else if (newvop < oldvop)
+  else if (oldvop & BF_VOLATILE)
+    /* Old operand was volatile.  For now punt and revisit everything.  */
+    return -1;
+  else
     /* New operand has less VOPs than old operand and that old operand
        potentially was the only one still forcing these VOPs.  We need
-       to revisit everything.  */
+       to revisit VOPs.  */
     {
-      /* But for some cases we can easily check completely.  */
+      /* For some cases we can easily check completely.  */
       int knownvop = easy_stmt_p (stmt, nop);
       if (knownvop == -1)
+	/* And if we can't, we can't.  */
 	return -1;
       else if (newvop < knownvop)
 	newvop = knownvop;
     }
-  else
-    gcc_unreachable ();
+
+  newvop &= ~BF_VOLATILE;
 
   if (newvop < BF_VDEF && gimple_vdef (stmt))
     {
@@ -1247,7 +1256,6 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 static int
 exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 {
-  bool was_volatile;
   unsigned i;
   int oldvop, newvop;
   use_optype_p *puse = NULL, use = NULL;
@@ -1256,8 +1264,7 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   get_expr_operands (stmt, gimple_op_ptr (stmt, nop), flags);
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
     maybe_add_call_vops (as_a <gcall *> (stmt));
-  was_volatile = !!(build_flags & BF_VOLATILE);
-  oldvop = build_flags & (BF_VDEF | BF_VUSE);
+  oldvop = build_flags & (BF_VOLATILE | BF_VDEF | BF_VUSE);
 
   /* Remove all use ops for things in op[nop].  */
   for (i = build_uses.length (); i-- > 0;)
@@ -1282,7 +1289,7 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
   get_expr_operands (stmt, gimple_op_ptr (stmt, nop), flags);
   if (nop == 1 && gimple_code (stmt) == GIMPLE_CALL)
     maybe_add_call_vops (as_a <gcall *> (stmt));
-  newvop = build_flags & (BF_VDEF | BF_VUSE);
+  newvop = build_flags & (BF_VOLATILE | BF_VDEF | BF_VUSE);
 
   /* If we want to reuse an useop, do it now before diddle_vops,
      as that one might free useops, including the one where *puse
@@ -1300,13 +1307,6 @@ exchange_complex_op (gimple *stmt, tree *pop, tree val, unsigned nop, int flags)
 	}
       else
 	free_stmt_use_op (puse);
-    }
-
-  /* If the op was volatile and now isn't we need to recheck everything.  */
-  if (was_volatile && !(build_flags & BF_VOLATILE))
-    {
-      cleanup_build_arrays ();
-      return 1;
     }
 
   if (diddle_vops (stmt, oldvop, newvop, nop) < 0)
