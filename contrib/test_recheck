@@ -64,7 +64,7 @@ for file in $files; do
   flags=`$AWK '
 /^Running .*\.exp \.\.\./ {
   if (expfile != "" && tests != "")
-    printf (" %s=\"%s\"", expfile, tests)
+    printf (" %s='"'"'%s'"'"'", expfile, tests)
   expfile = $2
   sub (/^[^ ]*\//, "", expfile)
   sep = ""
@@ -79,18 +79,20 @@ for file in $files; do
 }
 END {
   if (expfile != "" && tests != "")
-    printf (" %s=\"%s\"", expfile, tests)
+    printf (" %s='"'"'%s'"'"'", expfile, tests)
 }' $file`
   if test -n "$flags"; then
-    cd $dir
+    #cd $dir
     amflags=
     if grep '^AM_RUNTESTFLAGS =' Makefile >/dev/null 2>&1; then
       amflags=`echo 'print-runtestflags: ; @echo $(AM_RUNTESTFLAGS)' \
 		 | ${MAKE} -s -f Makefile -f - print-runtestflags`
     fi
-    echo "(cd $dir && runtest $amflags --tool $base $flags)"
+    #echo "(cd $dir && runtest $amflags --tool $base $flags)"
+    echo "make RUNTESTFLAGS=\"$flags\" check-$base -j31"
     if test -z "$dry"; then
-      eval runtest --tool $base $flags || st=$?
+      #eval runtest --tool $base $flags || st=$?
+      eval make RUNTESTFLAGS=\"$flags\" check-$base -j31 || st=$?
     fi
     cd "$cwd"
   fi
