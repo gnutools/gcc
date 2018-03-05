@@ -1678,6 +1678,7 @@ gimple_assign_set_rhs_with_ops (gimple_stmt_iterator *gsi, enum tree_code code,
       memcpy (new_stmt, stmt, gimple_size (gimple_code (stmt)));
       gimple_init_singleton (new_stmt);
       gimple_set_use_ops (new_stmt, NULL);
+      new_stmt->bb = NULL;
       gsi_replace (gsi, new_stmt, false);
       stmt = new_stmt;
 
@@ -3124,7 +3125,7 @@ maybe_remove_unused_call_args (struct function *fn, gimple *stmt)
       && gimple_call_num_args (stmt))
     {
       gimple_set_num_ops (stmt, 3);
-      update_stmt_fn (fn, stmt);
+      update_stmt_for_real_fn (fn, stmt);
     }
 }
 

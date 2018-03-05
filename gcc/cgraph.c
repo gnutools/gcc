@@ -1506,7 +1506,7 @@ cgraph_edge::redirect_call_stmt_to_callee (void)
     {
       new_stmt = e->call_stmt;
       gimple_call_set_fndecl (new_stmt, e->callee->decl);
-      update_stmt_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
+      update_stmt_for_real_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
     }
 
   /* If changing the call to __cxa_pure_virtual or similar noreturn function,
@@ -1534,17 +1534,17 @@ cgraph_edge::redirect_call_stmt_to_callee (void)
 	  gimple *set_stmt = gimple_build_assign (lhs, var);
           gsi = gsi_for_stmt (new_stmt);
 	  gsi_insert_before_without_update (&gsi, set_stmt, GSI_SAME_STMT);
-	  update_stmt_fn (DECL_STRUCT_FUNCTION (e->caller->decl), set_stmt);
+	  update_stmt_for_real_fn (DECL_STRUCT_FUNCTION (e->caller->decl), set_stmt);
 	}
       gimple_call_set_lhs (new_stmt, NULL_TREE);
-      update_stmt_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
+      update_stmt_for_real_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
     }
 
   /* If new callee has no static chain, remove it.  */
   if (gimple_call_chain (new_stmt) && !DECL_STATIC_CHAIN (e->callee->decl))
     {
       gimple_call_set_chain (new_stmt, NULL);
-      update_stmt_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
+      update_stmt_for_real_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
     }
 
   maybe_remove_unused_call_args (DECL_STRUCT_FUNCTION (e->caller->decl),

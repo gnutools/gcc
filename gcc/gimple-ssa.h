@@ -165,32 +165,12 @@ gimple_vdef_op (gimple *g)
 }
 
 /* Mark statement S as modified, and update it.  */
-
-static inline void
-update_stmt_for_real (gimple *s)
-{
-  if (gimple_has_ops (s))
-    {
-      gimple_set_modified (s, true);
-      update_stmt_operands (cfun, s);
-    }
-}
-
-void update_stmt (gimple *);
-
-/* Update statement S if it has been optimized.  */
-
-static inline void
-update_stmt_if_modified (gimple *s)
-{
-  if (gimple_modified_p (s))
-    update_stmt_operands (cfun, s);
-}
+void update_stmt_fn (struct function *, gimple *);
 
 /* Mark statement S as modified, and update it.  */
 
 static inline void
-update_stmt_fn (struct function *fn, gimple *s)
+update_stmt_for_real_fn (struct function *fn, gimple *s)
 {
   if (gimple_has_ops (s))
     {
@@ -198,6 +178,37 @@ update_stmt_fn (struct function *fn, gimple *s)
       update_stmt_operands (fn, s);
     }
 }
+
+static inline void
+update_stmt_for_real (gimple *s)
+{
+  update_stmt_for_real_fn (cfun, s);
+}
+
+static inline void
+update_stmt (gimple *s)
+{
+  update_stmt_fn (cfun, s);
+}
+
+/* Update statement S if it has been optimized.  */
+
+static inline void
+update_stmt_if_modified (gimple *s)
+{
+  if (gimple_modified_p (s))
+    update_stmt_fn (cfun, s);
+}
+
+/*static inline void
+update_stmt_fn (struct function *fn, gimple *s)
+{
+  if (gimple_has_ops (s))
+    {
+      gimple_set_modified (s, true);
+      update_stmt_operands (fn, s);
+    }
+}*/
 
 
 #endif /* GCC_GIMPLE_SSA_H */

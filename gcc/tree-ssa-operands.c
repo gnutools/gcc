@@ -1020,12 +1020,12 @@ update_stmt_operands (struct function *fn, gimple *stmt)
 }
 
 void
-update_stmt (gimple *s)
+update_stmt_fn (struct function *fn, gimple *s)
 {
-  if (gimple_has_ops (s) && ssa_operands_active (cfun))
+  if (gimple_has_ops (s) && ssa_operands_active (fn))
     {
       if (!flag_try_patch)
-	update_stmt_for_real (s);
+	update_stmt_for_real_fn (fn, s);
       else
 	{
 	  /* Cleanup stale per-statement operands.  Those happen
@@ -1041,13 +1041,14 @@ update_stmt (gimple *s)
 	      else
 		ptr = &((*ptr)->next);
 	    }*/
-	  if (verify_ssa_operands (s))
+	  if (s->bb && verify_ssa_operands (s))
 	    {
 	      print_gimple_stmt (stderr, s, 0, TDF_VOPS);
 	      abort ();
 	    }
 	}
     }
+  gimple_set_modified (s, false);
 }
 
 static use_optype_p *
@@ -1118,10 +1119,39 @@ update_stmt_use (use_operand_p use)
     ;
   free_stmt_use_op (puse);
 
-  if (gimple_debug_bind_p (stmt)
-      && pnewval == gimple_debug_bind_get_value_ptr (stmt)
-      && *pnewval
-      && !is_gimple_min_invariant (*pnewval))
+  if (is_gimple_call (stmt) && pnewval == gimple_call_fn_ptr (stmt))
+    {
+      /* We replaced a function pointer (ssa name) with a real function
+         decl (address), so our VOPs might be wrong.  Remove any we don't
+	 want.
+	 
+	 XXX make it a bit faster, e.g. arguments are always
+	 regtype && gimple_val || !regtype && gimple_lval, and new fn
+	 might also have vuse/vdef  */
+      start_ssa_stmt_operands ();
+      maybe_add_call_vops (as_a <gcall *> (stmt));
+      get_expr_operands (stmt, gimple_op_ptr (stmt, 0), opf_def);
+      for (unsigned i = 1, n = gimple_num_ops (stmt); i < n; i++)
+	get_expr_operands (stmt, gimple_op_ptr (stmt, i), opf_use);
+
+      if (!(build_flags & BF_VDEF) && gimple_vdef (stmt))
+	{
+	  if (TREE_CODE (gimple_vdef (stmt)) == SSA_NAME)
+	    {
+	      unlink_stmt_vdef (stmt);
+	      release_ssa_name_fn (cfun, gimple_vdef (stmt));
+	    }
+	  gimple_set_vdef (stmt, NULL_TREE);
+	}
+      if (!(build_flags & BF_VUSE) && gimple_vuse (stmt))
+	gimple_set_vuse (stmt, NULL_TREE);
+
+      cleanup_build_arrays ();
+    }
+  else if (gimple_debug_bind_p (stmt)
+	   && pnewval == gimple_debug_bind_get_value_ptr (stmt)
+	   && *pnewval
+	   && !is_gimple_min_invariant (*pnewval))
     {
       start_ssa_stmt_operands ();
       get_expr_operands (stmt, pnewval, opf_no_vops | opf_use);
@@ -1197,8 +1227,8 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
 {
   /* XXX volatile really should imply VDEF always, but doesn't right now */
   int stmtvop
-    = (gimple_has_volatile_ops (stmt) ? BF_VOLATILE : 0)
-      | (gimple_vdef (stmt) ? BF_VDEF | BF_VUSE
+    = /*(gimple_has_volatile_ops (stmt) ? BF_VOLATILE : 0)
+      |*/ (gimple_vdef (stmt) ? BF_VDEF | BF_VUSE
          : gimple_vuse (stmt) ? BF_VUSE
          : 0);
   /* ??? The following might seem like a good test:
