@@ -891,6 +891,8 @@ build_ssa_operands (struct function *fn, gimple *stmt)
   finalize_ssa_stmt_operands (fn, stmt);
 }
 
+static int get_stmt_vops (gimple *stmt);
+
 /* Verifies SSA statement operands.  */
 
 DEBUG_FUNCTION bool
@@ -901,10 +903,12 @@ verify_ssa_operands (gimple *stmt)
   ssa_op_iter iter;
   unsigned i;
   tree def;
+  int vops1, vops2;
 
   /* build_ssa_operands w/o finalizing them.  */
   start_ssa_stmt_operands ();
   parse_ssa_operands (stmt);
+  vops1 = build_flags;
 
   /* Now verify the built operands are the same as present in STMT.  */
   def = gimple_vdef (stmt);
@@ -970,6 +974,14 @@ verify_ssa_operands (gimple *stmt)
     }
 
   cleanup_build_arrays ();
+
+  vops2 = get_stmt_vops (stmt);
+  if ((vops1 & (BF_VDEF | BF_VUSE)) != vops2)
+    {
+      error ("can't easily compute VOPs");
+      return true;
+    }
+
   return false;
 }
 
@@ -1293,6 +1305,144 @@ diddle_vops (gimple *stmt, int oldvop, int newvop, unsigned nop)
     }
 
   return 0;
+}
+
+static inline bool
+store_with_vdef_p (const gimple *gs)
+{
+  tree lhs = gimple_get_lhs (gs);
+  if (!gimple_store_p (gs))
+    return false;
+  /* XXX there's an exception to VOPs.  This statement doesn't get VOPs:
+       "foo"[0] = 'x';
+     (neither the load form does).  During runtime this would be a trap
+     anyway (though the load wouldn't), but still it doesn't get a VDEF.
+     That's conceivably a bug.  */
+  if (TREE_CODE (lhs) == ARRAY_REF
+      && TREE_CODE (TREE_OPERAND (lhs, 0)) == STRING_CST)
+    return false;
+  return true;
+}
+
+static int
+get_stmt_vops (gimple *stmt)
+{
+  int vops2;
+
+  vops2 = 0;
+  switch (gimple_code (stmt))
+    {
+      case GIMPLE_ASSIGN:
+	if (!gimple_assign_single_p (stmt))
+	  break;
+	if (store_with_vdef_p (stmt))
+	  vops2 = BF_VDEF | BF_VUSE;
+	else if (!is_gimple_reg_type (TREE_TYPE (gimple_assign_rhs1 (stmt))))
+	  vops2 = BF_VUSE;
+	else
+	  {
+	    tree rhs = gimple_assign_rhs1 (stmt);
+again:
+	    enum tree_code code = TREE_CODE (rhs);
+	    switch (code)
+	      {
+		case MEM_REF:
+		case TARGET_MEM_REF:
+		    vops2 = BF_VUSE;
+		    break;
+		case ARRAY_RANGE_REF:
+		case ARRAY_REF:
+		case COMPONENT_REF:
+		case REALPART_EXPR:
+		case IMAGPART_EXPR:
+		case BIT_FIELD_REF:
+		case VIEW_CONVERT_EXPR:
+		case WITH_SIZE_EXPR:
+		    rhs = TREE_OPERAND (rhs, 0);
+		    goto again;
+		case VAR_DECL:
+		case PARM_DECL:
+		case RESULT_DECL:
+		    if (!is_gimple_reg (rhs))
+		      vops2 = BF_VUSE;
+		    break;
+		default:
+		    break;
+	      }
+	    /*if (TREE_CODE (gimple_assign_rhs1 (stmt)) != ADDR_EXPR
+		 && !is_gimple_min_invariant (gimple_assign_rhs1 (stmt))
+		 && !is_gimple_reg (gimple_assign_rhs1 (stmt)))
+	      vops2 = BF_VUSE;*/
+	  }
+	break;
+
+      case GIMPLE_CALL:
+	{
+	  int call_flags = gimple_call_flags (stmt);
+	  if (!(call_flags & (ECF_NOVOPS | ECF_PURE | ECF_CONST))
+	      || gimple_store_p (stmt))
+	    vops2 = BF_VDEF | BF_VUSE;
+	  else
+	    {
+	      if (!(call_flags & (ECF_NOVOPS | ECF_CONST)))
+		vops2 = BF_VUSE;
+	      else
+		for (unsigned i = 1; i < gimple_num_ops (stmt); i++)
+		  if (gimple_op (stmt, i)
+		      && !is_gimple_reg_type (TREE_TYPE (gimple_op (stmt, i))))
+		    {
+		      vops2 = BF_VUSE;
+		      break;
+		    }
+	    }
+	  break;
+	}
+
+      case GIMPLE_TRANSACTION:
+        vops2 = BF_VDEF | BF_VUSE;
+	break;
+
+      case GIMPLE_RETURN:
+	vops2 = BF_VUSE;
+	break;
+
+      case GIMPLE_ASM:
+	{
+	  gasm *asms = as_a <gasm *> (stmt);
+	  if (gimple_asm_clobbers_memory_p (asms))
+	    vops2 = BF_VDEF | BF_VUSE;
+	  else
+	    {
+	      for (unsigned i = 0, n = gimple_asm_noutputs (asms); i < n; i++)
+		{
+		  tree link = gimple_asm_output_op (asms, i);
+		  if (!is_gimple_reg (TREE_VALUE (link)))
+		    {
+		      vops2 = BF_VDEF | BF_VUSE;
+		      break;
+		    }
+		}
+
+	      if (vops2)
+		break;
+	      for (unsigned i = 0, n = gimple_asm_ninputs (asms); i < n; i++)
+		{
+		  tree link = gimple_asm_input_op (asms, i);
+		  if (!is_gimple_reg (TREE_VALUE (link))
+		      && !is_gimple_min_invariant (TREE_VALUE (link)))
+		    {
+		      vops2 = BF_VUSE;
+		      break;
+		    }
+		}
+	    }
+	  break;
+	}
+
+      default:
+        break;
+    }
+  return vops2;
 }
 
 static int
