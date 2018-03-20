@@ -198,7 +198,7 @@ evrp_dom_walker::before_dom_children (basic_block bb)
 	  if (gimple_assign_single_p (stmt))
 	    {
 	      tree rhs = gimple_assign_rhs1 (stmt);
-	      if (TREE_CODE (rhs) == ADDR_EXPR)
+	      if (0 && TREE_CODE (rhs) == ADDR_EXPR)
 		recompute_tree_invariant_for_addr_expr (rhs);
 	    }
 	}

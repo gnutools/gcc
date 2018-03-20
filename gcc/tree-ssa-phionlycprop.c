@@ -227,7 +227,7 @@ propagate_rhs_into_lhs (gimple *stmt, tree lhs, tree rhs,
 
 	  /* If we replaced a variable index with a constant, then
 	     we would need to update the invariant flag for ADDR_EXPRs.  */
-          if (gimple_assign_single_p (use_stmt)
+          if (0 && gimple_assign_single_p (use_stmt)
               && TREE_CODE (gimple_assign_rhs1 (use_stmt)) == ADDR_EXPR)
 	    recompute_tree_invariant_for_addr_expr
                 (gimple_assign_rhs1 (use_stmt));

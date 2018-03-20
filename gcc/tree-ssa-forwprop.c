@@ -639,7 +639,7 @@ tidy_after_forward_propagate_addr (gimple *stmt)
   if (maybe_clean_or_replace_eh_stmt (stmt, stmt))
     bitmap_set_bit (to_purge, gimple_bb (stmt)->index);
 
-  if (TREE_CODE (gimple_assign_rhs1 (stmt)) == ADDR_EXPR)
+  if (0 && TREE_CODE (gimple_assign_rhs1 (stmt)) == ADDR_EXPR)
      recompute_tree_invariant_for_addr_expr (gimple_assign_rhs1 (stmt));
 }
 

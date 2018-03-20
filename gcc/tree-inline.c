@@ -1015,7 +1015,7 @@ remap_gimple_op_r (tree *tp, int *walk_subtrees, void *data)
 	     TREE_CONSTANT and friends are up-to-date.  */
 	  int invariant = is_gimple_min_invariant (*tp);
 	  walk_tree (&TREE_OPERAND (*tp, 0), remap_gimple_op_r, data, NULL);
-	  recompute_tree_invariant_for_addr_expr (*tp);
+	  //recompute_tree_invariant_for_addr_expr (*tp);
 
 	  /* If this used to be invariant, but is not any longer,
 	     then regimplification is probably needed.  */
@@ -1301,7 +1301,7 @@ copy_tree_body_r (tree *tp, int *walk_subtrees, void *data)
 		t = fold_convert (remap_type (TREE_TYPE (*tp), id), t);
 	      *tp = t;
 	    }
-	  else
+	  else if (0)
 	    recompute_tree_invariant_for_addr_expr (*tp);
 
 	  /* If this used to be invariant, but is not any longer,

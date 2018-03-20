@@ -5721,7 +5721,7 @@ eliminate_dom_walker::before_dom_children (basic_block b)
 	{
 	  /* If a formerly non-invariant ADDR_EXPR is turned into an
 	     invariant one it was on a separate stmt.  */
-	  if (gimple_assign_single_p (stmt)
+	  if (0 && gimple_assign_single_p (stmt)
 	      && TREE_CODE (gimple_assign_rhs1 (stmt)) == ADDR_EXPR)
 	    recompute_tree_invariant_for_addr_expr (gimple_assign_rhs1 (stmt));
 	  gimple_stmt_iterator prev = gsi;

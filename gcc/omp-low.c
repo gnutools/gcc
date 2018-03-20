@@ -6923,13 +6923,15 @@ lower_omp_for (gimple_stmt_iterator *gsi_p, omp_context *ctx)
       rhs_p = gimple_omp_for_initial_ptr (stmt, i);
       if (!is_gimple_min_invariant (*rhs_p))
 	*rhs_p = get_formal_tmp_var (*rhs_p, &body);
-      else if (TREE_CODE (*rhs_p) == ADDR_EXPR)
+      else if (0 && TREE_CODE (*rhs_p) == ADDR_EXPR)
+	/* As we use fold on address computations which were TREE_CONSTANT,
+	   we need to reset that flag in case they aren't anymore.  */
 	recompute_tree_invariant_for_addr_expr (*rhs_p);
 
       rhs_p = gimple_omp_for_final_ptr (stmt, i);
       if (!is_gimple_min_invariant (*rhs_p))
 	*rhs_p = get_formal_tmp_var (*rhs_p, &body);
-      else if (TREE_CODE (*rhs_p) == ADDR_EXPR)
+      else if (0 && TREE_CODE (*rhs_p) == ADDR_EXPR)
 	recompute_tree_invariant_for_addr_expr (*rhs_p);
 
       rhs_p = &TREE_OPERAND (gimple_omp_for_incr (stmt, i), 1);
@@ -8689,7 +8691,7 @@ lower_omp_regimplify_p (tree *tp, int *walk_subtrees,
 
   /* If a global variable has been privatized, TREE_CONSTANT on
      ADDR_EXPR might be wrong.  */
-  if (data == NULL && TREE_CODE (t) == ADDR_EXPR)
+  if (0 && data == NULL && TREE_CODE (t) == ADDR_EXPR)
     recompute_tree_invariant_for_addr_expr (t);
 
   *walk_subtrees = !IS_TYPE_OR_DECL_P (t);

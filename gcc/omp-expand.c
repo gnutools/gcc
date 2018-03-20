@@ -1068,7 +1068,7 @@ expand_omp_regimplify_p (tree *tp, int *walk_subtrees, void *)
   if (VAR_P (t) && DECL_HAS_VALUE_EXPR_P (t))
     return t;
 
-  if (TREE_CODE (t) == ADDR_EXPR)
+  if (0 && TREE_CODE (t) == ADDR_EXPR)
     recompute_tree_invariant_for_addr_expr (t);
 
   *walk_subtrees = !TYPE_P (t) && !DECL_P (t);

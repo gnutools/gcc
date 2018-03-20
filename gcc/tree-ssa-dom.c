@@ -1957,7 +1957,7 @@ dom_opt_dom_walker::optimize_stmt (basic_block bb, gimple_stmt_iterator si)
         /* This should never be an ADDR_EXPR.  */
         rhs = gimple_switch_index (swtch_stmt);
 
-      if (rhs && TREE_CODE (rhs) == ADDR_EXPR)
+      if (0 && rhs && TREE_CODE (rhs) == ADDR_EXPR)
         recompute_tree_invariant_for_addr_expr (rhs);
 
       /* Indicate that maybe_clean_or_replace_eh_stmt needs to be called,

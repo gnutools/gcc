@@ -1040,7 +1040,7 @@ convert_nonlocal_reference_op (tree *tp, int *walk_subtrees, void *data)
 	       referencing a decl.  */
 	    save_context = current_function_decl;
 	    current_function_decl = info->context;
-	    recompute_tree_invariant_for_addr_expr (t);
+	    //recompute_tree_invariant_for_addr_expr (t);
 	    current_function_decl = save_context;
 
 	    /* If the callback converted the address argument in a context
@@ -1721,7 +1721,7 @@ convert_local_reference_op (tree *tp, int *walk_subtrees, void *data)
 
 	  save_context = current_function_decl;
 	  current_function_decl = info->context;
-	  recompute_tree_invariant_for_addr_expr (t);
+	  //recompute_tree_invariant_for_addr_expr (t);
 	  current_function_decl = save_context;
 
 	  /* If we are in a context where we only accept values, then

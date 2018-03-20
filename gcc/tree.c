@@ -3388,6 +3388,7 @@ decl_address_invariant_p (const_tree op)
   /* The conditions below are slightly less strict than the one in
      staticp.  */
 
+again:
   switch (TREE_CODE (op))
     {
     case PARM_DECL:
@@ -3397,6 +3398,11 @@ decl_address_invariant_p (const_tree op)
       return true;
 
     case VAR_DECL:
+      if (DECL_HAS_VALUE_EXPR_P (op))
+	{
+	  op = DECL_VALUE_EXPR (CONST_CAST(tree, op));
+	  goto again;
+	}
       if ((TREE_STATIC (op) || DECL_EXTERNAL (op))
           || DECL_THREAD_LOCAL_P (op)
           || DECL_CONTEXT (op) == current_function_decl
@@ -4898,7 +4904,7 @@ build_invariant_address (tree type, tree base, poly_int64 offset)
 			  build_fold_addr_expr (base),
 			  build_int_cst (ptr_type_node, offset));
   tree addr = build1 (ADDR_EXPR, type, ref);
-  recompute_tree_invariant_for_addr_expr (addr);
+  //recompute_tree_invariant_for_addr_expr (addr);
   return addr;
 }
 

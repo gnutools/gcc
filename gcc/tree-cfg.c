@@ -2023,7 +2023,7 @@ replace_uses_by (tree name, tree val)
 		/* Operands may be empty here.  For example, the labels
 		   of a GIMPLE_COND are nulled out following the creation
 		   of the corresponding CFG edges.  */
-		if (op && TREE_CODE (op) == ADDR_EXPR)
+		if (0 && op && TREE_CODE (op) == ADDR_EXPR)
 		  recompute_tree_invariant_for_addr_expr (op);
 	      }
 
@@ -3000,7 +3000,7 @@ gimple_split_edge (edge edge_in)
 static bool 
 verify_address (tree t, bool verify_addressable)
 {
-  bool old_constant;
+  /*bool old_constant;
   bool old_side_effects;
   bool new_constant;
   bool new_side_effects;
@@ -3021,7 +3021,7 @@ verify_address (tree t, bool verify_addressable)
     {
       error ("side effects not recomputed when ADDR_EXPR changed");
       return true;
-    }
+    }*/
 
   tree base = TREE_OPERAND (t, 0);
   while (handled_component_p (base))
