@@ -58,13 +58,15 @@ parse_basever (int *major, int *minor, int *patchlevel)
 static void
 define__GNUC__ (cpp_reader *pfile)
 {
-  int major, minor, patchlevel;
+  int major, minor, patchlevel, rhrevision;
 
   parse_basever (&major, &minor, &patchlevel);
   cpp_define_formatted (pfile, "__GNUC__=%d", major);
   cpp_define_formatted (pfile, "__GNUC_MINOR__=%d", minor);
   cpp_define_formatted (pfile, "__GNUC_PATCHLEVEL__=%d", patchlevel);
   cpp_define_formatted (pfile, "__VERSION__=\"%s\"", version_string);
+  if (sscanf (DEVPHASE, " (Red Hat %*d.%*d.%*d-%d", &rhrevision) == 1)
+    cpp_define_formatted (pfile, "__GNUC_RH_RELEASE__=%d", rhrevision);
   cpp_define_formatted (pfile, "__ATOMIC_RELAXED=%d", MEMMODEL_RELAXED);
   cpp_define_formatted (pfile, "__ATOMIC_SEQ_CST=%d", MEMMODEL_SEQ_CST);
   cpp_define_formatted (pfile, "__ATOMIC_ACQUIRE=%d", MEMMODEL_ACQUIRE);

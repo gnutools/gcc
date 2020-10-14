@@ -12,7 +12,7 @@
 @finalout
 @dircategory GNU Ada Tools 
 @direntry
-* gnat-style: (gnat-style.info). gnat-style
+* gnat-style: (gnat-style).      GNAT Coding Style
 @end direntry
 
 @c %**end of header

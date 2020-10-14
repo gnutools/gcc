@@ -793,3 +793,7 @@ __floattitf:
 	.endp __floattitf
 #endif
 #endif
+
+#ifdef __linux__
+.section .note.GNU-stack; .previous
+#endif

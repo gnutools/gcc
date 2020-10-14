@@ -1838,6 +1838,12 @@
 #endif
 
 
+/* Define if your PowerPC64 linker handles overlapping .opd entries. */
+#ifndef USED_FOR_TARGET
+#undef HAVE_LD_OVERLAPPING_OPD
+#endif
+
+
 /* Define if your linker can relax absolute .eh_frame personality pointers
    into PC-relative form. */
 #ifndef USED_FOR_TARGET

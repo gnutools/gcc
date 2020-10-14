@@ -114,3 +114,7 @@ __do_global_ctors_aux:
 
 	br.ret.sptk.many rp
 	.endp __do_global_ctors_aux
+
+#ifdef __linux__
+.section .note.GNU-stack; .previous
+#endif

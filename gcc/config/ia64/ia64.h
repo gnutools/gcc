@@ -733,7 +733,7 @@ enum reg_class
 
 /* Define this macro to nonzero if the addresses of local variable slots
    are at negative offsets from the frame pointer.  */
-#define FRAME_GROWS_DOWNWARD 0
+#define FRAME_GROWS_DOWNWARD (flag_stack_protect != 0)
 
 /* Offset from the stack pointer register to the first location at which
    outgoing arguments are placed.  If not specified, the default value of zero

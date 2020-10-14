@@ -51,3 +51,7 @@ _fini:
 	.body
 
 # end of crti.S
+
+#ifdef __linux__
+.section .note.GNU-stack; .previous
+#endif

@@ -1,3 +1,40 @@
+2010-06-30  Jakub Jelinek  <jakub@redhat.com>
+
+	* config/rs6000/rs6000.c (rs6000_elf_end_indicate_exec_stack): New.
+	* config/rs6000/linux64.h (TARGET_ASM_FILE_END): Use
+	rs6000_elf_end_indicate_exec_stack.
+	* config/ia64/ia64.c (ia64_linux_file_end): New.
+	* config/ia64/linux.h (TARGET_ASM_FILE_END): Use ia64_linux_file_end.
+
+	* cppbuiltin.c (define__GNUC__): Also define __GNUC_RH_RELEASE__.
+
+	* config/ia64/ia64.h (FRAME_GROWS_DOWNWARD): Define to 1 if
+	-fstack-protect.
+	* config/ia64/ia64.c (ia64_compute_frame_size): Make sure
+	size is a multiple of 16 if FRAME_GROWS_DOWNWARD.
+	(ia64_initial_elimination_offset): Support FRAME_GROWS_DOWNWARD
+	layout.
+	* config/ia64/linux.h (TARGET_LIBC_PROVIDES_SSP): Define.
+	* config/ia64/ia64.md (stack_protect_set, stack_protect_test): New
+	expanders.
+
+	Revert:
+	2005-04-29  Alan Modra  <amodra@bigpond.net.au>
+	PR target/21098
+	* config/rs6000/rs6000.c (rs6000_elf_end_indicate_exec_stack): New.
+	* config/rs6000/linux64.h (TARGET_ASM_FILE_END): Use the above.
+
+	* config/rs6000/ppc-asm.h: Add .note.GNU-stack section also
+	on ppc64-linux.
+
+	* config/ia64/linux.h (TARGET_ASM_FILE_END): Define.
+
+	* configure.ac (HAVE_LD_OVERLAPPING_OPD): New test.
+	* configure: Rebuilt.
+	* config.in: Rebuilt.
+	* config/rs6000/rs6000.c (OVERLAPPING_OPD): Define.
+	(rs6000_elf_declare_function_name): Use it.
+
 2025-12-14  Lewis Hyatt  <lhyatt@gmail.com>
 
 	PR tree-optimization/106409

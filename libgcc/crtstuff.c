@@ -336,15 +336,15 @@ register_tm_clones (void)
    doesn't need to be defined.  */
 
 #ifdef TARGET_LIBGCC_SDATA_SECTION
-extern void *__dso_handle __attribute__ ((__section__ (TARGET_LIBGCC_SDATA_SECTION)));
+extern void *const __dso_handle __attribute__ ((__section__ (TARGET_LIBGCC_SDATA_SECTION)));
 #endif
 #ifdef HAVE_GAS_HIDDEN
-extern void *__dso_handle __attribute__ ((__visibility__ ("hidden")));
+extern void *const __dso_handle __attribute__ ((__visibility__ ("hidden")));
 #endif
 #ifdef CRTSTUFFS_O
-void *__dso_handle = &__dso_handle;
+void *const __dso_handle = (void * const)&__dso_handle;
 #else
-void *__dso_handle = 0;
+void *const __dso_handle = 0;
 #endif
 #endif /* DEFAULT_USE_CXA_ATEXIT */
 
