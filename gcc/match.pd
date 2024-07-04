@@ -281,6 +281,18 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
        (outer_op @0 @2)
        @3))))))
 
+/* Remove superfluous NON_LVALUE_EXPR in unary operators.  */
+(for op (UNCOND_UNARY)
+ (simplify (op (non_lvalue @0))
+  (op @0)))
+
+/* Remove superfluous NON_LVALUE_EXPR in binary operators.  */
+(for op (UNCOND_BINARY tcc_comparison)
+ (simplify (op (non_lvalue @0) @1)
+  (op @0 @1))
+ (simplify (op @0 (non_lvalue @1))
+  (op @0 @1)))
+
 /* Simplify x - x.
    This is unsafe for certain floats even in non-IEEE formats.
    In IEEE, it is unsafe because it does wrong for NaNs.
