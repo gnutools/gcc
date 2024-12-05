@@ -4133,6 +4133,7 @@ const char *gfc_dt_lower_string (const char *);
 const char *gfc_dt_upper_string (const char *);
 
 /* primary.cc */
+symbol_attribute gfc_symbol_attr (gfc_symbol *);
 symbol_attribute gfc_variable_attr (gfc_expr *, gfc_typespec *);
 symbol_attribute gfc_expr_attr (gfc_expr *);
 symbol_attribute gfc_caf_attr (gfc_expr *, bool i = false, bool *r = NULL);

@@ -11643,7 +11643,7 @@ static gfc_ss *
 nest_loop_dimension (gfc_ss *ss, int dim)
 {
   int ss_dim, i;
-  gfc_ss *new_ss, *prev_ss = gfc_ss_terminator;
+  gfc_ss *new_ss = nullptr, *prev_ss = gfc_ss_terminator;
   gfc_loopinfo *new_loop;
 
   gcc_assert (ss != gfc_ss_terminator);

@@ -2909,43 +2909,14 @@ check_substring:
 }
 
 
-/* Given an expression that is a variable, figure out what the
-   ultimate variable's type and attribute is, traversing the reference
-   structures if necessary.
-
-   This subroutine is trickier than it looks.  We start at the base
-   symbol and store the attribute.  Component references load a
-   completely new attribute.
-
-   A couple of rules come into play.  Subobjects of targets are always
-   targets themselves.  If we see a component that goes through a
-   pointer, then the expression must also be a target, since the
-   pointer is associated with something (if it isn't core will soon be
-   dumped).  If we see a full part or section of an array, the
-   expression is also an array.
-
-   We can have at most one full array reference.  */
-
 symbol_attribute
-gfc_variable_attr (gfc_expr *expr, gfc_typespec *ts)
+gfc_symbol_attr (gfc_symbol *sym)
 {
-  int dimension, codimension, pointer, allocatable, target, optional;
+  int dimension, codimension, pointer, allocatable, target;
   symbol_attribute attr;
-  gfc_ref *ref;
-  gfc_symbol *sym;
-  gfc_component *comp;
-  bool has_inquiry_part;
-  bool has_substring_ref = false;
 
-  if (expr->expr_type != EXPR_VARIABLE
-      && expr->expr_type != EXPR_FUNCTION
-      && !(expr->expr_type == EXPR_NULL && expr->ts.type != BT_UNKNOWN))
-    gfc_internal_error ("gfc_variable_attr(): Expression isn't a variable");
-
-  sym = expr->symtree->n.sym;
   attr = sym->attr;
 
-  optional = attr.optional;
   if (sym->ts.type == BT_CLASS && sym->attr.class_ok && sym->ts.u.derived)
     {
       dimension = CLASS_DATA (sym)->attr.dimension;
@@ -2980,6 +2951,59 @@ gfc_variable_attr (gfc_expr *expr, gfc_typespec *ts)
       else
 	target = 0;
     }
+
+  attr.dimension = dimension;
+  attr.codimension = codimension;
+  attr.pointer = pointer;
+  attr.allocatable = allocatable;
+  attr.target = target;
+
+  return attr;
+}
+
+
+/* Given an expression that is a variable, figure out what the
+   ultimate variable's type and attribute is, traversing the reference
+   structures if necessary.
+
+   This subroutine is trickier than it looks.  We start at the base
+   symbol and store the attribute.  Component references load a
+   completely new attribute.
+
+   A couple of rules come into play.  Subobjects of targets are always
+   targets themselves.  If we see a component that goes through a
+   pointer, then the expression must also be a target, since the
+   pointer is associated with something (if it isn't core will soon be
+   dumped).  If we see a full part or section of an array, the
+   expression is also an array.
+
+   We can have at most one full array reference.  */
+
+symbol_attribute
+gfc_variable_attr (gfc_expr *expr, gfc_typespec *ts)
+{
+  int dimension, codimension, pointer, allocatable, target, optional;
+  symbol_attribute attr;
+  gfc_ref *ref;
+  gfc_symbol *sym;
+  gfc_component *comp;
+  bool has_inquiry_part;
+  bool has_substring_ref = false;
+
+  if (expr->expr_type != EXPR_VARIABLE
+      && expr->expr_type != EXPR_FUNCTION
+      && !(expr->expr_type == EXPR_NULL && expr->ts.type != BT_UNKNOWN))
+    gfc_internal_error ("gfc_variable_attr(): Expression isn't a variable");
+
+  sym = expr->symtree->n.sym;
+  attr = gfc_symbol_attr (sym);
+
+  optional = attr.optional;
+  dimension = attr.dimension;
+  codimension = attr.codimension;
+  pointer = attr.pointer;
+  allocatable = attr.allocatable;
+  target = attr.target;
 
   if (ts != NULL && expr->ts.type == BT_UNKNOWN)
     *ts = sym->ts;
