@@ -4785,14 +4785,12 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
   else if (proc_sym == proc_sym->result && IS_CLASS_ARRAY (proc_sym))
     {
       /* Nullify explicit return class arrays on entry.  */
-      tree type;
       tmp = get_proc_result (proc_sym);
       if (tmp && GFC_CLASS_TYPE_P (TREE_TYPE (tmp)))
 	{
 	  gfc_start_block (&init);
 	  tmp = gfc_class_data_get (tmp);
-	  type = TREE_TYPE (gfc_conv_descriptor_data_get (tmp));
-	  gfc_conv_descriptor_data_set (&init, tmp, build_int_cst (type, 0));
+	  gfc_clear_descriptor (&init, proc_sym, tmp);
 	  gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE);
 	}
     }
@@ -4940,30 +4938,9 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
 	  && (sym->attr.save || flag_max_stack_var_size == 0)
 	  && CLASS_DATA (sym)->attr.allocatable)
 	{
-	  tree vptr;
-
-          if (UNLIMITED_POLY (sym))
-	    vptr = null_pointer_node;
-	  else
-	    {
-	      gfc_symbol *vsym;
-	      vsym = gfc_find_derived_vtab (sym->ts.u.derived);
-	      vptr = gfc_get_symbol_decl (vsym);
-	      vptr = gfc_build_addr_expr (NULL, vptr);
-	    }
-
-	  if (CLASS_DATA (sym)->attr.dimension
-	      || (CLASS_DATA (sym)->attr.codimension
-		  && flag_coarray != GFC_FCOARRAY_LIB))
-	    {
-	      tmp = gfc_class_data_get (sym->backend_decl);
-	      tmp = gfc_build_null_descriptor (TREE_TYPE (tmp));
-	    }
-	  else
-	    tmp = null_pointer_node;
-
 	  DECL_INITIAL (sym->backend_decl)
-		= gfc_class_set_static_fields (sym->backend_decl, vptr, tmp);
+		= gfc_build_default_class_descriptor (TREE_TYPE (sym->backend_decl),
+						      sym->ts);
 	  TREE_CONSTANT (DECL_INITIAL (sym->backend_decl)) = 1;
 	}
       else if ((sym->attr.dimension || sym->attr.codimension

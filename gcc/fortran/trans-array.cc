@@ -726,6 +726,58 @@ gfc_build_null_descriptor (tree type, gfc_typespec &ts,
 }
 
 
+tree
+gfc_build_default_class_descriptor (tree type, gfc_typespec &ts)
+{
+  vec<constructor_elt, va_gc> *v = nullptr;
+
+  tree fields = TYPE_FIELDS (type);
+
+#define CLASS_DATA_FIELD 0
+#define CLASS_VPTR_FIELD 1
+
+  tree data_field = gfc_advance_chain (fields, CLASS_DATA_FIELD);
+  tree data_type = TREE_TYPE (data_field);
+
+  gcc_assert (ts.type == BT_CLASS);
+  tree data_value;
+  if (ts.u.derived->components->attr.dimension
+      || (ts.u.derived->components->attr.codimension
+	  && flag_coarray != GFC_FCOARRAY_LIB))
+    {
+      gcc_assert (GFC_DESCRIPTOR_TYPE_P (data_type));
+      data_value = gfc_build_null_descriptor (data_type,
+					      ts,
+					      ts.u.derived->components->as->rank,
+					      ts.u.derived->components->attr);
+    }
+  else
+    {
+      gcc_assert (POINTER_TYPE_P (data_type));
+      data_value = fold_convert (data_type, null_pointer_node);
+    }
+  CONSTRUCTOR_APPEND_ELT (v, data_field, data_value);
+
+  tree vptr_field = gfc_advance_chain (fields, CLASS_VPTR_FIELD);
+
+  tree vptr_value;
+  if (ts.u.derived->attr.unlimited_polymorphic)
+    vptr_value = fold_convert (TREE_TYPE (vptr_field), null_pointer_node);
+  else
+    {
+      gfc_symbol *vsym = gfc_find_derived_vtab (ts.u.derived);
+      tree vsym_decl = gfc_get_symbol_decl (vsym);
+      vptr_value = gfc_build_addr_expr (nullptr, vsym_decl);
+    }
+  CONSTRUCTOR_APPEND_ELT (v, vptr_field, vptr_value);
+
+#undef CLASS_DATA_FIELD
+#undef CLASS_VPTR_FIELD
+  
+  return build_constructor (type, v);
+}
+
+
 void
 gfc_clear_descriptor (gfc_expr *var_ref, gfc_se &var)
 {

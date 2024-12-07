@@ -139,6 +139,8 @@ void gfc_set_delta (gfc_loopinfo *);
 void gfc_conv_resolve_dependencies (gfc_loopinfo *, gfc_ss *, gfc_ss *);
 /* Build a null array descriptor constructor.  */
 tree gfc_build_null_descriptor (tree);
+tree gfc_build_default_class_descriptor (tree, gfc_typespec &);
+void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descriptor);
 
 /* Get a single array element.  */
 void gfc_conv_array_ref (gfc_se *, gfc_array_ref *, gfc_expr *, locus *);
