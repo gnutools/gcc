@@ -584,10 +584,10 @@ get_size_info (gfc_typespec &ts)
 	if (POINTER_TYPE_P (type))
 	  type = TREE_TYPE (type);
 	gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
-	tree elt_type = TREE_TYPE (type);
+	tree char_type = TREE_TYPE (type);
 	tree len = ts.u.cl->backend_decl;
 	return fold_build2_loc (input_location, MULT_EXPR, size_type_node,
-				size_in_bytes (elt_type),
+				size_in_bytes (char_type),
 				fold_convert (size_type_node, len));
       }
 
@@ -605,8 +605,61 @@ get_size_info (gfc_typespec &ts)
 }
 
 
+class init_info
+{
+public:
+  virtual bool initialize_data () const { return false; }
+  virtual tree get_data_value () const { return NULL_TREE; }
+  virtual gfc_typespec *get_type () const { return nullptr; }
+};
+
+
+class default_init : public init_info
+{
+private:
+  const symbol_attribute &attr; 
+
+public:
+  default_init (const symbol_attribute &arg_attr) : attr(arg_attr) { }
+  virtual bool initialize_data () const { return !attr.pointer; }
+  virtual tree get_data_value () const {
+    if (!initialize_data ())
+      return NULL_TREE;
+
+    return null_pointer_node;
+  }
+};
+
+class nullification : public init_info
+{
+private:
+  gfc_typespec &ts;
+
+public:
+  nullification(gfc_typespec &arg_ts) : ts(arg_ts) { }
+  virtual bool initialize_data () const { return true; }
+  virtual tree get_data_value () const { return null_pointer_node; }
+  virtual gfc_typespec *get_type () const { return &ts; }
+};
+
+class scalar_value : public init_info
+{
+private:
+  gfc_typespec &ts;
+  tree value;
+
+public:
+  scalar_value(gfc_typespec &arg_ts, tree arg_value)
+    : ts(arg_ts), value(arg_value) { }
+  virtual bool initialize_data () const { return true; }
+  virtual tree get_data_value () const { return value; }
+  virtual gfc_typespec *get_type () const { return &ts; }
+};
+
+
 static tree
-build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &)
+build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &,
+	     const init_info &init)
 {
   vec<constructor_elt, va_gc> *v = nullptr;
 
@@ -614,11 +667,17 @@ build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &)
 
   tree fields = TYPE_FIELDS (type);
 
-  if (ts.type != BT_CLASS)
+  gfc_typespec *type_info = init.get_type ();
+  if (type_info == nullptr)
+    type_info = &ts;
+
+  if (!(type_info->type == BT_CLASS
+	|| (type_info->type == BT_CHARACTER
+	    && type_info->deferred)))
     {
       tree elem_len_field = gfc_advance_chain (fields, GFC_DTYPE_ELEM_LEN);
       tree elem_len_val = fold_convert (TREE_TYPE (elem_len_field),
-					get_size_info (ts));
+					get_size_info (*type_info));
       CONSTRUCTOR_APPEND_ELT (v, elem_len_field, elem_len_val);
     }
 
@@ -633,11 +692,11 @@ build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &)
       CONSTRUCTOR_APPEND_ELT (v, rank_field, rank_val);
     }
 
-  if (ts.type != BT_CLASS)
+  if (type_info->type != BT_CLASS)
     {
       tree type_info_field = gfc_advance_chain (fields, GFC_DTYPE_TYPE);
       tree type_info_val = build_int_cst (TREE_TYPE (type_info_field),
-					  get_type_info (ts));
+					  get_type_info (*type_info));
       CONSTRUCTOR_APPEND_ELT (v, type_info_field, type_info_val);
     }
 
@@ -648,8 +707,8 @@ build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &)
 /* Build a null array descriptor constructor.  */
 
 vec<constructor_elt, va_gc> *
-get_default_descriptor_init (tree type, gfc_typespec &ts, int rank,
-			     const symbol_attribute &attr)
+get_descriptor_init (tree type, gfc_typespec &ts, int rank,
+		     const symbol_attribute &attr, const init_info &init)
 {
   vec<constructor_elt, va_gc> *v = nullptr;
 
@@ -658,15 +717,15 @@ get_default_descriptor_init (tree type, gfc_typespec &ts, int rank,
   tree fields = TYPE_FIELDS (type);
 
   /* Don't init pointers by default.  */
-  if (!attr.pointer)
+  if (init.initialize_data ())
     {
       tree data_field = gfc_advance_chain (fields, DATA_FIELD);
-      tree data_value = fold_convert (TREE_TYPE (data_field), null_pointer_node);
+      tree data_value = init.get_data_value ();
       CONSTRUCTOR_APPEND_ELT (v, data_field, data_value);
     }
 
   tree dtype_field = gfc_advance_chain (fields, DTYPE_FIELD);
-  tree dtype_value = build_dtype (ts, rank, attr);
+  tree dtype_value = build_dtype (ts, rank, attr, init);
   CONSTRUCTOR_APPEND_ELT (v, dtype_field, dtype_value);
 
   if (flag_coarray == GFC_FCOARRAY_LIB && attr.codimension)
@@ -686,43 +745,53 @@ get_default_descriptor_init (tree type, gfc_typespec &ts, int rank,
 
 
 vec<constructor_elt, va_gc> *
-get_null_descriptor_init (tree type, gfc_typespec &ts, int rank,
-			  const symbol_attribute &attr)
+get_default_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
+				   const symbol_attribute &attr)
 {
-  symbol_attribute attr2 = attr;
-  attr2.pointer = 0;
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
+  gcc_assert (DATA_FIELD == 0);
 
-  return get_default_descriptor_init (type, ts, rank, attr2);
+  return get_descriptor_init (type, ts, rank, attr, default_init (attr));
+}
+
+
+vec<constructor_elt, va_gc> *
+get_null_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
+				const symbol_attribute &attr)
+{
+  return get_descriptor_init (type, ts, rank, attr, nullification (ts));
 }
 
 
 tree
-gfc_build_default_descriptor (tree type, gfc_typespec &ts, int rank,
-			      const symbol_attribute &attr)
+gfc_build_default_array_descriptor (tree type, gfc_typespec &ts, int rank,
+				    const symbol_attribute &attr)
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
   return build_constructor (type,
-			    get_default_descriptor_init (type, ts, rank, attr));
+			    get_descriptor_init (type, ts, rank, attr,
+						 default_init (attr)));
 }
 
 
 tree
-gfc_build_null_descriptor (tree type, gfc_typespec &ts, int rank,
-			   const symbol_attribute &attr)
+gfc_build_null_array_descriptor (tree type, gfc_typespec &ts, int rank,
+				 const symbol_attribute &attr)
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
   return build_constructor (type,
-			    get_null_descriptor_init (type, ts, rank, attr));
+			    get_null_array_descriptor_init (type, ts, rank,
+							    attr));
 }
 
 
 tree
-gfc_build_null_descriptor (tree type, gfc_typespec &ts,
-			   const symbol_attribute &attr)
+gfc_build_null_array_descriptor (tree type, gfc_typespec &ts,
+				 const symbol_attribute &attr)
 {
-  return gfc_build_null_descriptor (type, ts, -1, attr);
+  return gfc_build_null_array_descriptor (type, ts, -1, attr);
 }
 
 
@@ -746,10 +815,10 @@ gfc_build_default_class_descriptor (tree type, gfc_typespec &ts)
 	  && flag_coarray != GFC_FCOARRAY_LIB))
     {
       gcc_assert (GFC_DESCRIPTOR_TYPE_P (data_type));
-      data_value = gfc_build_null_descriptor (data_type,
-					      ts,
-					      ts.u.derived->components->as->rank,
-					      ts.u.derived->components->attr);
+      gfc_component *data_comp = ts.u.derived->components;
+      data_value = gfc_build_null_array_descriptor (data_type, ts,
+						    data_comp->as->rank,
+						    data_comp->attr);
     }
   else
     {
@@ -789,12 +858,161 @@ gfc_clear_descriptor (gfc_expr *var_ref, gfc_se &var)
   attr = gfc_expr_attr (var_ref);
 
   gfc_add_modify (&var.pre, var.expr,
-		  gfc_build_null_descriptor (TREE_TYPE (var.expr), var_ref->ts,
-					     rank, attr));
+		  gfc_build_null_array_descriptor (TREE_TYPE (var.expr),
+						   var_ref->ts,
+						   rank, attr));
 }
 
 
-void
+static int
+field_count (tree type)
+{
+  gcc_assert (TREE_CODE (type) == RECORD_TYPE);
+
+  int count = 0;
+  tree field = TYPE_FIELDS (type);
+  while (field != NULL_TREE)
+    {
+      count++;
+      field = DECL_CHAIN (field);
+    }
+
+  return count;
+}
+
+
+bool
+complete_init_p (tree type, vec<constructor_elt, va_gc> *init_values)
+{
+  return (unsigned) field_count (type) == vec_safe_length (init_values);
+}
+
+
+static bool
+modifiable_p (tree data_ref)
+{
+  switch (TREE_CODE (data_ref))
+    {
+    case CONST_DECL:
+      return false;
+
+    case VAR_DECL:
+    case PARM_DECL:
+    case RESULT_DECL:
+      return !TREE_CONSTANT (data_ref) && !TREE_READONLY (data_ref);
+
+    case COMPONENT_REF:
+      {
+	tree field_decl = TREE_OPERAND (data_ref, 1);
+
+	if (TREE_CONSTANT (field_decl) || TREE_READONLY (field_decl))
+	  return false;
+      }
+
+    /* fallthrough  */
+    case ARRAY_REF:
+    case ARRAY_RANGE_REF:
+    case REALPART_EXPR:
+    case IMAGPART_EXPR:
+    case VIEW_CONVERT_EXPR:
+    case NOP_EXPR:
+      {
+	tree parent_ref = TREE_OPERAND (data_ref, 0);
+	return modifiable_p (parent_ref);
+      }
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+
+typedef enum
+{
+  SINGLE,
+  MULTIPLE
+} init_kind;
+
+typedef union
+{
+  tree single;
+  vec<constructor_elt, va_gc> *multiple;
+} init_values;
+
+static void
+init_struct (stmtblock_t *block, tree data_ref, tree value);
+
+static void
+init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
+	     init_values values)
+{
+  tree type = TREE_TYPE (data_ref);
+
+  if (kind == SINGLE)
+    {
+      tree value = values.single;
+      if (TREE_STATIC (data_ref)
+	  || !modifiable_p (data_ref))
+	DECL_INITIAL (data_ref) = value;
+      else if (TREE_CODE (value) == CONSTRUCTOR)
+	{
+	  unsigned i;
+	  tree field, field_init;
+	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (value), i, field, field_init)
+	    {
+	      tree ref = fold_build3_loc (input_location, COMPONENT_REF,
+					  TREE_TYPE (field), data_ref,
+					  field, NULL_TREE);
+	      init_struct (block, ref, field_init);
+	    }
+	}
+      else
+	gfc_add_modify (block, data_ref, value);
+    }
+  else if (TREE_STATIC (data_ref))
+    return init_struct (block, data_ref,
+			build_constructor (type, values.multiple));
+  else
+    {
+      gcc_assert (TREE_CODE (type) == RECORD_TYPE);
+
+      unsigned i;
+      constructor_elt *ce;
+      FOR_EACH_VEC_ELT (*values.multiple, i, ce)
+	{
+	  tree field_decl = ce->index;
+	  tree ref = fold_build3_loc (input_location, COMPONENT_REF,
+				      TREE_TYPE (field_decl), data_ref,
+				      field_decl, NULL_TREE);
+	  init_struct (block, ref, ce->value);
+	}
+    }
+}
+
+
+static void
+init_struct (stmtblock_t *block, tree data_ref, tree value)
+{
+  init_values wrapped_values;
+  wrapped_values.single = value;
+
+  return init_struct (block, data_ref, SINGLE, wrapped_values);
+}
+
+
+static void
+init_struct (stmtblock_t *block, tree data_ref,
+	     vec<constructor_elt, va_gc> *values)
+{
+  init_values wrapped_values;
+  wrapped_values.multiple = values;
+
+  return init_struct (block, data_ref, MULTIPLE, wrapped_values);
+}
+
+
+#if 0
+static void
 set_from_constructor_elts (stmtblock_t *block, tree data_ref,
 			   vec<constructor_elt, va_gc> *constructor_values)
 {
@@ -809,6 +1027,7 @@ set_from_constructor_elts (stmtblock_t *block, tree data_ref,
       gfc_add_modify (block, ref, ce->value);
     }
 }
+#endif
 
 
 void
@@ -823,14 +1042,46 @@ gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descriptor)
 
   attr = gfc_symbol_attr (sym);
 
-  if (TREE_STATIC (descriptor))
-    gfc_add_modify (block, descriptor,
-		    gfc_build_null_descriptor (TREE_TYPE (descriptor), sym->ts,
-					       rank, attr));
-  else
-    set_from_constructor_elts (block, descriptor,
-			       get_null_descriptor_init (TREE_TYPE (descriptor),
-							 sym->ts, rank, attr));
+  init_struct (block, descriptor,
+	       get_null_array_descriptor_init (TREE_TYPE (descriptor),
+					       sym->ts, rank, attr));
+}
+
+
+void
+gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, 
+		      gfc_expr *expr, tree descriptor)
+{
+  symbol_attribute attr;
+
+  gfc_array_spec *as = sym->ts.type == BT_CLASS
+		       ? CLASS_DATA (sym)->as
+		       : sym->as;
+  int rank = as == nullptr
+	     ? 0
+	     : as->type == AS_ASSUMED_RANK
+	       ? expr->rank
+	       : as->rank;
+
+  attr = gfc_symbol_attr (sym);
+
+  init_struct (block, descriptor,
+	       get_null_array_descriptor_init (TREE_TYPE (descriptor),
+					       expr->ts, rank, attr));
+}
+
+
+void
+gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor, 
+			   gfc_symbol *sym, gfc_expr *expr, tree value)
+{
+  symbol_attribute attr;
+
+  attr = gfc_symbol_attr (sym);
+
+  init_struct (block, descriptor,
+	       get_descriptor_init (TREE_TYPE (descriptor), sym->ts, 0,
+				    attr, scalar_value (expr->ts, value)));
 }
 
 
@@ -1348,12 +1599,8 @@ gfc_get_array_span (tree desc, gfc_expr *expr)
 void
 gfc_trans_static_array_pointer (gfc_symbol * sym)
 {
-  tree type;
-
   gcc_assert (TREE_STATIC (sym->backend_decl));
-  /* Just zero the data member.  */
-  type = TREE_TYPE (sym->backend_decl);
-  DECL_INITIAL (sym->backend_decl) = gfc_build_null_descriptor (type);
+  gfc_clear_descriptor (nullptr, sym, sym->backend_decl);
 }
 
 

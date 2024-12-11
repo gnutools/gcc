@@ -104,6 +104,74 @@ get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr)
 				    akind, !(attr.pointer || attr.target));
 }
 
+
+tree
+gfc_conv_scalar_null_to_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr, tree scalar)
+{
+  symbol_attribute attr = sym->attr;
+
+  tree type = get_scalar_to_descriptor_type (scalar, attr);
+  tree desc = gfc_create_var (type, "desc");
+  DECL_ARTIFICIAL (desc) = 1;
+
+  if (CONSTANT_CLASS_P (scalar))
+    {
+      tree tmp;
+      tmp = gfc_create_var (TREE_TYPE (scalar), "scalar");
+      gfc_add_modify (&se->pre, tmp, scalar);
+      scalar = tmp;
+    }
+  if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
+    scalar = gfc_build_addr_expr (NULL_TREE, scalar);
+
+  gfc_set_scalar_descriptor (&se->pre, desc, sym, expr, scalar);
+
+  /* Copy pointer address back - but only if it could have changed and
+     if the actual argument is a pointer and not, e.g., NULL().  */
+  if ((attr.pointer || attr.allocatable) && attr.intent != INTENT_IN)
+    gfc_add_modify (&se->post, scalar,
+		    fold_convert (TREE_TYPE (scalar),
+				  gfc_conv_descriptor_data_get (desc)));
+  return desc;
+}
+
+
+tree
+gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
+{
+#if 0
+  symbol_attribute attr = sym->attr;
+#endif
+  tree lower[GFC_MAX_DIMENSIONS], upper[GFC_MAX_DIMENSIONS];
+
+  for (int i = 0; i < expr->rank; i++)
+    {
+      lower[i] = NULL_TREE;
+      upper[i] = NULL_TREE;
+    }
+
+  tree elt_type = gfc_typenode_for_spec (&sym->ts);
+  tree desc_type = gfc_get_array_type_bounds (elt_type, expr->rank, 0,
+					      lower, upper, 0,
+					      GFC_ARRAY_UNKNOWN, false);
+  tree desc = gfc_create_var (desc_type, "desc");
+  DECL_ARTIFICIAL (desc) = 1;
+
+  gfc_clear_descriptor (&se->pre, sym, expr, desc);
+
+#if 0
+  /* Copy pointer address back - but only if it could have changed and
+     if the actual argument is a pointer and not, e.g., NULL().  */
+  if ((attr.pointer || attr.allocatable) && attr.intent != INTENT_IN)
+    gfc_add_modify (&se->post, scalar,
+		    fold_convert (TREE_TYPE (scalar),
+				  gfc_conv_descriptor_data_get (desc)));
+#endif
+
+  return desc;
+}
+
+
 tree
 gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
@@ -990,10 +1058,9 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	      tmp = gfc_finish_block (&block);
 
 	      gfc_init_block (&block);
-	      gfc_conv_descriptor_data_set (&block, ctree, null_pointer_node);
+	      gfc_clear_descriptor (&block, fsym, ctree);
 	      if (derived_array && *derived_array != NULL_TREE)
-		gfc_conv_descriptor_data_set (&block, *derived_array,
-					      null_pointer_node);
+		gfc_clear_descriptor (&block, fsym, *derived_array);
 
 	      tmp = build3_v (COND_EXPR, cond_optional, tmp,
 			      gfc_finish_block (&block));
@@ -5954,6 +6021,7 @@ expr_may_alias_variables (gfc_expr *e, bool array_may_alias)
 
 /* A helper function to set the dtype for unallocated or unassociated
    entities.  */
+#if 0
 
 static void
 set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
@@ -5996,7 +6064,7 @@ set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
 		   build_empty_stmt (input_location));
   gfc_add_expr_to_block (&parmse->pre, cond);
 }
-
+#endif
 
 
 /* Provide an interface between gfortran array descriptors and the F2018:18.4
@@ -6640,12 +6708,11 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	     correct rank.  */
 	  if (fsym->as && fsym->as->type == AS_ASSUMED_RANK)
 	    {
-	      tree rank;
 	      tree tmp = parmse->expr;
-	      tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
-	      rank = gfc_conv_descriptor_rank (tmp);
-	      gfc_add_modify (&parmse->pre, rank,
-			      build_int_cst (TREE_TYPE (rank), e->rank));
+	      if (e->rank == 0)
+		tmp = gfc_conv_scalar_null_to_descriptor (parmse, fsym, e, tmp);
+	      else
+		tmp = gfc_conv_null_array_descriptor (parmse, fsym, e);
 	      parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	    }
 	  else
@@ -7840,7 +7907,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	      /* Unallocated allocatable arrays and unassociated pointer
 		 arrays need their dtype setting if they are argument
 		 associated with assumed rank dummies to set the rank.  */
-	      set_dtype_for_unallocated (&parmse, e);
+	      //set_dtype_for_unallocated (&parmse, e);
 	    }
 	  else if (e->expr_type == EXPR_VARIABLE
 		   && e->symtree->n.sym->attr.dummy
