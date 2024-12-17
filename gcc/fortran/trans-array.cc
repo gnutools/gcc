@@ -1143,13 +1143,136 @@ gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
 }
 
 
+class lb_info
+{
+public:
+  virtual gfc_expr *lower_bound (int dim) const = 0;
+};
+
+
+class unset_lb : public lb_info
+{
+public:
+  virtual gfc_expr *lower_bound (int) const { return nullptr; }
+};
+
+
+class defined_lb : public lb_info
+{
+  int rank;
+  gfc_expr * const * lower_bounds;
+
+public:
+  defined_lb (int arg_rank, gfc_expr * const arg_lower_bounds[GFC_MAX_DIMENSIONS])
+    : rank(arg_rank), lower_bounds(arg_lower_bounds) { }
+  virtual gfc_expr *lower_bound (int dim) const { return lower_bounds[dim]; }
+};
+
+
 static void
-conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
+conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
+		       const lb_info &info)
 {
   /* Apply a shift of the lbound when supplied.  */
   for (int dim = 0; dim < rank; ++dim)
-    gfc_conv_shift_descriptor_lbound (block, desc, dim,
-				      gfc_index_one_node);
+    {
+      gfc_expr *lb_expr = info.lower_bound(dim);
+
+      tree lower_bound;
+      if (lb_expr == nullptr)
+	lower_bound = gfc_index_one_node;
+      else
+	{
+	  gfc_se lb_se;
+
+	  gfc_init_se (&lb_se, nullptr);
+	  gfc_conv_expr (&lb_se, lb_expr);
+
+	  gfc_add_block_to_block (block, &lb_se.pre);
+	  tree lb_var = gfc_create_var (TREE_TYPE (lb_se.expr), "lower_bound");
+	  gfc_add_modify (block, lb_var, lb_se.expr);
+	  gfc_add_block_to_block (block, &lb_se.post);
+
+	  lower_bound = lb_var;
+	}
+
+      gfc_conv_shift_descriptor_lbound (block, desc, dim, lower_bound);
+    }
+}
+
+
+static void
+conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
+{
+  conv_shift_descriptor (block, desc, rank, unset_lb ());
+}
+
+
+static void
+conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
+		       gfc_expr * const lower_bounds[GFC_MAX_DIMENSIONS])
+{
+  conv_shift_descriptor (block, desc, rank, defined_lb (rank, lower_bounds));
+}
+
+
+static void
+conv_shift_descriptor (stmtblock_t *block, tree desc,
+		       const gfc_array_spec &as)
+{
+  conv_shift_descriptor (block, desc, as.rank, as.lower);
+}
+
+
+static void
+set_type (array_type &type, array_type value)
+{
+  gcc_assert (type == AS_UNKNOWN || type == value);
+  type = value;
+}
+
+
+static void
+array_ref_to_array_spec (const gfc_array_ref &ref, gfc_array_spec &spec)
+{
+  spec.rank = ref.dimen;
+  spec.corank = ref.codimen;
+
+  spec.type = AS_UNKNOWN;
+  spec.cotype = AS_ASSUMED_SIZE;
+
+  for (int dim = 0; dim < spec.rank + spec.corank; dim++)
+    switch (ref.dimen_type[dim])
+      {
+      case DIMEN_ELEMENT:
+	spec.upper[dim] = ref.start[dim];
+	set_type (spec.type, AS_EXPLICIT);
+	break;
+
+      case DIMEN_RANGE:
+	spec.lower[dim] = ref.start[dim];
+	spec.upper[dim] = ref.end[dim];
+	if (spec.upper[dim] == nullptr)
+	  set_type (spec.type, AS_DEFERRED);
+	else
+	  set_type (spec.type, AS_EXPLICIT);
+	break;
+
+      default:
+	break;
+      }
+}
+
+
+void
+gfc_conv_shift_descriptor (stmtblock_t *block, tree desc,
+			   const gfc_array_ref &ar)
+{
+  gfc_array_spec as;
+
+  array_ref_to_array_spec (ar, as);
+
+  conv_shift_descriptor (block, desc, as);
 }
 
 
