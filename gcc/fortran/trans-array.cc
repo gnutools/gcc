@@ -1143,6 +1143,43 @@ gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
 }
 
 
+static void
+conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
+{
+  /* Apply a shift of the lbound when supplied.  */
+  for (int dim = 0; dim < rank; ++dim)
+    gfc_conv_shift_descriptor_lbound (block, desc, dim,
+				      gfc_index_one_node);
+}
+
+
+static bool
+keep_descriptor_lower_bound (gfc_expr *e)
+{
+  gfc_ref *ref;
+
+  /* Detect any array references with vector subscripts.  */
+  for (ref = e->ref; ref; ref = ref->next)
+    if (ref->type == REF_ARRAY && ref->u.ar.type != AR_ELEMENT
+	&& ref->u.ar.type != AR_FULL)
+      {
+	int dim;
+	for (dim = 0; dim < ref->u.ar.dimen; dim++)
+	  if (ref->u.ar.dimen_type[dim] == DIMEN_VECTOR)
+	    break;
+	if (dim < ref->u.ar.dimen)
+	  break;
+      }
+
+  /* Array references with vector subscripts and non-variable
+     expressions need be converted to a one-based descriptor.  */
+  if (ref || e->expr_type != EXPR_VARIABLE)
+    return false;
+
+  return true;
+}
+
+
 /* Obtain offsets for trans-types.cc(gfc_get_array_descr_info).  */
 
 void
@@ -9698,7 +9735,7 @@ is_pointer (gfc_expr *e)
 void
 gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 			  const gfc_symbol *fsym, const char *proc_name,
-			  tree *size, tree *lbshift, tree *packed)
+			  tree *size, bool maybe_shift, tree *packed)
 {
   tree ptr;
   tree desc;
@@ -9935,13 +9972,9 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	  stmtblock_t block;
 
 	  gfc_init_block (&block);
-	  if (lbshift && *lbshift)
-	    {
-	      /* Apply a shift of the lbound when supplied.  */
-	      for (int dim = 0; dim < expr->rank; ++dim)
-		gfc_conv_shift_descriptor_lbound (&block, se->expr, dim,
-						  *lbshift);
-	    }
+	  if (maybe_shift && !keep_descriptor_lower_bound (expr))
+	    conv_shift_descriptor (&block, se->expr, expr->rank);
+
 	  tmp = gfc_class_data_get (ctree);
 	  if (expr->rank > 1 && CLASS_DATA (fsym)->as->rank != expr->rank
 	      && CLASS_DATA (fsym)->as->type == AS_EXPLICIT && !no_pack)

@@ -1012,8 +1012,6 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	  stmtblock_t block;
 	  gfc_init_block (&block);
 	  gfc_ref *ref;
-	  int dim;
-	  tree lbshift = NULL_TREE;
 
 	  /* Array refs with sections indicate, that a for a formal argument
 	     expecting contiguous repacking needs to be done.  */
@@ -1026,25 +1024,9 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	      && (ref || e->rank != fsym->ts.u.derived->components->as->rank))
 	    fsym->attr.contiguous = 1;
 
-	  /* Detect any array references with vector subscripts.  */
-	  for (ref = e->ref; ref; ref = ref->next)
-	    if (ref->type == REF_ARRAY && ref->u.ar.type != AR_ELEMENT
-		&& ref->u.ar.type != AR_FULL)
-	      {
-		for (dim = 0; dim < ref->u.ar.dimen; dim++)
-		  if (ref->u.ar.dimen_type[dim] == DIMEN_VECTOR)
-		    break;
-		if (dim < ref->u.ar.dimen)
-		  break;
-	      }
-	  /* Array references with vector subscripts and non-variable
-	     expressions need be converted to a one-based descriptor.  */
-	  if (ref || e->expr_type != EXPR_VARIABLE)
-	    lbshift = gfc_index_one_node;
-
 	  parmse->expr = var;
 	  gfc_conv_array_parameter (parmse, e, false, fsym, proc_name, nullptr,
-				    &lbshift, &packed);
+				    true, &packed);
 
 	  if (derived_array && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (parmse->expr)))
 	    {
