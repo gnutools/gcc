@@ -107,40 +107,31 @@ gfc_array_dataptr_type (tree desc)
   return (GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc)));
 }
 
-/* Modify a descriptor such that the lbound of a given dimension is the value
-   specified.  This also updates ubound and offset accordingly.  */
 
-void
-gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
-				  int dim, tree new_lbound)
+static bool
+keep_descriptor_lower_bound (gfc_expr *e)
 {
-  tree offs, ubound, lbound, stride;
-  tree diff, offs_diff;
+  gfc_ref *ref;
 
-  new_lbound = fold_convert (gfc_array_index_type, new_lbound);
+  /* Detect any array references with vector subscripts.  */
+  for (ref = e->ref; ref; ref = ref->next)
+    if (ref->type == REF_ARRAY && ref->u.ar.type != AR_ELEMENT
+	&& ref->u.ar.type != AR_FULL)
+      {
+	int dim;
+	for (dim = 0; dim < ref->u.ar.dimen; dim++)
+	  if (ref->u.ar.dimen_type[dim] == DIMEN_VECTOR)
+	    break;
+	if (dim < ref->u.ar.dimen)
+	  break;
+      }
 
-  offs = gfc_conv_descriptor_offset_get (desc);
-  lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
-  ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
-  stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[dim]);
+  /* Array references with vector subscripts and non-variable
+     expressions need be converted to a one-based descriptor.  */
+  if (ref || e->expr_type != EXPR_VARIABLE)
+    return false;
 
-  /* Get difference (new - old) by which to shift stuff.  */
-  diff = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			  new_lbound, lbound);
-
-  /* Shift ubound and offset accordingly.  This has to be done before
-     updating the lbound, as they depend on the lbound expression!  */
-  ubound = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			    ubound, diff);
-  gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[dim], ubound);
-  offs_diff = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			       diff, stride);
-  offs = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			  offs, offs_diff);
-  gfc_conv_descriptor_offset_set (block, desc, offs);
-
-  /* Finally set lbound to value we want.  */
-  gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[dim], new_lbound);
+  return true;
 }
 
 
@@ -8565,7 +8556,7 @@ is_pointer (gfc_expr *e)
 void
 gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 			  const gfc_symbol *fsym, const char *proc_name,
-			  tree *size, tree *lbshift, tree *packed)
+			  tree *size, bool maybe_shift, tree *packed)
 {
   tree ptr;
   tree desc;
@@ -8802,13 +8793,9 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	  stmtblock_t block;
 
 	  gfc_init_block (&block);
-	  if (lbshift && *lbshift)
-	    {
-	      /* Apply a shift of the lbound when supplied.  */
-	      for (int dim = 0; dim < expr->rank; ++dim)
-		gfc_conv_shift_descriptor_lbound (&block, se->expr, dim,
-						  *lbshift);
-	    }
+	  if (maybe_shift && !keep_descriptor_lower_bound (expr))
+	    gfc_conv_shift_descriptor (&block, se->expr, expr->rank);
+
 	  tmp = gfc_class_data_get (ctree);
 	  if (expr->rank > 1 && CLASS_DATA (fsym)->as->rank != expr->rank
 	      && CLASS_DATA (fsym)->as->type == AS_EXPLICIT && !no_pack)

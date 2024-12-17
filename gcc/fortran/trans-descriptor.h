@@ -99,5 +99,7 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr);
 void gfc_clear_descriptor (tree descr);
 void gfc_set_scalar_descriptor (stmtblock_t *, tree, tree);
+void gfc_conv_shift_descriptor_lbound (stmtblock_t *, tree, int, tree);
+void gfc_conv_shift_descriptor (stmtblock_t *, tree, int);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

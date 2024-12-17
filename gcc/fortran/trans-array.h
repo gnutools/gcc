@@ -154,7 +154,7 @@ tree gfc_get_array_span (tree, gfc_expr *);
 void gfc_conv_expr_descriptor (gfc_se *, gfc_expr *);
 /* Convert an array for passing as an actual function parameter.  */
 void gfc_conv_array_parameter (gfc_se *, gfc_expr *, bool, const gfc_symbol *,
-			       const char *, tree *, tree * = nullptr,
+			       const char *, tree *, bool = false,
 			       tree * = nullptr);
 
 /* These work with both descriptors and descriptorless arrays.  */
