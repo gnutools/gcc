@@ -141,6 +141,7 @@ void gfc_conv_resolve_dependencies (gfc_loopinfo *, gfc_ss *, gfc_ss *);
 tree gfc_build_null_descriptor (tree);
 tree gfc_build_default_class_descriptor (tree, gfc_typespec &);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
+void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_scalar_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
 

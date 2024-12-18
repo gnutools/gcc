@@ -849,9 +849,27 @@ gfc_get_vptr_from_expr (tree expr)
   return NULL_TREE;
 }
 
+
+static int
+descriptor_rank (tree descriptor)
+{
+  tree dim = gfc_get_descriptor_dimension (descriptor);
+  tree dim_type = TREE_TYPE (dim);
+  gcc_assert (TREE_CODE (dim_type) == ARRAY_TYPE);
+  tree idx_type = TYPE_DOMAIN (dim_type);
+  gcc_assert (TREE_CODE (idx_type) == INTEGER_TYPE);
+  gcc_assert (integer_zerop (TYPE_MIN_VALUE (idx_type)));
+  tree idx_max = TYPE_MAX_VALUE (idx_type);
+  if (idx_max == NULL_TREE)
+    return GFC_MAX_DIMENSIONS;
+  wide_int max = wi::to_wide (idx_max);
+  return max.to_shwi () + 1;
+}
+
+
 void
 gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
-			     bool lhs_type)
+			     bool)
 {
   tree tmp, tmp2, type;
 
@@ -867,7 +885,18 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
   tmp = gfc_get_descriptor_dimension (lhs_desc);
   tmp2 = gfc_get_descriptor_dimension (rhs_desc);
 
-  type = lhs_type ? TREE_TYPE (tmp) : TREE_TYPE (tmp2);
+  int rank = descriptor_rank (lhs_desc);
+  int rank2 = descriptor_rank (rhs_desc);
+  if (rank == GFC_MAX_DIMENSIONS && rank2 != GFC_MAX_DIMENSIONS)
+    type = TREE_TYPE (tmp2);
+  else if (rank2 == GFC_MAX_DIMENSIONS && rank != GFC_MAX_DIMENSIONS)
+    type = TREE_TYPE (tmp);
+  else
+    {
+      gcc_assert (TREE_TYPE (tmp) == TREE_TYPE (tmp2));
+      type = TREE_TYPE (tmp);
+    }
+
   tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
 		    gfc_index_zero_node, NULL_TREE, NULL_TREE);
   tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
@@ -11115,7 +11144,7 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
       if (expr2->expr_type == EXPR_NULL)
 	{
 	  /* Just set the data pointer to null.  */
-	  gfc_conv_descriptor_data_set (&lse.pre, lse.expr, null_pointer_node);
+	  gfc_nullify_descriptor (&lse.pre, expr1, lse.expr);
 	}
       else if (rank_remap)
 	{
