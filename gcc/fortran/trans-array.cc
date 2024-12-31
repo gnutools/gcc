@@ -10146,32 +10146,21 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	  if (maybe_shift && !keep_descriptor_lower_bound (expr))
 	    conv_shift_descriptor (&block, se->expr, expr->rank);
 
+	  bool assumed_rank_fsym;
+	  if (fsym
+	      && ((fsym->ts.type == BT_CLASS
+		   && CLASS_DATA (fsym)->as
+		   && CLASS_DATA (fsym)->as->type == AS_ASSUMED_RANK)
+		  || (fsym->ts.type != BT_CLASS
+		      && fsym->as
+		      && fsym->as->type == AS_ASSUMED_RANK)))
+	    assumed_rank_fsym = true;
+	  else
+	    assumed_rank_fsym = false;
+
 	  tmp = gfc_class_data_get (ctree);
-	  if (expr->rank > 1 && CLASS_DATA (fsym)->as->rank != expr->rank
-	      && CLASS_DATA (fsym)->as->type == AS_EXPLICIT && !no_pack)
-	    {
-	      tree arr = gfc_create_var (TREE_TYPE (tmp), "parm");
-	      gfc_conv_descriptor_data_set (&block, arr,
-					    gfc_conv_descriptor_data_get (
-					      se->expr));
-	      gfc_conv_descriptor_lbound_set (&block, arr, gfc_index_zero_node,
-					      gfc_index_zero_node);
-	      gfc_conv_descriptor_ubound_set (
-		&block, arr, gfc_index_zero_node,
-		gfc_conv_descriptor_size (se->expr, expr->rank));
-	      gfc_conv_descriptor_stride_set (
-		&block, arr, gfc_index_zero_node,
-		gfc_conv_descriptor_stride_get (se->expr, gfc_index_zero_node));
-	      gfc_add_modify (&block, gfc_conv_descriptor_dtype (arr),
-			      gfc_conv_descriptor_dtype (se->expr));
-	      gfc_add_modify (&block, gfc_conv_descriptor_rank (arr),
-			      build_int_cst (signed_char_type_node, 1));
-	      gfc_conv_descriptor_span_set (&block, arr,
-					    gfc_conv_descriptor_span_get (arr));
-	      gfc_conv_descriptor_offset_set (&block, arr, gfc_index_zero_node);
-	      se->expr = arr;
-	    }
-	  gfc_class_array_data_assign (&block, tmp, se->expr, true);
+	  gfc_copy_sequence_descriptor (block, tmp, se->expr,
+					assumed_rank_fsym);
 
 	  /* Handle optional.  */
 	  if (fsym && fsym->attr.optional && sym && sym->attr.optional)
