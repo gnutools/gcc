@@ -1324,6 +1324,125 @@ gfc_conv_shift_descriptor (stmtblock_t *block, tree desc,
 }
 
 
+void
+gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
+			   int src_rank, const gfc_array_spec &as)
+{
+  int dest_rank = gfc_descriptor_rank (dest);
+
+  /* Set dtype.  */
+  tree dtype = gfc_conv_descriptor_dtype (dest);
+  tree tmp = gfc_get_dtype (TREE_TYPE (src));
+  gfc_add_modify (block, dtype, tmp);
+
+  /* Copy data pointer.  */
+  tree data = gfc_conv_descriptor_data_get (src);
+  gfc_conv_descriptor_data_set (block, dest, data);
+
+  /* Copy the span.  */
+  tree span;
+  if (VAR_P (src)
+      && GFC_DECL_PTR_ARRAY_P (src))
+    span = gfc_conv_descriptor_span_get (src);
+  else
+    {
+      tmp = TREE_TYPE (src);
+      tmp = TYPE_SIZE_UNIT (gfc_get_element_type (tmp));
+      span = fold_convert (gfc_array_index_type, tmp);
+    }
+  gfc_conv_descriptor_span_set (block, dest, span);
+
+  /* Copy offset but adjust it such that it would correspond
+     to a lbound of zero.  */
+  if (src_rank == -1)
+    gfc_conv_descriptor_offset_set (block, dest,
+				    gfc_index_zero_node);
+  else
+    {
+      tree offs = gfc_conv_descriptor_offset_get (src);
+      for (int dim = 0; dim < src_rank; ++dim)
+	{
+	  tree stride = gfc_conv_descriptor_stride_get (src,
+					    gfc_rank_cst[dim]);
+	  tree lbound = gfc_conv_descriptor_lbound_get (src,
+					    gfc_rank_cst[dim]);
+	  tmp = fold_build2_loc (input_location, MULT_EXPR,
+				 gfc_array_index_type, stride,
+				 lbound);
+	  offs = fold_build2_loc (input_location, PLUS_EXPR,
+				  gfc_array_index_type, offs, tmp);
+	}
+      gfc_conv_descriptor_offset_set (block, dest, offs);
+    }
+  /* Set the bounds as declared for the LHS and calculate strides as
+     well as another offset update accordingly.  */
+  tree stride = gfc_conv_descriptor_stride_get (src,
+					   gfc_rank_cst[0]);
+  for (int dim = 0; dim < dest_rank; ++dim)
+    {
+      gfc_se lower_se;
+      gfc_se upper_se;
+
+      gcc_assert (as.lower[dim] && as.upper[dim]);
+
+      /* Convert declared bounds.  */
+      gfc_init_se (&lower_se, NULL);
+      gfc_init_se (&upper_se, NULL);
+      gfc_conv_expr (&lower_se, as.lower[dim]);
+      gfc_conv_expr (&upper_se, as.upper[dim]);
+
+      gfc_add_block_to_block (block, &lower_se.pre);
+      gfc_add_block_to_block (block, &upper_se.pre);
+
+      tree lbound = fold_convert (gfc_array_index_type, lower_se.expr);
+      tree ubound = fold_convert (gfc_array_index_type, upper_se.expr);
+
+      lbound = gfc_evaluate_now (lbound, block);
+      ubound = gfc_evaluate_now (ubound, block);
+
+      gfc_add_block_to_block (block, &lower_se.post);
+      gfc_add_block_to_block (block, &upper_se.post);
+
+      /* Set bounds in descriptor.  */
+      gfc_conv_descriptor_lbound_set (block, dest,
+				      gfc_rank_cst[dim], lbound);
+      gfc_conv_descriptor_ubound_set (block, dest,
+				      gfc_rank_cst[dim], ubound);
+
+      /* Set stride.  */
+      stride = gfc_evaluate_now (stride, block);
+      gfc_conv_descriptor_stride_set (block, dest,
+				      gfc_rank_cst[dim], stride);
+
+      /* Update offset.  */
+      tree offs = gfc_conv_descriptor_offset_get (dest);
+      tmp = fold_build2_loc (input_location, MULT_EXPR,
+			     gfc_array_index_type, lbound, stride);
+      offs = fold_build2_loc (input_location, MINUS_EXPR,
+			      gfc_array_index_type, offs, tmp);
+      offs = gfc_evaluate_now (offs, block);
+      gfc_conv_descriptor_offset_set (block, dest, offs);
+
+      /* Update stride.  */
+      tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+      stride = fold_build2_loc (input_location, MULT_EXPR,
+				gfc_array_index_type, stride, tmp);
+    }
+}
+
+
+void
+gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
+			   int src_rank, const gfc_array_ref &ar)
+{
+  gfc_array_spec as;
+
+  array_ref_to_array_spec (ar, as);
+
+  gfc_conv_remap_descriptor (block, dest, src, src_rank, as);
+}
+
+
 static bool
 keep_descriptor_lower_bound (gfc_expr *e)
 {
