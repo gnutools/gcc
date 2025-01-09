@@ -853,6 +853,9 @@ gfc_get_vptr_from_expr (tree expr)
 int
 gfc_descriptor_rank (tree descriptor)
 {
+  if (TREE_TYPE (descriptor) != NULL_TREE)
+    return GFC_TYPE_ARRAY_RANK (TREE_TYPE (descriptor));
+
   tree dim = gfc_get_descriptor_dimension (descriptor);
   tree dim_type = TREE_TYPE (dim);
   gcc_assert (TREE_CODE (dim_type) == ARRAY_TYPE);
@@ -937,8 +940,17 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
     type = TREE_TYPE (tmp);
   else
     {
-      gcc_assert (TREE_TYPE (tmp) == TREE_TYPE (tmp2));
-      type = TREE_TYPE (tmp);
+      int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (lhs_desc));
+      int corank2 = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (rhs_desc));
+      if (corank > 0 && corank2 == 0)
+	type = TREE_TYPE (tmp2);
+      else if (corank2 > 0 && corank == 0)
+	type = TREE_TYPE (tmp);
+      else
+	{
+	  gcc_assert (TREE_TYPE (tmp) == TREE_TYPE (tmp2));
+	  type = TREE_TYPE (tmp);
+	}
     }
 
   tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
@@ -11801,7 +11813,6 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   tree desc;
   tree res_desc;
   tree tmp;
-  tree offset;
   tree zero_cond;
   tree not_same_shape;
   stmtblock_t shape_block;
@@ -11833,9 +11844,6 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   zero_cond = gfc_evaluate_now (zero_cond, &se->post);
   tmp = gfc_call_free (tmp);
   gfc_add_expr_to_block (&se->post, tmp);
-
-  tmp = gfc_conv_descriptor_data_get (res_desc);
-  gfc_conv_descriptor_data_set (&se->post, desc, tmp);
 
   /* Check that the shapes are the same between lhs and expression.
      The evaluation of the shape is done in 'shape_block' to avoid
@@ -11880,37 +11888,7 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   /* Now reset the bounds returned from the function call to bounds based
      on the lhs lbounds, except where the lhs is not allocated or the shapes
      of 'variable and 'expr' are different. Set the offset accordingly.  */
-  offset = gfc_index_zero_node;
-  for (n = 0 ; n < rank; n++)
-    {
-      tree lbound;
-
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[n]);
-      lbound = fold_build3_loc (input_location, COND_EXPR,
-				gfc_array_index_type, zero_cond,
-				gfc_index_one_node, lbound);
-      lbound = gfc_evaluate_now (lbound, &se->post);
-
-      tmp = gfc_conv_descriptor_ubound_get (res_desc, gfc_rank_cst[n]);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR,
-			     gfc_array_index_type, tmp, lbound);
-      gfc_conv_descriptor_lbound_set (&se->post, desc,
-				      gfc_rank_cst[n], lbound);
-      gfc_conv_descriptor_ubound_set (&se->post, desc,
-				      gfc_rank_cst[n], tmp);
-
-      /* Set stride and accumulate the offset.  */
-      tmp = gfc_conv_descriptor_stride_get (res_desc, gfc_rank_cst[n]);
-      gfc_conv_descriptor_stride_set (&se->post, desc,
-				      gfc_rank_cst[n], tmp);
-      tmp = fold_build2_loc (input_location, MULT_EXPR,
-			     gfc_array_index_type, lbound, tmp);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, tmp);
-      offset = gfc_evaluate_now (offset, &se->post);
-    }
-
-  gfc_conv_descriptor_offset_set (&se->post, desc, offset);
+  gfc_conv_shift_descriptor (&se->post, desc, res_desc, rank, zero_cond);
 }
 
 

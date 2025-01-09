@@ -1443,6 +1443,70 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
 }
 
 
+class conditional_lb
+{
+  tree cond;
+public:
+  conditional_lb (tree arg_cond)
+    : cond (arg_cond) { }
+
+  tree lower_bound (tree src, int n) const {
+    tree lbound = gfc_conv_descriptor_lbound_get (src, gfc_rank_cst[n]);
+    lbound = fold_build3_loc (input_location, COND_EXPR,
+			      gfc_array_index_type, cond,
+			      gfc_index_one_node, lbound);
+    return lbound;
+  }
+};
+
+
+static void
+gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
+			   int rank, const conditional_lb &lb)
+{
+  tree tmp = gfc_conv_descriptor_data_get (src);
+  gfc_conv_descriptor_data_set (block, dest, tmp);
+
+  tree offset = gfc_index_zero_node;
+  for (int n = 0 ; n < rank; n++)
+    {
+      tree lbound;
+
+      lbound = lb.lower_bound (dest, n);
+      lbound = gfc_evaluate_now (lbound, block);
+
+      tmp = gfc_conv_descriptor_ubound_get (src, gfc_rank_cst[n]);
+      tmp = fold_build2_loc (input_location, PLUS_EXPR,
+			     gfc_array_index_type, tmp, lbound);
+      gfc_conv_descriptor_lbound_set (block, dest,
+				      gfc_rank_cst[n], lbound);
+      gfc_conv_descriptor_ubound_set (block, dest,
+				      gfc_rank_cst[n], tmp);
+
+      /* Set stride and accumulate the offset.  */
+      tmp = gfc_conv_descriptor_stride_get (src, gfc_rank_cst[n]);
+      gfc_conv_descriptor_stride_set (block, dest,
+				      gfc_rank_cst[n], tmp);
+      tmp = fold_build2_loc (input_location, MULT_EXPR,
+			     gfc_array_index_type, lbound, tmp);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, tmp);
+      offset = gfc_evaluate_now (offset, block);
+    }
+
+  gfc_conv_descriptor_offset_set (block, dest, offset);
+}
+
+
+void
+gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
+			   int rank, tree zero_cond)
+{
+  gfc_conv_shift_descriptor (block, dest, src, rank,
+			     conditional_lb (zero_cond));
+}
+
+
 static bool
 keep_descriptor_lower_bound (gfc_expr *e)
 {
