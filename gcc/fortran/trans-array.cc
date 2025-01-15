@@ -9237,6 +9237,39 @@ is_explicit_coarray (gfc_expr *expr)
   return cas && cas->cotype == AS_EXPLICIT;
 }
 
+
+static void
+copy_descriptor (stmtblock_t *block, tree dest, tree src,
+		 gfc_expr *src_expr, bool subref)
+{
+  struct lang_type *dest_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (dest));
+  struct lang_type *src_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (src));
+
+  /* When only the array_kind differs, do a view_convert.  */
+  tree tmp1;
+  if (dest_ls
+      && src_ls
+      && dest_ls->rank == src_ls->rank
+      && dest_ls->akind != src_ls->akind)
+    tmp1 = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (dest), src);
+  else
+    tmp1 = desc;
+
+  /* Copy the descriptor for pointer assignments.  */
+  gfc_add_modify (block, dest, tmp1);
+
+  /* Add any offsets from subreferences.  */
+  gfc_get_dataptr_offset (block, dest, src, NULL_TREE, subref, src_expr);
+
+  /* ....and set the span field.  */
+  tree tmp2
+  if (src_expr->ts.type == BT_CHARACTER)
+    tmp2 = gfc_conv_descriptor_span_get (src);
+  else
+    tmp2 = gfc_get_array_span (src, src_expr);
+  gfc_conv_descriptor_span_set (block, dest, tmp2);
+}
+
 /* Convert an array for passing as an actual argument.  Expressions and
    vector subscripts are evaluated and stored in a temporary, which is then
    passed.  For whole arrays the descriptor is passed.  For array sections
@@ -9371,29 +9404,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       if (full && !transposed_dims (ss))
 	{
 	  if (se->direct_byref && !se->byref_noassign)
-	    {
-	      struct lang_type *lhs_ls
-		= TYPE_LANG_SPECIFIC (TREE_TYPE (se->expr)),
-		*rhs_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (desc));
-	      /* When only the array_kind differs, do a view_convert.  */
-	      tmp = lhs_ls && rhs_ls && lhs_ls->rank == rhs_ls->rank
-			&& lhs_ls->akind != rhs_ls->akind
-		      ? build1 (VIEW_CONVERT_EXPR, TREE_TYPE (se->expr), desc)
-		      : desc;
-	      /* Copy the descriptor for pointer assignments.  */
-	      gfc_add_modify (&se->pre, se->expr, tmp);
-
-	      /* Add any offsets from subreferences.  */
-	      gfc_get_dataptr_offset (&se->pre, se->expr, desc, NULL_TREE,
-				      subref_array_target, expr);
-
-	      /* ....and set the span field.  */
-	      if (ss_info->expr->ts.type == BT_CHARACTER)
-		tmp = gfc_conv_descriptor_span_get (desc);
-	      else
-		tmp = gfc_get_array_span (desc, expr);
-	      gfc_conv_descriptor_span_set (&se->pre, se->expr, tmp);
-	    }
+	    copy_descriptor (&se->pre, se->expr, desc, expr,
+			     subref_array_target);
 	  else if (se->want_pointer)
 	    {
 	      /* We pass full arrays directly.  This means that pointers and
