@@ -9280,7 +9280,7 @@ set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		int rank, int corank, gfc_ss *ss, gfc_array_info *info,
 		tree lowers[GFC_MAX_DIMENSIONS],
 		tree uppers[GFC_MAX_DIMENSIONS],
-		bool unlimited_polymorphic, bool data_needed, bool subref)
+		bool data_needed, bool subref)
 {
   int ndim = info->ref ? info->ref->u.ar.dimen : rank;
 
@@ -9305,9 +9305,7 @@ set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
   /* Set the dtype.  */
   tmp = gfc_conv_descriptor_dtype (dest);
   tree dtype;
-  if (unlimited_polymorphic)
-    dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
-  else if (src_expr->ts.type == BT_ASSUMED)
+  if (src_expr->ts.type == BT_ASSUMED)
     {
       tree tmp2 = src;
       if (DECL_LANG_SPECIFIC (tmp2) && GFC_DECL_SAVED_DESCRIPTOR (tmp2))
@@ -9317,7 +9315,7 @@ set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
       dtype = gfc_conv_descriptor_dtype (tmp2);
     }
   else
-    dtype = gfc_get_dtype (TREE_TYPE (dest));
+    dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
   gfc_add_modify (block, tmp, dtype);
 
   /* The 1st element in the section.  */
@@ -9514,9 +9512,6 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       gcc_assert (expr->value.function.isym->id == GFC_ISYM_TRANSPOSE);
       expr = expr->value.function.actual->expr;
     }
-
-  if (!se->direct_byref)
-    se->unlimited_polymorphic = UNLIMITED_POLY (expr);
 
   /* Special case things we know we can pass easily.  */
   switch (expr->expr_type)
@@ -9913,7 +9908,7 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	}
 
       set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim,
-		      ss, info, loop.from, loop.to, se->unlimited_polymorphic,
+		      ss, info, loop.from, loop.to,
 		      !se->data_not_needed, subref_array_target);
 
       desc = parm;

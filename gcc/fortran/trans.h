@@ -61,9 +61,6 @@ typedef struct gfc_se
      the reference to the class object here.  */
   tree class_container;
 
-  /* Whether expr is a reference to an unlimited polymorphic object.  */
-  unsigned unlimited_polymorphic:1;
-
   /* If set gfc_conv_variable will return an expression for the array
      descriptor. When set, want_pointer should also be set.
      If not set scalarizing variables will be substituted.  */
