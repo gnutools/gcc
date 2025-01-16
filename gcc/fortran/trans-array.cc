@@ -1249,8 +1249,8 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 }
 
 
-static void
-conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
+void
+gfc_conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
 {
   conv_shift_descriptor (block, desc, rank, unset_lb ());
 }
@@ -10353,7 +10353,7 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 
 	  gfc_init_block (&block);
 	  if (maybe_shift && !keep_descriptor_lower_bound (expr))
-	    conv_shift_descriptor (&block, se->expr, expr->rank);
+	    gfc_conv_shift_descriptor (&block, se->expr, expr->rank);
 
 	  bool assumed_rank_fsym;
 	  if (fsym
