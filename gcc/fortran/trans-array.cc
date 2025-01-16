@@ -1157,16 +1157,15 @@ gfc_build_null_descriptor (tree type)
 /* Modify a descriptor such that the lbound of a given dimension is the value
    specified.  This also updates ubound and offset accordingly.  */
 
-void
-gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
-				  int dim, tree new_lbound)
+static void
+conv_shift_descriptor_lbound (stmtblock_t* block, tree desc, int dim,
+			      tree new_lbound, tree offset)
 {
-  tree offs, ubound, lbound, stride;
+  tree ubound, lbound, stride;
   tree diff, offs_diff;
 
   new_lbound = fold_convert (gfc_array_index_type, new_lbound);
 
-  offs = gfc_conv_descriptor_offset_get (desc);
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
   ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
   stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[dim]);
@@ -1182,9 +1181,9 @@ gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
   gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[dim], ubound);
   offs_diff = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			       diff, stride);
-  offs = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			  offs, offs_diff);
-  gfc_conv_descriptor_offset_set (block, desc, offs);
+  tree tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			      offset, offs_diff);
+  gfc_add_modify (block, offset, tmp);
 
   /* Finally set lbound to value we want.  */
   gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[dim], new_lbound);
@@ -1221,6 +1220,10 @@ static void
 conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 		       const lb_info &info)
 {
+  tree tmp = gfc_conv_descriptor_offset_get (desc);
+  tree offset_var = gfc_create_var (TREE_TYPE (tmp), "offset");
+  gfc_add_modify (block, offset_var, tmp);
+
   /* Apply a shift of the lbound when supplied.  */
   for (int dim = 0; dim < rank; ++dim)
     {
@@ -1244,8 +1247,10 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 	  lower_bound = lb_var;
 	}
 
-      gfc_conv_shift_descriptor_lbound (block, desc, dim, lower_bound);
+      conv_shift_descriptor_lbound (block, desc, dim, lower_bound, offset_var);
     }
+
+  gfc_conv_descriptor_offset_set (block, desc, offset_var);
 }
 
 
@@ -9486,7 +9491,6 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
   bool subref_array_target = false;
   bool deferred_array_component = false;
   bool substr = false;
-  bool unlimited_polymorphic = false;
   gfc_expr *arg, *ss_expr;
 
   if (se->want_coarray || expr->rank == 0)
@@ -9512,7 +9516,7 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
     }
 
   if (!se->direct_byref)
-    unlimited_polymorphic = UNLIMITED_POLY (expr);
+    se->unlimited_polymorphic = UNLIMITED_POLY (expr);
 
   /* Special case things we know we can pass easily.  */
   switch (expr->expr_type)
@@ -9908,9 +9912,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 			  gfc_get_array_span (desc, expr)));
 	}
 
-
-      set_descriptor (&se->pre, parm, desc, expr, loop.dimen, codim,
-		      ss, info, loop.from, loop.to, unlimited_polymorphic,
+      set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim,
+		      ss, info, loop.from, loop.to, se->unlimited_polymorphic,
 		      !se->data_not_needed, subref_array_target);
 
       desc = parm;

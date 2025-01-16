@@ -212,7 +212,6 @@ tree gfc_get_cfi_dim_sm (tree, tree);
 
 
 /* Shift lower bound of descriptor, updating ubound and offset.  */
-void gfc_conv_shift_descriptor_lbound (stmtblock_t*, tree, int, tree);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, const gfc_array_ref &);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, int);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, tree, int, tree);
