@@ -11405,21 +11405,10 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      cdesc = gfc_create_var (cdesc, "cdesc");
 	      DECL_ARTIFICIAL (cdesc) = 1;
 
-	      gfc_add_modify (&dealloc_block, gfc_conv_descriptor_dtype (cdesc),
-			      gfc_get_dtype_rank_type (1, tmp));
-	      gfc_conv_descriptor_lbound_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_stride_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_ubound_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node, ubound);
-
 	      if (attr->dimension)
 		comp = gfc_conv_descriptor_data_get (comp);
 
-	      gfc_conv_descriptor_data_set (&dealloc_block, cdesc, comp);
+	      set_contiguous_array (&dealloc_block, cdesc, ubound, comp);
 
 	      /* Now call the deallocator.  */
 	      vtab = gfc_find_vtab (&c->ts);
