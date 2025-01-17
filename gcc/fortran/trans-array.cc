@@ -9475,32 +9475,6 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      ubound = build_int_cst (gfc_array_index_type, 1);
 	    }
 
-	  /* Treat strings like arrays.  Or the other way around, do not
-	   * generate an additional array layer for scalar components.  */
-	  if (attr->dimension || c->ts.type == BT_CHARACTER)
-	    {
-	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
-						 &ubound, 1,
-						 GFC_ARRAY_ALLOCATABLE, false);
-
-	      cdesc = gfc_create_var (cdesc, "cdesc");
-	      DECL_ARTIFICIAL (cdesc) = 1;
-
-	      gfc_conv_descriptor_dtype_set (&tmpblock, cdesc,
-					     gfc_get_dtype_rank_type (1, tmp));
-	      gfc_conv_descriptor_lbound_set (&tmpblock, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_stride_set (&tmpblock, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_ubound_set (&tmpblock, cdesc,
-					      gfc_index_zero_node, ubound);
-	    }
-	  else
-	    /* Prevent warning.  */
-	    cdesc = NULL_TREE;
-
 	  if (attr->dimension)
 	    {
 	      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (comp)))
@@ -9523,13 +9497,23 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      gfc_add_block_to_block (&tmpblock, &se.pre);
 	    }
 
+	  /* Treat strings like arrays.  Or the other way around, do not
+	   * generate an additional array layer for scalar components.  */
 	  if (attr->dimension || c->ts.type == BT_CHARACTER)
-	    gfc_conv_descriptor_data_set (&tmpblock, cdesc, comp);
+	    {
+	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
+						 &ubound, 1,
+						 GFC_ARRAY_ALLOCATABLE, false);
+
+	      cdesc = gfc_create_var (cdesc, "cdesc");
+	      DECL_ARTIFICIAL (cdesc) = 1;
+
+	      gfc_set_contiguous_descriptor (&tmpblock, cdesc, ubound, comp);
+	    }
 	  else
 	    cdesc = comp;
 
 	  tree fndecl;
-
 	  fndecl = build_call_expr_loc (input_location,
 					gfor_fndecl_co_broadcast, 5,
 					gfc_build_addr_expr (pvoid_type_node,cdesc),
@@ -9677,21 +9661,11 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      cdesc = gfc_create_var (cdesc, "cdesc");
 	      DECL_ARTIFICIAL (cdesc) = 1;
 
-	      gfc_conv_descriptor_dtype_set (&dealloc_block, cdesc,
-					     gfc_get_dtype_rank_type (1, tmp));
-	      gfc_conv_descriptor_lbound_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_stride_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_ubound_set (&dealloc_block, cdesc,
-					      gfc_index_zero_node, ubound);
-
 	      if (attr->dimension)
 		comp = gfc_conv_descriptor_data_get (comp);
 
-	      gfc_conv_descriptor_data_set (&dealloc_block, cdesc, comp);
+	      gfc_set_contiguous_descriptor (&dealloc_block, cdesc, ubound,
+					     comp);
 
 	      /* Now call the deallocator.  */
 	      vtab = gfc_find_vtab (&c->ts);

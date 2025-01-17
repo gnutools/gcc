@@ -1671,3 +1671,21 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
       gfc_conv_descriptor_token_set (block, dest, tmp);
     }
 }
+ 
+
+void
+gfc_set_contiguous_descriptor (stmtblock_t *block, tree desc, tree size,
+			       tree data_ptr)
+{
+  gfc_conv_descriptor_dtype_set (block, desc,
+				gfc_get_dtype_rank_type (1, TREE_TYPE (desc)));
+  gfc_conv_descriptor_lbound_set (block, desc,
+				  gfc_index_zero_node,
+				  gfc_index_one_node);
+  gfc_conv_descriptor_stride_set (block, desc,
+				  gfc_index_zero_node,
+				  gfc_index_one_node);
+  gfc_conv_descriptor_ubound_set (block, desc,
+				  gfc_index_zero_node, size);
+  gfc_conv_descriptor_data_set (block, desc, data_ptr);
+}
