@@ -10942,6 +10942,23 @@ gfc_caf_is_dealloc_only (int caf_mode)
 }
 
 
+static void
+set_contiguous_array (stmtblock_t *block, tree desc, tree size, tree data_ptr)
+{
+  gfc_add_modify (block, gfc_conv_descriptor_dtype (desc),
+		  gfc_get_dtype_rank_type (1, TREE_TYPE (desc)));
+  gfc_conv_descriptor_lbound_set (block, desc,
+				  gfc_index_zero_node,
+				  gfc_index_one_node);
+  gfc_conv_descriptor_stride_set (block, desc,
+				  gfc_index_zero_node,
+				  gfc_index_one_node);
+  gfc_conv_descriptor_ubound_set (block, desc,
+				  gfc_index_zero_node, size);
+  gfc_conv_descriptor_data_set (block, desc, data_ptr);
+}
+
+
 /* Recursively traverse an object of derived type, generating code to
    deallocate, nullify or copy allocatable components.  This is the work horse
    function for the functions named in this enum.  */
@@ -11202,32 +11219,6 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      ubound = build_int_cst (gfc_array_index_type, 1);
 	    }
 
-	  /* Treat strings like arrays.  Or the other way around, do not
-	   * generate an additional array layer for scalar components.  */
-	  if (attr->dimension || c->ts.type == BT_CHARACTER)
-	    {
-	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
-						 &ubound, 1,
-						 GFC_ARRAY_ALLOCATABLE, false);
-
-	      cdesc = gfc_create_var (cdesc, "cdesc");
-	      DECL_ARTIFICIAL (cdesc) = 1;
-
-	      gfc_add_modify (&tmpblock, gfc_conv_descriptor_dtype (cdesc),
-			      gfc_get_dtype_rank_type (1, tmp));
-	      gfc_conv_descriptor_lbound_set (&tmpblock, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_stride_set (&tmpblock, cdesc,
-					      gfc_index_zero_node,
-					      gfc_index_one_node);
-	      gfc_conv_descriptor_ubound_set (&tmpblock, cdesc,
-					      gfc_index_zero_node, ubound);
-	    }
-	  else
-	    /* Prevent warning.  */
-	    cdesc = NULL_TREE;
-
 	  if (attr->dimension)
 	    {
 	      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (comp)))
@@ -11250,13 +11241,23 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	      gfc_add_block_to_block (&tmpblock, &se.pre);
 	    }
 
+	  /* Treat strings like arrays.  Or the other way around, do not
+	   * generate an additional array layer for scalar components.  */
 	  if (attr->dimension || c->ts.type == BT_CHARACTER)
-	    gfc_conv_descriptor_data_set (&tmpblock, cdesc, comp);
+	    {
+	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
+						 &ubound, 1,
+						 GFC_ARRAY_ALLOCATABLE, false);
+
+	      cdesc = gfc_create_var (cdesc, "cdesc");
+	      DECL_ARTIFICIAL (cdesc) = 1;
+
+	      set_contiguous_array (&tmpblock, cdesc, ubound, comp);
+	    }
 	  else
 	    cdesc = comp;
 
 	  tree fndecl;
-
 	  fndecl = build_call_expr_loc (input_location,
 					gfor_fndecl_co_broadcast, 5,
 					gfc_build_addr_expr (pvoid_type_node,cdesc),
