@@ -1190,16 +1190,52 @@ conv_shift_descriptor_lbound (stmtblock_t* block, tree desc, int dim,
 }
 
 
-class lb_info
+class lb_info_base
 {
 public:
-  virtual gfc_expr *lower_bound (int dim) const = 0;
+  virtual tree lower_bound (stmtblock_t *block, int dim) const = 0;
 };
+
+
+class lb_info : public lb_info_base
+{
+public:
+  using lb_info_base::lower_bound;
+  virtual gfc_expr *lower_bound (int dim) const = 0;
+  virtual tree lower_bound (stmtblock_t *block, int dim) const;
+};
+
+
+tree
+lb_info::lower_bound (stmtblock_t *block, int dim) const
+{
+  gfc_expr *lb_expr = lower_bound(dim);
+
+  if (lb_expr == nullptr)
+    return gfc_index_one_node;
+  else
+    {
+      gfc_se lb_se;
+
+      gfc_init_se (&lb_se, nullptr);
+      gfc_conv_expr (&lb_se, lb_expr);
+
+      gfc_add_block_to_block (block, &lb_se.pre);
+      tree lb_var = gfc_create_var (gfc_array_index_type, "lower_bound");
+      gfc_add_modify (block, lb_var,
+		      fold_convert (gfc_array_index_type, lb_se.expr));
+      gfc_add_block_to_block (block, &lb_se.post);
+
+      return lb_var;
+    }
+}
+
 
 
 class unset_lb : public lb_info
 {
 public:
+  using lb_info::lower_bound;
   virtual gfc_expr *lower_bound (int) const { return nullptr; }
 };
 
@@ -1210,6 +1246,7 @@ class defined_lb : public lb_info
   gfc_expr * const * lower_bounds;
 
 public:
+  using lb_info::lower_bound;
   defined_lb (int arg_rank, gfc_expr * const arg_lower_bounds[GFC_MAX_DIMENSIONS])
     : rank(arg_rank), lower_bounds(arg_lower_bounds) { }
   virtual gfc_expr *lower_bound (int dim) const { return lower_bounds[dim]; }
@@ -1218,7 +1255,7 @@ public:
 
 static void
 conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
-		       const lb_info &info)
+		       const lb_info_base &info)
 {
   tree tmp = gfc_conv_descriptor_offset_get (desc);
   tree offset_var = gfc_create_var (TREE_TYPE (tmp), "offset");
@@ -1227,26 +1264,7 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
   /* Apply a shift of the lbound when supplied.  */
   for (int dim = 0; dim < rank; ++dim)
     {
-      gfc_expr *lb_expr = info.lower_bound(dim);
-
-      tree lower_bound;
-      if (lb_expr == nullptr)
-	lower_bound = gfc_index_one_node;
-      else
-	{
-	  gfc_se lb_se;
-
-	  gfc_init_se (&lb_se, nullptr);
-	  gfc_conv_expr (&lb_se, lb_expr);
-
-	  gfc_add_block_to_block (block, &lb_se.pre);
-	  tree lb_var = gfc_create_var (TREE_TYPE (lb_se.expr), "lower_bound");
-	  gfc_add_modify (block, lb_var, lb_se.expr);
-	  gfc_add_block_to_block (block, &lb_se.post);
-
-	  lower_bound = lb_var;
-	}
-
+      tree lower_bound = info.lower_bound (block, dim);
       conv_shift_descriptor_lbound (block, desc, dim, lower_bound, offset_var);
     }
 
@@ -1326,6 +1344,61 @@ gfc_conv_shift_descriptor (stmtblock_t *block, tree desc,
   array_ref_to_array_spec (ar, as);
 
   conv_shift_descriptor (block, desc, as);
+}
+
+
+class dataref_lb : public lb_info_base
+{
+  gfc_array_spec *as;
+  gfc_expr *conv_arg;
+  tree desc;
+
+public:
+  dataref_lb (gfc_array_spec *arg_as, gfc_expr *arg_conv_arg, tree arg_desc)
+    : as(arg_as), conv_arg (arg_conv_arg), desc (arg_desc)
+  {}
+  virtual tree lower_bound (stmtblock_t *block, int dim) const;
+};
+
+
+tree
+dataref_lb::lower_bound (stmtblock_t *block, int dim) const
+{
+  tree lbound;
+  if (as && as->lower[dim])
+    {
+      gfc_se lbse;
+      gfc_init_se (&lbse, NULL);
+      gfc_conv_expr (&lbse, as->lower[dim]);
+      gfc_add_block_to_block (block, &lbse.pre);
+      lbound = gfc_evaluate_now (lbse.expr, block);
+    }
+  else if (as && conv_arg)
+    {
+      tree tmp = gfc_get_symbol_decl (conv_arg->symtree->n.sym);
+      lbound = gfc_conv_descriptor_lbound_get (tmp, gfc_rank_cst[dim]);
+    }
+  else if (as)
+    lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
+  else
+    lbound = gfc_index_one_node;
+
+  return fold_convert (gfc_array_index_type, lbound);
+}
+
+
+void
+gfc_conv_shift_descriptor_subarray (stmtblock_t *block, tree desc,
+				    gfc_expr *value_expr, gfc_expr *conv_arg)
+{
+  /* Obtain the array spec of full array references.  */
+  gfc_array_spec *as;
+  if (conv_arg)
+    as = gfc_get_full_arrayspec_from_expr (conv_arg);
+  else
+    as = gfc_get_full_arrayspec_from_expr (value_expr);
+
+  conv_shift_descriptor (block, desc, value_expr->rank, dataref_lb (as, conv_arg, desc));
 }
 
 
