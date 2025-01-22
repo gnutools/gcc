@@ -581,6 +581,17 @@ gfc_conv_descriptor_extent_get (tree desc, tree dim)
 }
 
 
+tree
+gfc_conv_descriptor_sm_get (tree desc, tree dim)
+{
+  tree stride = gfc_conv_descriptor_stride_get (desc, dim);
+  tree span = gfc_conv_descriptor_span_get (desc);
+
+  return fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			  stride, span);
+}
+
+
 static int
 get_type_info (const bt &type)
 {
