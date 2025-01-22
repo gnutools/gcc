@@ -6452,11 +6452,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
 	tmp = gfc_index_zero_node;
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_lbound (cfi, idx), tmp);
       /* cfi->dim[i].extent = gfc->dim[i].ubound - gfc->dim[i].lbound + 1.  */
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_ubound_get (gfc, idx),
-			     gfc_conv_descriptor_lbound_get (gfc, idx));
-      tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     tmp, gfc_index_one_node);
+      tmp = gfc_conv_descriptor_extent_get (gfc, idx);
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
       /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
       tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,

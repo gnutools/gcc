@@ -536,6 +536,51 @@ gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
 }
 
 
+/* Calculate the size of a given array dimension from the bounds.  This
+   is simply (ubound - lbound + 1) if this expression is positive
+   or 0 if it is negative (pick either one if it is zero).  Optionally
+   (if or_expr is present) OR the (expression != 0) condition to it.  */
+
+static tree
+conv_array_extent_dim (tree lbound, tree ubound, bool maybe_negative, tree* or_expr)
+{
+  tree res;
+  tree cond;
+
+  /* Calculate (ubound - lbound + 1).  */
+  res = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			 ubound, lbound);
+  res = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type, res,
+			 gfc_index_one_node);
+
+  /* Check whether the size for this dimension is negative.  */
+  if (maybe_negative)
+    {
+      cond = fold_build2_loc (input_location, LE_EXPR, logical_type_node, res,
+			      gfc_index_zero_node);
+      res = fold_build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
+			     gfc_index_zero_node, res);
+    }
+
+  /* Build OR expression.  */
+  if (maybe_negative && or_expr)
+    *or_expr = fold_build2_loc (input_location, TRUTH_OR_EXPR,
+				logical_type_node, *or_expr, cond);
+
+  return res;
+}
+
+
+tree
+gfc_conv_descriptor_extent_get (tree desc, tree dim)
+{
+  tree ubound = gfc_conv_descriptor_ubound_get (desc, dim);
+  tree lbound = gfc_conv_descriptor_lbound_get (desc, dim);
+
+  return conv_array_extent_dim (lbound, ubound, false, NULL);
+}
+
+
 static int
 get_type_info (const bt &type)
 {
@@ -7408,29 +7453,8 @@ gfc_set_delta (gfc_loopinfo *loop)
 tree
 gfc_conv_array_extent_dim (tree lbound, tree ubound, tree* or_expr)
 {
-  tree res;
-  tree cond;
-
-  /* Calculate (ubound - lbound + 1).  */
-  res = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 ubound, lbound);
-  res = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type, res,
-			 gfc_index_one_node);
-
-  /* Check whether the size for this dimension is negative.  */
-  cond = fold_build2_loc (input_location, LE_EXPR, logical_type_node, res,
-			  gfc_index_zero_node);
-  res = fold_build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
-			 gfc_index_zero_node, res);
-
-  /* Build OR expression.  */
-  if (or_expr)
-    *or_expr = fold_build2_loc (input_location, TRUTH_OR_EXPR,
-				logical_type_node, *or_expr, cond);
-
-  return res;
+  return conv_array_extent_dim (lbound, ubound, true, or_expr);
 }
-
 
 /* For an array descriptor, get the total number of elements.  This is just
    the product of the extents along from_dim to to_dim.  */
@@ -7445,14 +7469,7 @@ gfc_conv_descriptor_size_1 (tree desc, int from_dim, int to_dim)
 
   for (dim = from_dim; dim < to_dim; ++dim)
     {
-      tree lbound;
-      tree ubound;
-      tree extent;
-
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
-      ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
-
-      extent = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+      tree extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[dim]);
       res = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			     res, extent);
     }
@@ -10832,12 +10849,7 @@ gfc_full_array_size (stmtblock_t *block, tree decl, int rank)
     idx = gfc_conv_descriptor_rank (decl);
   else
     idx = gfc_rank_cst[rank - 1];
-  nelems = gfc_conv_descriptor_ubound_get (decl, idx);
-  tmp = gfc_conv_descriptor_lbound_get (decl, idx);
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 nelems, tmp);
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			 tmp, gfc_index_one_node);
+  tmp = gfc_conv_descriptor_extent_get (decl, idx);
   tmp = gfc_evaluate_now (tmp, block);
 
   nelems = gfc_conv_descriptor_stride_get (decl, idx);
