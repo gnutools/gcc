@@ -6131,12 +6131,12 @@ set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
 
 static void
 set_gfc_from_cfi (stmtblock_t *block, tree gfc, tree cfi, tree rank,
-		  gfc_symbol *c_sym)
+		  bool allocatable)
 {
   tree tmp = gfc_get_cfi_desc_base_addr (cfi);
   gfc_conv_descriptor_data_set (block, gfc, tmp);
 
-  if (c_sym->attr.allocatable)
+  if (allocatable)
     {
       /* gfc->span = cfi->elem_len.  */
       tmp = fold_convert (gfc_array_index_type,
@@ -6589,7 +6589,7 @@ done:
       tmp = gfc_get_cfi_desc_base_addr (cfi);
       gfc_conv_descriptor_data_set (&block, gfc, tmp);
 
-      set_gfc_from_cfi (&block2, gfc, cfi, rank, fsym);
+      set_gfc_from_cfi (&block2, gfc, cfi, rank, fsym->attr.allocatable);
     }
 
   if (e->ts.type == BT_CHARACTER && !e->ts.u.cl->length)
