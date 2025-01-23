@@ -6129,6 +6129,75 @@ set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
 #endif
 
 
+static void
+set_gfc_from_cfi (stmtblock_t *block, tree gfc, tree cfi, tree rank,
+		  gfc_symbol *c_sym)
+{
+  tree tmp = gfc_get_cfi_desc_base_addr (cfi);
+  gfc_conv_descriptor_data_set (block, gfc, tmp);
+
+  if (c_sym->attr.allocatable)
+    {
+      /* gfc->span = cfi->elem_len.  */
+      tmp = fold_convert (gfc_array_index_type,
+			  gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]));
+    }
+  else
+    {
+      /* gfc->span = ((cfi->dim[0].sm % cfi->elem_len)
+		      ? cfi->dim[0].sm : cfi->elem_len).  */
+      tmp = gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]);
+      tree tmp2 = fold_convert (gfc_array_index_type,
+				gfc_get_cfi_desc_elem_len (cfi));
+      tmp = fold_build2_loc (input_location, TRUNC_MOD_EXPR,
+			     gfc_array_index_type, tmp, tmp2);
+      tmp = fold_build2_loc (input_location, NE_EXPR, boolean_type_node,
+			 tmp, gfc_index_zero_node);
+      tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, tmp,
+			gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]), tmp2);
+    }
+  gfc_conv_descriptor_span_set (block, gfc, tmp);
+
+  /* Calculate offset + set lbound, ubound and stride.  */
+  gfc_conv_descriptor_offset_set (block, gfc, gfc_index_zero_node);
+  /* Loop: for (i = 0; i < rank; ++i).  */
+  tree idx = gfc_create_var (TREE_TYPE (rank), "idx");
+  /* Loop body.  */
+  stmtblock_t loop_body;
+  gfc_init_block (&loop_body);
+  /* gfc->dim[i].lbound = ... */
+  tmp = gfc_get_cfi_dim_lbound (cfi, idx);
+  gfc_conv_descriptor_lbound_set (&loop_body, gfc, idx, tmp);
+
+  /* gfc->dim[i].ubound = gfc->dim[i].lbound + cfi->dim[i].extent - 1. */
+  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			 gfc_conv_descriptor_lbound_get (gfc, idx),
+			 gfc_index_one_node);
+  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+			 gfc_get_cfi_dim_extent (cfi, idx), tmp);
+  gfc_conv_descriptor_ubound_set (&loop_body, gfc, idx, tmp);
+
+  /* gfc->dim[i].stride = cfi->dim[i].sm / cfi>elem_len */
+  tmp = gfc_get_cfi_dim_sm (cfi, idx);
+  tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
+			 gfc_array_index_type, tmp,
+			 fold_convert (gfc_array_index_type,
+				       gfc_get_cfi_desc_elem_len (cfi)));
+  gfc_conv_descriptor_stride_set (&loop_body, gfc, idx, tmp);
+
+  /* gfc->offset -= gfc->dim[i].stride * gfc->dim[i].lbound. */
+  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			 gfc_conv_descriptor_stride_get (gfc, idx),
+			 gfc_conv_descriptor_lbound_get (gfc, idx));
+  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			 gfc_conv_descriptor_offset_get (gfc), tmp);
+  gfc_conv_descriptor_offset_set (&loop_body, gfc, tmp);
+  /* Generate loop.  */
+  gfc_simple_for_loop (block, idx, build_int_cst (TREE_TYPE (idx), 0),
+		       rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
+		       gfc_finish_block (&loop_body));
+}
+
 /* Provide an interface between gfortran array descriptors and the F2018:18.4
    ISO_Fortran_binding array descriptors. */
 
@@ -6508,8 +6577,10 @@ done:
     goto post_call;
 
   gfc_init_block (&block2);
+
   if (e->rank == 0)
     {
+      gfc_init_block (&block2);
       tmp = gfc_get_cfi_desc_base_addr (cfi);
       gfc_add_modify (&block, gfc, fold_convert (TREE_TYPE (gfc), tmp));
     }
@@ -6518,66 +6589,7 @@ done:
       tmp = gfc_get_cfi_desc_base_addr (cfi);
       gfc_conv_descriptor_data_set (&block, gfc, tmp);
 
-      if (fsym->attr.allocatable)
-	{
-	  /* gfc->span = cfi->elem_len.  */
-	  tmp = fold_convert (gfc_array_index_type,
-			      gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]));
-	}
-      else
-	{
-	  /* gfc->span = ((cfi->dim[0].sm % cfi->elem_len)
-			  ? cfi->dim[0].sm : cfi->elem_len).  */
-	  tmp = gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]);
-	  tmp2 = fold_convert (gfc_array_index_type,
-			       gfc_get_cfi_desc_elem_len (cfi));
-	  tmp = fold_build2_loc (input_location, TRUNC_MOD_EXPR,
-				 gfc_array_index_type, tmp, tmp2);
-	  tmp = fold_build2_loc (input_location, NE_EXPR, boolean_type_node,
-			     tmp, gfc_index_zero_node);
-	  tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, tmp,
-			    gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]), tmp2);
-	}
-      gfc_conv_descriptor_span_set (&block2, gfc, tmp);
-
-      /* Calculate offset + set lbound, ubound and stride.  */
-      gfc_conv_descriptor_offset_set (&block2, gfc, gfc_index_zero_node);
-      /* Loop: for (i = 0; i < rank; ++i).  */
-      tree idx = gfc_create_var (TREE_TYPE (rank), "idx");
-      /* Loop body.  */
-      stmtblock_t loop_body;
-      gfc_init_block (&loop_body);
-      /* gfc->dim[i].lbound = ... */
-      tmp = gfc_get_cfi_dim_lbound (cfi, idx);
-      gfc_conv_descriptor_lbound_set (&loop_body, gfc, idx, tmp);
-
-      /* gfc->dim[i].ubound = gfc->dim[i].lbound + cfi->dim[i].extent - 1. */
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_lbound_get (gfc, idx),
-			     gfc_index_one_node);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     gfc_get_cfi_dim_extent (cfi, idx), tmp);
-      gfc_conv_descriptor_ubound_set (&loop_body, gfc, idx, tmp);
-
-      /* gfc->dim[i].stride = cfi->dim[i].sm / cfi>elem_len */
-      tmp = gfc_get_cfi_dim_sm (cfi, idx);
-      tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
-			     gfc_array_index_type, tmp,
-			     fold_convert (gfc_array_index_type,
-					   gfc_get_cfi_desc_elem_len (cfi)));
-      gfc_conv_descriptor_stride_set (&loop_body, gfc, idx, tmp);
-
-      /* gfc->offset -= gfc->dim[i].stride * gfc->dim[i].lbound. */
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_stride_get (gfc, idx),
-			     gfc_conv_descriptor_lbound_get (gfc, idx));
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_offset_get (gfc), tmp);
-      gfc_conv_descriptor_offset_set (&loop_body, gfc, tmp);
-      /* Generate loop.  */
-      gfc_simple_for_loop (&block2, idx, build_int_cst (TREE_TYPE (idx), 0),
-			   rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
-			   gfc_finish_block (&loop_body));
+      set_gfc_from_cfi (&block2, gfc, cfi, rank, fsym);
     }
 
   if (e->ts.type == BT_CHARACTER && !e->ts.u.cl->length)
