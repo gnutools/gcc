@@ -7045,7 +7045,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
   stmtblock_t block;
   gfc_init_block (&block);
   tree cfi = build_fold_indirect_ref_loc (input_location, cfi_desc);
-  tree idx, etype, tmp, tmp2, size_var = NULL_TREE, rank = NULL_TREE;
+  tree idx, tmp, tmp2, size_var = NULL_TREE, rank = NULL_TREE;
   bool do_copy_inout = false;
 
   /* When allocatable + intent out, free the cfi descriptor.  */
@@ -7237,106 +7237,10 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
 	goto done;
     }
 
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
-    {
-      /* gfc->dtype = ... (from declaration, not from cfi).  */
-      etype = gfc_get_element_type (TREE_TYPE (gfc_desc));
-      gfc_add_modify (&block, gfc_conv_descriptor_dtype (gfc_desc),
-		      gfc_get_dtype_rank_type (sym->as->rank, etype));
-      /* gfc->data = cfi->base_addr. */
-      gfc_conv_descriptor_data_set (&block, gfc_desc,
-				    gfc_get_cfi_desc_base_addr (cfi));
-    }
-
-  if (sym->ts.type == BT_ASSUMED)
-    {
-      /* For type(*), take elem_len + dtype.type from the actual argument.  */
-      gfc_add_modify (&block, gfc_conv_descriptor_elem_len (gfc_desc),
-		      gfc_get_cfi_desc_elem_len (cfi));
-      tree cond;
-      tree ctype = gfc_get_cfi_desc_type (cfi);
-      ctype = fold_build2_loc (input_location, BIT_AND_EXPR, TREE_TYPE (ctype),
-			       ctype, build_int_cst (TREE_TYPE (ctype),
-						     CFI_type_mask));
-      tree type = gfc_conv_descriptor_type (gfc_desc);
-
-      /* if (CFI_type_cptr) BT_VOID else BT_UNKNOWN  */
-      /* Note: BT_VOID is could also be CFI_type_funcptr, but assume c_ptr. */
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype), CFI_type_cptr));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_VOID));
-      tmp2 = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node,
-			      type,
-			      build_int_cst (TREE_TYPE (type), BT_UNKNOWN));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      /* if (CFI_type_struct) BT_DERIVED else  < tmp2 >  */
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-					     CFI_type_struct));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_DERIVED));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      /* if (CFI_type_Character) BT_CHARACTER else  < tmp2 >  */
-      /* Note: this is kind=1, CFI_type_ucs4_char is handled in the 'else if'
-	 before (see below, as generated bottom up).  */
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-			      CFI_type_Character));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      /* if (CFI_type_ucs4_char) BT_CHARACTER else  < tmp2 >  */
-      /* Note: gfc->elem_len = cfi->elem_len/4.  */
-      /* However, assuming that CFI_type_ucs4_char cannot be recovered, leave
-	 gfc->elem_len == cfi->elem_len, which helps with operations which use
-	 sizeof() in Fortran and cfi->elem_len in C.  */
-      tmp = gfc_get_cfi_desc_type (cfi);
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, tmp,
-			      build_int_cst (TREE_TYPE (tmp),
-					     CFI_type_ucs4_char));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      /* if (CFI_type_Complex) BT_COMPLEX + cfi->elem_len/2 else  < tmp2 >  */
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-			      CFI_type_Complex));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_COMPLEX));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      /* if (CFI_type_Integer || CFI_type_Logical || CFI_type_Real)
-	   ctype else  <tmp2>  */
-      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-					     CFI_type_Integer));
-      tmp = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-					     CFI_type_Logical));
-      cond = fold_build2_loc (input_location, TRUTH_OR_EXPR, boolean_type_node,
-			      cond, tmp);
-      tmp = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
-			      build_int_cst (TREE_TYPE (ctype),
-					     CFI_type_Real));
-      cond = fold_build2_loc (input_location, TRUTH_OR_EXPR, boolean_type_node,
-			      cond, tmp);
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node,
-			     type, fold_convert (TREE_TYPE (type), ctype));
-      tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
-      gfc_add_expr_to_block (&block, tmp2);
-    }
-
   if (sym->as->rank < 0)
     {
       /* Set gfc->dtype.rank, if assumed-rank.  */
       rank = gfc_get_cfi_desc_rank (cfi);
-      gfc_add_modify (&block, gfc_conv_descriptor_rank (gfc_desc), rank);
     }
   else if (!GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
     /* In that case, the CFI rank and the declared rank can differ.  */
@@ -7344,15 +7248,24 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
   else
     rank = build_int_cst (signed_char_type_node, sym->as->rank);
 
+  stmtblock_t block2;
+  gfc_init_block (&block2);
+
+  do_copy_inout =
+      (sym->ts.type == BT_CHARACTER && !sym->ts.u.cl->length
+       && (sym->as->type == AS_ASSUMED_SIZE || sym->as->type == AS_EXPLICIT))
+      || sym->attr.contiguous;
+
+  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
+    gfc_set_gfc_from_cfi (&block, &block2, gfc_desc, cfi, rank, sym,
+			  true, do_copy_inout, false);
+
   /* With bind(C), the standard requires that both Fortran callers and callees
      handle noncontiguous arrays passed to an dummy with 'contiguous' attribute
      and with character(len=*) + assumed-size/explicit-size arrays.
      cf. Fortran 2018, 18.3.6, paragraph 5 (and for the caller: para. 6). */
-  if ((sym->ts.type == BT_CHARACTER && !sym->ts.u.cl->length
-       && (sym->as->type == AS_ASSUMED_SIZE || sym->as->type == AS_EXPLICIT))
-      || sym->attr.contiguous)
+  if (do_copy_inout)
     {
-      do_copy_inout = true;
       gcc_assert (!sym->attr.pointer);
       stmtblock_t block2;
       tree data;
@@ -7513,110 +7426,6 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
       goto done;
     }
 
-  /* If cfi->data != NULL. */
-  stmtblock_t block2;
-  gfc_init_block (&block2);
-
-  /* if do_copy_inout:  gfc->dspan = gfc->dtype.elem_len
-     We use gfc instead of cfi on the RHS as this might be a constant.  */
-  tmp = fold_convert (gfc_array_index_type,
-		      gfc_conv_descriptor_elem_len (gfc_desc));
-  if (!do_copy_inout)
-    {
-      /* gfc->dspan = ((cfi->dim[0].sm % gfc->elem_len)
-		       ? cfi->dim[0].sm : gfc->elem_len).  */
-      tree cond;
-      tree tmp2 = gfc_get_cfi_dim_sm (cfi, gfc_rank_cst[0]);
-      cond = fold_build2_loc (input_location, TRUNC_MOD_EXPR,
-			      gfc_array_index_type, tmp2, tmp);
-      cond = fold_build2_loc (input_location, NE_EXPR, boolean_type_node,
-			      cond, gfc_index_zero_node);
-      tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
-			tmp2, tmp);
-    }
-  gfc_conv_descriptor_span_set (&block2, gfc_desc, tmp);
-
-  /* Calculate offset + set lbound, ubound and stride.  */
-  gfc_conv_descriptor_offset_set (&block2, gfc_desc, gfc_index_zero_node);
-  if (sym->as->rank > 0 && !sym->attr.pointer && !sym->attr.allocatable)
-    for (int i = 0; i < sym->as->rank; ++i)
-      {
-	gfc_se se;
-	gfc_init_se (&se, NULL );
-	if (sym->as->lower[i])
-	  {
-	    gfc_conv_expr (&se, sym->as->lower[i]);
-	    tmp = se.expr;
-	  }
-	else
-	  tmp = gfc_index_one_node;
-	gfc_add_block_to_block (&block2, &se.pre);
-	gfc_conv_descriptor_lbound_set (&block2, gfc_desc, gfc_rank_cst[i],
-					tmp);
-	gfc_add_block_to_block (&block2, &se.post);
-      }
-
-  /* Loop: for (i = 0; i < rank; ++i).  */
-  idx = gfc_create_var (TREE_TYPE (rank), "idx");
-
-  /* Loop body.  */
-  stmtblock_t loop_body;
-  gfc_init_block (&loop_body);
-  /* gfc->dim[i].lbound = ... */
-  if (sym->attr.pointer || sym->attr.allocatable)
-    {
-      tmp = gfc_get_cfi_dim_lbound (cfi, idx);
-      gfc_conv_descriptor_lbound_set (&loop_body, gfc_desc, idx, tmp);
-    }
-  else if (sym->as->rank < 0)
-    gfc_conv_descriptor_lbound_set (&loop_body, gfc_desc, idx,
-				    gfc_index_one_node);
-
-  /* gfc->dim[i].ubound = gfc->dim[i].lbound + cfi->dim[i].extent - 1. */
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_lbound_get (gfc_desc, idx),
-			     gfc_index_one_node);
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     gfc_get_cfi_dim_extent (cfi, idx), tmp);
-  gfc_conv_descriptor_ubound_set (&loop_body, gfc_desc, idx, tmp);
-
-  if (do_copy_inout)
-    {
-      /* gfc->dim[i].stride
-	   = idx == 0 ? 1 : gfc->dim[i-1].stride * cfi->dim[i-1].extent */
-      tree cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-				   idx, build_zero_cst (TREE_TYPE (idx)));
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, TREE_TYPE (idx),
-			     idx, build_int_cst (TREE_TYPE (idx), 1));
-      tree tmp2 = gfc_get_cfi_dim_extent (cfi, tmp);
-      tmp = gfc_conv_descriptor_stride_get (gfc_desc, tmp);
-      tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp2),
-			     tmp2, tmp);
-      tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
-			gfc_index_one_node, tmp);
-    }
-  else
-    {
-      /* gfc->dim[i].stride = cfi->dim[i].sm / cfi>elem_len */
-      tmp = gfc_get_cfi_dim_sm (cfi, idx);
-      tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
-			     gfc_array_index_type, tmp,
-			     fold_convert (gfc_array_index_type,
-					   gfc_get_cfi_desc_elem_len (cfi)));
-     }
-  gfc_conv_descriptor_stride_set (&loop_body, gfc_desc, idx, tmp);
-  /* gfc->offset -= gfc->dim[i].stride * gfc->dim[i].lbound. */
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_stride_get (gfc_desc, idx),
-			     gfc_conv_descriptor_lbound_get (gfc_desc, idx));
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_offset_get (gfc_desc), tmp);
-  gfc_conv_descriptor_offset_set (&loop_body, gfc_desc, tmp);
-
-  /* Generate loop.  */
-  gfc_simple_for_loop (&block2, idx, build_zero_cst (TREE_TYPE (idx)),
-		       rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
-		       gfc_finish_block (&loop_body));
   if (sym->attr.allocatable || sym->attr.pointer)
     {
       tmp = gfc_get_cfi_desc_base_addr (cfi),
@@ -7785,6 +7594,7 @@ done:
   idx = gfc_create_var (TREE_TYPE (rank), "idx");
 
   /* Loop body.  */
+  stmtblock_t loop_body;
   gfc_init_block (&loop_body);
   /* cfi->dim[i].lower_bound = gfc->dim[i].lbound */
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_lbound (cfi, idx),
