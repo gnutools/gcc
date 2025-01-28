@@ -172,6 +172,27 @@ gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
 }
 
 
+void
+set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
+			    gfc_expr *scalar_expr)
+{
+  tree type = get_scalar_to_descriptor_type (scalar,
+					     gfc_expr_attr (scalar_expr));
+  if (POINTER_TYPE_P (type))
+    type = TREE_TYPE (type);
+
+  tree dtype_val = gfc_get_dtype (type);
+  tree dtype_ref = gfc_conv_descriptor_dtype (desc);
+  gfc_add_modify (block, dtype_ref, dtype_val);
+
+  tree tmp = gfc_class_data_get (scalar);
+  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
+    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+
+  gfc_conv_descriptor_data_set (block, desc, tmp);
+}
+
+
 tree
 gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
@@ -1454,18 +1475,7 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
       && e->rank != class_ts.u.derived->components->as->rank)
     {
       if (e->rank == 0)
-	{
-	  tree type = get_scalar_to_descriptor_type (parmse->expr,
-						     gfc_expr_attr (e));
-	  gfc_add_modify (&block, gfc_conv_descriptor_dtype (ctree),
-			  gfc_get_dtype (type));
-
-	  tmp = gfc_class_data_get (parmse->expr);
-	  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
-	    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-
-	  gfc_conv_descriptor_data_set (&block, ctree, tmp);
-	}
+	set_descriptor_from_scalar (&block, ctree, parmse->expr, e);
       else
 	gfc_class_array_data_assign (&block, ctree, parmse->expr, false);
     }
