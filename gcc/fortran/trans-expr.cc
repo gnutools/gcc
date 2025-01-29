@@ -174,46 +174,53 @@ gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
 
 void
 set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
-			    gfc_expr *scalar_expr, bool is_class,
+			    symbol_attribute scalar_attr, bool is_class,
 			    tree cond_optional)
 {
-  tree type = get_scalar_to_descriptor_type (scalar,
-					     gfc_expr_attr (scalar_expr));
+  tree type = get_scalar_to_descriptor_type (scalar, scalar_attr);
   if (POINTER_TYPE_P (type))
     type = TREE_TYPE (type);
 
-  tree dtype_val = gfc_get_dtype (type);
+  tree etype = gfc_get_element_type (type);
+  tree dtype_val;
+  if (etype == void_type_node)
+    dtype_val = gfc_get_dtype_rank_type (0, TREE_TYPE (scalar));
+  else
+    dtype_val = gfc_get_dtype (type);
+
   tree dtype_ref = gfc_conv_descriptor_dtype (desc);
   gfc_add_modify (block, dtype_ref, dtype_val);
 
+  gfc_conv_descriptor_span_set (block, desc, integer_zero_node);
+
   tree tmp;
   if (is_class)
+    tmp = gfc_class_data_get (scalar);
+  else
+    tmp = scalar;
+
+  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
+    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+
+  if (cond_optional)
     {
-      tmp = gfc_class_data_get (scalar);
-      if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
-	tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-    }
-  else if (cond_optional)
-    {
-      tmp = build3_loc (input_location, COND_EXPR, TREE_TYPE (scalar),
-			cond_optional, scalar,
+      tmp = build3_loc (input_location, COND_EXPR, TREE_TYPE (tmp),
+			cond_optional, tmp,
 			fold_convert (TREE_TYPE (scalar),
 				      null_pointer_node));
     }
-  else
-    tmp = scalar;
 
   gfc_conv_descriptor_data_set (block, desc, tmp);
 }
 
 
+
 tree
 gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
-  tree desc, type, etype;
+  tree desc, type;
 
   type = get_scalar_to_descriptor_type (scalar, attr);
-  etype = TREE_TYPE (scalar);
   desc = gfc_create_var (type, "desc");
   DECL_ARTIFICIAL (desc) = 1;
 
@@ -224,15 +231,9 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
       gfc_add_modify (&se->pre, tmp, scalar);
       scalar = tmp;
     }
-  if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
-    scalar = gfc_build_addr_expr (NULL_TREE, scalar);
-  else if (TREE_TYPE (etype) && TREE_CODE (TREE_TYPE (etype)) == ARRAY_TYPE)
-    etype = TREE_TYPE (etype);
-  gfc_add_modify (&se->pre, gfc_conv_descriptor_dtype (desc),
-		  gfc_get_dtype_rank_type (0, etype));
-  gfc_conv_descriptor_data_set (&se->pre, desc, scalar);
-  gfc_conv_descriptor_span_set (&se->pre, desc,
-				gfc_conv_descriptor_elem_len (desc));
+
+  set_descriptor_from_scalar (&se->pre, desc, scalar, attr,
+			      false, NULL_TREE);
 
   /* Copy pointer address back - but only if it could have changed and
      if the actual argument is a pointer and not, e.g., NULL().  */
@@ -1103,8 +1104,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	  /* Scalar to an assumed-rank array.  */
 	  if (fsym->ts.u.derived->components->as)
 	    set_descriptor_from_scalar (&parmse->pre, ctree,
-					parmse->expr, e, false,
-					cond_optional);
+					parmse->expr, gfc_expr_attr (e),
+					false, cond_optional);
           else
 	    {
 	      tmp = fold_convert (TREE_TYPE (ctree), parmse->expr);
@@ -1478,8 +1479,8 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
       && e->rank != class_ts.u.derived->components->as->rank)
     {
       if (e->rank == 0)
-	set_descriptor_from_scalar (&block, ctree, parmse->expr, e,
-				    true, NULL_TREE);
+	set_descriptor_from_scalar (&block, ctree, parmse->expr,
+				    gfc_expr_attr (e), true, NULL_TREE);
       else
 	gfc_class_array_data_assign (&block, ctree, parmse->expr, false);
     }
