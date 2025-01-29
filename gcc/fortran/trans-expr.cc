@@ -174,7 +174,8 @@ gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
 
 void
 set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
-			    gfc_expr *scalar_expr)
+			    gfc_expr *scalar_expr, bool is_class,
+			    tree cond_optional)
 {
   tree type = get_scalar_to_descriptor_type (scalar,
 					     gfc_expr_attr (scalar_expr));
@@ -185,9 +186,22 @@ set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
   tree dtype_ref = gfc_conv_descriptor_dtype (desc);
   gfc_add_modify (block, dtype_ref, dtype_val);
 
-  tree tmp = gfc_class_data_get (scalar);
-  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
-    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+  tree tmp;
+  if (is_class)
+    {
+      tmp = gfc_class_data_get (scalar);
+      if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
+	tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+    }
+  else if (cond_optional)
+    {
+      tmp = build3_loc (input_location, COND_EXPR, TREE_TYPE (scalar),
+			cond_optional, scalar,
+			fold_convert (TREE_TYPE (scalar),
+				      null_pointer_node));
+    }
+  else
+    tmp = scalar;
 
   gfc_conv_descriptor_data_set (block, desc, tmp);
 }
@@ -1088,20 +1102,9 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 
 	  /* Scalar to an assumed-rank array.  */
 	  if (fsym->ts.u.derived->components->as)
-	    {
-	      tree type;
-	      type = get_scalar_to_descriptor_type (parmse->expr,
-						    gfc_expr_attr (e));
-	      gfc_add_modify (&parmse->pre, gfc_conv_descriptor_dtype (ctree),
-			      gfc_get_dtype (type));
-	      if (optional)
-		parmse->expr = build3_loc (input_location, COND_EXPR,
-					   TREE_TYPE (parmse->expr),
-					   cond_optional, parmse->expr,
-					   fold_convert (TREE_TYPE (parmse->expr),
-							 null_pointer_node));
-	      gfc_conv_descriptor_data_set (&parmse->pre, ctree, parmse->expr);
-	    }
+	    set_descriptor_from_scalar (&parmse->pre, ctree,
+					parmse->expr, e, false,
+					cond_optional);
           else
 	    {
 	      tmp = fold_convert (TREE_TYPE (ctree), parmse->expr);
@@ -1475,7 +1478,8 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
       && e->rank != class_ts.u.derived->components->as->rank)
     {
       if (e->rank == 0)
-	set_descriptor_from_scalar (&block, ctree, parmse->expr, e);
+	set_descriptor_from_scalar (&block, ctree, parmse->expr, e,
+				    true, NULL_TREE);
       else
 	gfc_class_array_data_assign (&block, ctree, parmse->expr, false);
     }
