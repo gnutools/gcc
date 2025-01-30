@@ -459,7 +459,6 @@ bool gfc_assignment_finalizer_call (gfc_se *, gfc_expr *, bool);
 
 void gfc_class_array_data_assign (stmtblock_t *, tree, tree, bool);
 void gfc_conv_remap_descriptor (stmtblock_t *, tree, tree, int, const gfc_array_ref &);
-int gfc_descriptor_rank (tree);
 void gfc_conv_derived_to_class (gfc_se *, gfc_expr *, gfc_symbol *fsym, tree,
 				bool, bool, const char *, tree * = nullptr);
 void gfc_conv_class_to_class (gfc_se *, gfc_expr *, gfc_typespec, bool, bool,
@@ -553,8 +552,6 @@ bool gfc_expr_is_variable (gfc_expr *);
    gfc_inline_intrinsic_function_p returns true.  */
 int gfc_is_intrinsic_libcall (gfc_expr *);
 
-void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
-			   gfc_symbol *, bool, bool, bool);
 /* Used to call ordinary functions/subroutines
    and procedure pointer components.  */
 int gfc_conv_procedure_call (gfc_se *, gfc_symbol *, gfc_actual_arglist *,
