@@ -458,7 +458,6 @@ void gfc_finalize_tree_expr (gfc_se *, gfc_symbol *, symbol_attribute, int);
 bool gfc_assignment_finalizer_call (gfc_se *, gfc_expr *, bool);
 
 void gfc_class_array_data_assign (stmtblock_t *, tree, tree, bool);
-void gfc_copy_sequence_descriptor (stmtblock_t &, tree, tree, bool);
 void gfc_conv_remap_descriptor (stmtblock_t *, tree, tree, int, const gfc_array_ref &);
 int gfc_descriptor_rank (tree);
 void gfc_conv_derived_to_class (gfc_se *, gfc_expr *, gfc_symbol *fsym, tree,
