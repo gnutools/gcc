@@ -1689,23 +1689,13 @@ gfc_get_desc_dim_type (void)
 }
 
 
-/* Return the DTYPE for an array.  This describes the type and type parameters
-   of the array.  */
-/* TODO: Only call this when the value is actually used, and make all the
-   unknown cases abort.  */
-
-tree
-gfc_get_dtype_rank_type (int rank, tree etype)
+void
+gfc_get_type_info (tree etype, bt *type, tree *psize)
 {
-  tree ptype;
   tree size;
-  int n;
-  tree tmp;
-  tree dtype;
-  tree field;
-  vec<constructor_elt, va_gc> *v = NULL;
+  bt n;
 
-  ptype = etype;
+  tree ptype = etype;
   while (TREE_CODE (etype) == POINTER_TYPE
 	 || TREE_CODE (etype) == ARRAY_TYPE)
     {
@@ -1760,6 +1750,12 @@ gfc_get_dtype_rank_type (int rank, tree etype)
       gcc_unreachable ();
     }
 
+  if (type)
+    *type = n;
+
+  if (psize == nullptr)
+    return;
+
   switch (n)
     {
     case BT_CHARACTER:
@@ -1779,6 +1775,29 @@ gfc_get_dtype_rank_type (int rank, tree etype)
 
   STRIP_NOPS (size);
   size = fold_convert (size_type_node, size);
+
+  if (psize)
+    *psize = size;
+}
+
+
+/* Return the DTYPE for an array.  This describes the type and type parameters
+   of the array.  */
+/* TODO: Only call this when the value is actually used, and make all the
+   unknown cases abort.  */
+
+tree
+gfc_get_dtype_rank_type (int rank, tree etype)
+{
+  tree size;
+  bt n;
+  tree tmp;
+  tree dtype;
+  tree field;
+  vec<constructor_elt, va_gc> *v = NULL;
+
+  gfc_get_type_info (etype, &n, &size);
+
   tmp = get_dtype_type_node ();
   field = gfc_advance_chain (TYPE_FIELDS (tmp),
 			     GFC_DTYPE_ELEM_LEN);

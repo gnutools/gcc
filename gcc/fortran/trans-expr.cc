@@ -167,8 +167,7 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
       scalar = tmp;
     }
 
-  gfc_set_descriptor_from_scalar (&se->pre, desc, scalar, attr,
-				  false, NULL_TREE);
+  gfc_set_descriptor_from_scalar (&se->pre, desc, scalar, &attr);
 
   /* Copy pointer address back - but only if it could have changed and
      if the actual argument is a pointer and not, e.g., NULL().  */
@@ -311,8 +310,8 @@ gfc_class_vptr_get (tree decl)
 }
 
 
-tree
-gfc_class_len_get (tree decl)
+bool
+gfc_class_len_get (tree decl, tree * result)
 {
   tree len;
   /* For class arrays decl may be a temporary descriptor handle, the len is
@@ -324,9 +323,22 @@ gfc_class_len_get (tree decl)
     decl = build_fold_indirect_ref_loc (input_location, decl);
   len = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (decl)),
 			   CLASS_LEN_FIELD);
-  return fold_build3_loc (input_location, COMPONENT_REF,
-			  TREE_TYPE (len), decl, len,
-			  NULL_TREE);
+  if (len == NULL_TREE)
+    return false;
+
+  *result = fold_build3_loc (input_location, COMPONENT_REF,
+			     TREE_TYPE (len), decl, len,
+			     NULL_TREE);
+  return true;
+}
+
+
+tree
+gfc_class_len_get (tree decl)
+{
+  tree result;
+  gfc_class_len_get (decl, &result);
+  return result;
 }
 
 
@@ -336,20 +348,11 @@ gfc_class_len_get (tree decl)
 static tree
 gfc_class_len_or_zero_get (tree decl)
 {
-  tree len;
-  /* For class arrays decl may be a temporary descriptor handle, the vptr is
-     then available through the saved descriptor.  */
-  if (VAR_P (decl) && DECL_LANG_SPECIFIC (decl)
-      && GFC_DECL_SAVED_DESCRIPTOR (decl))
-    decl = GFC_DECL_SAVED_DESCRIPTOR (decl);
-  if (POINTER_TYPE_P (TREE_TYPE (decl)))
-    decl = build_fold_indirect_ref_loc (input_location, decl);
-  len = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (decl)),
-			   CLASS_LEN_FIELD);
-  return len != NULL_TREE ? fold_build3_loc (input_location, COMPONENT_REF,
-					     TREE_TYPE (len), decl, len,
-					     NULL_TREE)
-    : build_zero_cst (gfc_charlen_type_node);
+  tree result;
+  if (gfc_class_len_get (decl, &result))
+    return result;
+  else
+    return build_zero_cst (gfc_charlen_type_node);
 }
 
 
@@ -974,9 +977,18 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 
 	  /* Scalar to an assumed-rank array.  */
 	  if (fsym->ts.u.derived->components->as)
-	    gfc_set_descriptor_from_scalar (&parmse->pre, ctree,
-					    parmse->expr, gfc_expr_attr (e),
-					    false, cond_optional);
+	    {
+	      tree tmp = parmse->expr;
+	      if (cond_optional)
+		{
+		  tmp = build3_loc (input_location, COND_EXPR, TREE_TYPE (tmp),
+				    cond_optional, tmp,
+				    fold_convert (TREE_TYPE (tmp),
+						  null_pointer_node));
+		}
+	      symbol_attribute attr = gfc_expr_attr (e);
+	      gfc_set_descriptor_from_scalar (&parmse->pre, ctree, tmp, &attr);
+	    }
           else
 	    {
 	      tmp = fold_convert (TREE_TYPE (ctree), parmse->expr);
@@ -1350,8 +1362,11 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
       && e->rank != class_ts.u.derived->components->as->rank)
     {
       if (e->rank == 0)
-	gfc_set_descriptor_from_scalar (&block, ctree, parmse->expr,
-					gfc_expr_attr (e), true, NULL_TREE);
+	{
+	  tree data = gfc_class_data_get (parmse->expr);
+	  symbol_attribute attr = gfc_expr_attr (e);
+	  gfc_set_descriptor_from_scalar (&block, ctree, data, &attr);
+	}
       else
 	gfc_class_array_data_assign (&block, ctree, parmse->expr, false);
     }

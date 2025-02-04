@@ -92,6 +92,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-array.h"
 #include "trans-const.h"
 #include "dependency.h"
+#include "gimplify.h"
 
 static bool gfc_get_array_constructor_size (mpz_t *, gfc_constructor_base);
 
@@ -592,7 +593,7 @@ gfc_conv_descriptor_sm_get (tree desc, tree dim)
 }
 
 
-static int
+static bt
 get_type_info (const bt &type)
 {
   switch (type)
@@ -603,10 +604,12 @@ get_type_info (const bt &type)
     case BT_COMPLEX:
     case BT_DERIVED:
     case BT_CHARACTER:
-    case BT_CLASS:
     case BT_VOID:
     case BT_UNSIGNED:
       return type;
+
+    case BT_CLASS:
+      return BT_DERIVED;
 
     case BT_PROCEDURE:
     case BT_ASSUMED:
@@ -664,9 +667,15 @@ get_size_info (gfc_typespec &ts)
 class modify_info
 {
 public:
+  virtual bool set_dtype () const { return is_initialization (); }
+  virtual bool use_tree_type () const { return false; }
   virtual bool is_initialization () const { return false; }
   virtual bool initialize_data () const { return false; }
+  virtual bool set_span () const { return false; }
+  virtual bool set_token () const { return true; }
   virtual tree get_data_value () const { return NULL_TREE; }
+  virtual bt get_type_type (const gfc_typespec &) const { return BT_UNKNOWN; }
+  virtual tree get_length (gfc_typespec *ts) const { return get_size_info (*ts); }
 };
 
 class nullification : public modify_info
@@ -690,8 +699,14 @@ class init_info : public modify_info
 public:
   virtual bool is_initialization () const { return true; }
   virtual gfc_typespec *get_type () const { return nullptr; }
+  virtual bt get_type_type (const gfc_typespec &) const;
 };
 
+bt
+init_info::get_type_type (const gfc_typespec & type_info) const
+{
+  return get_type_info (type_info.type);
+}
 
 class default_init : public init_info
 {
@@ -721,23 +736,103 @@ public:
   virtual gfc_typespec *get_type () const { return &ts; }
 };
 
-class scalar_value : public init_info
+
+class scalar_value : public modify_info
 {
 private:
-  gfc_typespec &ts;
+  bool initialisation;
+  gfc_typespec *ts;
   tree value;
+  bool use_tree_type_;
+  bool clear_token;
+  tree get_elt_type () const;
 
 public:
   scalar_value(gfc_typespec &arg_ts, tree arg_value)
-    : ts(arg_ts), value(arg_value) { }
+    : initialisation(true), ts(&arg_ts), value(arg_value), use_tree_type_ (false), clear_token(true) { }
+  scalar_value(tree arg_value)
+    : initialisation(true), ts(nullptr), value(arg_value), use_tree_type_ (true), clear_token(false) { }
+  virtual bool is_initialization () const { return initialisation; }
   virtual bool initialize_data () const { return true; }
-  virtual tree get_data_value () const { return value; }
-  virtual gfc_typespec *get_type () const { return &ts; }
+  virtual tree get_data_value () const;
+  virtual gfc_typespec *get_type () const { return ts; }
+  virtual bool set_span () const { return true; }
+  virtual bool use_tree_type () const { return use_tree_type_; }
+  virtual bool set_token () const { return clear_token; }
+  virtual bt get_type_type (const gfc_typespec &) const;
+  virtual tree get_length (gfc_typespec *ts) const;
 };
 
 
+tree
+scalar_value::get_data_value () const
+{
+  if (POINTER_TYPE_P (TREE_TYPE (value)))
+    return value;
+  else
+    return gfc_build_addr_expr (NULL_TREE, value);
+}
+
+tree
+scalar_value::get_elt_type () const
+{
+  tree tmp = value;
+
+  if (POINTER_TYPE_P (TREE_TYPE (tmp)))
+    tmp = TREE_TYPE (tmp);
+
+  tree etype = TREE_TYPE (tmp);
+
+  /* For arrays, which are not scalar coarrays.  */
+  if (TREE_CODE (etype) == ARRAY_TYPE && !TYPE_STRING_FLAG (etype))
+    etype = TREE_TYPE (etype);
+
+  return etype;
+}
+
+bt
+scalar_value::get_type_type (const gfc_typespec & type_info) const
+{
+  bt n;
+  if (use_tree_type ())
+    {
+      tree etype = get_elt_type ();
+      gfc_get_type_info (etype, &n, nullptr);
+    }
+  else
+    n = get_type_info (type_info.type);
+
+  return n;
+}
+
+tree
+scalar_value::get_length (gfc_typespec * type_info) const
+{
+  bt n;
+  tree size;
+  if (use_tree_type ())
+    {
+      if (TREE_CODE (value) == COMPONENT_REF)
+	{
+	  tree parent_obj = TREE_OPERAND (value, 0);
+	  tree len;
+	  if (GFC_CLASS_TYPE_P (TREE_TYPE (parent_obj))
+	      && gfc_class_len_get (parent_obj, &len))
+	    return len;
+	}
+
+      tree etype = get_elt_type ();
+      gfc_get_type_info (etype, &n, &size);
+    }
+  else
+    size = modify_info::get_length (type_info);
+
+  return size;
+}
+
+
 static tree
-build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &,
+build_dtype (gfc_typespec *ts, int rank, const symbol_attribute &,
 	     const init_info &init)
 {
   vec<constructor_elt, va_gc> *v = nullptr;
@@ -748,15 +843,17 @@ build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &,
 
   gfc_typespec *type_info = init.get_type ();
   if (type_info == nullptr)
-    type_info = &ts;
+    type_info = ts;
 
-  if (!(type_info->type == BT_CLASS
-	|| (type_info->type == BT_CHARACTER
-	    && type_info->deferred)))
+  if (!(init.is_initialization ()
+	&& type_info
+	&& (type_info->type == BT_CLASS
+	    || (type_info->type == BT_CHARACTER
+		&& type_info->deferred))))
     {
       tree elem_len_field = gfc_advance_chain (fields, GFC_DTYPE_ELEM_LEN);
       tree elem_len_val = fold_convert (TREE_TYPE (elem_len_field),
-					get_size_info (*type_info));
+					init.get_length (type_info));
       CONSTRUCTOR_APPEND_ELT (v, elem_len_field, elem_len_val);
     }
 
@@ -772,10 +869,8 @@ build_dtype (gfc_typespec &ts, int rank, const symbol_attribute &,
     }
 
   tree type_info_field = gfc_advance_chain (fields, GFC_DTYPE_TYPE);
-  tree type_info_val = build_int_cst (TREE_TYPE (type_info_field),
-				      get_type_info (type_info->type == BT_CLASS
-						     ? BT_DERIVED
-						     : type_info->type));
+  bt n = init.get_type_type (*type_info);
+  tree type_info_val = build_int_cst (TREE_TYPE (type_info_field), n);
   CONSTRUCTOR_APPEND_ELT (v, type_info_field, type_info_val);
 
   return build_constructor (type, v);
@@ -799,24 +894,36 @@ get_descriptor_init (tree type, gfc_typespec *ts, int rank,
     {
       tree data_field = gfc_advance_chain (fields, DATA_FIELD);
       tree data_value = init.get_data_value ();
+      data_value = fold_convert (TREE_TYPE (data_field), data_value);
       CONSTRUCTOR_APPEND_ELT (v, data_field, data_value);
     }
 
   if (init.is_initialization ())
     {
       tree dtype_field = gfc_advance_chain (fields, DTYPE_FIELD);
-      tree dtype_value = build_dtype (*ts, rank, *attr,
+      tree dtype_value = build_dtype (ts, rank, *attr,
 				      static_cast<const init_info &> (init));
       CONSTRUCTOR_APPEND_ELT (v, dtype_field, dtype_value);
     }
 
-  if (flag_coarray == GFC_FCOARRAY_LIB && attr->codimension)
+  if (init.set_span ())
+    {
+      tree span_field = gfc_advance_chain (fields, SPAN_FIELD);
+      tree span_value = build_zero_cst (TREE_TYPE (span_field));
+      CONSTRUCTOR_APPEND_ELT (v, span_field, span_value);
+    }
+
+  if (flag_coarray == GFC_FCOARRAY_LIB && attr->codimension
+      && init.set_token ())
     {
       /* Declare the variable static so its array descriptor stays present
 	 after leaving the scope.  It may still be accessed through another
 	 image.  This may happen, for example, with the caf_mpi
 	 implementation.  */
-      tree token_field = gfc_advance_chain (fields, CAF_TOKEN_FIELD);
+      bool dim_present = GFC_TYPE_ARRAY_RANK (type) > 0
+			 || GFC_TYPE_ARRAY_CORANK (type) > 0;
+      tree token_field = gfc_advance_chain (fields,
+					    CAF_TOKEN_FIELD - (!dim_present));
       tree token_value = fold_convert (TREE_TYPE (token_field),
 				       null_pointer_node);
       CONSTRUCTOR_APPEND_ELT (v, token_field, token_value);
@@ -1053,7 +1160,8 @@ init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
 	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (value), i, field, field_init)
 	    {
 	      tree ref = fold_build3_loc (input_location, COMPONENT_REF,
-					  TREE_TYPE (field), data_ref,
+					  TREE_TYPE (field),
+					  unshare_expr (data_ref),
 					  field, NULL_TREE);
 	      init_struct (block, ref, field_init);
 	    }
@@ -1074,7 +1182,8 @@ init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
 	{
 	  tree field_decl = ce->index;
 	  tree ref = fold_build3_loc (input_location, COMPONENT_REF,
-				      TREE_TYPE (field_decl), data_ref,
+				      TREE_TYPE (field_decl),
+				      unshare_expr (data_ref),
 				      field_decl, NULL_TREE);
 	  init_struct (block, ref, ce->value);
 	}
@@ -1186,6 +1295,16 @@ gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor,
   init_struct (block, descriptor,
 	       get_descriptor_init (TREE_TYPE (descriptor), &sym->ts, 0,
 				    &attr, scalar_value (expr->ts, value)));
+}
+
+
+void
+gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
+				symbol_attribute *attr)
+{
+  init_struct (block, desc,
+	       get_descriptor_init (TREE_TYPE (desc), nullptr, 0, attr,
+				    scalar_value (scalar)));
 }
 
 
@@ -1850,47 +1969,6 @@ gfc_get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr)
 				    akind, !(attr.pointer || attr.target));
 }
 
-
-void
-gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
-				symbol_attribute scalar_attr, bool is_class,
-				tree cond_optional)
-{
-  tree type = gfc_get_scalar_to_descriptor_type (scalar, scalar_attr);
-  if (POINTER_TYPE_P (type))
-    type = TREE_TYPE (type);
-
-  tree etype = gfc_get_element_type (type);
-  tree dtype_val;
-  if (etype == void_type_node)
-    dtype_val = gfc_get_dtype_rank_type (0, TREE_TYPE (scalar));
-  else
-    dtype_val = gfc_get_dtype (type);
-
-  tree dtype_ref = gfc_conv_descriptor_dtype (desc);
-  gfc_add_modify (block, dtype_ref, dtype_val);
-
-  gfc_conv_descriptor_span_set (block, desc, integer_zero_node);
-
-  tree tmp;
-  if (is_class)
-    tmp = gfc_class_data_get (scalar);
-  else
-    tmp = scalar;
-
-  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
-    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-
-  if (cond_optional)
-    {
-      tmp = build3_loc (input_location, COND_EXPR, TREE_TYPE (tmp),
-			cond_optional, tmp,
-			fold_convert (TREE_TYPE (scalar),
-				      null_pointer_node));
-    }
-
-  gfc_conv_descriptor_data_set (block, desc, tmp);
-}
 
 void
 gfc_copy_sequence_descriptor (stmtblock_t &block, tree lhs_desc, tree rhs_desc,

@@ -116,6 +116,7 @@ bool gfc_return_by_reference (gfc_symbol *);
 bool gfc_is_nodesc_array (gfc_symbol *);
 
 /* Return the DTYPE for an array.  */
+void gfc_get_type_info (tree, bt *, tree *);
 tree gfc_get_dtype_rank_type (int, tree);
 tree gfc_get_dtype (tree, int *rank = NULL);
 

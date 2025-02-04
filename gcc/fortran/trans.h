@@ -426,6 +426,7 @@ gfc_wrapped_block;
 tree gfc_class_set_static_fields (tree, tree, tree);
 tree gfc_class_data_get (tree);
 tree gfc_class_vptr_get (tree);
+bool gfc_class_len_get (tree, tree *);
 tree gfc_class_len_get (tree);
 tree gfc_resize_class_size_with_len (stmtblock_t *, tree, tree);
 gfc_expr * gfc_find_and_cut_at_last_class_ref (gfc_expr *, bool is_mold = false,

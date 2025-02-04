@@ -148,7 +148,7 @@ void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
 				    gfc_expr *, gfc_expr *, locus *);
 tree gfc_get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr);
 void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree,
-				     symbol_attribute, bool, tree);
+				     symbol_attribute *);
 void gfc_copy_sequence_descriptor (stmtblock_t &, tree, tree, bool);
 void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
 			   gfc_symbol *, bool, bool, bool);
