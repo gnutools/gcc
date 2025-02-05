@@ -904,14 +904,20 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
   /* Now set the data field.  */
   ctree = gfc_class_data_get (var);
 
+  tree caf_token;
   if (flag_coarray == GFC_FCOARRAY_LIB && CLASS_DATA (fsym)->attr.codimension)
     {
-      tree token;
       tmp = gfc_get_tree_for_caf_expr (e);
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref (tmp);
-      gfc_get_caf_token_offset (parmse, &token, nullptr, tmp, NULL_TREE, e);
-      gfc_add_modify (&parmse->pre, gfc_conv_descriptor_token (ctree), token);
+      gfc_get_caf_token_offset (parmse, &caf_token, nullptr, tmp, NULL_TREE, e);
+      /* gfc_set_descriptor_from scalar already updates the token,
+         don't do it twice.  */
+      if ((parmse->expr && POINTER_TYPE_P (TREE_TYPE (parmse->expr)))
+	  || (parmse->ss && parmse->ss->info && parmse->ss->info->useflags)
+	  || e->rank != 0
+	  || fsym->ts.u.derived->components->as == nullptr)
+	gfc_add_modify (&parmse->pre, gfc_conv_descriptor_token (ctree), caf_token);
     }
 
   if (optional)
@@ -987,7 +993,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 						  null_pointer_node));
 		}
 	      symbol_attribute attr = gfc_expr_attr (e);
-	      gfc_set_descriptor_from_scalar (&parmse->pre, ctree, tmp, &attr);
+	      gfc_set_descriptor_from_scalar (&parmse->pre, ctree, tmp, &attr,
+					      caf_token);
 	    }
           else
 	    {

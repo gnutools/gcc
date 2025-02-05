@@ -674,6 +674,7 @@ public:
   virtual bool set_span () const { return false; }
   virtual bool set_token () const { return true; }
   virtual tree get_data_value () const { return NULL_TREE; }
+  virtual tree get_caf_token () const { return null_pointer_node; }
   virtual bt get_type_type (const gfc_typespec &) const { return BT_UNKNOWN; }
   virtual tree get_length (gfc_typespec *ts) const { return get_size_info (*ts); }
 };
@@ -743,22 +744,24 @@ private:
   bool initialisation;
   gfc_typespec *ts;
   tree value;
+  tree caf_token;
   bool use_tree_type_;
   bool clear_token;
   tree get_elt_type () const;
 
 public:
   scalar_value(gfc_typespec &arg_ts, tree arg_value)
-    : initialisation(true), ts(&arg_ts), value(arg_value), use_tree_type_ (false), clear_token(true) { }
-  scalar_value(tree arg_value)
-    : initialisation(true), ts(nullptr), value(arg_value), use_tree_type_ (true), clear_token(false) { }
+    : initialisation(true), ts(&arg_ts), value(arg_value), caf_token (NULL_TREE),  use_tree_type_ (false), clear_token(true) { }
+  scalar_value(tree arg_value, tree arg_caf_token)
+    : initialisation(true), ts(nullptr), value(arg_value), caf_token (arg_caf_token), use_tree_type_ (true), clear_token(false) { }
   virtual bool is_initialization () const { return initialisation; }
   virtual bool initialize_data () const { return true; }
   virtual tree get_data_value () const;
   virtual gfc_typespec *get_type () const { return ts; }
   virtual bool set_span () const { return true; }
   virtual bool use_tree_type () const { return use_tree_type_; }
-  virtual bool set_token () const { return clear_token; }
+  virtual bool set_token () const { return clear_token || caf_token != NULL_TREE; }
+  virtual tree get_caf_token () const;
   virtual bt get_type_type (const gfc_typespec &) const;
   virtual tree get_length (gfc_typespec *ts) const;
 };
@@ -828,6 +831,16 @@ scalar_value::get_length (gfc_typespec * type_info) const
     size = modify_info::get_length (type_info);
 
   return size;
+}
+
+tree
+scalar_value::get_caf_token () const
+{
+  if (set_token ()
+      && caf_token != NULL_TREE)
+    return caf_token;
+  else
+    return modify_info::get_caf_token ();
 }
 
 
@@ -925,7 +938,7 @@ get_descriptor_init (tree type, gfc_typespec *ts, int rank,
       tree token_field = gfc_advance_chain (fields,
 					    CAF_TOKEN_FIELD - (!dim_present));
       tree token_value = fold_convert (TREE_TYPE (token_field),
-				       null_pointer_node);
+				       init.get_caf_token ());
       CONSTRUCTOR_APPEND_ELT (v, token_field, token_value);
     }
 
@@ -1422,11 +1435,11 @@ gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor,
 
 void
 gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
-				symbol_attribute *attr)
+				symbol_attribute *attr, tree caf_token)
 {
   init_struct (block, desc,
 	       get_descriptor_init (TREE_TYPE (desc), nullptr, 0, attr,
-				    scalar_value (scalar)));
+				    scalar_value (scalar, caf_token)));
 }
 
 
