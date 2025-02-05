@@ -1077,10 +1077,130 @@ field_count (tree type)
 }
 
 
-bool
+#if 0
+static bool
 complete_init_p (tree type, vec<constructor_elt, va_gc> *init_values)
 {
   return (unsigned) field_count (type) == vec_safe_length (init_values);
+}
+#endif
+
+
+static int
+cmp_wi (const void *x, const void *y)
+{
+  const offset_int *wix = (const offset_int *) x;
+  const offset_int *wiy = (const offset_int *) y;
+
+  return wi::cmpu (*wix, *wiy);
+}
+
+
+static offset_int
+get_offset_bits (tree field)
+{
+  offset_int field_offset = wi::to_offset (DECL_FIELD_OFFSET (field));
+  offset_int field_bit_offset = wi::to_offset (DECL_FIELD_BIT_OFFSET (field));
+  unsigned long offset_align = DECL_OFFSET_ALIGN (field);
+
+  return field_offset * offset_align + field_bit_offset;
+}
+
+
+static bool
+check_cleared_low_bits (const offset_int &val, int bitcount)
+{
+  if (bitcount == 0)
+    return true;
+
+  offset_int mask = wi::mask <offset_int> (bitcount, false);
+  if ((val & mask) != 0)
+    return false;
+
+  return true;
+}
+
+
+static bool
+right_shift_if_clear (const offset_int &val, int bitcount, offset_int *result)
+{
+  if (bitcount == 0)
+    {
+      *result = val;
+      return true;
+    }
+
+  if (!check_cleared_low_bits (val, bitcount))
+    return false;
+
+  *result = val >> bitcount;
+  return true;
+}
+
+
+static bool
+contiguous_init_p (tree type, tree value)
+{
+  gcc_assert (TREE_CODE (value) == CONSTRUCTOR);
+  auto_vec<offset_int> field_offsets;
+  int count = field_count (type);
+  field_offsets.reserve (count);
+
+  tree field = TYPE_FIELDS (type);
+  offset_int expected_offset = 0;
+  while (field != NULL_TREE)
+    {
+      offset_int field_offset_bits = get_offset_bits (field);
+      offset_int field_offset;
+      if (!right_shift_if_clear (field_offset_bits, 3, &field_offset))
+	return false;
+
+      offset_int type_size = wi::to_offset (TYPE_SIZE_UNIT (TREE_TYPE (field)));
+      int align = wi::ctz (type_size);
+      if (!check_cleared_low_bits (field_offset, align))
+	return false;
+
+      if (field_offset != expected_offset)
+	return false;
+
+      expected_offset += type_size;
+      field_offsets.quick_push (field_offset);
+
+      field = DECL_CHAIN (field);
+    }
+
+  auto_vec<offset_int> value_offsets;
+  value_offsets.reserve (count);
+
+  unsigned i;
+  tree field_init;
+  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (value), i, field, field_init)
+    {
+      if (TREE_TYPE (field) != TREE_TYPE (field_init))
+	return false;
+
+      offset_int field_offset_bits = get_offset_bits (field);
+      offset_int field_offset;
+      if (!right_shift_if_clear (field_offset_bits, 3, &field_offset))
+	return false;
+
+      value_offsets.quick_push (field_offset);
+    }
+
+  value_offsets.qsort (cmp_wi);
+
+  unsigned idx = 0;
+  offset_int field_off, val_off;
+  while (field_offsets.iterate (idx, &field_off)
+	 && value_offsets.iterate (idx, &val_off))
+    {
+      if (val_off != field_off)
+	return false;
+
+      idx++;
+    }
+
+  return true;
 }
 
 
@@ -1153,7 +1273,9 @@ init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
       if (TREE_STATIC (data_ref)
 	  || !modifiable_p (data_ref))
 	DECL_INITIAL (data_ref) = value;
-      else if (TREE_CODE (value) == CONSTRUCTOR)
+      else if (TREE_CODE (value) == CONSTRUCTOR
+	       && !(TREE_CONSTANT (value)
+		    && contiguous_init_p (type, value)))
 	{
 	  unsigned i;
 	  tree field, field_init;
