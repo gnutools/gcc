@@ -9535,10 +9535,21 @@ gfc_trans_alloc_subarray_assign (tree dest, gfc_component * cm,
 	&& expr->value.function.actual->expr->expr_type == EXPR_VARIABLE)
     arg = expr->value.function.actual->expr;
 
+  stmtblock_t shift_block;
+  gfc_init_block (&shift_block);
+  gfc_conv_shift_descriptor_subarray (&shift_block, dest, expr, arg);
+
+  tree data = gfc_conv_descriptor_data_get (se.expr);
+  data = fold_convert (pvoid_type_node, data);
+  tree non_null = fold_build2_loc (input_location, NE_EXPR, logical_type_node,
+				    data, null_pointer_node);
+  tmp = fold_build3_loc (input_location, COND_EXPR, void_type_node,
+			  non_null, gfc_finish_block (&shift_block),
+			  build_empty_stmt (input_location));
+  gfc_add_expr_to_block (&block, tmp);
+
   if (expr->expr_type != EXPR_VARIABLE)
     gfc_conv_descriptor_data_set (&block, se.expr, null_pointer_node);
-
-  gfc_conv_shift_descriptor_subarray (&block, dest, expr, arg);
 
   if (arg)
     {
