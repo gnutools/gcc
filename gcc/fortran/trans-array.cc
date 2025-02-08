@@ -1464,38 +1464,56 @@ gfc_build_null_descriptor (tree type)
 }
 
 
-static tree
-set_descriptor_dimension (stmtblock_t *block, tree desc, int dim,
-			  tree lbound, tree ubound, tree stride, tree *offset)
+static void
+set_bounds_update_offset (stmtblock_t *block, tree desc, int dim,
+			  tree lbound, tree ubound, tree stride, tree lbound_diff,
+			  tree *offset, tree *next_stride, bool stride_unchanged)
 {
-  /* Set bounds in descriptor.  */
+  /* Stabilize values in case the expressions depend on the existing bounds.  */
   lbound = fold_convert (gfc_array_index_type, lbound);
   lbound = gfc_evaluate_now (lbound, block);
-  gfc_conv_descriptor_lbound_set (block, desc,
-				  gfc_rank_cst[dim], lbound);
 
   ubound = fold_convert (gfc_array_index_type, ubound);
   ubound = gfc_evaluate_now (ubound, block);
-  gfc_conv_descriptor_ubound_set (block, desc,
-				  gfc_rank_cst[dim], ubound);
 
-  /* Set stride.  */
   stride = fold_convert (gfc_array_index_type, stride);
   stride = gfc_evaluate_now (stride, block);
-  gfc_conv_descriptor_stride_set (block, desc,
-				  gfc_rank_cst[dim], stride);
+
+  lbound_diff = fold_convert (gfc_array_index_type, lbound_diff);
+  lbound_diff = gfc_evaluate_now (lbound_diff, block);
+
+  gfc_conv_descriptor_lbound_set (block, desc,
+				  gfc_rank_cst[dim], lbound);
+  gfc_conv_descriptor_ubound_set (block, desc,
+				  gfc_rank_cst[dim], ubound);
+  if (!stride_unchanged)
+    gfc_conv_descriptor_stride_set (block, desc,
+				    gfc_rank_cst[dim], stride);
 
   /* Update offset.  */
   tree tmp = fold_build2_loc (input_location, MULT_EXPR,
-			      gfc_array_index_type, lbound, stride);
-  *offset = fold_build2_loc (input_location, MINUS_EXPR,
-			  gfc_array_index_type, *offset, tmp);
+			      gfc_array_index_type, lbound_diff, stride);
+  tmp = fold_build2_loc (input_location, MINUS_EXPR,
+			 gfc_array_index_type, *offset, tmp);
+  *offset = gfc_evaluate_now (tmp, block);
 
-  /* Return stride for next dimension.  */
+  if (!next_stride)
+    return;
+
+  /* Set stride for next dimension.  */
   tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
-  stride = fold_build2_loc (input_location, MULT_EXPR,
-			    gfc_array_index_type, stride, tmp);
-  return stride;
+  *next_stride = fold_build2_loc (input_location, MULT_EXPR,
+				  gfc_array_index_type, stride, tmp);
+}
+
+
+static void
+set_descriptor_dimension (stmtblock_t *block, tree desc, int dim,
+			  tree lbound, tree ubound, tree stride, tree *offset,
+			  tree *next_stride)
+{
+  set_bounds_update_offset (block, desc, dim, lbound, ubound, stride, lbound,
+			    offset, next_stride, false);
 }
 
 
@@ -1504,7 +1522,7 @@ set_descriptor_dimension (stmtblock_t *block, tree desc, int dim,
 
 static void
 conv_shift_descriptor_lbound (stmtblock_t* block, tree from_desc, tree to_desc, int dim,
-			      tree new_lbound, tree offset, bool zero_based)
+			      tree new_lbound, tree *offset, bool zero_based)
 {
   new_lbound = fold_convert (gfc_array_index_type, new_lbound);
   new_lbound = gfc_evaluate_now (new_lbound, block);
@@ -1528,18 +1546,9 @@ conv_shift_descriptor_lbound (stmtblock_t* block, tree from_desc, tree to_desc, 
      updating the lbound, as they depend on the lbound expression!  */
   tree tmp1 = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
 			       ubound, diff);
-  gfc_conv_descriptor_ubound_set (block, to_desc, gfc_rank_cst[dim], tmp1);
-  /* Set lbound to the value we want.  */
-  gfc_conv_descriptor_lbound_set (block, to_desc, gfc_rank_cst[dim], new_lbound);
 
-  tree offs_diff = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-				    diff, stride);
-  tree tmp2 = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			       offset, offs_diff);
-  gfc_add_modify (block, offset, tmp2);
-
-  if (from_desc != to_desc)
-    gfc_conv_descriptor_stride_set (block, to_desc, gfc_rank_cst[dim], stride);
+  set_bounds_update_offset (block, to_desc, dim, new_lbound, tmp1, stride, diff,
+			    offset, nullptr, from_desc == to_desc);
 }
 
 
@@ -1617,23 +1626,23 @@ conv_shift_descriptor (stmtblock_t *block, tree src, tree dest, int rank,
       gfc_conv_descriptor_data_set (block, dest, tmp);
     }
 
-  tree offset_var = gfc_create_var (gfc_array_index_type, "offset");
+  tree offset = gfc_create_var (gfc_array_index_type, "offset");
   tree init_offset;
   if (info.zero_based_src ())
     init_offset = gfc_index_zero_node;
   else
     init_offset = gfc_conv_descriptor_offset_get (src);
-  gfc_add_modify (block, offset_var, init_offset);
+  gfc_add_modify (block, offset, init_offset);
 
   /* Apply a shift of the lbound when supplied.  */
   for (int dim = 0; dim < rank; ++dim)
     {
       tree lower_bound = info.lower_bound (block, dim);
-      conv_shift_descriptor_lbound (block, src, dest, dim, lower_bound, offset_var,
+      conv_shift_descriptor_lbound (block, src, dest, dim, lower_bound, &offset,
 				    info.zero_based_src ());
     }
 
-  gfc_conv_descriptor_offset_set (block, dest, offset_var);
+  gfc_conv_descriptor_offset_set (block, dest, offset);
 }
 
 
@@ -1871,8 +1880,8 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
     }
   /* Set the bounds as declared for the LHS and calculate strides as
      well as another offset update accordingly.  */
-  tree stride = gfc_conv_descriptor_stride_get (src,
-					   gfc_rank_cst[0]);
+  tree stride = gfc_conv_descriptor_stride_get (src, gfc_rank_cst[0]);
+  int last_dim = dest_rank - 1;
   for (int dim = 0; dim < dest_rank; ++dim)
     {
       gfc_se lower_se;
@@ -1889,9 +1898,9 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
       gfc_add_block_to_block (block, &lower_se.pre);
       gfc_add_block_to_block (block, &upper_se.pre);
 
-      stride = set_descriptor_dimension (block, dest, dim, 
-					 lower_se.expr, upper_se.expr, stride,
-					 &offset);
+      set_descriptor_dimension (block, dest, dim, lower_se.expr, upper_se.expr,
+				stride, &offset,
+				dim < last_dim ? &stride : nullptr);
     }
   gfc_conv_descriptor_offset_set (block, dest, offset);
 }
