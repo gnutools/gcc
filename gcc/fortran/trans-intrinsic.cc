@@ -2289,7 +2289,7 @@ gfc_conv_intrinsic_rank (gfc_se *se, gfc_expr *expr)
   gfc_add_block_to_block (&se->pre, &argse.pre);
   gfc_add_block_to_block (&se->post, &argse.post);
 
-  se->expr = gfc_conv_descriptor_rank (argse.expr);
+  se->expr = gfc_conv_descriptor_rank_get (argse.expr);
   se->expr = fold_convert (gfc_get_int_type (gfc_default_integer_kind),
 			   se->expr);
 }
@@ -2458,7 +2458,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
           cond = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 				  bound, build_int_cst (TREE_TYPE (bound), 0));
 	  if (as && as->type == AS_ASSUMED_RANK)
-	    tmp = gfc_conv_descriptor_rank (desc);
+	    tmp = gfc_conv_descriptor_rank_get (desc);
 	  else
 	    tmp = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (TREE_TYPE (desc))];
           tmp = fold_build2_loc (input_location, GE_EXPR, logical_type_node,
@@ -2553,7 +2553,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
 	{
 	  tree minus_one = build_int_cst (gfc_array_index_type, -1);
 	  tree rank = fold_convert (gfc_array_index_type,
-				    gfc_conv_descriptor_rank (desc));
+				    gfc_conv_descriptor_rank_get (desc));
 	  rank = fold_build2_loc (input_location, PLUS_EXPR,
 				  gfc_array_index_type, rank, minus_one);
 
@@ -8211,7 +8211,6 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
   tree lower;
   tree upper;
   tree byte_size;
-  tree field;
   int n;
 
   gfc_init_se (&argse, NULL);
@@ -8235,12 +8234,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location, tmp);
 
-      tmp = gfc_conv_descriptor_dtype (tmp);
-      field = gfc_advance_chain (TYPE_FIELDS (get_dtype_type_node ()),
-				 GFC_DTYPE_ELEM_LEN);
-      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
-			     tmp, field, NULL_TREE);
-
+      tmp = gfc_conv_descriptor_elem_len_get (tmp);
       byte_size = fold_convert (gfc_array_index_type, tmp);
     }
   else if (arg->ts.type == BT_CLASS)
@@ -8304,7 +8298,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
           stmtblock_t body;
 
 	  tmp = fold_convert (gfc_array_index_type,
-			      gfc_conv_descriptor_rank (argse.expr));
+			      gfc_conv_descriptor_rank_get (argse.expr));
 	  loop_var = gfc_create_var (gfc_array_index_type, "i");
 	  gfc_add_modify (&argse.pre, loop_var, gfc_index_zero_node);
           exit_label = gfc_build_label_decl (NULL_TREE);
@@ -9106,7 +9100,7 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
 	  gfc_conv_expr_lhs (&arg1se, arg1->expr);
 	  if (arg1->expr->rank == -1)
 	    {
-	      tmp = gfc_conv_descriptor_rank (arg1se.expr);
+	      tmp = gfc_conv_descriptor_rank_get (arg1se.expr);
 	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
 				     TREE_TYPE (tmp), tmp,
 				     build_int_cst (TREE_TYPE (tmp), 1));
@@ -13118,7 +13112,7 @@ conv_intrinsic_move_alloc (gfc_code *code)
 					fin_label, true, to_expr,
 					GFC_CAF_COARRAY_DEALLOCATE_ONLY,
 					NULL_TREE, NULL_TREE,
-					gfc_conv_descriptor_token (to_se.expr),
+					gfc_conv_descriptor_token_get (to_se.expr),
 					true);
       gfc_add_expr_to_block (&block, tmp);
 
@@ -13164,8 +13158,7 @@ conv_intrinsic_move_alloc (gfc_code *code)
     {
       /* Copy the array descriptor data has overwritten the to-token and cleared
 	 from.data.  Now also clear the from.token.  */
-      gfc_add_modify (&block, gfc_conv_descriptor_token (from_se.expr),
-		      null_pointer_node);
+      gfc_conv_descriptor_token_set (&block, from_se.expr, null_pointer_node);
     }
 
   if (to_expr->ts.type == BT_CHARACTER && to_expr->ts.deferred)

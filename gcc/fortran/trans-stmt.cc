@@ -2124,7 +2124,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 
       if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
 	{
-	  tree token = gfc_conv_descriptor_token (se.expr),
+	  tree token = gfc_conv_descriptor_token_get (se.expr),
 	       size
 	       = sym->attr.dimension
 		   ? fold_build2 (MULT_EXPR, gfc_array_index_type,
@@ -2242,9 +2242,8 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	{
 	  /* Recover the dtype, which has been overwritten by the
 	     assignment from an unlimited polymorphic object.  */
-	  tmp = gfc_conv_descriptor_dtype (sym->backend_decl);
-	  gfc_add_modify (&se.pre, tmp,
-			  gfc_get_dtype (TREE_TYPE (sym->backend_decl)));
+	  tree dtype_val = gfc_get_dtype (TREE_TYPE (sym->backend_decl));
+	  gfc_conv_descriptor_dtype_set (&se.pre, sym->backend_decl, dtype_val);
 	}
 
       gfc_add_init_cleanup (block, gfc_finish_block (&se.pre),
@@ -3997,7 +3996,7 @@ gfc_trans_select_rank_cases (gfc_code * code)
   /* Calculate the switch expression.  */
   gfc_init_se (&se, NULL);
   gfc_conv_expr_descriptor (&se, code->expr1);
-  rank = gfc_conv_descriptor_rank (se.expr);
+  rank = gfc_conv_descriptor_rank_get (se.expr);
   rank = gfc_evaluate_now (rank, &block);
   symbol_attribute attr = gfc_expr_attr (code->expr1);
   if (!attr.pointer && !attr.allocatable)

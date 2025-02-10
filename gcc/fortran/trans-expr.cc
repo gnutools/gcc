@@ -238,7 +238,7 @@ gfc_get_ultimate_alloc_ptr_comps_caf_token (gfc_se *outerse, gfc_expr *expr)
     caf = fold_build3_loc (input_location, COMPONENT_REF,
 			   TREE_TYPE (comp), se.expr, comp, NULL_TREE);
   else
-    caf = gfc_conv_descriptor_token (se.expr);
+    caf = gfc_conv_descriptor_token_get (se.expr);
   return gfc_build_addr_expr (NULL_TREE, caf);
 }
 
@@ -835,12 +835,12 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
   gfc_conv_descriptor_offset_set (block, lhs_desc,
 				  gfc_conv_descriptor_offset_get (rhs_desc));
 
-  gfc_add_modify (block, gfc_conv_descriptor_dtype (lhs_desc),
-		  gfc_conv_descriptor_dtype (rhs_desc));
+  gfc_conv_descriptor_dtype_set (block, lhs_desc,
+				 gfc_conv_descriptor_dtype_get (rhs_desc));
 
   /* Assign the dimension as range-ref.  */
-  tmp = gfc_get_descriptor_dimension (lhs_desc);
-  tmp2 = gfc_get_descriptor_dimension (rhs_desc);
+  tmp = gfc_conv_descriptor_dimensions_get (lhs_desc);
+  tmp2 = gfc_conv_descriptor_dimensions_get (rhs_desc);
 
   int rank = gfc_descriptor_rank (lhs_desc);
   int rank2 = gfc_descriptor_rank (rhs_desc);
@@ -863,11 +863,8 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
 	}
     }
 
-  tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
-		    gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
-		     gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  gfc_add_modify (block, tmp, tmp2);
+  tmp = gfc_conv_descriptor_dimensions_get (rhs_desc, type);
+  gfc_conv_descriptor_dimensions_set (block, lhs_desc, tmp);
 }
 
 /* Takes a derived type expression and returns the address of a temporary
@@ -917,7 +914,7 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	  || (parmse->ss && parmse->ss->info && parmse->ss->info->useflags)
 	  || e->rank != 0
 	  || fsym->ts.u.derived->components->as == nullptr)
-	gfc_add_modify (&parmse->pre, gfc_conv_descriptor_token (ctree), caf_token);
+	gfc_conv_descriptor_token_set (&parmse->pre, ctree, caf_token);
     }
 
   if (optional)
@@ -2518,7 +2515,7 @@ gfc_get_caf_token_offset (gfc_se *se, tree *token, tree *offset, tree caf_decl,
 
   /* Coarray token.  */
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (caf_decl)))
-      *token = gfc_conv_descriptor_token (caf_decl);
+      *token = gfc_conv_descriptor_token_get (caf_decl);
   else if (DECL_P (caf_decl) && DECL_LANG_SPECIFIC (caf_decl)
 	   && GFC_DECL_TOKEN (caf_decl) != NULL_TREE)
     *token = GFC_DECL_TOKEN (caf_decl);
@@ -3365,7 +3362,7 @@ gfc_conv_variable (gfc_se * se, gfc_expr * expr)
       char *msg;
 
       dim = fold_convert (signed_char_type_node,
-			  gfc_conv_descriptor_rank (se->expr));
+			  gfc_conv_descriptor_rank_get (se->expr));
       dim = fold_build2_loc (input_location, MINUS_EXPR, signed_char_type_node,
 			     dim, build_int_cst (signed_char_type_node, 1));
       lower = gfc_conv_descriptor_lbound_get (se->expr, dim);
@@ -6134,7 +6131,8 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
   gfc_add_modify (&block, tmp,
 		  build_int_cst (TREE_TYPE (tmp), CFI_VERSION));
   if (e->rank < 0)
-    rank = fold_convert (signed_char_type_node, gfc_conv_descriptor_rank (gfc));
+    rank = fold_convert (signed_char_type_node,
+			 gfc_conv_descriptor_rank_get (gfc));
   else
     rank = build_int_cst (signed_char_type_node, e->rank);
   tmp = gfc_get_cfi_desc_rank (cfi);
@@ -6265,7 +6263,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
     }
   else if (e->ts.type == BT_ASSUMED)
     {
-      tmp = gfc_conv_descriptor_elem_len (gfc);
+      tmp = gfc_conv_descriptor_elem_len_get (gfc);
       tmp2 = gfc_get_cfi_desc_elem_len (cfi);
       gfc_add_modify (&block2, tmp2, fold_convert (TREE_TYPE (tmp2), tmp));
     }
@@ -6278,9 +6276,9 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       tree cond;
       tree ctype = gfc_get_cfi_desc_type (cfi);
       tree type = fold_convert (TREE_TYPE (ctype),
-				gfc_conv_descriptor_type (gfc));
+				gfc_conv_descriptor_type_get (gfc));
       tree kind = fold_convert (TREE_TYPE (ctype),
-				gfc_conv_descriptor_elem_len (gfc));
+				gfc_conv_descriptor_elem_len_get (gfc));
       kind = fold_build2_loc (input_location, LSHIFT_EXPR, TREE_TYPE (type),
 			      kind, build_int_cst (TREE_TYPE (type),
 						   CFI_type_kind_shift));
@@ -6665,13 +6663,10 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	   For an assumed-rank dummy we provide a descriptor that passes
 	   the correct rank.  */
 	{
-	  tree rank;
 	  tree tmp = parmse->expr;
 
 	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, gfc_expr_attr (e));
-	  rank = gfc_conv_descriptor_rank (tmp);
-	  gfc_add_modify (&parmse->pre, rank,
-			  build_int_cst (TREE_TYPE (rank), e->rank));
+	  gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
 	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
@@ -6688,11 +6683,7 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
 	  dummy_rank = fsym->as ? fsym->as->rank : 0;
 	  if (dummy_rank > 0)
-	    {
-	      tree rank = gfc_conv_descriptor_rank (tmp);
-	      gfc_add_modify (&parmse->pre, rank,
-			      build_int_cst (TREE_TYPE (rank), dummy_rank));
-	    }
+	    gfc_conv_descriptor_rank_set (&parmse->pre, tmp, dummy_rank);
 	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
@@ -8258,7 +8249,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	      tmp = POINTER_TYPE_P (TREE_TYPE (caf_decl))
 		      ? build_fold_indirect_ref (caf_decl)
 		      : caf_decl;
-	      tmp = gfc_conv_descriptor_token (tmp);
+	      tmp = gfc_conv_descriptor_token_get (tmp);
 	    }
 	  else if (DECL_LANG_SPECIFIC (caf_decl)
 		   && GFC_DECL_TOKEN (caf_decl) != NULL_TREE)
@@ -9761,8 +9752,7 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm,
 	{
 	  gfc_conv_descriptor_data_set (&block, dest, null_pointer_node);
 	  if (cm->attr.codimension && flag_coarray == GFC_FCOARRAY_LIB)
-	    gfc_add_modify (&block, gfc_conv_descriptor_token (dest),
-			    null_pointer_node);
+	    gfc_conv_descriptor_token_set (&block, dest, null_pointer_node);
 	}
       else if (cm->attr.allocatable || cm->attr.pdt_array)
 	{
@@ -10063,7 +10053,7 @@ gfc_trans_structure_assign (tree dest, gfc_expr * expr, bool init, bool coarray)
 
 	  token
 	    = is_array
-		? gfc_conv_descriptor_token (field)
+		? gfc_conv_descriptor_token_get (field)
 		: fold_build3_loc (input_location, COMPONENT_REF,
 				   TREE_TYPE (gfc_comp_caf_token (cm)), dest,
 				   gfc_comp_caf_token (cm), NULL_TREE);
@@ -10081,8 +10071,7 @@ gfc_trans_structure_assign (tree dest, gfc_expr * expr, bool init, bool coarray)
 		rank = 1;
 	      size = build_zero_cst (size_type_node);
 	      desc = field;
-	      gfc_add_modify (&block, gfc_conv_descriptor_rank (desc),
-			      build_int_cst (signed_char_type_node, rank));
+	      gfc_conv_descriptor_rank_set (&block, desc, rank);
 	    }
 	  else
 	    {
@@ -11385,10 +11374,10 @@ gfc_trans_scalar_assign (gfc_se *lse, gfc_se *rse, gfc_typespec ts,
 	{
 	  if (flag_coarray == GFC_FCOARRAY_LIB && assoc_assign)
 	    {
-	      gfc_add_modify (&block, gfc_conv_descriptor_token (lse->expr),
-			      TYPE_LANG_SPECIFIC (
-				TREE_TYPE (TREE_TYPE (rse->expr)))
-				->caf_token);
+	      tree token_value = TYPE_LANG_SPECIFIC (
+				      TREE_TYPE (TREE_TYPE (rse->expr)))
+				->caf_token;
+	      gfc_conv_descriptor_token_set (&block, lse->expr, token_value);
 	    }
 	  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (lse->expr)))
 	    lse->expr = gfc_conv_array_data (lse->expr);
@@ -11603,11 +11592,9 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
     desc = build_fold_indirect_ref_loc (input_location, desc);
 
   /* Unallocated, the descriptor does not have a dtype.  */
-  tmp = gfc_conv_descriptor_dtype (desc);
-  if (dtype != NULL_TREE)
-    gfc_add_modify (&se->pre, tmp, dtype);
-  else
-    gfc_add_modify (&se->pre, tmp, gfc_get_dtype (TREE_TYPE (desc)));
+  if (dtype == NULL_TREE)
+    dtype = gfc_get_dtype (TREE_TYPE (desc));
+  gfc_conv_descriptor_dtype_set (&se->pre, desc, dtype);
 
   res_desc = gfc_evaluate_now (desc, &se->pre);
   gfc_conv_descriptor_data_set (&se->pre, res_desc, null_pointer_node);
