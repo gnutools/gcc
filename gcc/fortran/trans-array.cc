@@ -2594,24 +2594,31 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
       tree tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 				   gfc_finish_block (&set_void),
 				   gfc_finish_block (&set_unknown));
+
       /* if (CFI_type_struct) BT_DERIVED else  < tmp2 >  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 					     CFI_type_struct));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_DERIVED));
+      stmtblock_t set_derived;
+      gfc_init_block (&set_derived);
+      tree derived_value = build_int_cst (TREE_TYPE (type), BT_DERIVED);
+      gfc_conv_descriptor_type_set (&set_derived, gfc, derived_value);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
+			      gfc_finish_block (&set_derived), tmp2);
+
       /* if (CFI_type_Character) BT_CHARACTER else  < tmp2 >  */
       /* Note: this is kind=1, CFI_type_ucs4_char is handled in the 'else if'
 	 before (see below, as generated bottom up).  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 			      CFI_type_Character));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
+      stmtblock_t set_character;
+      gfc_init_block (&set_character);
+      tree character_value = build_int_cst (TREE_TYPE (type), BT_CHARACTER);
+      gfc_conv_descriptor_type_set (&set_character, gfc, character_value);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
+			      gfc_finish_block (&set_character), tmp2);
+
       /* if (CFI_type_ucs4_char) BT_CHARACTER else  < tmp2 >  */
       /* Note: gfc->elem_len = cfi->elem_len/4.  */
       /* However, assuming that CFI_type_ucs4_char cannot be recovered, leave
@@ -2621,18 +2628,22 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, tmp,
 			      build_int_cst (TREE_TYPE (tmp),
 					     CFI_type_ucs4_char));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
+      gfc_init_block (&set_character);
+      gfc_conv_descriptor_type_set (&set_character, gfc, character_value);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
+			      gfc_finish_block (&set_character), tmp2);
+
       /* if (CFI_type_Complex) BT_COMPLEX + cfi->elem_len/2 else  < tmp2 >  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 			      CFI_type_Complex));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_COMPLEX));
+      stmtblock_t set_complex;
+      gfc_init_block (&set_complex);
+      tree complex_value = build_int_cst (TREE_TYPE (type), BT_COMPLEX);
+      gfc_conv_descriptor_type_set (&set_complex, gfc, complex_value);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
+			      gfc_finish_block (&set_complex), tmp2);
+
       /* if (CFI_type_Integer || CFI_type_Logical || CFI_type_Real)
 	   ctype else  <tmp2>  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
@@ -2648,10 +2659,11 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 					     CFI_type_Real));
       cond = fold_build2_loc (input_location, TRUTH_OR_EXPR, boolean_type_node,
 			      cond, tmp);
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node,
-			     type, fold_convert (TREE_TYPE (type), ctype));
+      stmtblock_t set_ctype;
+      gfc_init_block (&set_ctype);
+      gfc_conv_descriptor_type_set (&set_ctype, gfc, ctype);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
-			      tmp, tmp2);
+			      gfc_finish_block (&set_ctype), tmp2);
       gfc_add_expr_to_block (unconditional_block, tmp2);
     }
 
