@@ -262,6 +262,15 @@ get_field (tree desc, unsigned field_idx)
 }
 
 tree
+get_dtype_subfield (tree desc, unsigned subfield)
+{
+  tree dtype = get_field (desc, DTYPE_FIELD);
+  tree field = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (dtype)), subfield);
+  gcc_assert (field != NULL_TREE);
+  return field;
+}
+
+tree
 get_component (tree desc, unsigned field_idx)
 {
   tree field = get_field (desc, field_idx);
@@ -516,6 +525,14 @@ conv_type_set (stmtblock_t *block, tree desc, tree value)
   tree t = get_type (desc);
   gfc_add_modify_loc (loc, block, t,
 		      fold_convert_loc (loc, TREE_TYPE (t), value));
+}
+
+void
+conv_type_set (stmtblock_t *block, tree desc, int value)
+{
+  tree field = get_dtype_subfield (desc, GFC_DTYPE_TYPE);
+  tree val = build_int_cst (TREE_TYPE (field), value);
+  conv_type_set (block, desc, val);
 }
 
 tree
@@ -859,6 +876,12 @@ gfc_conv_descriptor_type_get (tree desc)
 
 void
 gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, tree value)
+{
+  gfc_descriptor::conv_type_set (block, desc, value);
+}
+
+void
+gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
 {
   gfc_descriptor::conv_type_set (block, desc, value);
 }
@@ -2574,7 +2597,6 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
       ctype = fold_build2_loc (input_location, BIT_AND_EXPR, TREE_TYPE (ctype),
 			       ctype, build_int_cst (TREE_TYPE (ctype),
 						     CFI_type_mask));
-      tree type = gfc_conv_descriptor_type_get (gfc);
 
       /* if (CFI_type_cptr) BT_VOID else BT_UNKNOWN  */
       /* Note: BT_VOID is could also be CFI_type_funcptr, but assume c_ptr. */
@@ -2583,13 +2605,11 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 
       stmtblock_t set_void;
       gfc_init_block (&set_void);
-      tree void_value = build_int_cst (TREE_TYPE (type), BT_VOID);
-      gfc_conv_descriptor_type_set (&set_void, gfc, void_value);
+      gfc_conv_descriptor_type_set (&set_void, gfc, BT_VOID);
 
       stmtblock_t set_unknown;
       gfc_init_block (&set_unknown);
-      tree unknown_value = build_int_cst (TREE_TYPE (type), BT_UNKNOWN);
-      gfc_conv_descriptor_type_set (&set_unknown, gfc, unknown_value);
+      gfc_conv_descriptor_type_set (&set_unknown, gfc, BT_UNKNOWN);
 
       tree tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 				   gfc_finish_block (&set_void),
@@ -2601,8 +2621,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 					     CFI_type_struct));
       stmtblock_t set_derived;
       gfc_init_block (&set_derived);
-      tree derived_value = build_int_cst (TREE_TYPE (type), BT_DERIVED);
-      gfc_conv_descriptor_type_set (&set_derived, gfc, derived_value);
+      gfc_conv_descriptor_type_set (&set_derived, gfc, BT_DERIVED);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      gfc_finish_block (&set_derived), tmp2);
 
@@ -2614,8 +2633,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 			      CFI_type_Character));
       stmtblock_t set_character;
       gfc_init_block (&set_character);
-      tree character_value = build_int_cst (TREE_TYPE (type), BT_CHARACTER);
-      gfc_conv_descriptor_type_set (&set_character, gfc, character_value);
+      gfc_conv_descriptor_type_set (&set_character, gfc, BT_CHARACTER);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      gfc_finish_block (&set_character), tmp2);
 
@@ -2629,7 +2647,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 			      build_int_cst (TREE_TYPE (tmp),
 					     CFI_type_ucs4_char));
       gfc_init_block (&set_character);
-      gfc_conv_descriptor_type_set (&set_character, gfc, character_value);
+      gfc_conv_descriptor_type_set (&set_character, gfc, BT_CHARACTER);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      gfc_finish_block (&set_character), tmp2);
 
@@ -2639,8 +2657,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 			      CFI_type_Complex));
       stmtblock_t set_complex;
       gfc_init_block (&set_complex);
-      tree complex_value = build_int_cst (TREE_TYPE (type), BT_COMPLEX);
-      gfc_conv_descriptor_type_set (&set_complex, gfc, complex_value);
+      gfc_conv_descriptor_type_set (&set_complex, gfc, BT_COMPLEX);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      gfc_finish_block (&set_complex), tmp2);
 
