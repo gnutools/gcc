@@ -304,13 +304,6 @@ conv_data_set (stmtblock_t *block, tree desc, tree value)
 }
 
 tree
-conv_data_addr (tree desc)
-{
-  tree field = get_data (desc);
-  return gfc_build_addr_expr (NULL_TREE, field);
-}
-
-tree
 get_offset (tree desc)
 {
   tree field = get_component (desc, OFFSET_FIELD);
