@@ -1890,6 +1890,9 @@ set_bounds_update_offset (stmtblock_t *block, tree desc, int dim,
     gfc_conv_descriptor_stride_set (block, desc,
 				    gfc_rank_cst[dim], stride);
 
+  if (!offset && !next_stride)
+    return;
+
   /* Update offset.  */
   tree tmp = fold_build2_loc (input_location, MULT_EXPR,
 			      gfc_array_index_type, lbound_diff, stride);
@@ -3675,13 +3678,8 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
       for (n = 0; n < rank; n++)
 	{
 	  /* Store the stride and bound components in the descriptor.  */
-	  gfc_conv_descriptor_stride_set (block, desc, gfc_rank_cst[n],
-					  stride[n]);
-
-	  gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[n],
-					  gfc_index_zero_node);
-
-	  gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[n], ubound[n]);
+	  set_descriptor_dimension (block, desc, n, gfc_index_zero_node, ubound[n],
+				    stride[n], nullptr, nullptr);
 	}
     }
 
