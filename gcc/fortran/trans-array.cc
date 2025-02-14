@@ -8593,6 +8593,13 @@ descriptor_element_size (tree descriptor, tree expr3_elem_size,
 }
 
 
+/* Calculates the memory size of an array, given the size of its elements,
+   the number of them, and the predicate whether the array is empty.
+    elements_count = (size_t) elements_count;
+    overflow += element_size == 0 ? 0: (MAX/element_size < elements_count ? 1: 0);
+    tmp = elements_count * element_size;
+    return (tmp);  */
+
 static tree
 get_array_memory_size (tree element_size, tree elements_count,
 		       tree empty_array_cond, stmtblock_t * pblock,
@@ -8606,8 +8613,6 @@ get_array_memory_size (tree element_size, tree elements_count,
   tree var;
   stmtblock_t thenblock;
   stmtblock_t elseblock;
-
-
 
   elements_count = fold_convert (size_type_node, elements_count);
 
@@ -8657,11 +8662,10 @@ get_array_memory_size (tree element_size, tree elements_count,
 }
 
 
-/* Fills in an array descriptor, and returns the size of the array.
-   The size will be a simple_val, ie a variable or a constant.  Also
-   calculates the offset of the base.  The pointer argument overflow,
-   which should be of integer type, will increase in value if overflow
-   occurs during the size calculation.  Returns the size of the array.
+/* Fills in an array descriptor, and returns the number of elements in the
+   array.  The pointer argument overflow, which should be of integer type,
+   will increase in value if overflow occurs during the size calculation.
+   Also sets the condition whether the array is empty through empty_array_cond.
    {
     stride = 1;
     offset = 0;
@@ -8678,13 +8682,9 @@ get_array_memory_size (tree element_size, tree elements_count,
       }
     for (n = rank; n < rank+corank; n++)
       (Set lcobound/ucobound as above.)
-    element_size = sizeof (array element);
-    if (!rank)
-      return element_size
-    stride = (size_t) stride;
-    overflow += element_size == 0 ? 0: (MAX/element_size < stride ? 1: 0);
-    stride = stride * element_size;
-    return (stride);
+    if (rank == 0)
+      return 1;
+    return stride;
    }  */
 /*GCC ARRAYS*/
 
@@ -8924,9 +8924,6 @@ gfc_array_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
 
   *empty_array_cond = empty_cond;
 
-  /* The stride is the number of elements in the array, so multiply by the
-     size of an element to get the total size.  */
-
   if (rank == 0)
     return gfc_index_one_node;
 
@@ -9113,8 +9110,10 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 				     e3_has_nodescriptor, expr, element_size,
 				     explicit_ts, &empty_array_cond);
 
-  tree size = get_array_memory_size (element_size, count, empty_array_cond,
-				     &se->pre, &overflow);
+  tree size = rank == 0
+	      ? element_size
+	      : get_array_memory_size (element_size, count, empty_array_cond,
+				       &se->pre, &overflow);
 
   if (dimension)
     {
