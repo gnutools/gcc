@@ -5403,43 +5403,6 @@ gfc_apply_interface_mapping (gfc_interface_mapping * mapping,
 }
 
 
-static void
-shift_descriptor (stmtblock_t *block, tree desc, int rank,
-		  tree lbound[GFC_MAX_DIMENSIONS],
-		  tree ubound[GFC_MAX_DIMENSIONS])
-
-{
-  tree size = gfc_index_one_node;
-  tree offset = gfc_index_zero_node;
-  for (int n = 0; n < rank; n++)
-    {
-      tree tmp = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[n]);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR,
-			     gfc_array_index_type, tmp,
-			     gfc_index_one_node);
-      gfc_conv_descriptor_ubound_set (block,
-				      desc,
-				      gfc_rank_cst[n],
-				      tmp);
-      gfc_conv_descriptor_lbound_set (block,
-				      desc,
-				      gfc_rank_cst[n],
-				      gfc_index_one_node);
-      size = gfc_evaluate_now (size, block);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type,
-				offset, size);
-      offset = gfc_evaluate_now (offset, block);
-      tmp = gfc_conv_array_extent_dim (lbound[n], ubound[n], nullptr);
-      size = fold_build2_loc (input_location, MULT_EXPR,
-			      gfc_array_index_type, size, tmp);
-    }
-
-  gfc_conv_descriptor_offset_set (block, desc,
-				  offset);
-}
-
-
 /* Returns a reference to a temporary array into which a component of
    an actual argument derived type array is copied and then returned
    after the function call.  */
@@ -5700,8 +5663,8 @@ class_array_fcn:
   /* Determine the offset for pointer formal arguments and set the
      lbounds to one.  */
   if (formal_ptr)
-    shift_descriptor (&parmse->pre, parmse->expr, dimen,
-		      rse.loop->from, rse.loop->to);
+    gfc_conv_shift_descriptor (&parmse->pre, parmse->expr, dimen,
+			       rse.loop->from, rse.loop->to);
 
   /* We want either the address for the data or the address of the descriptor,
      depending on the mode of passing array arguments.  */
