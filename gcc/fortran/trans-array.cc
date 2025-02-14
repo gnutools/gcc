@@ -8689,7 +8689,7 @@ get_array_memory_size (tree element_size, tree elements_count,
 /*GCC ARRAYS*/
 
 static tree
-gfc_array_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
+gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
 		      gfc_expr ** upper, stmtblock_t * pblock,
 		      stmtblock_t * descriptor_block, tree * overflow,
 		      tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
@@ -9102,7 +9102,7 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
      later will mislead the generation of the array dimensions for allocatable/
      pointer components in derived types.  */
   int rank = alloc_w_e3_arr_spec ? expr->rank : ref->u.ar.as->rank;
-  tree count = gfc_array_init_count (se->expr, rank,
+  tree count = gfc_descr_init_count (se->expr, rank,
 				     coarray ? ref->u.ar.as->corank : 0,
 				     lower, upper, &se->pre,
 				     &set_descriptor_block, &overflow,
