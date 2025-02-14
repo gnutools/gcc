@@ -8593,6 +8593,70 @@ descriptor_element_size (tree descriptor, tree expr3_elem_size,
 }
 
 
+static tree
+get_array_memory_size (tree element_size, tree elements_count,
+		       tree empty_array_cond, stmtblock_t * pblock,
+		       tree * overflow)
+{
+  tree tmp;
+  tree size;
+  tree thencase;
+  tree elsecase;
+  tree cond;
+  tree var;
+  stmtblock_t thenblock;
+  stmtblock_t elseblock;
+
+
+
+  elements_count = fold_convert (size_type_node, elements_count);
+
+  /* First check for overflow. Since an array of type character can
+     have zero element_size, we must check for that before
+     dividing.  */
+  tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
+			 size_type_node,
+			 TYPE_MAX_VALUE (size_type_node), element_size);
+  cond = gfc_unlikely (fold_build2_loc (input_location, LT_EXPR,
+					logical_type_node, tmp, elements_count),
+		       PRED_FORTRAN_OVERFLOW);
+  tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
+			 integer_one_node, integer_zero_node);
+  cond = gfc_unlikely (fold_build2_loc (input_location, EQ_EXPR,
+					logical_type_node, element_size,
+					build_int_cst (size_type_node, 0)),
+		       PRED_FORTRAN_SIZE_ZERO);
+  tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
+			 integer_zero_node, tmp);
+  tmp = fold_build2_loc (input_location, PLUS_EXPR, integer_type_node,
+			 *overflow, tmp);
+  *overflow = gfc_evaluate_now (tmp, pblock);
+
+  size = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
+			  elements_count, element_size);
+
+  if (integer_zerop (empty_array_cond))
+    return size;
+  if (integer_onep (empty_array_cond))
+    return build_int_cst (size_type_node, 0);
+
+  var = gfc_create_var (TREE_TYPE (size), "size");
+  gfc_start_block (&thenblock);
+  gfc_add_modify (&thenblock, var, build_int_cst (size_type_node, 0));
+  thencase = gfc_finish_block (&thenblock);
+
+  gfc_start_block (&elseblock);
+  gfc_add_modify (&elseblock, var, size);
+  elsecase = gfc_finish_block (&elseblock);
+
+  tmp = gfc_evaluate_now (empty_array_cond, pblock);
+  tmp = build3_v (COND_EXPR, tmp, thencase, elsecase);
+  gfc_add_expr_to_block (pblock, tmp);
+
+  return var;
+}
+
+
 /* Fills in an array descriptor, and returns the size of the array.
    The size will be a simple_val, ie a variable or a constant.  Also
    calculates the offset of the base.  The pointer argument overflow,
@@ -8625,25 +8689,20 @@ descriptor_element_size (tree descriptor, tree expr3_elem_size,
 /*GCC ARRAYS*/
 
 static tree
-gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
-		     gfc_expr ** upper, stmtblock_t * pblock,
-		     stmtblock_t * descriptor_block, tree * overflow,
-		     tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
-		     bool e3_has_nodescriptor, gfc_expr *expr,
-		     tree element_size, bool explicit_ts)
+gfc_array_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
+		      gfc_expr ** upper, stmtblock_t * pblock,
+		      stmtblock_t * descriptor_block, tree * overflow,
+		      tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
+		      bool e3_has_nodescriptor, gfc_expr *expr,
+		      tree element_size, bool explicit_ts,
+		      tree *empty_array_cond)
 {
   tree type;
   tree tmp;
   tree size;
   tree offset;
   tree stride;
-  tree or_expr;
-  tree thencase;
-  tree elsecase;
   tree cond;
-  tree var;
-  stmtblock_t thenblock;
-  stmtblock_t elseblock;
   gfc_expr *ubound;
   gfc_se se;
   int n;
@@ -8697,7 +8756,7 @@ gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
   else
     gfc_conv_descriptor_dtype_set (pblock, descriptor, gfc_get_dtype (type));
 
-  or_expr = logical_false_node;
+  tree empty_cond = logical_false_node;
 
   for (n = 0; n < rank; n++)
     {
@@ -8790,7 +8849,8 @@ gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
 				      gfc_rank_cst[n], stride);
 
       /* Calculate size and check whether extent is negative.  */
-      size = gfc_conv_array_extent_dim (conv_lbound, conv_ubound, &or_expr);
+      size = gfc_conv_array_extent_dim (conv_lbound, conv_ubound,
+					&empty_cond);
       size = gfc_evaluate_now (size, pblock);
 
       /* Check whether multiplying the stride by the number of
@@ -8862,11 +8922,13 @@ gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
 	}
     }
 
+  *empty_array_cond = empty_cond;
+
   /* The stride is the number of elements in the array, so multiply by the
      size of an element to get the total size.  */
 
   if (rank == 0)
-    return element_size;
+    return gfc_index_one_node;
 
   /* Update the array descriptor with the offset and the span.  */
   offset = gfc_evaluate_now (offset, pblock);
@@ -8874,51 +8936,7 @@ gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
   tmp = fold_convert (gfc_array_index_type, element_size);
   gfc_conv_descriptor_span_set (descriptor_block, descriptor, tmp);
 
-  stride = fold_convert (size_type_node, stride);
-
-  /* First check for overflow. Since an array of type character can
-     have zero element_size, we must check for that before
-     dividing.  */
-  tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
-			 size_type_node,
-			 TYPE_MAX_VALUE (size_type_node), element_size);
-  cond = gfc_unlikely (fold_build2_loc (input_location, LT_EXPR,
-					logical_type_node, tmp, stride),
-		       PRED_FORTRAN_OVERFLOW);
-  tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
-			 integer_one_node, integer_zero_node);
-  cond = gfc_unlikely (fold_build2_loc (input_location, EQ_EXPR,
-					logical_type_node, element_size,
-					build_int_cst (size_type_node, 0)),
-		       PRED_FORTRAN_SIZE_ZERO);
-  tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
-			 integer_zero_node, tmp);
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, integer_type_node,
-			 *overflow, tmp);
-  *overflow = gfc_evaluate_now (tmp, pblock);
-
-  size = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
-			  stride, element_size);
-
-  if (integer_zerop (or_expr))
-    return size;
-  if (integer_onep (or_expr))
-    return build_int_cst (size_type_node, 0);
-
-  var = gfc_create_var (TREE_TYPE (size), "size");
-  gfc_start_block (&thenblock);
-  gfc_add_modify (&thenblock, var, build_int_cst (size_type_node, 0));
-  thencase = gfc_finish_block (&thenblock);
-
-  gfc_start_block (&elseblock);
-  gfc_add_modify (&elseblock, var, size);
-  elsecase = gfc_finish_block (&elseblock);
-
-  tmp = gfc_evaluate_now (or_expr, pblock);
-  tmp = build3_v (COND_EXPR, tmp, thencase, elsecase);
-  gfc_add_expr_to_block (pblock, tmp);
-
-  return var;
+  return gfc_evaluate_now (stride, pblock);
 }
 
 
@@ -8962,7 +8980,6 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
   tree tmp;
   tree pointer;
   tree token = NULL_TREE;
-  tree size;
   tree msg;
   tree error = NULL_TREE;
   tree overflow; /* Boolean storing whether size calculation overflows.  */
@@ -9083,16 +9100,21 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 
   element_size = descriptor_element_size (se->expr, expr3_elem_size, expr3);
 
+  tree empty_array_cond;
   /* Take the corank only from the actual ref and not from the coref.  The
      later will mislead the generation of the array dimensions for allocatable/
      pointer components in derived types.  */
-  size = gfc_array_init_size (se->expr, alloc_w_e3_arr_spec ? expr->rank
-							   : ref->u.ar.as->rank,
-			      coarray ? ref->u.ar.as->corank : 0,
-			      lower, upper, &se->pre, &set_descriptor_block,
-			      &overflow, expr3_elem_size, expr3, e3_arr_desc,
-			      e3_has_nodescriptor, expr, element_size,
-			      explicit_ts);
+  int rank = alloc_w_e3_arr_spec ? expr->rank : ref->u.ar.as->rank;
+  tree count = gfc_array_init_count (se->expr, rank,
+				     coarray ? ref->u.ar.as->corank : 0,
+				     lower, upper, &se->pre,
+				     &set_descriptor_block, &overflow,
+				     expr3_elem_size, expr3, e3_arr_desc,
+				     e3_has_nodescriptor, expr, element_size,
+				     explicit_ts, &empty_array_cond);
+
+  tree size = get_array_memory_size (element_size, count, empty_array_cond,
+				     &se->pre, &overflow);
 
   if (dimension)
     {
