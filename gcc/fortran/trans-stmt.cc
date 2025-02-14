@@ -2124,8 +2124,8 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 
       if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
 	{
-	  tree token = gfc_conv_descriptor_token_get (se.expr),
-	       size
+	  tree token = gfc_conv_descriptor_token_get (se.expr);
+	  tree size
 	       = sym->attr.dimension
 		   ? fold_build2 (MULT_EXPR, gfc_array_index_type,
 				  gfc_conv_descriptor_size (se.expr, e->rank),

@@ -8553,6 +8553,46 @@ gfc_conv_descriptor_cosize (tree desc, int rank, int corank)
 }
 
 
+static tree
+descriptor_element_size (tree descriptor, tree expr3_elem_size,
+			 gfc_expr *expr3)
+{
+  tree type;
+  tree tmp;
+
+  type = TREE_TYPE (descriptor);
+
+  /* Obviously, if there is a SOURCE expression (expr3) we must use its element
+     size.  */
+  if (expr3_elem_size != NULL_TREE)
+    tmp = expr3_elem_size;
+  else if (expr3 != NULL)
+    {
+      if (expr3->ts.type == BT_CLASS)
+	{
+	  gfc_se se_sz;
+	  gfc_expr *sz = gfc_copy_expr (expr3);
+	  gfc_add_vptr_component (sz);
+	  gfc_add_size_component (sz);
+	  gfc_init_se (&se_sz, NULL);
+	  gfc_conv_expr (&se_sz, sz);
+	  gfc_free_expr (sz);
+	  tmp = se_sz.expr;
+	}
+      else
+	{
+	  tmp = gfc_typenode_for_spec (&expr3->ts);
+	  tmp = TYPE_SIZE_UNIT (tmp);
+	}
+    }
+  else
+    tmp = TYPE_SIZE_UNIT (gfc_get_element_type (type));
+
+  /* Convert to size_t.  */
+  return fold_convert (size_type_node, tmp);
+}
+
+
 /* Fills in an array descriptor, and returns the size of the array.
    The size will be a simple_val, ie a variable or a constant.  Also
    calculates the offset of the base.  The pointer argument overflow,
@@ -8590,7 +8630,7 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
 		     stmtblock_t * descriptor_block, tree * overflow,
 		     tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
 		     bool e3_has_nodescriptor, gfc_expr *expr,
-		     tree *element_size, bool explicit_ts)
+		     tree element_size, bool explicit_ts)
 {
   tree type;
   tree tmp;
@@ -8823,37 +8863,10 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
     }
 
   /* The stride is the number of elements in the array, so multiply by the
-     size of an element to get the total size.  Obviously, if there is a
-     SOURCE expression (expr3) we must use its element size.  */
-  if (expr3_elem_size != NULL_TREE)
-    tmp = expr3_elem_size;
-  else if (expr3 != NULL)
-    {
-      if (expr3->ts.type == BT_CLASS)
-	{
-	  gfc_se se_sz;
-	  gfc_expr *sz = gfc_copy_expr (expr3);
-	  gfc_add_vptr_component (sz);
-	  gfc_add_size_component (sz);
-	  gfc_init_se (&se_sz, NULL);
-	  gfc_conv_expr (&se_sz, sz);
-	  gfc_free_expr (sz);
-	  tmp = se_sz.expr;
-	}
-      else
-	{
-	  tmp = gfc_typenode_for_spec (&expr3->ts);
-	  tmp = TYPE_SIZE_UNIT (tmp);
-	}
-    }
-  else
-    tmp = TYPE_SIZE_UNIT (gfc_get_element_type (type));
-
-  /* Convert to size_t.  */
-  *element_size = fold_convert (size_type_node, tmp);
+     size of an element to get the total size.  */
 
   if (rank == 0)
-    return *element_size;
+    return element_size;
 
   stride = fold_convert (size_type_node, stride);
 
@@ -8862,14 +8875,14 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
      dividing.  */
   tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
 			 size_type_node,
-			 TYPE_MAX_VALUE (size_type_node), *element_size);
+			 TYPE_MAX_VALUE (size_type_node), element_size);
   cond = gfc_unlikely (fold_build2_loc (input_location, LT_EXPR,
 					logical_type_node, tmp, stride),
 		       PRED_FORTRAN_OVERFLOW);
   tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
 			 integer_one_node, integer_zero_node);
   cond = gfc_unlikely (fold_build2_loc (input_location, EQ_EXPR,
-					logical_type_node, *element_size,
+					logical_type_node, element_size,
 					build_int_cst (size_type_node, 0)),
 		       PRED_FORTRAN_SIZE_ZERO);
   tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
@@ -8879,7 +8892,7 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
   *overflow = gfc_evaluate_now (tmp, pblock);
 
   size = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
-			  stride, *element_size);
+			  stride, element_size);
 
   if (poffset != NULL)
     {
@@ -9067,6 +9080,10 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 				  se->string_length));
 
   gfc_init_block (&set_descriptor_block);
+
+
+  element_size = descriptor_element_size (se->expr, expr3_elem_size, expr3);
+
   /* Take the corank only from the actual ref and not from the coref.  The
      later will mislead the generation of the array dimensions for allocatable/
      pointer components in derived types.  */
@@ -9076,7 +9093,7 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 			      &offset, lower, upper,
 			      &se->pre, &set_descriptor_block, &overflow,
 			      expr3_elem_size, expr3, e3_arr_desc,
-			      e3_has_nodescriptor, expr, &element_size,
+			      e3_has_nodescriptor, expr, element_size,
 			      explicit_ts);
 
   if (dimension)
