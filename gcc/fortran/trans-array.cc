@@ -5816,8 +5816,8 @@ descriptor_element_size (tree descriptor, tree expr3_elem_size,
 /*GCC ARRAYS*/
 
 static tree
-gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
-		     gfc_expr ** lower, gfc_expr ** upper, stmtblock_t * pblock,
+gfc_array_init_size (tree descriptor, int rank, int corank, gfc_expr ** lower,
+		     gfc_expr ** upper, stmtblock_t * pblock,
 		     stmtblock_t * descriptor_block, tree * overflow,
 		     tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
 		     bool e3_has_nodescriptor, gfc_expr *expr,
@@ -6060,6 +6060,12 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
   if (rank == 0)
     return element_size;
 
+  /* Update the array descriptor with the offset and the span.  */
+  offset = gfc_evaluate_now (offset, pblock);
+  gfc_conv_descriptor_offset_set (descriptor_block, descriptor, offset);
+  tmp = fold_convert (gfc_array_index_type, element_size);
+  gfc_conv_descriptor_span_set (descriptor_block, descriptor, tmp);
+
   stride = fold_convert (size_type_node, stride);
 
   /* First check for overflow. Since an array of type character can
@@ -6085,12 +6091,6 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
 
   size = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
 			  stride, element_size);
-
-  if (poffset != NULL)
-    {
-      offset = gfc_evaluate_now (offset, pblock);
-      *poffset = offset;
-    }
 
   if (integer_zerop (or_expr))
     return size;
@@ -6153,7 +6153,6 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 {
   tree tmp;
   tree pointer;
-  tree offset = NULL_TREE;
   tree token = NULL_TREE;
   tree size;
   tree msg;
@@ -6282,9 +6281,8 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
   size = gfc_array_init_size (se->expr, alloc_w_e3_arr_spec ? expr->rank
 							   : ref->u.ar.as->rank,
 			      coarray ? ref->u.ar.as->corank : 0,
-			      &offset, lower, upper,
-			      &se->pre, &set_descriptor_block, &overflow,
-			      expr3_elem_size, expr3, e3_arr_desc,
+			      lower, upper, &se->pre, &set_descriptor_block,
+			      &overflow, expr3_elem_size, expr3, e3_arr_desc,
 			      e3_has_nodescriptor, expr, element_size,
 			      explicit_ts);
 
@@ -6421,14 +6419,6 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
     tmp = gfc_finish_block (&elseblock);
 
   gfc_add_expr_to_block (&se->pre, tmp);
-
-  /* Update the array descriptor with the offset and the span.  */
-  if (dimension)
-    {
-      gfc_conv_descriptor_offset_set (&set_descriptor_block, se->expr, offset);
-      tmp = fold_convert (gfc_array_index_type, element_size);
-      gfc_conv_descriptor_span_set (&set_descriptor_block, se->expr, tmp);
-    }
 
   set_descriptor = gfc_finish_block (&set_descriptor_block);
   if (status != NULL_TREE)
