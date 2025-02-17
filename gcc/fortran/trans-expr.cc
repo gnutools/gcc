@@ -5489,6 +5489,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 					      ? expr->ts.u.cl->backend_decl
 					      : NULL),
 				  loop.dimen);
+  loop.temp_ss->info->data.temp.preserve_bounds = 1;
 
   parmse->string_length = loop.temp_ss->info->string_length;
 
@@ -8440,7 +8441,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_trans_create_temp_array (&se->pre, &se->post, se->ss,
 				       tmp, NULL_TREE, false,
 				       !comp->attr.pointer, callee_alloc,
-				       &se->ss->info->expr->where);
+				       &se->ss->info->expr->where, true);
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;
@@ -8476,7 +8477,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_trans_create_temp_array (&se->pre, &se->post, se->ss,
 				       tmp, NULL_TREE, false,
 				       !sym->attr.pointer, callee_alloc,
-				       &se->ss->info->expr->where);
+				       &se->ss->info->expr->where, true);
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;

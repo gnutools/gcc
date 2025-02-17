@@ -1288,7 +1288,8 @@ gfc_conv_intrinsic_caf_get (gfc_se *se, gfc_expr *expr, tree lhs,
       /* Create temporary.  */
       may_realloc = gfc_trans_create_temp_array (&se->pre, &se->post, se->ss,
 						 type, NULL_TREE, false, false,
-						 false, &array_expr->where)
+						 false, &array_expr->where,
+						 true)
 		    == NULL_TREE;
       res_var = se->ss->info->data.array.descriptor;
       if (array_expr->ts.type == BT_CHARACTER)
@@ -8813,7 +8814,8 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
   /* Build a destination descriptor, using the pointer, source, as the
      data field.  */
   gfc_trans_create_temp_array (&se->pre, &se->post, se->ss, mold_type,
-			       NULL_TREE, false, true, false, &expr->where);
+			       NULL_TREE, false, true, false, &expr->where,
+			       true);
 
   /* Cast the pointer to the result.  */
   tmp = gfc_conv_descriptor_data_get (info->descriptor);

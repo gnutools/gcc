@@ -325,7 +325,7 @@ gfc_conv_elemental_dependencies (gfc_se * se, gfc_se * loopse,
 	  gfc_init_block (&temp_post);
 	  tmp = gfc_trans_create_temp_array (&se->pre, &temp_post, tmp_ss,
 					     temptype, initial, false, true,
-					     false, &arg->expr->where);
+					     false, &arg->expr->where, true);
 	  gfc_add_modify (&se->pre, size, tmp);
 	  tmp = fold_convert (pvoid_type_node, tmp_ss->info->data.array.data);
 	  gfc_add_modify (&se->pre, data, tmp);

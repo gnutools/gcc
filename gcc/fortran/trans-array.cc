@@ -1894,17 +1894,20 @@ set_bounds_update_offset (stmtblock_t *block, tree desc, int dim,
     return;
 
   /* Update offset.  */
-  tree tmp = fold_build2_loc (input_location, MULT_EXPR,
-			      gfc_array_index_type, lbound_diff, stride);
-  tmp = fold_build2_loc (input_location, MINUS_EXPR,
-			 gfc_array_index_type, *offset, tmp);
-  *offset = gfc_evaluate_now (tmp, block);
+  if (!integer_zerop (lbound_diff))
+    {
+      tree tmp = fold_build2_loc (input_location, MULT_EXPR,
+				  gfc_array_index_type, lbound_diff, stride);
+      tmp = fold_build2_loc (input_location, MINUS_EXPR,
+			     gfc_array_index_type, *offset, tmp);
+      *offset = gfc_evaluate_now (tmp, block);
+    }
 
   if (!next_stride)
     return;
 
   /* Set stride for next dimension.  */
-  tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+  tree tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
   *next_stride = fold_build2_loc (input_location, MULT_EXPR,
 				  gfc_array_index_type, stride, tmp);
 }
@@ -3683,9 +3686,11 @@ get_class_info_from_ss (stmtblock_t * pre, gfc_ss *ss, tree *eltype,
 static void
 set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
 			  tree elemsize, tree data_ptr,
+			  tree lbound[GFC_MAX_DIMENSIONS],
 			  tree ubound[GFC_MAX_DIMENSIONS],
 			  tree stride[GFC_MAX_DIMENSIONS], int rank,
-			  bool callee_allocated, bool rank_changer)
+			  bool callee_allocated, bool rank_changer,
+			  bool shift_bounds)
 {
   int n;
 
@@ -3711,13 +3716,15 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
       gfc_conv_descriptor_rank_set (block, desc, rank);
     }
 
+  tree offset = gfc_index_zero_node;
   if (!callee_allocated)
     {
       for (n = 0; n < rank; n++)
 	{
 	  /* Store the stride and bound components in the descriptor.  */
-	  set_descriptor_dimension (block, desc, n, gfc_index_zero_node, ubound[n],
-				    stride[n], nullptr, nullptr);
+	  tree this_lbound = shift_bounds ? gfc_index_zero_node : lbound[n];
+	  set_descriptor_dimension (block, desc, n, this_lbound, ubound[n],
+				    stride[n], &offset, nullptr);
 	}
     }
 
@@ -3727,7 +3734,7 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
 
   /* The offset is zero because we create temporaries with a zero
      lower bound.  */
-  gfc_conv_descriptor_offset_set (block, desc, gfc_index_zero_node);
+  gfc_conv_descriptor_offset_set (block, desc, offset);
 }
 
 
@@ -3752,7 +3759,8 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
 tree
 gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 			     tree eltype, tree initial, bool dynamic,
-			     bool dealloc, bool callee_alloc, locus * where)
+			     bool dealloc, bool callee_alloc, locus * where,
+			     bool shift_bounds)
 {
   gfc_loopinfo *loop;
   gfc_ss *s;
@@ -3839,19 +3847,22 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	{
 	  dim = s->dim[n];
 
-	  /* Callee allocated arrays may not have a known bound yet.  */
-	  if (loop->to[n])
-	    loop->to[n] = gfc_evaluate_now (
-			fold_build2_loc (input_location, MINUS_EXPR,
-					 gfc_array_index_type,
-					 loop->to[n], loop->from[n]),
-			pre);
-	  loop->from[n] = gfc_index_zero_node;
+	  if (shift_bounds)
+	    {
+	      /* Callee allocated arrays may not have a known bound yet.  */
+	      if (loop->to[n])
+		loop->to[n] = gfc_evaluate_now (
+			    fold_build2_loc (input_location, MINUS_EXPR,
+					     gfc_array_index_type,
+					     loop->to[n], loop->from[n]),
+			    pre);
+	      loop->from[n] = gfc_index_zero_node;
 
-	  /* We have just changed the loop bounds, we must clear the
-	     corresponding specloop, so that delta calculation is not skipped
-	     later in gfc_set_delta.  */
-	  loop->specloop[n] = NULL;
+	      /* We have just changed the loop bounds, we must clear the
+		 corresponding specloop, so that delta calculation is not skipped
+		 later in gfc_set_delta.  */
+	      loop->specloop[n] = NULL;
+	    }
 
 	  /* We are constructing the temporary's descriptor based on the loop
 	     dimensions.  As the dimensions may be accessed in arbitrary order
@@ -4012,13 +4023,18 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	{
 	  stride[n] = size;
 
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type,
-				 to[n], gfc_index_one_node);
+	  tree extent = to[n];
+	  if (!shift_bounds && !integer_zerop (from[n]))
+	    extent = fold_build2_loc (input_location, MINUS_EXPR,
+				      gfc_array_index_type, to[n], from[n]);
+     
+	  extent = fold_build2_loc (input_location, PLUS_EXPR,
+				    gfc_array_index_type,
+				    extent, gfc_index_one_node);
 
 	  /* Check whether the size for this dimension is negative.  */
 	  cond = fold_build2_loc (input_location, LE_EXPR, logical_type_node,
-				  tmp, gfc_index_zero_node);
+				  extent, gfc_index_zero_node);
 	  cond = gfc_evaluate_now (cond, pre);
 
 	  if (n == 0)
@@ -4028,7 +4044,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 				       logical_type_node, or_expr, cond);
 
 	  size = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, size, tmp);
+				  gfc_array_index_type, size, extent);
 	  size = gfc_evaluate_now (size, pre);
 	}
     }
@@ -4056,9 +4072,9 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 						    dealloc);
 
   set_temporary_descriptor (pre, desc, class_expr, elemsize, data_ptr,
-			    to, stride, total_dim,
+			    from, to, stride, total_dim,
 			    size == NULL_TREE || callee_alloc,
-			    rank_changer);
+			    rank_changer, shift_bounds);
 
   while (ss->parent)
     ss = ss->parent;
@@ -5339,7 +5355,8 @@ trans_array_constructor (gfc_ss * ss, locus * where)
     }
 
   gfc_trans_create_temp_array (&outer_loop->pre, &outer_loop->post, ss, type,
-			       NULL_TREE, dynamic, true, false, where);
+			       NULL_TREE, dynamic, true, false, where,
+			       true);
 
   desc = ss_info->data.array.descriptor;
   offset = gfc_index_zero_node;
@@ -8414,6 +8431,8 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
       gcc_assert (tmp_ss_info->type == GFC_SS_TEMP);
       gcc_assert (loop->parent == NULL);
 
+      bool preserve_bounds = tmp_ss_info->data.temp.preserve_bounds;
+
       /* Make absolutely sure that this is a complete type.  */
       if (tmp_ss_info->string_length)
 	tmp_ss_info->data.temp.type
@@ -8428,7 +8447,8 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
       gcc_assert (tmp_ss->dimen != 0);
 
       gfc_trans_create_temp_array (&loop->pre, &loop->post, tmp_ss, tmp,
-				   NULL_TREE, false, true, false, where);
+				   NULL_TREE, false, true, false, where,
+				   !preserve_bounds);
     }
 
   /* For array parameters we don't have loop variables, so don't calculate the

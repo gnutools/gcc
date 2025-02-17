@@ -282,6 +282,7 @@ typedef struct gfc_ss_info
     struct
     {
       tree type;
+      unsigned preserve_bounds:1;
     }
     temp;
 
