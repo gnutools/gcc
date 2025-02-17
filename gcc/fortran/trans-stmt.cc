@@ -4139,17 +4139,11 @@ forall_make_variable_temp (gfc_code *c, stmtblock_t *pre, stmtblock_t *post)
   if (old_sym->attr.dimension)
     {
       gfc_init_se (&tse, NULL);
-      gfc_conv_subref_array_arg (&tse, e, 0, INTENT_IN, false);
+      gfc_conv_subref_array_arg (&tse, e, 0, INTENT_IN, false,
+				 NULL, NULL, NULL, false, true);
       gfc_add_block_to_block (pre, &tse.pre);
       gfc_add_block_to_block (post, &tse.post);
       tse.expr = build_fold_indirect_ref_loc (input_location, tse.expr);
-
-      if (c->expr1->ref->u.ar.type != AR_SECTION)
-	{
-	  /* Use the variable offset for the temporary.  */
-	  tmp = gfc_conv_array_offset (old_sym->backend_decl);
-	  gfc_conv_descriptor_offset_set (pre, tse.expr, tmp);
-	}
     }
   else
     {

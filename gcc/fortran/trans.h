@@ -285,6 +285,7 @@ typedef struct gfc_ss_info
     struct
     {
       tree type;
+      bool preserve_bounds;
     }
     temp;
 
@@ -564,7 +565,8 @@ void gfc_conv_subref_array_arg (gfc_se *, gfc_expr *, int, sym_intent, bool,
 				const gfc_symbol *fsym = NULL,
 				const char *proc_name = NULL,
 				gfc_symbol *sym = NULL,
-				bool check_contiguous = false);
+				bool check_contiguous = false,
+				bool preserve_bounds = false);
 
 void gfc_conv_is_contiguous_expr (gfc_se *, gfc_expr *);
 

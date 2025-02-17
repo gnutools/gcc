@@ -29,7 +29,8 @@ void gfc_set_loop_bounds_from_array_spec (gfc_interface_mapping *,
 
 /* Generate code to create a temporary array.  */
 tree gfc_trans_create_temp_array (stmtblock_t *, stmtblock_t *, gfc_ss *,
-				  tree, tree, bool, bool, bool, locus *);
+				  tree, tree, bool, bool, bool, locus *,
+				  bool shift_bounds = true);
 
 /* Generate function entry code for allocation of compiler allocated array
    variables.  */

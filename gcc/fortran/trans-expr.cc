@@ -5361,7 +5361,8 @@ void
 gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 			   sym_intent intent, bool formal_ptr,
 			   const gfc_symbol *fsym, const char *proc_name,
-			   gfc_symbol *sym, bool check_contiguous)
+			   gfc_symbol *sym, bool check_contiguous,
+			   bool preserve_bounds)
 {
   gfc_se lse;
   gfc_se rse;
@@ -5440,6 +5441,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 					      ? expr->ts.u.cl->backend_decl
 					      : NULL),
 				  loop.dimen);
+  loop.temp_ss->info->data.temp.preserve_bounds = preserve_bounds;
 
   parmse->string_length = loop.temp_ss->info->string_length;
 

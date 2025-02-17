@@ -960,7 +960,8 @@ get_class_info_from_ss (stmtblock_t * pre, gfc_ss *ss, tree *eltype,
 tree
 gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 			     tree eltype, tree initial, bool dynamic,
-			     bool dealloc, bool callee_alloc, locus * where)
+			     bool dealloc, bool callee_alloc, locus * where,
+			     bool shift_bounds)
 {
   gfc_loopinfo *loop;
   gfc_ss *s;
@@ -1048,19 +1049,23 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	{
 	  dim = s->dim[n];
 
-	  /* Callee allocated arrays may not have a known bound yet.  */
-	  if (loop->to[n])
-	    loop->to[n] = gfc_evaluate_now (
-			fold_build2_loc (input_location, MINUS_EXPR,
-					 gfc_array_index_type,
-					 loop->to[n], loop->from[n]),
-			pre);
-	  loop->from[n] = gfc_index_zero_node;
+	  if (shift_bounds)
+	    {
+	      /* Callee allocated arrays may not have a known bound yet.  */
+	      if (loop->to[n])
+		{
+		  tree t = fold_build2_loc (input_location, MINUS_EXPR,
+					    gfc_array_index_type,
+					    loop->to[n], loop->from[n]);
+		  loop->to[n] = gfc_evaluate_now (t, pre);
+		}
+	      loop->from[n] = gfc_index_zero_node;
 
-	  /* We have just changed the loop bounds, we must clear the
-	     corresponding specloop, so that delta calculation is not skipped
-	     later in gfc_set_delta.  */
-	  loop->specloop[n] = NULL;
+	      /* We have just changed the loop bounds, we must clear the
+		 corresponding specloop, so that delta calculation is not
+		 skipped later in gfc_set_delta.  */
+	      loop->specloop[n] = NULL;
+	    }
 
 	  /* We are constructing the temporary's descriptor based on the loop
 	     dimensions.  As the dimensions may be accessed in arbitrary order
@@ -1221,13 +1226,18 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	{
 	  stride[n] = size;
 
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type,
-				 to[n], gfc_index_one_node);
+	  tmp = gfc_index_one_node;
+	  if (!shift_bounds && !integer_zerop (from[n]))
+	    tmp = fold_build2_loc (input_location, MINUS_EXPR,
+				   gfc_array_index_type, 
+				   gfc_index_one_node, from[n]);
+
+	  tree extent = fold_build2_loc (input_location, PLUS_EXPR,
+					 gfc_array_index_type, to[n], tmp);
 
 	  /* Check whether the size for this dimension is negative.  */
 	  cond = fold_build2_loc (input_location, LE_EXPR, logical_type_node,
-				  tmp, gfc_index_zero_node);
+				  extent, gfc_index_zero_node);
 	  cond = gfc_evaluate_now (cond, pre);
 
 	  if (n == 0)
@@ -1237,7 +1247,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 				       logical_type_node, or_expr, cond);
 
 	  size = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, size, tmp);
+				  gfc_array_index_type, size, extent);
 	  size = gfc_evaluate_now (size, pre);
 	}
     }
@@ -1265,9 +1275,9 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 						    dealloc);
 
   gfc_set_temporary_descriptor (pre, desc, class_expr, elemsize, data_ptr,
-				to, stride, total_dim,
+				from, to, stride, total_dim,
 				size == NULL_TREE || callee_alloc,
-				rank_changer);
+				rank_changer, shift_bounds);
 
   while (ss->parent)
     ss = ss->parent;
@@ -5631,6 +5641,8 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
 			(TREE_TYPE (tmp_ss_info->data.temp.type),
 			 tmp_ss_info->string_length);
 
+      bool preserve_bounds = tmp_ss_info->data.temp.preserve_bounds;
+
       tmp = tmp_ss_info->data.temp.type;
       memset (&tmp_ss_info->data.array, 0, sizeof (gfc_array_info));
       tmp_ss_info->type = GFC_SS_SECTION;
@@ -5638,7 +5650,8 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
       gcc_assert (tmp_ss->dimen != 0);
 
       gfc_trans_create_temp_array (&loop->pre, &loop->post, tmp_ss, tmp,
-				   NULL_TREE, false, true, false, where);
+				   NULL_TREE, false, true, false, where,
+				   !preserve_bounds);
     }
 
   /* For array parameters we don't have loop variables, so don't calculate the

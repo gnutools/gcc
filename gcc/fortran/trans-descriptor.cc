@@ -2137,9 +2137,11 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
 void
 gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
 			      tree elemsize, tree data_ptr,
+			      tree lbound[GFC_MAX_DIMENSIONS],
 			      tree ubound[GFC_MAX_DIMENSIONS],
 			      tree stride[GFC_MAX_DIMENSIONS], int rank,
-			      bool callee_allocated, bool rank_changer)
+			      bool callee_allocated, bool rank_changer,
+			      bool shift_bounds)
 {
   if (!class_src)
     {
@@ -2163,6 +2165,7 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
       gfc_conv_descriptor_rank_set (block, descr, rank);
     }
 
+  tree offset = gfc_index_zero_node;
   if (!callee_allocated)
     for (int n = 0; n < rank; n++)
       {
@@ -2170,18 +2173,40 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
 	gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[n],
 					stride[n]);
 
+	tree this_lbound = shift_bounds ? gfc_index_zero_node : lbound[n];
 	gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[n],
-					gfc_index_zero_node);
+					this_lbound);
+
+	tree this_ubound;
+	if (shift_bounds)
+	  {
+	    tree lbound_diff = fold_build2_loc (input_location, MINUS_EXPR,
+						gfc_array_index_type,
+						this_lbound, lbound[n]);
+	    this_ubound = fold_build2_loc (input_location, PLUS_EXPR,
+					   gfc_array_index_type,
+					   ubound[n], lbound_diff);
+	  }
+	else
+	  this_ubound = ubound[n];
 
 	gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[n],
-					ubound[n]);
+					this_ubound);
+
+	if (!shift_bounds)
+	  {
+	    tree tmp = fold_build2_loc (input_location, MULT_EXPR,
+					gfc_array_index_type, this_lbound,
+					stride[n]);
+	    tmp = fold_build2_loc (input_location, MINUS_EXPR,
+				   gfc_array_index_type, offset, tmp);
+	    offset = gfc_evaluate_now (tmp, block);
+	  }
       }
 
   gfc_conv_descriptor_span_set (block, descr, elemsize);
 
-  /* The offset is zero because we create temporaries with a zero
-     lower bound.  */
-  gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
+  gfc_conv_descriptor_offset_set (block, descr, offset);
 
   gfc_conv_descriptor_data_set (block, descr, data_ptr);
 }
