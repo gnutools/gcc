@@ -3664,7 +3664,9 @@ resolve_function (gfc_expr *expr)
 		 "Using function %qs at %L is deprecated",
 		 sym->name, &expr->where);
 
-  if (!expr->value.function.isym)
+  if (!(expr->value.function.isym
+	|| !expr->value.function.esym
+	|| expr->value.function.esym->attr.elemental))
     gfc_expression_rank (expr);
 
   return t;
