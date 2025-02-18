@@ -3663,6 +3663,10 @@ resolve_function (gfc_expr *expr)
     gfc_warning (OPT_Wdeprecated_declarations,
 		 "Using function %qs at %L is deprecated",
 		 sym->name, &expr->where);
+
+  if (!expr->value.function.isym)
+    gfc_expression_rank (expr);
+
   return t;
 }
 
