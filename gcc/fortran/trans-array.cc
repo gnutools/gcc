@@ -3689,7 +3689,7 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
 			  tree lbound[GFC_MAX_DIMENSIONS],
 			  tree ubound[GFC_MAX_DIMENSIONS],
 			  tree stride[GFC_MAX_DIMENSIONS], int rank,
-			  bool callee_allocated, bool rank_changer,
+			  bool omit_bounds, bool rank_changer,
 			  bool shift_bounds)
 {
   int n;
@@ -3717,7 +3717,7 @@ set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
     }
 
   tree offset = gfc_index_zero_node;
-  if (!callee_allocated)
+  if (!omit_bounds)
     {
       for (n = 0; n < rank; n++)
 	{
@@ -4049,6 +4049,8 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	}
     }
 
+  bool bounds_known = size != NULL_TREE;
+
   /* Get the size of the array.  */
   if (size && !callee_alloc)
     {
@@ -4072,8 +4074,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 						    dealloc);
 
   set_temporary_descriptor (pre, desc, class_expr, elemsize, data_ptr,
-			    from, to, stride, total_dim,
-			    size == NULL_TREE || callee_alloc,
+			    from, to, stride, total_dim, !bounds_known,
 			    rank_changer, shift_bounds);
 
   while (ss->parent)
