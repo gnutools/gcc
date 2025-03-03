@@ -2407,7 +2407,6 @@ namespace selftest
 
 class data_value
 {
-  const exec_context & context;
   unsigned bit_width;
   wide_int constant_mask;
   wide_int address_mask;
@@ -2425,15 +2424,15 @@ class data_value
   friend void selftest::data_value_set_at_tests ();
 
 public:
-  data_value (const exec_context &ctx, unsigned width)
-    : context (ctx), bit_width (width),
+  data_value (unsigned width)
+    : bit_width (width),
     constant_mask (wi::shwi (HOST_WIDE_INT_0, width)),
     address_mask (wi::shwi (HOST_WIDE_INT_0, width)),
     constant_value (wi::shwi (HOST_WIDE_INT_0, width)),
     addresses ()
   {}
-  data_value (const exec_context &ctx, tree type)
-    : data_value (ctx, get_constant_type_size (type))
+  data_value (tree type)
+    : data_value (get_constant_type_size (type))
   {}
   data_value (const data_value &) = default;
   data_value & operator= (const data_value &);
@@ -2452,10 +2451,6 @@ public:
   data_storage *get_address_at (unsigned offset) const;
   data_value get_at (unsigned offset, unsigned width) const;
   bool is_fully_defined () const { return (~(constant_mask | address_mask)) == 0; }
-  void print_at (pretty_printer & pp, tree type, unsigned offset,
-		 unsigned width) const;
-  void print_at (pretty_printer & pp, tree type, unsigned offset) const;
-  void print (pretty_printer & pp, tree type) const;
 };
 
 
@@ -2501,11 +2496,11 @@ class data_storage
 
 public:
   data_storage (const exec_context &ctx, tree decl)
-    : context (ctx), type (STRG_VARIABLE), value (ctx, TREE_TYPE (decl)),
+    : context (ctx), type (STRG_VARIABLE), value (TREE_TYPE (decl)),
     u (decl)
   {}
   data_storage (const exec_context &ctx, unsigned alloc_index, unsigned alloc_amount)
-    : context (ctx), type (STRG_ALLOC), value (ctx, alloc_amount),
+    : context (ctx), type (STRG_ALLOC), value (alloc_amount),
     u (alloc_index, alloc_amount)
   {}
   storage_type get_type () const { return type; }
@@ -2550,6 +2545,9 @@ public:
   tree print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset);
   void print_value_update (exec_context & context, tree, const data_value &); 
   void end_stmt (gimple *);
+  void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
+  void print_at (const data_value & value, tree type, unsigned offset);
+  void print (const data_value & value, tree type);
 };
 
 
@@ -2962,7 +2960,7 @@ context_printer::print_value_update (exec_context & context, tree lhs, const dat
       pp_space (&pp);
       pp_equal (&pp);
       pp_space (&pp);
-      value.print_at (pp, type_output, previously_done, just_done);
+      print_at (value, type_output, previously_done, just_done);
       print_newline ();
       previously_done += just_done;
     }
@@ -3318,7 +3316,7 @@ data_value::get_address () const
 data_value
 data_value::get_at (unsigned offset, unsigned width) const
 {
-  data_value result (context, width);
+  data_value result (width);
   switch (classify (offset, width))
     {
     case VAL_CONSTANT:
@@ -3339,26 +3337,26 @@ data_value::get_at (unsigned offset, unsigned width) const
 
 
 void
-data_value::print_at (pretty_printer & pp, tree type, unsigned offset,
-		      unsigned width) const
+context_printer::print_at (const data_value & value, tree type, unsigned offset,
+			   unsigned width)
 {
   if (TREE_CODE (type) == VECTOR_TYPE)
     {
-      gcc_assert (width == bit_width);
+      gcc_assert (width == value.get_bitwidth ());
       gcc_assert (offset == 0);
       tree elt_type = TREE_TYPE (type);
       unsigned elt_width;
       gcc_assert (get_constant_type_size (elt_type, elt_width));
       gcc_assert (elt_width != 0);
-      gcc_assert (bit_width % elt_width == 0);
+      gcc_assert (width % elt_width == 0);
       pp_left_brace (&pp);
       bool needs_comma = false;
-      for (unsigned i = 0; i < bit_width / elt_width; i++)
+      for (unsigned i = 0; i < width / elt_width; i++)
 	{
 	  if (needs_comma)
 	    pp_comma (&pp);
 	  pp_space (&pp);
-	  print_at (pp, elt_type, i * elt_width);
+	  print_at (value, elt_type, i * elt_width);
 	  needs_comma = true;
 	}
       pp_space (&pp);
@@ -3366,14 +3364,14 @@ data_value::print_at (pretty_printer & pp, tree type, unsigned offset,
     }
   else
     {
-      enum value_type val_type = classify (offset, width);
+      enum value_type val_type = value.classify (offset, width);
       switch (val_type)
 	{
 	case VAL_ADDRESS:
 	  {
 	    gcc_assert (width == HOST_BITS_PER_PTR);
 	    pp_ampersand (&pp);
-	    data_storage *target_storage = get_address_at (offset);
+	    data_storage *target_storage = value.get_address_at (offset);
 	    gcc_assert (target_storage != nullptr);
 	    target_storage->print (pp);
 	  }
@@ -3381,16 +3379,16 @@ data_value::print_at (pretty_printer & pp, tree type, unsigned offset,
 
 	case VAL_CONSTANT:
 	  {
-	    const wide_int value = get_cst_at (offset, width);
+	    const wide_int wi_val = value.get_cst_at (offset, width);
 	    if (TREE_CODE (type) == REAL_TYPE)
 	      {
 		tree int_type = make_signed_type (width);
-		tree cst = wide_int_to_tree (int_type, value);
+		tree cst = wide_int_to_tree (int_type, wi_val);
 		tree real = fold_build1 (VIEW_CONVERT_EXPR, type, cst);
-		context.get_printer ().print (real);
+		print (real);
 	      }
 	    else
-	      pp_wide_int (&pp, value, SIGNED); 
+	      pp_wide_int (&pp, wi_val, SIGNED); 
 	  }
 	  break;
 
@@ -3421,17 +3419,17 @@ data_value::print_at (pretty_printer & pp, tree type, unsigned offset,
 
 
 void
-data_value::print_at (pretty_printer & pp, tree type, unsigned offset) const
+context_printer::print_at (const data_value & value, tree type, unsigned offset)
 {
   unsigned width;
   gcc_assert (get_constant_type_size (type, width));
-  print_at (pp, type, offset, width);
+  print_at (value, type, offset, width);
 }
 
 void
-data_value::print (pretty_printer & pp, tree type) const
+context_printer::print (const data_value & value, tree type)
 {
-  print_at (pp, type, 0);
+  print_at (value, type, 0);
 }
 
 
@@ -3612,7 +3610,7 @@ exec_context::evaluate (tree expr) const
 
     case INTEGER_CST:
       {
-	data_value result (*this, TREE_TYPE (expr));
+	data_value result (TREE_TYPE (expr));
 	wide_int wi_expr = wi::to_wide (expr);
 	result.set_cst (wi_expr);
 	return result;
@@ -3636,7 +3634,7 @@ exec_context::evaluate (tree expr) const
       {
 	data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
 	gcc_assert (strg != nullptr);
-	data_value result (*this, TREE_TYPE (expr));
+	data_value result (TREE_TYPE (expr));
 	result.set_address (*strg);
 	return result;
       }
@@ -3644,7 +3642,7 @@ exec_context::evaluate (tree expr) const
     case VECTOR_CST:
       {
 	tree expr_type = TREE_TYPE (expr);
-	data_value result (*this, expr_type);
+	data_value result (expr_type);
 	tree elt_type = TREE_TYPE (expr_type);
 	unsigned elt_size;
 	gcc_assert (get_constant_type_size (elt_type, elt_size));
@@ -3682,7 +3680,7 @@ exec_context::evaluate_constructor (tree cstr) const
   gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE);
   gcc_assert (get_constant_type_size (TREE_TYPE (cstr), bit_width));
 
-  data_value result(*this, bit_width);
+  data_value result(bit_width);
 
   unsigned i;
   tree idx, elt;
@@ -3729,7 +3727,7 @@ exec_context::evaluate_unary (enum tree_code code, tree arg) const
 data_value
 exec_context::evaluate_literal (enum tree_code code, tree value) const
 {
-  data_value result(*this, TREE_TYPE (value));
+  data_value result(TREE_TYPE (value));
   switch (code)
     {
     case INTEGER_CST:
@@ -3838,7 +3836,7 @@ exec_context::execute_assign (gassign *g)
 	      || TREE_CODE (lhs) == SSA_NAME
 	      || TREE_CODE (lhs) == VAR_DECL
 	      || TREE_CODE (lhs) == COMPONENT_REF);
-  data_value value (*this, TREE_TYPE (lhs));
+  data_value value (TREE_TYPE (lhs));
 
   enum tree_code rhs_code = gimple_assign_rhs_code (g);
   switch (rhs_code)
@@ -3883,7 +3881,7 @@ exec_context::execute_call (gcall *g)
 
       tree lhs = gimple_call_lhs (g);
       gcc_assert (lhs != NULL_TREE);
-      data_value ptr (*this, TREE_TYPE (lhs));
+      data_value ptr (TREE_TYPE (lhs));
       ptr.set_address (*storage);
 
       printer.print_value_update (*this, lhs, ptr);
@@ -4557,7 +4555,7 @@ data_value_classify_tests ()
   builder.add_decls (&decls);
   exec_context ctx = builder.build (nullptr, printer);
 
-  data_value val(ctx, integer_type_node);
+  data_value val(integer_type_node);
 
   ASSERT_EQ (val.classify (), VAL_UNDEFINED);
 
@@ -4571,7 +4569,7 @@ data_value_classify_tests ()
   data_storage *storage_a = ctx.find_reachable_var (a);
   gcc_assert (storage_a != nullptr);
 
-  data_value ptr(ctx, ptr_type_node);
+  data_value ptr(ptr_type_node);
 
   ASSERT_EQ (ptr.classify (), VAL_UNDEFINED);
 
@@ -4581,7 +4579,7 @@ data_value_classify_tests ()
 
 
   tree vec2int = build_vector_type (integer_type_node, 2);
-  data_value val2(ctx, vec2int);
+  data_value val2(vec2int);
 
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
   ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT),
@@ -4602,7 +4600,7 @@ data_value_classify_tests ()
 
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val3(ctx, vec2ptr);
+  data_value val3(vec2ptr);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_UNDEFINED);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR),
@@ -4696,7 +4694,7 @@ data_value_set_address_tests ()
   builder.add_decls (&decls);
   exec_context ctx = builder.build (nullptr, printer);
 
-  data_value val1(ctx, ptr_type_node);
+  data_value val1(ptr_type_node);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   val1.set_address (*storage_a);
@@ -4712,7 +4710,7 @@ data_value_set_address_tests ()
 
   exec_context ctx2 = context_builder ().build (&ctx, printer);
 
-  data_value val2(ctx2, ptr_type_node);
+  data_value val2(ptr_type_node);
 
   ASSERT_EQ (ctx2.find_reachable_var (a), storage_a);
 }
@@ -4736,11 +4734,11 @@ data_value_set_tests ()
 
   data_storage *storage_a = ctx.find_var (a);
 
-  data_value val1(ctx, ptr_type_node);
+  data_value val1(ptr_type_node);
 
   val1.set_address (*storage_a);
 
-  data_value val2(ctx, ptr_type_node);
+  data_value val2(ptr_type_node);
 
   val2.set (val1);
   ASSERT_EQ (val2.classify (), VAL_ADDRESS);
@@ -4767,12 +4765,12 @@ data_value_set_at_tests ()
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
 
-  data_value val1(ctx, ptr_type_node);
+  data_value val1(ptr_type_node);
 
   val1.set_address (*storage_a);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val2(ctx, vec2ptr);
+  data_value val2(vec2ptr);
 
   val2.set_at (val1, HOST_BITS_PER_PTR);
   ASSERT_EQ (val2.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
@@ -4784,7 +4782,7 @@ data_value_set_at_tests ()
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (val2.get_address_at (0), storage_b);
 
-  data_value val3(ctx, vec2ptr);
+  data_value val3(vec2ptr);
   val3.set_at (val2, 0);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
@@ -4808,11 +4806,10 @@ data_value_set_at_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls);
-  exec_context ctx2 = builder2.build (nullptr, printer);
   vec<tree> decls2{};
   decls2.safe_push (c);
 
-  data_value val_derived(ctx, derived);
+  data_value val_derived(derived);
 
   ASSERT_EQ (val_derived.classify (), VAL_UNDEFINED);
 
@@ -4826,11 +4823,11 @@ data_value_set_at_tests ()
   ASSERT_EQ (wi_val.to_shwi (), 13);
 
 
-  data_value vv (ctx2, integer_type_node);
+  data_value vv (integer_type_node);
   wide_int wi23 = wi::shwi (23, HOST_BITS_PER_INT);
   vv.set_cst (wi23);
 
-  data_value vv2 (ctx2, derived);
+  data_value vv2 (derived);
   vv2.set_at (vv, HOST_BITS_PER_INT);
 
   ASSERT_EQ (vv2.classify (), VAL_MIXED);
@@ -4844,12 +4841,12 @@ data_value_set_at_tests ()
 
   tree c12 = build_array_type_nelts (char_type_node, 12);
 
-  data_value v (ctx2, c12);
+  data_value v (c12);
 
   wide_int wi33 = wi::shwi (33, CHAR_BIT);
   v.set_cst_at (wi33, 9 * CHAR_BIT);
 
-  data_value v2 (ctx2, c12);
+  data_value v2 (c12);
   v2.set_at (9 * CHAR_BIT, CHAR_BIT, v, 9 * CHAR_BIT);
 
   ASSERT_EQ (v2.classify (), VAL_MIXED);
@@ -4861,7 +4858,7 @@ data_value_set_at_tests ()
   ASSERT_PRED1 (wi::fits_shwi_p, wi_c9);
   ASSERT_EQ (wi_c9.to_shwi (), 33);
 
-  data_value v3 (ctx2, c12);
+  data_value v3 (c12);
   v3.set (v);
 
   ASSERT_EQ (v3.classify (), VAL_MIXED);
@@ -4899,7 +4896,7 @@ data_value_set_at_tests ()
   builder4.add_decls (&decls4);
   exec_context ctx4 = builder4.build (nullptr, printer);
 
-  data_value mv (ctx4, mixed);
+  data_value mv (mixed);
 
   wide_int wi4 = wi::shwi (4, HOST_BITS_PER_LONG);
   mv.set_cst_at (wi4, 0);
@@ -4911,7 +4908,7 @@ data_value_set_at_tests ()
   wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
   mv.set_cst_at (wi7, HOST_BITS_PER_LONG + HOST_BITS_PER_PTR);
 
-  data_value mv2 (ctx4, mixed);
+  data_value mv2 (mixed);
   mv2.set (mv);
 
   ASSERT_EQ (mv2.classify (), VAL_MIXED);
@@ -4952,11 +4949,11 @@ data_value_print_tests ()
   builder.add_decls (&decls);
   exec_context ctx = builder.build (nullptr, printer);
 
-  data_value val1(ctx, ptr_type_node);
+  data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
   val1.set_address (*storage);
 
-  val1.print (pp, ptr_type_node);
+  printer.print (val1, ptr_type_node);
   ASSERT_STREQ (pp_formatted_text (&pp), "&my_var");
 
 
@@ -4976,27 +4973,25 @@ data_value_print_tests ()
   exec_context ctx2 = builder2.build (nullptr, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val2(ctx2, vec2ptr);
+  data_value val2 (vec2ptr);
   data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
   val2.set_address_at (*strg_my_var, 0);
   data_storage *strg_x = ctx2.find_reachable_var (y);
   val2.set_address_at (*strg_x, HOST_BITS_PER_PTR);
 
-  val2.print (pp2, vec2ptr);
+  printer2.print (val2, vec2ptr);
   const char *str2 = pp_formatted_text (&pp2);
   ASSERT_STREQ (str2, "{ &my_var, &y }");
 
   context_printer printer3;
   pretty_printer & pp3 = printer3.pp;
 
-  exec_context ctx3 = context_builder ().build (nullptr, printer3);
-
-  data_value val_int(ctx3, integer_type_node);
+  data_value val_int (integer_type_node);
 
   wide_int wi_val = wi::shwi (17, HOST_BITS_PER_INT);
   val_int.set_cst (wi_val);
 
-  val_int.print (pp3, integer_type_node);
+  printer3.print (val_int, integer_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp3), "17");
 
@@ -5009,10 +5004,10 @@ data_value_print_tests ()
   data_storage *alloc1 = ctx4.allocate (12);
   gcc_assert (alloc1 != nullptr);
 
-  data_value val_ptr(ctx4, ptr_type_node);
+  data_value val_ptr (ptr_type_node);
   val_ptr.set_address (*alloc1);
 
-  val_ptr.print (pp4, ptr_type_node);
+  printer4.print (val_ptr, ptr_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp4), "&<alloc00(12)>");
 
@@ -5028,10 +5023,10 @@ data_value_print_tests ()
   data_storage *alloc2_ctx5 = ctx5.allocate (17);
   gcc_assert (alloc2_ctx5 != nullptr);
 
-  data_value val_ptr2(ctx5, ptr_type_node);
+  data_value val_ptr2 (ptr_type_node);
   val_ptr.set_address (*alloc2_ctx5);
 
-  val_ptr.print (pp5, ptr_type_node);
+  printer5.print (val_ptr, ptr_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp5), "&<alloc01(17)>");
 
@@ -5039,13 +5034,11 @@ data_value_print_tests ()
   context_printer printer6;
   pretty_printer & pp6 = printer6.pp;
 
-  exec_context ctx6 = context_builder ().build (nullptr, printer6);
-
-  data_value val6_259(ctx6, short_integer_type_node);
+  data_value val6_259 (short_integer_type_node);
   wide_int cst259 = wi::shwi (259, HOST_BITS_PER_SHORT);
   val6_259.set_cst (cst259);
 
-  val6_259.print (pp6, char_type_node);
+  printer6.print (val6_259, char_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp6), "3");
 
@@ -5053,12 +5046,10 @@ data_value_print_tests ()
   context_printer printer7;
   pretty_printer & pp7 = printer7.pp;
 
-  exec_context ctx7 = context_builder ().build (nullptr, printer7);
-
-  data_value val7_259(ctx7, short_integer_type_node);
+  data_value val7_259 (short_integer_type_node);
   val7_259.set_cst (cst259);
 
-  val7_259.print_at (pp7, char_type_node, CHAR_BIT);
+  printer7.print_at (val7_259, char_type_node, CHAR_BIT);
 
   ASSERT_STREQ (pp_formatted_text (&pp7), "1");
 
@@ -5073,7 +5064,7 @@ data_value_print_tests ()
   wide_int cst41 = wi::shwi (41, CHAR_BIT);
   v.set_cst_at (cst41, HOST_BITS_PER_PTR);
 
-  v.print_at (pp8, char_type_node, HOST_BITS_PER_PTR, CHAR_BIT);
+  printer8.print_at (v, char_type_node, HOST_BITS_PER_PTR, CHAR_BIT);
 
   ASSERT_STREQ (pp_formatted_text (&pp8), "41");
 
@@ -5081,17 +5072,15 @@ data_value_print_tests ()
   context_printer printer9;
   pretty_printer & pp9 = printer9.pp;
 
-  exec_context ctx9 = context_builder ().build (nullptr, printer9);
-
   tree real2 = build_real (float_type_node, dconst2);
   tree sint = make_signed_type (TYPE_PRECISION (float_type_node));
   tree int_r2 = fold_build1 (VIEW_CONVERT_EXPR, sint, real2);
   wide_int wi_r2 = wi::to_wide (int_r2);
 
-  data_value v9 (ctx9, float_type_node);
+  data_value v9 (float_type_node);
   v9.set_cst (wi_r2);
 
-  v9.print (pp9, float_type_node);
+  printer9.print (v9, float_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp9), "2.0e+0");
 }
@@ -5422,7 +5411,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   data_storage *var_storage = ctx11.find_reachable_var (var_i);
 
-  data_value ptr_val (ctx11, ptr_type_node);
+  data_value ptr_val (ptr_type_node);
   ptr_val.set_address (*var_storage);
 
   data_storage *ptr_storage = ctx11.find_reachable_var (ptr);
@@ -5460,7 +5449,7 @@ context_printer_print_value_update_tests ()
   builder.add_decls (&decls);
   exec_context ctx = builder.build (nullptr, printer);
 
-  data_value val1(ctx, ptr_type_node);
+  data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
   val1.set_address (*storage);
 
@@ -5475,7 +5464,7 @@ context_printer_print_value_update_tests ()
   exec_context ctx2 = builder.build (nullptr, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val2(ctx2, vec2ptr);
+  data_value val2 (vec2ptr);
   data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
   val2.set_address_at (*strg_my_var, 0);
   data_storage *strg_x = ctx2.find_reachable_var (y);
@@ -5519,7 +5508,7 @@ context_printer_print_value_update_tests ()
 			   build1 (ADDR_EXPR, ptr_type_node, var2c),
 			   build_int_cst (ptr_type_node, 0));
 
-  data_value val259 (ctx3, short_integer_type_node);
+  data_value val259 (short_integer_type_node);
   wide_int wi259 = wi::shwi (259, HOST_BITS_PER_SHORT);
   val259.set_cst (wi259);
 
@@ -5560,7 +5549,7 @@ context_printer_print_value_update_tests ()
 			 build1 (ADDR_EXPR, ptr_type_node, v2i),
 			 build_int_cst (ptr_type_node, 0));
 
-  data_value val2i = data_value (ctx4, vec2i);
+  data_value val2i = data_value (vec2i);
   wide_int cst2 = wi::shwi (2, HOST_BITS_PER_INT);
   wide_int cst11 = wi::shwi (11, HOST_BITS_PER_INT);
   val2i.set_cst_at (cst2, 0);
@@ -5608,7 +5597,7 @@ exec_context_evaluate_tests ()
 
   data_storage *strg_a = ctx.find_reachable_var (a);
   gcc_assert (strg_a != nullptr);
-  data_value tmp22 (ctx, integer_type_node);
+  data_value tmp22 (integer_type_node);
   wide_int wi22 = wi::shwi (22, HOST_BITS_PER_INT);
   tmp22.set_cst (wi22);
   strg_a->set (tmp22);
@@ -5696,7 +5685,7 @@ exec_context_evaluate_tests ()
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_INT);
 
-  data_value value (ctx3, a5i);
+  data_value value (a5i);
   value.set_cst_at (cst18, 3 * HOST_BITS_PER_INT);
 
   data_storage *storage = ctx3.find_reachable_var (v5i);
@@ -5740,7 +5729,7 @@ exec_context_evaluate_tests ()
 
   wide_int cst15 = wi::shwi (15, HOST_BITS_PER_INT);
 
-  data_value tmp (ctx4, a3d);
+  data_value tmp (a3d);
   tmp.set_cst_at (cst15, 3 * HOST_BITS_PER_INT);
 
   data_storage *storage2 = ctx4.find_reachable_var (v3d);
@@ -5790,7 +5779,7 @@ exec_context_evaluate_tests ()
 
   wide_int cst14 = wi::shwi (14, HOST_BITS_PER_INT);
 
-  data_value tmp14 (ctx5, integer_type_node);
+  data_value tmp14 (integer_type_node);
   tmp14.set_cst (cst14);
 
   data_storage *storage5 = ctx5.find_reachable_var (def_var);
@@ -5818,7 +5807,7 @@ exec_context_evaluate_tests ()
 
   wide_int cst8 = wi::shwi (8, CHAR_BIT);
 
-  data_value tmp8 (ctx6, a5c);
+  data_value tmp8 (a5c);
   tmp8.set_cst_at (cst8, 3 * CHAR_BIT);
 
   data_storage *storage6 = ctx6.find_reachable_var (v5c);
@@ -6006,7 +5995,7 @@ exec_context_execute_assign_tests ()
   ASSERT_EQ (wi_ssa1_2.to_shwi (), 66);
 
 
-  data_value cst66 (ctx2, integer_type_node);
+  data_value cst66 (integer_type_node);
   wide_int wi66 = wi::shwi (66, HOST_BITS_PER_INT);
   cst66.set_cst (wi66);
 
@@ -6043,7 +6032,7 @@ exec_context_execute_assign_tests ()
 
   data_storage *pointer = ctx3.find_reachable_var (ptr);
   gcc_assert (pointer != nullptr);
-  data_value p (ctx3, ptr_type_node);
+  data_value p (ptr_type_node);
   p.set_address (*alloc1);
   pointer->set (p);
   
@@ -6111,7 +6100,7 @@ exec_context_execute_assign_tests ()
   wide_int wi8 = wi::shwi (8, HOST_BITS_PER_INT);
   wide_int wi13 = wi::shwi (13, HOST_BITS_PER_INT);
 
-  data_value val7 (ctx5, derived);
+  data_value val7 (derived);
   val7.set_cst_at (wi8, 0);
   val7.set_cst_at (wi13, HOST_BITS_PER_INT);
 
