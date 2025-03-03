@@ -210,6 +210,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "ipa-inline.h"
 #include "omp-offload.h"
 #include "symtab-thunks.h"
+#include "wide-int.h"
+#include "selftest.h"
+#include "tree-ssanames.h"
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
    secondary queue used during optimization to accommodate passes that
@@ -2321,6 +2324,1844 @@ symbol_table::output_weakrefs (void)
       }
 }
 
+
+class exec_context;
+class data_storage;
+
+
+
+static bool
+get_constant_type_size (tree type, unsigned &result)
+{
+  tree tree_size = TYPE_SIZE (type);
+  gcc_assert (TREE_CODE (tree_size) == INTEGER_CST);
+  wide_int wi_size = wi::to_wide (tree_size);
+
+  gcc_assert (wi::fits_uhwi_p (wi_size));
+  unsigned HOST_WIDE_INT hwi_size = wi_size.to_uhwi ();
+
+  gcc_assert (hwi_size <= UINT_MAX);
+  result = hwi_size;
+  return true;
+}
+
+
+static unsigned
+get_constant_type_size (tree type)
+{
+  unsigned result;
+  gcc_assert (get_constant_type_size (type, result));
+  return result;
+}
+
+
+enum value_type
+{
+  VAL_NONE,
+  VAL_UNDEFINED,
+  VAL_ADDRESS,
+  VAL_CONSTANT,
+  VAL_MIXED
+};
+
+
+struct storage_ref
+{
+  const exec_context & context;
+  unsigned storage_index;
+
+  storage_ref (const exec_context & ctx, unsigned idx)
+    : context (ctx), storage_index (idx)
+  {}
+  data_storage & get () const;
+};
+
+
+struct storage_address
+{
+  storage_ref storage;
+  unsigned offset;
+
+  storage_address (const exec_context & ctx, unsigned idx, unsigned off)
+    : storage (ctx, idx), offset (off)
+  {}
+};
+
+namespace selftest
+{
+  void data_value_classify_tests ();
+  void data_value_set_address_tests ();
+  void data_value_set_tests ();
+  void data_value_set_at_tests ();
+  void data_value_set_address_tests ();
+  void data_value_print_tests ();
+  void context_printer_print_first_data_ref_part_tests ();
+  void context_printer_print_value_update_tests ();
+  void exec_context_evaluate_tests ();
+  void exec_context_evaluate_unary_tests ();
+  void exec_context_evaluate_literal_tests ();
+  void exec_context_execute_assign_tests ();
+  void exec_context_execute_call_tests ();
+}
+
+
+class data_value
+{
+  const exec_context & context;
+  unsigned bit_width;
+  wide_int constant_mask;
+  wide_int address_mask;
+  wide_int constant_value;
+  vec<storage_address> addresses;
+  void set_cst_at (unsigned dest_offset, unsigned value_width,
+		   const wide_int &val, unsigned src_offset);
+  storage_address *find_address (unsigned offset) const;
+  void set_at (unsigned dest_offset, unsigned value_width,
+	       const data_value & value_src, unsigned src_offset);
+
+  friend void selftest::data_value_classify_tests ();
+  friend void selftest::data_value_set_address_tests ();
+  friend void selftest::data_value_set_tests ();
+  friend void selftest::data_value_set_at_tests ();
+
+public:
+  data_value (const exec_context &ctx, unsigned width)
+    : context (ctx), bit_width (width),
+    constant_mask (wi::shwi (HOST_WIDE_INT_0, width)),
+    address_mask (wi::shwi (HOST_WIDE_INT_0, width)),
+    constant_value (wi::shwi (HOST_WIDE_INT_0, width)),
+    addresses ()
+  {}
+  data_value (const exec_context &ctx, tree type)
+    : data_value (ctx, get_constant_type_size (type))
+  {}
+  data_value (const data_value &) = default;
+  data_value & operator= (const data_value &);
+  value_type classify () const;
+  value_type classify (unsigned offset, unsigned width) const;
+  unsigned get_bitwidth () const { return bit_width; }
+  void set_address_at (data_storage &storage, unsigned offset);
+  void set_address (data_storage &);
+  void set_at (const data_value & value, unsigned offset);
+  void set (const data_value & value);
+  void set_cst_at (const wide_int & val, unsigned offset);
+  void set_cst (const wide_int & val);
+  wide_int get_cst_at (unsigned offset, unsigned width) const;
+  wide_int get_cst () const;
+  data_storage *get_address () const;
+  data_storage *get_address_at (unsigned offset) const;
+  data_value get_at (unsigned offset, unsigned width) const;
+  bool is_fully_defined () const { return (~(constant_mask | address_mask)) == 0; }
+  void print_at (pretty_printer & pp, tree type, unsigned offset,
+		 unsigned width) const;
+  void print_at (pretty_printer & pp, tree type, unsigned offset) const;
+  void print (pretty_printer & pp, tree type) const;
+};
+
+
+enum storage_type
+{
+  STRG_VARIABLE,
+  STRG_ALLOC
+};
+
+
+class data_storage
+{
+  const exec_context & context;
+  const storage_type type;
+  data_value value;
+
+  union u
+    {
+      u (tree t) : variable (t) {}
+      u (unsigned alloc_idx, unsigned alloc_amount)
+	: allocated (alloc_idx, alloc_amount)
+      {}
+      //~u () {}
+
+      struct v
+	{
+	  v (tree t) : decl (t) {}
+	  const tree decl;
+	}
+      variable;
+
+      const struct a
+	{
+	  a (unsigned alloc_idx, unsigned alloc_amount)
+	    : index (alloc_idx), amount_bits (alloc_amount)
+	  {}
+	  unsigned index;
+	  unsigned amount_bits;
+	}
+      allocated;
+    }
+  u;
+
+public:
+  data_storage (const exec_context &ctx, tree decl)
+    : context (ctx), type (STRG_VARIABLE), value (ctx, TREE_TYPE (decl)),
+    u (decl)
+  {}
+  data_storage (const exec_context &ctx, unsigned alloc_index, unsigned alloc_amount)
+    : context (ctx), type (STRG_ALLOC), value (ctx, alloc_amount),
+    u (alloc_index, alloc_amount)
+  {}
+  storage_type get_type () const { return type; }
+  const exec_context & get_context () const { return context; }
+  tree get_variable () const;
+
+  bool matches (tree var) const
+  { return type == STRG_VARIABLE && u.variable.decl == var; }
+
+  bool matches_alloc (unsigned index) const
+  { return type == STRG_ALLOC && u.allocated.index == index; }
+
+  const data_value & get_value () const { return value; }
+  data_storage & operator= (const data_storage& other) = default;
+  void set (const data_value & val) { return value.set (val); }
+  void set_at (const data_value & val, unsigned offset) { return value.set_at (val, offset); }
+  void print (pretty_printer & pp) const;
+};
+
+
+class context_printer
+{
+  pretty_printer pp;
+  dump_flags_t flags;
+  unsigned indent;
+
+  friend void selftest::exec_context_evaluate_tests ();
+  friend void selftest::data_value_print_tests ();
+  friend void selftest::context_printer_print_first_data_ref_part_tests ();
+  friend void selftest::context_printer_print_value_update_tests ();
+
+public:
+  context_printer ();
+  context_printer (dump_flags_t f);
+  void begin_stmt (gimple *);
+  void print (tree);
+  void print_newline ();
+  void print_function_entry (struct function * func);
+  void print_function_exit (struct function * func);
+  void print_bb_jump (edge e);
+  void print_bb_entry (basic_block bb);
+  tree print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset);
+  void print_value_update (exec_context & context, tree, const data_value &); 
+  void end_stmt (gimple *);
+};
+
+
+static data_value
+execute (struct function *func, exec_context *caller,
+	 context_printer & printer, vec<tree> * args);
+
+class exec_context
+{
+  exec_context * const parent;
+  context_printer & printer;
+  vec<data_storage> storages;
+  unsigned next_alloc_index;
+  //void add_variables (const exec_context &);
+  data_value evaluate_constructor (tree cstr) const;
+  data_value evaluate_literal (enum tree_code code, tree value) const;
+  data_value evaluate_unary (enum tree_code code, tree arg) const;
+  template <typename A, typename L>
+  void add_variables (vec<tree, A, L> *variables, unsigned vars_count);
+  template <typename A>
+  void add_variables (vec<tree, A, vl_ptr> *variables);
+  template <typename A>
+  void add_variables (vec<tree, A, vl_embed> *variables);
+  void execute (gimple *g);
+  void execute_assign (gassign *g);
+  void execute_call (gcall *g);
+  data_storage *find_var (tree variable) const;
+  data_storage *find_alloc (unsigned index) const;
+  data_storage *allocate (unsigned amount);
+  void decompose_ref (tree data_ref, data_storage * & storage, int & offset) const;
+  void execute_phi (gphi *phi, edge e);
+#if 0
+  template <typename A, typename L>
+  exec_context (exec_context *caller, context_printer & printer,
+		unsigned storage_size,
+		vec<tree, A, L> *local_decls, vec<tree, A, L> *ssa_names);
+#endif
+
+  friend void selftest::data_value_print_tests ();
+  friend void selftest::data_value_set_address_tests ();
+  friend void selftest::data_value_set_tests ();
+  friend void selftest::exec_context_evaluate_unary_tests ();
+  friend void selftest::exec_context_evaluate_literal_tests ();
+  friend void selftest::exec_context_execute_assign_tests ();
+  friend void selftest::exec_context_execute_call_tests ();
+
+public:
+  exec_context (exec_context *caller, context_printer & printer,
+		vec<tree> & decls);
+#if 0
+  template <typename A>
+  exec_context (exec_context *caller, context_printer & printer,
+		vec<tree, A, vl_embed> *local_decls, vec<tree, A, vl_embed> *ssa_names);
+  template <typename A>
+  exec_context (exec_context *caller, context_printer & printer,
+		vec<tree, A, vl_ptr> *local_decls, vec<tree, A, vl_ptr> *ssa_names);
+#endif
+  const exec_context & root () const;
+  int find (const data_storage &storage) const;
+  data_storage *find_reachable_var (tree variable) const;
+  data_storage *find_malloc (unsigned index) const;
+  gimple * execute (basic_block bb);
+  data_storage & get_storage (unsigned idx) const;
+  context_printer & get_printer () const { return printer; }
+  data_value evaluate (tree expr) const;
+  data_value execute_function (struct function *);
+  edge select_leaving_edge (basic_block bb, gimple *last_stmt);
+  void jump (edge e);
+//  bool evaluate (tree var, tree *result) const;
+};
+
+
+class context_builder
+{
+  vec<tree> decls;
+
+public:
+  context_builder ();
+  exec_context build (exec_context * caller, context_printer & printer);
+  template <typename A, typename L>
+  void add_decls (vec<tree, A, L> *additional_decls);
+  //void add_decls (vec<tree> *additional_decls);
+};
+
+
+context_builder::context_builder ()
+  : decls ()
+{}
+
+
+template <typename A, typename L>
+void
+context_builder::add_decls (vec<tree, A, L> *additional_decls)
+{
+  if (additional_decls == nullptr)
+    return;
+
+  decls.reserve (additional_decls->length ());
+
+  tree *declp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (*additional_decls, i, declp)
+    decls.quick_push (*declp);
+}
+
+
+#if 0
+void
+context_builder::add_decls (vec<tree> *additional_decls)
+{
+  if (additional_decls == nullptr)
+    return;
+
+  decls.reserve (additional_decls->length ());
+
+  tree *declp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (*additional_decls, i, declp)
+    decls.quick_push (*declp);
+}
+#endif
+
+
+exec_context
+context_builder::build (exec_context * caller, context_printer & printer)
+{
+  return exec_context (caller, printer, decls);
+}
+
+
+exec_context::exec_context (exec_context *caller, context_printer & printer,
+			    vec<tree> & decls)
+  : parent (caller), printer (printer), storages (vNULL), next_alloc_index (0)
+{
+  add_variables (&decls);
+}
+
+
+#if 0
+void
+exec_context::add_variables (const exec_context & ctx)
+{
+  storages.reserve (ctx.storages.length ());
+
+  auto_vec<tree> ctx_vars(ctx.storages.length ());
+
+  data_storage *strgp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (ctx.storages, i, strgp)
+    ctx_vars.quick_push (strgp->get_variable ());
+
+  add_variables (&ctx_vars);
+}
+#endif
+
+
+template <typename A, typename L>
+void
+exec_context::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
+{
+  if (vars_count == 0)
+    return;
+
+  storages.reserve (vars_count);
+
+  tree *varp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (*variables, i, varp)
+    if (*varp != NULL_TREE
+	&& TYPE_SIZE (TREE_TYPE (*varp)) != NULL_TREE)
+      storages.quick_push (data_storage (*this, *varp));
+}
+
+template <typename A>
+void
+exec_context::add_variables (vec<tree, A, vl_ptr> *variables)
+{
+  add_variables (variables, variables->length ());
+}
+
+template <typename A>
+void
+exec_context::add_variables (vec<tree, A, vl_embed> *variables)
+{
+  add_variables (variables, vec_safe_length (variables));
+}
+
+#if 0
+template <typename A, typename L>
+exec_context::exec_context (exec_context *caller,
+			    context_printer & cp,
+			    vec<tree> &decls)
+  : parent (caller), printer (cp), storages (vNULL), next_alloc_index (0)
+{
+  if (vars_count == 0)
+    return;
+
+  storages.reserve (vars_count);
+
+  tree *varp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (decls, i, varp)
+    if (*varp != NULL_TREE
+	&& TYPE_SIZE (TREE_TYPE (*varp)) != NULL_TREE)
+      storages.quick_push (data_storage (*this, *varp));
+}
+#endif
+
+
+
+context_printer::context_printer (dump_flags_t f)
+  : pp (), flags (f), indent (0)
+{
+  pp_needs_newline (&pp) = true;
+}
+
+context_printer::context_printer ()
+  : context_printer (TDF_NONE)
+{}
+
+
+void
+context_printer::print_newline ()
+{
+  int indent = pp_indentation (&pp);
+  pp_newline_and_flush (&pp);
+  pp_indentation (&pp) = indent;
+}
+
+
+void
+context_printer::begin_stmt (gimple *g)
+{
+  pp_indent (&pp);
+  pp_gimple_stmt_1 (&pp, g, pp_indentation (&pp), TDF_NONE);
+  print_newline ();
+  pp_indentation (&pp) += 2;
+}
+
+void
+context_printer::print (tree expr)
+{
+  dump_generic_node (&pp, expr, pp_indentation (&pp), flags, false);
+}
+
+
+static const char *
+get_func_name (struct function *func)
+{
+  tree decl = func->decl;
+  tree name = DECL_NAME (decl);
+  return IDENTIFIER_POINTER (name);
+}
+
+void
+context_printer::print_function_entry (struct function *func)
+{
+  pp_indent (&pp);
+  pp_string (&pp, "# Entering function ");
+  pp_string (&pp, get_func_name (func));
+  print_newline ();
+  pp_indentation (&pp) += 2;
+}
+
+void
+context_printer::print_function_exit (struct function *func)
+{
+  pp_indentation (&pp) -= 2;
+  pp_indent (&pp);
+  pp_string (&pp, "# Leaving function ");
+  pp_string (&pp, get_func_name (func));
+  print_newline ();
+}
+
+void
+context_printer::print_bb_jump (edge e)
+{
+  pp_indent (&pp);
+  pp_string (&pp, "# Leaving bb ");
+  pp_decimal_int (&pp, e->src->index);
+  pp_string (&pp, ", preparing to enter bb ");
+  pp_decimal_int (&pp, e->dest->index);
+  print_newline ();
+}
+
+
+void
+context_printer::print_bb_entry (basic_block bb)
+{
+  pp_indent (&pp);
+  pp_string (&pp, "# Entering bb ");
+  pp_decimal_int (&pp, bb->index);
+  print_newline ();
+}
+
+
+static tree
+find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset)
+{
+  tree ptr = TREE_OPERAND (data_ref, 0);
+  data_value ptr_val = context.evaluate (ptr);
+  if (ptr_val.classify () != VAL_ADDRESS)
+    return NULL_TREE;
+
+  data_storage *ptr_target = ptr_val.get_address ();
+  gcc_assert (ptr_target != nullptr);
+  if (ptr_target->get_type () != STRG_VARIABLE)
+    return NULL_TREE;
+
+  tree access_type = TREE_TYPE (data_ref);
+  tree var_ref = ptr_target->get_variable ();
+  tree var_type = TREE_TYPE (var_ref);
+
+  if (var_type == access_type)
+    return var_ref;
+  else
+    {
+      tree access_offset = TREE_OPERAND (data_ref, 1);
+      gcc_assert (TREE_CONSTANT (access_offset));
+      gcc_assert (tree_fits_shwi_p (access_offset));
+      HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
+      gcc_assert (offset < UINT_MAX - shwi_offset);
+      HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT + offset;
+
+      while (true)
+	{
+	  if (TREE_CODE (var_type) == ARRAY_TYPE)
+	    {
+	      tree elt_type = TREE_TYPE (var_type);
+	      unsigned elt_width;
+	      gcc_assert (get_constant_type_size (elt_type, elt_width));
+	      unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
+	      tree t_idx = build_int_cst (integer_type_node, hw_idx);
+	      var_ref = build4 (ARRAY_REF, elt_type, var_ref,
+				t_idx, NULL_TREE, NULL_TREE);
+	      remaining_offset -= hw_idx * elt_width;
+	    }
+	  else if (TREE_CODE (var_type) == RECORD_TYPE)
+	    {
+	      tree field = NULL_TREE;
+	      HOST_WIDE_INT field_position = -1;
+	      tree next_field = TYPE_FIELDS (TREE_TYPE (var_ref));
+
+	      do
+		{
+		  HOST_WIDE_INT next_position;
+		  next_position = int_bit_position (next_field);
+		  if (next_position > remaining_offset)
+		    break;
+
+		  field = next_field;
+		  field_position = next_position;
+		  next_field = TREE_CHAIN (field);
+		}
+	      while (next_field != NULL_TREE);
+
+	      gcc_assert (field != NULL_TREE
+			  && field_position >= 0);
+
+	      var_ref = build3 (COMPONENT_REF, TREE_TYPE (field),
+				var_ref, field, NULL_TREE);
+	      remaining_offset -= field_position;
+	    }
+	  else
+	    break;
+	  var_type = TREE_TYPE (var_ref);
+	}
+      gcc_assert (remaining_offset == 0);
+      return var_ref;
+    }
+}
+
+tree
+context_printer::print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset)
+{
+  switch (TREE_CODE (data_ref))
+    {
+    case MEM_REF:
+      {
+	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
+							 offset);
+	if (mem_replacement != NULL_TREE)
+	  return print_first_data_ref_part (context, mem_replacement, 0);
+      }
+
+    /* Fall through.  */
+
+    default:
+      print (data_ref);
+    }
+
+  return TREE_TYPE (data_ref);
+}
+
+void
+context_printer::print_value_update (exec_context & context, tree lhs, const data_value & value)
+{
+  unsigned previously_done = 0;
+  unsigned width = get_constant_type_size (TREE_TYPE (lhs));
+  while (previously_done < width)
+    {
+      pp_indent (&pp);
+      pp_character (&pp, '#');
+      pp_space (&pp);
+      tree type_output = print_first_data_ref_part (context, lhs, previously_done);
+      unsigned just_done;
+      gcc_assert (get_constant_type_size (type_output, just_done));
+      gcc_assert (just_done > 0);
+      gcc_assert (just_done <= width - previously_done);
+      pp_space (&pp);
+      pp_equal (&pp);
+      pp_space (&pp);
+      value.print_at (pp, type_output, previously_done, just_done);
+      print_newline ();
+      previously_done += just_done;
+    }
+  //pp_newline_and_indent (&pp, -2);
+#if 0
+  tree type = TREE_TYPE (lhs);
+  if (TREE_CODE (type) == VECTOR_TYPE)
+    {
+      unsigned size = get_constant_type_size (type);
+      tree elt_type = TREE_TYPE (type);
+      unsigned chunk_size = get_constant_type_size (elt_type);
+      gcc_assert (size % chunk_size == 0);
+      for (unsigned i = 0; i < size / chunk_size; i++)
+      //for (unsigned i = 0; i < TREE_VEC_LENGTH (type); i++)
+	{
+	  tree lhs_part = TREE_VEC_ELT (lhs, i);
+	  print_part_update (lhs_part, value, i * chunk_size);
+	}
+    }
+  else
+    print_part_update (lhs, value, 0);
+#endif
+}
+
+
+void
+context_printer::end_stmt (gimple *g ATTRIBUTE_UNUSED)
+{
+  pp_indentation (&pp) -= 2;
+}
+
+
+data_storage &
+storage_ref::get () const
+{
+  return context.get_storage (storage_index);
+}
+
+
+data_value & data_value::operator= (const data_value & other)
+{
+  gcc_assert (other.bit_width == bit_width);
+  set (other);
+  return *this;
+}
+
+
+enum value_type
+data_value::classify () const
+{
+  return classify (0, bit_width);
+}
+
+value_type
+data_value::classify (unsigned offset, unsigned width) const
+{
+  wide_int mask = wi::shifted_mask (offset, width, false, bit_width);
+  bool has_address = (address_mask & mask) != 0;
+  bool has_constant = (constant_mask & mask) != 0;
+
+  int has_count = has_address + has_constant;
+  if (has_count > 1)
+    return VAL_MIXED;
+  else if (has_count == 0)
+    return VAL_UNDEFINED;
+  else if (has_constant && ((~constant_mask) & mask) == 0)
+    return VAL_CONSTANT;
+  else if (has_address && ((~address_mask) & mask) == 0)
+    return VAL_ADDRESS;
+  else
+    return VAL_MIXED;
+}
+
+
+storage_address *
+data_value::find_address (unsigned offset) const
+{
+  gcc_assert (offset <= bit_width - HOST_BITS_PER_PTR);
+
+  storage_address *result = nullptr;
+  storage_address *strg_address;
+  unsigned i;
+  FOR_EACH_VEC_ELT (addresses, i, strg_address)
+    if (strg_address->offset == offset)
+      {
+	gcc_assert (result == nullptr);
+	result = strg_address;
+      }
+
+  return result;
+}
+
+
+void
+data_value::set_address_at (data_storage &storage, unsigned offset)
+{
+  wide_int mask = wi::shifted_mask (offset, HOST_BITS_PER_PTR, false,
+				    bit_width);
+  enum value_type type = classify (offset, HOST_BITS_PER_PTR);
+  gcc_assert (type == VAL_ADDRESS || type == VAL_UNDEFINED);
+
+  if (type == VAL_ADDRESS)
+    {
+      storage_address *existing_address = find_address (offset);
+      gcc_assert (existing_address != nullptr);
+      /* Invalidate existing address.  */
+      existing_address->offset = -1;
+    }
+
+  constant_mask &= ~mask;
+  address_mask |= mask;
+
+  const exec_context & ctx = storage.get_context ();
+
+  int idx = ctx.find (storage);
+  gcc_assert (idx >= 0);
+
+  storage_address addr_info (ctx, idx, offset);;
+  addresses.safe_push (addr_info);
+}
+
+
+void
+data_value::set_address (data_storage &storage)
+{
+  gcc_assert (bit_width == HOST_BITS_PER_PTR);
+  set_address_at (storage, 0);
+}
+
+
+void
+data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
+			const wide_int & value_src, unsigned src_offset)
+{
+  unsigned src_width = value_src.get_precision ();
+  gcc_assert (dest_offset < bit_width);
+  gcc_assert (value_width <= bit_width - dest_offset);
+  gcc_assert (src_offset < src_width);
+  gcc_assert (value_width <= src_width - src_offset);
+
+  enum value_type orig_type = classify (dest_offset, value_width);
+  wide_int dest_mask = wi::shifted_mask (dest_offset, value_width, false,
+					 bit_width);
+  if (orig_type != VAL_CONSTANT)
+    {
+      constant_mask |= dest_mask;
+      address_mask &= ~dest_mask;
+    }
+
+  wide_int src_mask = wi::shifted_mask (src_offset, value_width, false,
+					src_width);
+  wide_int value = value_src & src_mask;
+  if (src_offset > 0)
+    value = wi::lrshift (value, src_offset); 
+
+  wide_int dest_value = wide_int_storage::from (wide_int_ref (value), bit_width, UNSIGNED);
+  if (dest_offset > 0)
+    dest_value <<= dest_offset; 
+
+  constant_value &= ~dest_mask;
+  constant_value |= dest_value;
+}
+
+void
+data_value::set_at (unsigned dest_offset, unsigned value_width,
+		    const data_value & value_src, unsigned src_offset)
+{
+  gcc_assert (dest_offset < bit_width);
+  gcc_assert (value_width <= bit_width - dest_offset);
+
+  enum value_type type = value_src.classify (src_offset, value_width);
+  switch (type)
+    {
+    case VAL_CONSTANT:
+      set_cst_at (dest_offset, value_width, value_src.constant_value, src_offset);
+      break;
+
+    case VAL_ADDRESS:
+      {
+	if (value_width == HOST_BITS_PER_PTR)
+	  {
+	    storage_address *found_address = value_src.find_address (src_offset);
+	    gcc_assert (found_address != nullptr);
+
+	    data_storage &storage = found_address->storage.get ();
+	    set_address_at (storage, dest_offset);
+	  }
+	else
+	  {
+	    gcc_assert (value_width > HOST_BITS_PER_PTR);
+	    gcc_assert (value_width % HOST_BITS_PER_PTR == 0);
+	    gcc_assert (dest_offset % HOST_BITS_PER_PTR == 0);
+	    for (unsigned i = 0; i < value_width / HOST_BITS_PER_PTR; i++)
+	      {
+		unsigned off = i * HOST_BITS_PER_PTR;
+		set_at (dest_offset + off, HOST_BITS_PER_PTR,
+			value_src, src_offset + off);
+	      }
+	  }
+      }
+      break;
+
+    case VAL_MIXED:
+      {
+	gcc_assert ((constant_mask & address_mask) == 0);
+
+	wide_int cst_part = value_src.constant_mask;
+	wide_int address_part = value_src.address_mask;
+
+	unsigned src_width = value_src.bit_width;
+
+	wide_int mask = wi::shifted_mask (src_offset, value_width, false,
+					  value_src.bit_width);
+
+	cst_part &= mask;
+	address_part &= mask;
+
+	while (cst_part != 0 || address_part != 0)
+	  {
+	    int ctz_cst = wi::ctz (cst_part);
+	    int ctz_addr = wi::ctz (address_part);
+
+	    int next_offset;
+	    wide_int selected_part;
+	    if (ctz_cst < ctz_addr)
+	      {
+		next_offset = ctz_cst;
+		selected_part = cst_part;
+	      }
+	    else
+	      {
+		next_offset = ctz_addr;
+		selected_part = address_part;
+	      }
+
+	    int width = wi::ctz (wi::bit_not (wi::lrshift (selected_part,
+							   next_offset)));
+
+	    unsigned offset = dest_offset + (next_offset - src_offset);
+
+	    set_at (offset, width, value_src, next_offset);
+
+	    wide_int mask = wi::shifted_mask (next_offset, width, false, src_width);
+
+	    cst_part &= ~mask;
+	    address_part &= ~mask;
+	  }
+	
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+void
+data_value::set_at (const data_value & value, unsigned offset)
+{
+  set_at (offset, value.bit_width, value, 0);
+#if 0
+  unsigned value_width = value.get_bitwidth ();
+  gcc_assert (offset < bit_width);
+  gcc_assert (value_width <= bit_width - offset);
+
+  enum value_type type = value.classify ();
+  switch (type)
+    {
+    case VAL_CONSTANT:
+      set_cst_at (offset, value.bit_width, value.constant_value, 0);
+      break;
+
+    case VAL_ADDRESS:
+      {
+	storage_address *found_address = value.find_address (0);
+	gcc_assert (found_address != nullptr);
+
+	data_storage &storage = found_address->storage.get ();
+	set_address_at (storage, offset);
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+#endif
+}
+
+
+void
+data_value::set (const data_value & value)
+{
+  gcc_assert (value.get_bitwidth () == bit_width);
+  set_at (value, 0);
+}
+
+void
+data_value::set_cst_at (const wide_int & val, unsigned offset)
+{
+  set_cst_at (offset, val.get_precision (), val, 0);
+}
+
+void
+data_value::set_cst (const wide_int & val)
+{
+  gcc_assert (val.get_precision () == bit_width);
+  set_cst_at (val, 0);
+}
+
+wide_int
+data_value::get_cst_at (unsigned offset, unsigned width) const
+{
+  gcc_assert (offset < bit_width);
+  gcc_assert (width <= bit_width - offset);
+
+  enum value_type val_type = classify (offset, width);
+  gcc_assert (val_type == VAL_CONSTANT);
+  wide_int tmp = wide_int::from (wide_int_ref (constant_value), bit_width, UNSIGNED);
+  if (offset > 0)
+    tmp = wi::lrshift (tmp, offset);
+  return wide_int::from (tmp, width, UNSIGNED);
+}
+
+wide_int
+data_value::get_cst () const
+{
+  return get_cst_at (0, bit_width);
+}
+
+data_storage *
+data_value::get_address_at (unsigned offset) const
+{
+  gcc_assert (classify (offset, HOST_BITS_PER_PTR) == VAL_ADDRESS);
+  wide_int mask = wi::shifted_mask (offset, HOST_BITS_PER_PTR, false,
+				    bit_width);
+
+  storage_address *addr_info = find_address (offset);
+  if (addr_info != nullptr)
+    return &(addr_info->storage.get ());
+
+  return nullptr;
+}
+
+
+data_storage *
+data_value::get_address () const
+{
+  gcc_assert (bit_width == HOST_BITS_PER_PTR);
+  return get_address_at (0);
+}
+
+
+data_value
+data_value::get_at (unsigned offset, unsigned width) const
+{
+  data_value result (context, width);
+  switch (classify (offset, width))
+    {
+    case VAL_CONSTANT:
+      result.set_cst (get_cst_at (offset, width));
+      break;
+
+    case VAL_ADDRESS:
+      gcc_assert (width == HOST_BITS_PER_PTR);
+      result.set_address (*get_address_at (offset));
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+
+  return result;
+}
+
+
+void
+data_value::print_at (pretty_printer & pp, tree type, unsigned offset,
+		      unsigned width) const
+{
+  if (TREE_CODE (type) == VECTOR_TYPE)
+    {
+      gcc_assert (width == bit_width);
+      gcc_assert (offset == 0);
+      tree elt_type = TREE_TYPE (type);
+      unsigned elt_width;
+      gcc_assert (get_constant_type_size (elt_type, elt_width));
+      gcc_assert (elt_width != 0);
+      gcc_assert (bit_width % elt_width == 0);
+      pp_left_brace (&pp);
+      bool needs_comma = false;
+      for (unsigned i = 0; i < bit_width / elt_width; i++)
+	{
+	  if (needs_comma)
+	    pp_comma (&pp);
+	  pp_space (&pp);
+	  print_at (pp, elt_type, i * elt_width);
+	  needs_comma = true;
+	}
+      pp_space (&pp);
+      pp_right_brace (&pp);
+    }
+  else
+    {
+      enum value_type val_type = classify (offset, width);
+      switch (val_type)
+	{
+	case VAL_ADDRESS:
+	  {
+	    gcc_assert (width == HOST_BITS_PER_PTR);
+	    pp_ampersand (&pp);
+	    data_storage *target_storage = get_address_at (offset);
+	    gcc_assert (target_storage != nullptr);
+	    target_storage->print (pp);
+	  }
+	  break;
+
+	case VAL_CONSTANT:
+	  {
+	    const wide_int value = get_cst_at (offset, width);
+	    if (TREE_CODE (type) == REAL_TYPE)
+	      {
+		tree int_type = make_signed_type (width);
+		tree cst = wide_int_to_tree (int_type, value);
+		tree real = fold_build1 (VIEW_CONVERT_EXPR, type, cst);
+		context.get_printer ().print (real);
+	      }
+	    else
+	      pp_wide_int (&pp, value, SIGNED); 
+	  }
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+    }
+#if 0
+      gcc_assert (TREE_CODE (type) == INTEGER_TYPE);
+      gcc_assert (val_type == VAL_CONSTANT);
+      signop sign = TYPE_SIGN (type);
+      if (sign == SIGNED)
+	{
+	  gcc_assert (wi::fits_shwi_p (constant_value));
+	  HOST_WIDE_INT val = constant_value.to_shwi ();
+	  pp_wide_integer (&pp, val);
+	}
+      else if (sign == UNSIGNED)
+	{
+	  gcc_assert (wi::fits_uhwi_p (constant_value));
+	  unsigned HOST_WIDE_INT val = constant_value.to_uhwi ();
+	  pp_unsigned_wide_integer (&pp, val);
+	}
+      else
+	gcc_unreachable ();
+#endif
+}
+
+
+void
+data_value::print_at (pretty_printer & pp, tree type, unsigned offset) const
+{
+  unsigned width;
+  gcc_assert (get_constant_type_size (type, width));
+  print_at (pp, type, offset, width);
+}
+
+void
+data_value::print (pretty_printer & pp, tree type) const
+{
+  print_at (pp, type, 0);
+}
+
+
+tree
+data_storage::get_variable () const
+{
+  gcc_assert (type == STRG_VARIABLE);
+  return u.variable.decl;
+}
+
+void
+data_storage::print (pretty_printer & pp) const
+{
+  switch (type)
+    {
+    case STRG_VARIABLE:
+      {
+	tree decl = get_variable ();
+	context.get_printer ().print (decl);
+      }
+      break;
+
+    case STRG_ALLOC:
+      {
+	pp_less (&pp);
+	pp_string (&pp, "alloc");
+	pp_scalar (&pp, "%02d", u.allocated.index);
+	pp_left_paren (&pp);
+	unsigned allocated_amount = u.allocated.amount_bits;
+	gcc_assert (allocated_amount % CHAR_BIT == 0);
+	pp_decimal_int (&pp, allocated_amount / CHAR_BIT);
+	pp_right_paren (&pp);
+	pp_greater (&pp);
+      }
+      break;
+    }
+}
+
+
+int
+exec_context::find (const data_storage & storage) const
+{
+  data_storage *strgp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (storages, i, strgp)
+    if (i > INT_MAX)
+      return -2;
+    else if (strgp == &storage)
+      return i;
+
+  return -1;
+}
+
+
+const exec_context &
+exec_context::root () const
+{
+  const exec_context * ctx = this;
+
+  while (ctx->parent != nullptr)
+    ctx = ctx->parent;
+
+  return *ctx;
+}
+
+
+data_storage *
+exec_context::find_var (tree var) const
+{
+  data_storage *strgp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (storages, i, strgp)
+    if (strgp->matches (var))
+      return strgp;
+
+  return nullptr;
+}
+
+
+data_storage *
+exec_context::find_reachable_var (tree variable) const
+{
+  data_storage * result = find_var (variable);
+  if (result != nullptr)
+    return result;
+
+  if (parent != nullptr)
+    return root ().find_var (variable);
+  
+  return nullptr;
+}
+
+
+data_storage *
+exec_context::find_alloc (unsigned index) const
+{
+  data_storage *strgp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (storages, i, strgp)
+    if (strgp->matches_alloc (index))
+      return strgp;
+
+  return nullptr;
+}
+
+
+data_storage *
+exec_context::allocate (unsigned amount)
+{
+  unsigned index = next_alloc_index;
+  storages.safe_push (data_storage (*this, index, amount * CHAR_BIT));
+  data_storage * result = find_alloc (index);
+  next_alloc_index++;
+  return result;
+}
+
+
+data_storage &
+exec_context::get_storage (unsigned idx) const
+{
+  gcc_assert (idx < storages.length ());
+  return const_cast <data_storage &> (storages[idx]);
+}
+
+
+data_value
+exec_context::evaluate (tree expr) const
+{
+  enum tree_code code = TREE_CODE (expr);
+  switch (code)
+    {
+    case ARRAY_REF:
+    case COMPONENT_REF:
+      {
+	data_storage *storage = nullptr;
+	int offset = -1;
+	decompose_ref (expr, storage, offset);
+	gcc_assert (storage != nullptr && offset >= 0);
+	data_value var_value = storage->get_value ();
+	unsigned bitwidth;
+	bool cst = get_constant_type_size (TREE_TYPE (expr), bitwidth);
+	gcc_assert (cst);
+	return var_value.get_at (offset, bitwidth);
+      }
+      break;
+
+    case REAL_CST:
+      {
+	tree sint = make_signed_type (TYPE_PRECISION (TREE_TYPE (expr)));
+	tree t = fold_build1 (VIEW_CONVERT_EXPR, sint, expr);
+	return evaluate (t);
+      }
+      break;
+
+    case MEM_REF:
+      {
+	tree ptr = TREE_OPERAND (expr, 0);
+	data_value val_ptr = evaluate (ptr);
+	gcc_assert (val_ptr.classify () == VAL_ADDRESS);
+	data_storage *storage = val_ptr.get_address ();
+	gcc_assert (storage != nullptr);
+	data_value storage_value = storage->get_value ();
+
+	tree offset_bytes = TREE_OPERAND (expr, 1);
+	data_value val_off = evaluate (offset_bytes);
+	gcc_assert (val_off.classify () == VAL_CONSTANT);
+	wide_int wi_off = val_off.get_cst () * CHAR_BIT;
+	gcc_assert (wi::fits_uhwi_p (wi_off));
+	unsigned offset = wi_off.to_uhwi ();
+
+	unsigned bit_width;
+	if (!get_constant_type_size (TREE_TYPE (expr), bit_width))
+	  gcc_unreachable ();
+
+	return storage_value.get_at (offset, bit_width);
+      }
+      break;
+
+    case INTEGER_CST:
+      {
+	data_value result (*this, TREE_TYPE (expr));
+	wide_int wi_expr = wi::to_wide (expr);
+	result.set_cst (wi_expr);
+	return result;
+      }
+      break;
+
+    case SSA_NAME:
+	if (SSA_NAME_IS_DEFAULT_DEF (expr))
+	  return evaluate (SSA_NAME_VAR (expr));
+
+	/* Fallthrough.  */
+    case PARM_DECL:
+    case VAR_DECL:
+      {
+	data_storage *data = find_reachable_var (expr);
+	gcc_assert (data != nullptr);
+	return data->get_value ();
+      }
+
+    case ADDR_EXPR:
+      {
+	data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
+	gcc_assert (strg != nullptr);
+	data_value result (*this, TREE_TYPE (expr));
+	result.set_address (*strg);
+	return result;
+      }
+
+    case VECTOR_CST:
+      {
+	tree expr_type = TREE_TYPE (expr);
+	data_value result (*this, expr_type);
+	tree elt_type = TREE_TYPE (expr_type);
+	unsigned elt_size;
+	gcc_assert (get_constant_type_size (elt_type, elt_size));
+
+	unsigned HOST_WIDE_INT nunits;
+	gcc_assert (VECTOR_CST_NELTS (expr).is_constant (&nunits));
+	for (unsigned i = 0; i < nunits; ++i)
+	  {
+	    tree elt = VECTOR_CST_ELT (expr, i);
+	    if (TREE_CODE (elt) == REAL_CST
+		&& TREE_TYPE (elt) != elt_type)
+	      {
+		REAL_VALUE_TYPE *elt_val = TREE_REAL_CST_PTR (elt);
+		machine_mode expected_mode = TYPE_MODE (elt_type);
+		gcc_assert (exact_real_truncate (expected_mode, elt_val));
+		REAL_VALUE_TYPE r;
+		real_convert (&r, expected_mode, elt_val);
+		elt = build_real (elt_type, r);;
+	      }
+	    data_value elt_val = evaluate (elt);
+	    result.set_at (elt_val, i * elt_size);
+	  }
+	return result;
+      }
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+data_value
+exec_context::evaluate_constructor (tree cstr) const
+{
+  unsigned bit_width;
+  gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE);
+  gcc_assert (get_constant_type_size (TREE_TYPE (cstr), bit_width));
+
+  data_value result(*this, bit_width);
+
+  unsigned i;
+  tree idx, elt;
+  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (cstr), i, idx, elt)
+    {
+      data_value val = evaluate (elt);
+
+      gcc_assert (idx == NULL_TREE);
+      //gcc_assert (TREE_CODE (idx) == INTEGER_CST);
+      //wide_int wi_idx = wi::to_wide (idx);
+
+      unsigned elt_size;
+      gcc_assert (get_constant_type_size (TREE_TYPE (elt), elt_size));
+      gcc_assert (elt_size == HOST_BITS_PER_PTR);
+
+      //wide_int offset = wi_idx * elt_size;
+      //gcc_assert (wi::fits_uhwi_p (offset));
+      gcc_assert (i < bit_width / HOST_BITS_PER_PTR);
+      unsigned offset = i * elt_size;
+
+      result.set_at (val, offset);
+    }
+
+  return result;
+}
+
+
+data_value
+exec_context::evaluate_unary (enum tree_code code, tree arg) const
+{
+  switch (code)
+    {
+    case NOP_EXPR:
+      return evaluate (arg);
+
+    case CONSTRUCTOR:
+      return evaluate_constructor (arg);
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+data_value
+exec_context::evaluate_literal (enum tree_code code, tree value) const
+{
+  data_value result(*this, TREE_TYPE (value));
+  switch (code)
+    {
+    case INTEGER_CST:
+      {
+	wide_int wi_val = wi::to_wide (value);
+	result.set_cst (wi_val);
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+  return result;
+}
+
+void
+exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
+{
+  offset = -1;
+  switch (TREE_CODE (data_ref))
+    {
+    case VAR_DECL:
+    case SSA_NAME:
+      {
+	tree var = data_ref;
+	offset = 0;
+	storage = find_reachable_var (var);
+      }
+      break;
+
+    case ARRAY_REF:
+      {
+	data_storage *parent_storage = nullptr;
+	int parent_offset = -1;
+	tree parent_ref = TREE_OPERAND (data_ref, 0);
+	decompose_ref (parent_ref, parent_storage, parent_offset);
+	gcc_assert (parent_offset >= 0);
+	gcc_assert (parent_storage != nullptr);
+
+	tree idx = TREE_OPERAND (data_ref, 1);
+	data_value val = evaluate (idx);
+	gcc_assert (val.classify () == VAL_CONSTANT);
+	wide_int wi_idx = val.get_cst ();
+	gcc_assert (wi::fits_uhwi_p (wi_idx));
+	unsigned HOST_WIDE_INT hw_idx = wi_idx.to_uhwi ();
+
+	gcc_assert (TREE_OPERAND (data_ref, 3) == NULL_TREE);
+	tree elt_type = TREE_TYPE (TREE_TYPE (parent_ref));
+	unsigned size_bits;
+	bool found_size = get_constant_type_size (elt_type, size_bits);
+	gcc_assert (found_size);
+	unsigned this_offset = hw_idx * size_bits;
+
+	storage = parent_storage;
+	offset = parent_offset + this_offset;
+      }
+      break;
+
+    case COMPONENT_REF:
+      {
+	data_storage *parent_storage = nullptr;
+	int parent_offset = -1;
+	decompose_ref (TREE_OPERAND (data_ref, 0), parent_storage, parent_offset);
+	gcc_assert (parent_offset >= 0);
+	gcc_assert (parent_storage != nullptr);
+
+	int this_offset = int_bit_position (TREE_OPERAND (data_ref, 1));
+	gcc_assert (this_offset >= 0);
+
+	storage = parent_storage;
+	offset = parent_offset + this_offset;
+      }
+      break;
+
+    case MEM_REF:
+      {
+	tree var = TREE_OPERAND (data_ref, 0);
+	data_value addr = evaluate (var);
+	gcc_assert (addr.classify () == VAL_ADDRESS);
+	storage = addr.get_address ();
+
+	tree off = TREE_OPERAND (data_ref, 1);
+	data_value off_val = evaluate (off);
+	gcc_assert (off_val.classify () == VAL_CONSTANT);
+	wide_int wi_off = off_val.get_cst ();
+	gcc_assert (wi::fits_uhwi_p (wi_off));
+	unsigned HOST_WIDE_INT uhwi_off = wi_off.to_uhwi ();
+	gcc_assert (uhwi_off <= UINT_MAX / CHAR_BIT);
+	offset = uhwi_off * CHAR_BIT;
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+
+  gcc_assert (storage != nullptr);
+  gcc_assert (offset >= 0);
+}
+
+void
+exec_context::execute_assign (gassign *g)
+{
+  tree lhs = gimple_assign_lhs (g);
+  gcc_assert (TREE_CODE (lhs) == MEM_REF
+	      || TREE_CODE (lhs) == SSA_NAME
+	      || TREE_CODE (lhs) == VAR_DECL
+	      || TREE_CODE (lhs) == COMPONENT_REF);
+  data_value value (*this, TREE_TYPE (lhs));
+
+  enum tree_code rhs_code = gimple_assign_rhs_code (g);
+  switch (rhs_code)
+    {
+    case NOP_EXPR:
+    case CONSTRUCTOR:
+      value = evaluate_unary (rhs_code, gimple_assign_rhs1 (g));
+      break;
+
+    case VECTOR_CST:
+    case INTEGER_CST:
+    case SSA_NAME:
+    case COMPONENT_REF:
+      value = evaluate (gimple_assign_rhs1 (g));
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+
+  printer.print_value_update (*this, lhs, value);
+
+  data_storage *storage = nullptr;
+  int offset = -1;
+  decompose_ref (lhs, storage, offset);
+  gcc_assert (storage != nullptr);
+  gcc_assert (offset >= 0);
+  storage->set_at (value, offset);
+}
+
+
+void
+exec_context::execute_call (gcall *g)
+{
+  if (gimple_call_builtin_p (g, BUILT_IN_MALLOC))
+    {
+      gcc_assert (gimple_call_num_args (g) == 1);
+      tree arg = gimple_call_arg (g, 0);
+      gcc_assert (tree_fits_uhwi_p (arg));
+      HOST_WIDE_INT alloc_amount = tree_to_uhwi (arg);
+      data_storage *storage = allocate (alloc_amount);
+
+      tree lhs = gimple_call_lhs (g);
+      gcc_assert (lhs != NULL_TREE);
+      data_value ptr (*this, TREE_TYPE (lhs));
+      ptr.set_address (*storage);
+
+      printer.print_value_update (*this, lhs, ptr);
+      data_storage *lhs_strg = find_var (lhs);
+      gcc_assert (lhs_strg != nullptr);
+      lhs_strg->set (ptr);
+    }
+  else
+    {
+      tree fn = gimple_call_fn (g);
+      if (TREE_CODE (fn) == ADDR_EXPR)
+	fn = TREE_OPERAND (fn, 0);
+      gcc_assert (TREE_CODE (fn) == FUNCTION_DECL);
+      const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fn));
+      if (strcmp (fn_name, "_gfortran_set_args") == 0
+	  || strcmp (fn_name, "_gfortran_set_options") == 0)
+	return;
+
+      tree lhs = gimple_call_lhs (g);
+      unsigned nargs = gimple_call_num_args (g); 
+      auto_vec <tree> arguments;
+      arguments.reserve (nargs);
+
+      for (unsigned i = 0; i < nargs; i++)
+	arguments.quick_push (gimple_call_arg (g, i));
+
+      data_value result = ::execute (DECL_STRUCT_FUNCTION (fn), this, printer,
+				     &arguments);
+      printer.print_value_update (*this, lhs, result);
+      data_storage *lhs_strg = find_var (lhs);
+      gcc_assert (lhs_strg != nullptr);
+      lhs_strg->set (result);
+    }
+}
+
+
+void
+exec_context::execute (gimple *g)
+{
+  printer.begin_stmt (g);
+  switch (g->code)
+    {
+    case GIMPLE_ASSIGN:
+      execute_assign (as_a <gassign *> (g));
+      break;
+
+    case GIMPLE_CALL:
+      execute_call (as_a <gcall *> (g));
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+  printer.end_stmt (g);
+}
+
+
+
+gimple *
+exec_context::execute (basic_block bb)
+{
+  printer.print_bb_entry (bb);
+
+  gimple *g = bb->il.gimple.seq;
+
+  if (g == nullptr)
+    return nullptr;
+
+  while (g && !is_ctrl_stmt (g))
+    {
+      execute (g);
+      g = g->next;
+    }
+
+  gcc_assert (!g || !g->next);
+  return g;
+}
+
+
+edge
+exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
+{
+  if (last_stmt == nullptr || is_a <ggoto *> (last_stmt))
+    return single_succ_edge (bb);
+
+  if (is_a <gcond *> (last_stmt))
+    {
+      gcond *cond = as_a <gcond *> (last_stmt);
+
+      enum tree_code code = gimple_cond_code (cond);
+      tree lhs = gimple_cond_lhs (cond);
+      data_value lhs_val = evaluate (lhs);
+      gcc_assert (lhs_val.classify () == VAL_CONSTANT);
+      wide_int wi_lhs = lhs_val.get_cst ();
+      tree ltype = build_nonstandard_integer_type (lhs_val.get_bitwidth (), false);
+      tree lval = wide_int_to_tree (ltype, wi_lhs);
+      lval = fold_build1 (VIEW_CONVERT_EXPR, TREE_TYPE (lhs), lval);
+
+      tree rhs = gimple_cond_rhs (cond);
+      data_value rhs_val = evaluate (rhs);
+      gcc_assert (rhs_val.classify () == VAL_CONSTANT);
+      wide_int wi_rhs = rhs_val.get_cst ();
+      tree rtype = build_nonstandard_integer_type (rhs_val.get_bitwidth (), false);
+      tree rval = wide_int_to_tree (rtype, wi_rhs);
+      rval = fold_build1 (VIEW_CONVERT_EXPR, TREE_TYPE (rhs), rval);
+
+      tree result = fold_binary (code, boolean_type_node, lval, rval);
+      gcc_assert (result != NULL_TREE);
+
+      int flag;
+      if (integer_onep (result))
+	flag = EDGE_TRUE_VALUE;
+      else if (integer_zerop (result))
+	flag = EDGE_FALSE_VALUE;
+      else
+	gcc_unreachable ();
+
+      edge e, selected = nullptr;
+      edge_iterator ei;
+      FOR_EACH_EDGE (e, ei, bb->succs)
+	if (e->flags & flag)
+	  {
+	    gcc_assert (selected == nullptr);
+	    selected = e;
+	  }
+
+      gcc_assert (selected != nullptr);
+      return selected;
+    }
+
+  gcc_unreachable ();
+}
+
+
+void
+exec_context::execute_phi (gphi *phi, edge e)
+{
+  printer.begin_stmt (phi);
+  tree lhs = gimple_phi_result (phi);
+  tree phi_val = gimple_phi_arg_def_from_edge (phi, e);
+  gassign *assign = gimple_build_assign (lhs, phi_val);
+  execute_assign (assign);
+  printer.end_stmt (phi);
+}
+
+
+void
+exec_context::jump (edge e)
+{
+  printer.print_bb_jump (e);
+
+  gphi_iterator gsi;
+  for (gsi = gsi_start_nonvirtual_phis (e->dest); !gsi_end_p (gsi);
+       gsi_next_nonvirtual_phi (&gsi))
+    execute_phi (*gsi, e);
+}
+
+
+data_value
+exec_context::execute_function (struct function *func)
+{
+  printer.print_function_entry (func);
+  basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (func);
+  greturn *final_stmt = nullptr;
+
+  while (true)
+    {
+      gimple *last_stmt = execute (bb);
+
+      if (last_stmt != nullptr
+	  && is_a <greturn *> (last_stmt))
+	{
+	  final_stmt = as_a <greturn *> (last_stmt);
+	  break;
+	}
+
+      edge e = select_leaving_edge (bb, last_stmt);
+      jump (e);
+      bb = e->dest;
+    }
+
+  tree retexpr = gimple_return_retval (final_stmt);
+  data_value result = evaluate (retexpr);
+  printer.print_function_exit (func);
+  return result;
+}
+
+
+static data_value
+execute (struct function *func, exec_context *caller,
+	 context_printer & printer, vec<tree> * arg_values)
+{
+  tree fndecl = func->decl;
+
+  auto_vec <tree> arguments;
+
+  tree arg = DECL_ARGUMENTS (fndecl);
+  while (arg != NULL_TREE)
+    {
+      arguments.safe_push (arg);
+      arg = TREE_CHAIN (arg);
+    }
+
+  context_builder builder {};
+  builder.add_decls (func->gimple_df->ssa_names);
+  builder.add_decls (func->local_decls);
+  builder.add_decls (&arguments);
+
+  exec_context ctx = builder.build (caller, printer);
+  if (caller != nullptr)
+    {
+      tree *valp = nullptr;
+      unsigned i = 0;
+      tree arg = DECL_ARGUMENTS (fndecl);
+      while (arg != NULL_TREE && arg_values->iterate (i, &valp))
+	{
+	  data_value value = caller->evaluate (*valp);
+	  data_storage *storage = ctx.find_reachable_var (arg);
+	  gcc_assert (storage != nullptr);
+	  storage->set (value);
+
+	  arg = TREE_CHAIN (arg);
+	  i++;
+	}
+
+      gcc_assert (arg == NULL_TREE && !arg_values->iterate (i, &valp));
+    }
+  return ctx.execute_function (func);
+}
+
+
+static struct function *
+find_main ()
+{
+  struct cgraph_node * node;
+  FOR_EACH_DEFINED_FUNCTION (node)
+    {
+      struct function *fun = node->get_fun ();
+      tree decl = fun->decl;
+      tree name = DECL_NAME (decl);
+      const char *id = IDENTIFIER_POINTER (name);
+      if (strcmp (id, "main") == 0)
+	return fun;
+    }
+  return nullptr;
+}
+
+static void
+execute (void)
+{
+  varpool_node *vnode;
+
+  vec<tree> static_vars{};
+
+  FOR_EACH_VARIABLE (vnode)
+    {
+      tree decl = vnode->decl;
+      if (decl
+	  && (TREE_STATIC (decl)
+	      || TREE_PUBLIC (decl)
+	      || DECL_EXTERNAL (decl)))
+	static_vars.safe_push (decl);
+    }
+
+  context_printer printer;
+
+  context_builder builder {};
+  builder.add_decls (&static_vars);
+  exec_context root_context = builder.build (nullptr, printer);
+
+  struct function *main = find_main ();
+  gcc_assert (main != nullptr);
+  vec<tree> args{};
+  args.safe_push (build_zero_cst (integer_type_node));
+  args.safe_push (null_pointer_node);
+  execute (main, &root_context, printer, &args);
+}
+
 /* Perform simple optimizations based on callgraph.  */
 
 void
@@ -2369,6 +4210,9 @@ symbol_table::compile (void)
   if (post_ipa_mem_report)
     dump_memory_report ("Memory consumption after IPA");
   timevar_pop (TV_CGRAPHOPT);
+
+  if (flag_gimple_exec)
+    execute ();
 
   /* Output everything.  */
   switch_to_section (text_section);
@@ -2672,3 +4516,1851 @@ cgraph_node::create_wrapper (cgraph_node *target)
   analyze ();
   inline_analyze_function (this);
 }
+
+#if CHECKING_P
+
+namespace selftest
+{
+
+//void
+//get_constant_type_size_tests ()
+//{
+//  ASSERT_EQ (get_constant_type_size (ptr_type_node), HOST_BITS_PER_PTR);
+//
+//  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+//  
+//  int val = get_constant_type_size (vec2ptr);
+//  ASSERT_EQ (val, 2 * HOST_BITS_PER_PTR);
+//  //ASSERT_EQ (get_constant_type_size (vec2ptr), 2 * HOST_BITS_PER_PTR);
+//}
+
+static tree
+create_var (tree type, const char * name)
+{
+  return build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier (name),
+		     type);
+}
+
+
+void
+data_value_classify_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node,"a");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_value val(ctx, integer_type_node);
+
+  ASSERT_EQ (val.classify (), VAL_UNDEFINED);
+
+  wide_int i = wi::shwi (17, get_constant_type_size (integer_type_node));
+
+  val.set_cst (i);
+
+  ASSERT_EQ (val.classify (), VAL_CONSTANT);
+
+
+  data_storage *storage_a = ctx.find_reachable_var (a);
+  gcc_assert (storage_a != nullptr);
+
+  data_value ptr(ctx, ptr_type_node);
+
+  ASSERT_EQ (ptr.classify (), VAL_UNDEFINED);
+
+  ptr.set_address (*storage_a);
+
+  ASSERT_EQ (ptr.classify (), VAL_ADDRESS);
+
+
+  tree vec2int = build_vector_type (integer_type_node, 2);
+  data_value val2(ctx, vec2int);
+
+  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val2.classify (), VAL_UNDEFINED);
+
+  val2.set_cst_at (i, HOST_BITS_PER_INT);
+
+  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (), VAL_MIXED);
+
+  val2.set_cst_at (i, 0);
+
+  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  data_value val3(ctx, vec2ptr);
+
+  ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_UNDEFINED);
+  ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val3.classify (), VAL_UNDEFINED);
+
+  val3.set_address_at (*storage_a, HOST_BITS_PER_PTR);
+
+  ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_UNDEFINED);
+  ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val3.classify (), VAL_MIXED);
+
+  val3.set_address_at (*storage_a, 0);
+
+  ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val3.classify (), VAL_ADDRESS);
+}
+
+void
+exec_context_find_reachable_var_tests ()
+{
+  context_printer printer;
+  //printer.pp.set_output_stream (nullptr);
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+  tree c = create_var (integer_type_node, "c");
+
+  vec<tree> vars{};
+  vars.safe_push (a);
+  vec<tree> regs{};
+  regs.safe_push (b);
+
+  context_builder builder {};
+  builder.add_decls (&vars);
+  builder.add_decls (&regs);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  ASSERT_EQ (ctx.find_reachable_var (c), nullptr);
+  ASSERT_NE (ctx.find_reachable_var (b), nullptr);
+  ASSERT_NE (ctx.find_reachable_var (a), nullptr);
+
+  data_storage *storage_a = ctx.find_reachable_var (a);
+  ASSERT_EQ (storage_a->get_variable (), a);
+  data_storage *storage_b = ctx.find_reachable_var (b);
+  ASSERT_EQ (storage_b->get_variable (), b);
+
+  tree d = create_var (integer_type_node, "d");
+  tree e = create_var (integer_type_node, "e");
+
+  vec<tree> vars2{};
+  vars2.safe_push (d);
+  vec<tree> regs2{};
+  regs2.safe_push (e);
+
+  context_builder builder2 {};
+  builder.add_decls (&vars2);
+  builder.add_decls (&regs2);
+  exec_context ctx2 = builder.build (&ctx, printer);
+
+  ASSERT_NE (ctx2.find_reachable_var (e), nullptr);
+  ASSERT_NE (ctx2.find_reachable_var (d), nullptr);
+  ASSERT_NE (ctx2.find_reachable_var (b), nullptr);
+  ASSERT_NE (ctx2.find_reachable_var (a), nullptr);
+
+  vec<tree> empty{};
+
+  exec_context ctx3 = context_builder ().build (&ctx2, printer);
+
+  ASSERT_NE (ctx3.find_reachable_var (a), nullptr);
+  ASSERT_NE (ctx3.find_reachable_var (b), nullptr);
+  ASSERT_EQ (ctx3.find_reachable_var (d), nullptr);
+  ASSERT_EQ (ctx3.find_reachable_var (e), nullptr);
+}
+
+void
+data_value_set_address_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_value val1(ctx, ptr_type_node);
+
+  data_storage *storage_a = ctx.find_reachable_var (a);
+  val1.set_address (*storage_a);
+
+  ASSERT_EQ (val1.classify (), VAL_ADDRESS);
+  ASSERT_EQ (val1.get_address (), storage_a);
+
+  data_storage *storage_b = ctx.find_reachable_var (b);
+  val1.set_address (*storage_b);
+
+  ASSERT_EQ (val1.classify (), VAL_ADDRESS);
+  ASSERT_EQ (val1.get_address (), storage_b);
+
+  exec_context ctx2 = context_builder ().build (&ctx, printer);
+
+  data_value val2(ctx2, ptr_type_node);
+
+  ASSERT_EQ (ctx2.find_reachable_var (a), storage_a);
+}
+
+void
+data_value_set_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_storage *storage_a = ctx.find_var (a);
+
+  data_value val1(ctx, ptr_type_node);
+
+  val1.set_address (*storage_a);
+
+  data_value val2(ctx, ptr_type_node);
+
+  val2.set (val1);
+  ASSERT_EQ (val2.classify (), VAL_ADDRESS);
+  ASSERT_EQ (val2.get_address (), storage_a);
+}
+
+void
+data_value_set_at_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_storage *storage_a = ctx.find_reachable_var (a);
+  data_storage *storage_b = ctx.find_reachable_var (b);
+
+  data_value val1(ctx, ptr_type_node);
+
+  val1.set_address (*storage_a);
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  data_value val2(ctx, vec2ptr);
+
+  val2.set_at (val1, HOST_BITS_PER_PTR);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val2.get_address_at (HOST_BITS_PER_PTR), storage_a);
+
+  val1.set_address (*storage_b);
+
+  val2.set_at (val1, 0);
+  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val2.get_address_at (0), storage_b);
+
+  data_value val3(ctx, vec2ptr);
+  val3.set_at (val2, 0);
+
+  ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val3.get_address_at (0), storage_b);
+  ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val3.get_address_at (HOST_BITS_PER_PTR), storage_a);
+
+  tree derived = make_node (RECORD_TYPE);
+  tree field2 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (field2) = derived;
+  DECL_CHAIN (field2) = NULL_TREE;
+  tree field1 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field1) = derived;
+  DECL_CHAIN (field1) = field2;
+  TYPE_FIELDS (derived) = field1;
+  layout_type (derived);
+
+  tree c = create_var (derived, "c");
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls);
+  exec_context ctx2 = builder2.build (nullptr, printer);
+  vec<tree> decls2{};
+  decls2.safe_push (c);
+
+  data_value val_derived(ctx, derived);
+
+  ASSERT_EQ (val_derived.classify (), VAL_UNDEFINED);
+
+  wide_int cst = wi::shwi (13, HOST_BITS_PER_INT);
+  val_derived.set_cst_at (cst, 0);
+
+  ASSERT_EQ (val_derived.classify (), VAL_MIXED);
+  ASSERT_EQ (val_derived.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  wide_int wi_val = val_derived.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_TRUE (wi::fits_shwi_p (wi_val));
+  ASSERT_EQ (wi_val.to_shwi (), 13);
+
+
+  data_value vv (ctx2, integer_type_node);
+  wide_int wi23 = wi::shwi (23, HOST_BITS_PER_INT);
+  vv.set_cst (wi23);
+
+  data_value vv2 (ctx2, derived);
+  vv2.set_at (vv, HOST_BITS_PER_INT);
+
+  ASSERT_EQ (vv2.classify (), VAL_MIXED);
+
+  ASSERT_EQ (vv2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
+  ASSERT_EQ (vv2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
+  wide_int wi_field2 = vv2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_field2);
+  ASSERT_EQ (wi_field2.to_shwi (), 23);
+
+
+  tree c12 = build_array_type_nelts (char_type_node, 12);
+
+  data_value v (ctx2, c12);
+
+  wide_int wi33 = wi::shwi (33, CHAR_BIT);
+  v.set_cst_at (wi33, 9 * CHAR_BIT);
+
+  data_value v2 (ctx2, c12);
+  v2.set_at (9 * CHAR_BIT, CHAR_BIT, v, 9 * CHAR_BIT);
+
+  ASSERT_EQ (v2.classify (), VAL_MIXED);
+
+  ASSERT_EQ (v2.classify (8 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
+  ASSERT_EQ (v2.classify (10 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
+  ASSERT_EQ (v2.classify (9 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
+  wide_int wi_c9 = v2.get_cst_at (9 * CHAR_BIT, CHAR_BIT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_c9);
+  ASSERT_EQ (wi_c9.to_shwi (), 33);
+
+  data_value v3 (ctx2, c12);
+  v3.set (v);
+
+  ASSERT_EQ (v3.classify (), VAL_MIXED);
+
+  ASSERT_EQ (v3.classify (8 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
+  ASSERT_EQ (v3.classify (10 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
+  ASSERT_EQ (v3.classify (9 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
+  wide_int wi_c9_bis = v3.get_cst_at (9 * CHAR_BIT, CHAR_BIT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_c9_bis);
+  ASSERT_EQ (wi_c9_bis.to_shwi (), 33);
+
+
+  tree mixed = make_node (RECORD_TYPE);
+  tree i3 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("i3"), integer_type_node);
+  DECL_CONTEXT (i3) = mixed;
+  DECL_CHAIN (i3) = NULL_TREE;
+  tree p2 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("p2"), ptr_type_node);
+  DECL_CONTEXT (p2) = mixed;
+  DECL_CHAIN (p2) = i3;
+  tree i1 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("i1"), long_integer_type_node);
+  DECL_CONTEXT (i1) = mixed;
+  DECL_CHAIN (i1) = p2;
+  TYPE_FIELDS (mixed) = i1;
+  layout_type (mixed);
+
+  tree t = create_var (integer_type_node, "t");
+
+  vec<tree> decls4{};
+  decls4.safe_push (t);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (nullptr, printer);
+
+  data_value mv (ctx4, mixed);
+
+  wide_int wi4 = wi::shwi (4, HOST_BITS_PER_LONG);
+  mv.set_cst_at (wi4, 0);
+
+  data_storage *storage = ctx4.find_reachable_var (t);
+  gcc_assert (storage != nullptr);
+  mv.set_address_at (*storage, HOST_BITS_PER_LONG);
+
+  wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
+  mv.set_cst_at (wi7, HOST_BITS_PER_LONG + HOST_BITS_PER_PTR);
+
+  data_value mv2 (ctx4, mixed);
+  mv2.set (mv);
+
+  ASSERT_EQ (mv2.classify (), VAL_MIXED);
+
+  ASSERT_EQ (mv2.classify (0, HOST_BITS_PER_LONG), VAL_CONSTANT);
+  wide_int wi_i1 = mv2.get_cst_at (0, HOST_BITS_PER_LONG);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_i1);
+  ASSERT_EQ (wi_i1.to_shwi (), 4);
+
+  ASSERT_EQ (mv2.classify (HOST_BITS_PER_LONG, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  data_storage *storage2 = mv2.get_address_at (HOST_BITS_PER_LONG);
+  gcc_assert (storage2 != nullptr);
+  ASSERT_EQ (storage2->get_type (), STRG_VARIABLE);
+  ASSERT_EQ (storage2->get_variable (), t);
+
+  ASSERT_EQ (mv2.classify (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
+			   HOST_BITS_PER_INT),
+	     VAL_CONSTANT);
+  wide_int wi_i3 = mv2.get_cst_at (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
+				   HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_i3);
+  ASSERT_EQ (wi_i3.to_shwi (), 7);
+}
+
+void
+data_value_print_tests ()
+{
+  context_printer printer;
+  pretty_printer & pp = printer.pp;
+
+  tree my_var = create_var (integer_type_node, "my_var");
+
+  vec<tree> decls{};
+  decls.safe_push (my_var);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_value val1(ctx, ptr_type_node);
+  data_storage *storage = ctx.find_reachable_var (my_var);
+  val1.set_address (*storage);
+
+  val1.print (pp, ptr_type_node);
+  ASSERT_STREQ (pp_formatted_text (&pp), "&my_var");
+
+
+  context_printer printer2;
+  pretty_printer & pp2 = printer2.pp;
+
+  tree y = create_var (ptr_type_node, "y");
+  tree my_lhs = create_var (ptr_type_node, "my_lhs");
+
+  vec<tree> decls2{};
+  decls2.safe_push (my_var);
+  decls2.safe_push (y);
+  decls2.safe_push (my_lhs);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (nullptr, printer2);
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  data_value val2(ctx2, vec2ptr);
+  data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
+  val2.set_address_at (*strg_my_var, 0);
+  data_storage *strg_x = ctx2.find_reachable_var (y);
+  val2.set_address_at (*strg_x, HOST_BITS_PER_PTR);
+
+  val2.print (pp2, vec2ptr);
+  const char *str2 = pp_formatted_text (&pp2);
+  ASSERT_STREQ (str2, "{ &my_var, &y }");
+
+  context_printer printer3;
+  pretty_printer & pp3 = printer3.pp;
+
+  exec_context ctx3 = context_builder ().build (nullptr, printer3);
+
+  data_value val_int(ctx3, integer_type_node);
+
+  wide_int wi_val = wi::shwi (17, HOST_BITS_PER_INT);
+  val_int.set_cst (wi_val);
+
+  val_int.print (pp3, integer_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp3), "17");
+
+
+  context_printer printer4;
+  pretty_printer & pp4 = printer4.pp;
+
+  exec_context ctx4 = context_builder ().build (nullptr, printer4);
+
+  data_storage *alloc1 = ctx4.allocate (12);
+  gcc_assert (alloc1 != nullptr);
+
+  data_value val_ptr(ctx4, ptr_type_node);
+  val_ptr.set_address (*alloc1);
+
+  val_ptr.print (pp4, ptr_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp4), "&<alloc00(12)>");
+
+
+  context_printer printer5;
+  pretty_printer & pp5 = printer5.pp;
+
+  exec_context ctx5 = context_builder ().build (nullptr, printer5);
+
+  data_storage *alloc1_ctx5 = ctx5.allocate (12);
+  gcc_assert (alloc1_ctx5 != nullptr);
+
+  data_storage *alloc2_ctx5 = ctx5.allocate (17);
+  gcc_assert (alloc2_ctx5 != nullptr);
+
+  data_value val_ptr2(ctx5, ptr_type_node);
+  val_ptr.set_address (*alloc2_ctx5);
+
+  val_ptr.print (pp5, ptr_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp5), "&<alloc01(17)>");
+
+
+  context_printer printer6;
+  pretty_printer & pp6 = printer6.pp;
+
+  exec_context ctx6 = context_builder ().build (nullptr, printer6);
+
+  data_value val6_259(ctx6, short_integer_type_node);
+  wide_int cst259 = wi::shwi (259, HOST_BITS_PER_SHORT);
+  val6_259.set_cst (cst259);
+
+  val6_259.print (pp6, char_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp6), "3");
+
+
+  context_printer printer7;
+  pretty_printer & pp7 = printer7.pp;
+
+  exec_context ctx7 = context_builder ().build (nullptr, printer7);
+
+  data_value val7_259(ctx7, short_integer_type_node);
+  val7_259.set_cst (cst259);
+
+  val7_259.print_at (pp7, char_type_node, CHAR_BIT);
+
+  ASSERT_STREQ (pp_formatted_text (&pp7), "1");
+
+
+  context_printer printer8;
+  pretty_printer & pp8 = printer8.pp;
+
+  exec_context ctx8 = context_builder ().build (nullptr, printer8);
+  data_storage * strg = ctx8.allocate (10);
+
+  data_value v = strg->get_value ();
+  wide_int cst41 = wi::shwi (41, CHAR_BIT);
+  v.set_cst_at (cst41, HOST_BITS_PER_PTR);
+
+  v.print_at (pp8, char_type_node, HOST_BITS_PER_PTR, CHAR_BIT);
+
+  ASSERT_STREQ (pp_formatted_text (&pp8), "41");
+
+
+  context_printer printer9;
+  pretty_printer & pp9 = printer9.pp;
+
+  exec_context ctx9 = context_builder ().build (nullptr, printer9);
+
+  tree real2 = build_real (float_type_node, dconst2);
+  tree sint = make_signed_type (TYPE_PRECISION (float_type_node));
+  tree int_r2 = fold_build1 (VIEW_CONVERT_EXPR, sint, real2);
+  wide_int wi_r2 = wi::to_wide (int_r2);
+
+  data_value v9 (ctx9, float_type_node);
+  v9.set_cst (wi_r2);
+
+  v9.print (pp9, float_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp9), "2.0e+0");
+}
+
+
+void
+context_printer_print_first_data_ref_part_tests ()
+{
+  vec<tree> empty{};
+
+  tree der2i = make_node (RECORD_TYPE);
+  tree der2i_i2 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2i_i2"), integer_type_node);
+  DECL_CONTEXT (der2i_i2) = der2i;
+  DECL_CHAIN (der2i_i2) = NULL_TREE;
+  tree der2i_i1 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2i_i1"), integer_type_node);
+  DECL_CONTEXT (der2i_i1) = der2i;
+  DECL_CHAIN (der2i_i1) = der2i_i2;
+  TYPE_FIELDS (der2i) = der2i_i1;
+  layout_type (der2i);
+
+  tree var2i = create_var (der2i, "var2i");
+
+  context_printer printer1;
+  pretty_printer & pp1 = printer1.pp;
+  exec_context ctx1 = context_builder ().build (nullptr, printer1);
+
+  tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0);
+
+  ASSERT_EQ (res1, der2i);
+  const char * str1 = pp_formatted_text (&pp1);
+  ASSERT_STREQ (str1, "var2i");
+
+
+  context_printer printer2;
+  pretty_printer & pp2 = printer2.pp;
+
+  vec<tree> decls2{};
+  decls2.safe_push (var2i);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (nullptr, printer2);
+
+  tree mem_var2i = build2 (MEM_REF, der2i,
+			   build1 (ADDR_EXPR, ptr_type_node, var2i),
+			   build_zero_cst (ptr_type_node));
+
+  tree res2 = printer2.print_first_data_ref_part (ctx2, mem_var2i, 0);
+
+  ASSERT_EQ (res2, der2i);
+  const char * str2 = pp_formatted_text (&pp2);
+  ASSERT_STREQ (str2, "var2i");
+
+
+  context_printer printer3;
+  pretty_printer & pp3 = printer3.pp;
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls2);
+  exec_context ctx3 = builder3.build (nullptr, printer3);
+
+  tree long_var2i = build2 (MEM_REF, long_integer_type_node,
+			   build1 (ADDR_EXPR, ptr_type_node, var2i),
+			   build_zero_cst (ptr_type_node));
+
+  tree res3 = printer3.print_first_data_ref_part (ctx3, long_var2i, 0);
+
+  ASSERT_EQ (res3, integer_type_node);
+  const char * str3 = pp_formatted_text (&pp3);
+  ASSERT_STREQ (str3, "var2i.der2i_i1");
+
+
+  tree der2s = make_node (RECORD_TYPE);
+  tree der2s_s2 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2s_s2"),
+			      short_integer_type_node);
+  DECL_CONTEXT (der2s_s2) = der2s;
+  DECL_CHAIN (der2s_s2) = NULL_TREE;
+  tree der2s_s1 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2s_s1"),
+			      short_integer_type_node);
+  DECL_CONTEXT (der2s_s1) = der2s;
+  DECL_CHAIN (der2s_s1) = der2s_s2;
+  TYPE_FIELDS (der2s) = der2s_s1;
+  layout_type (der2s);
+
+
+  tree der1d1i = make_node (RECORD_TYPE);
+  tree der1d1i_i2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1d1i_i2"), integer_type_node);
+  DECL_CONTEXT (der1d1i_i2) = der1d1i;
+  DECL_CHAIN (der1d1i_i2) = NULL_TREE;
+  tree der1d1i_d1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1d1i_d1"), der2s);
+  DECL_CONTEXT (der1d1i_d1) = der1d1i;
+  DECL_CHAIN (der1d1i_d1) = der1d1i_i2;
+  TYPE_FIELDS (der1d1i) = der1d1i_d1;
+  layout_type (der1d1i);
+
+  tree var1d1i = create_var (der1d1i, "var1d1i");
+
+  context_printer printer4;
+  pretty_printer & pp4 = printer4.pp;
+
+  vec<tree> decls4{};
+  decls4.safe_push (var1d1i);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (nullptr, printer4);
+
+  tree mem_var1d1i = build2 (MEM_REF, long_integer_type_node,
+			     build1 (ADDR_EXPR, ptr_type_node, var1d1i),
+			     build_zero_cst (ptr_type_node));
+
+  tree res4 = printer4.print_first_data_ref_part (ctx4, mem_var1d1i, 0);
+
+  ASSERT_EQ (res4, short_integer_type_node);
+  const char * str4 = pp_formatted_text (&pp4);
+  ASSERT_STREQ (str4, "var1d1i.der1d1i_d1.der2s_s1");
+
+
+  context_printer printer5;
+  pretty_printer & pp5 = printer5.pp;
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls4);
+  exec_context ctx5 = builder5.build (nullptr, printer5);
+
+  tree mem_var1d1i_s2 = build2 (MEM_REF, short_integer_type_node,
+				build1 (ADDR_EXPR, ptr_type_node, var1d1i),
+				build_int_cst (ptr_type_node,
+					       sizeof (short)));
+
+  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0);
+
+  ASSERT_EQ (res5, short_integer_type_node);
+  const char * str5 = pp_formatted_text (&pp5);
+  ASSERT_STREQ (str5, "var1d1i.der1d1i_d1.der2s_s2");
+
+
+  tree der4c = make_node (RECORD_TYPE);
+  tree der4c_c4 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der4c_c4"),
+			      char_type_node);
+  DECL_CONTEXT (der4c_c4) = der4c;
+  DECL_CHAIN (der4c_c4) = NULL_TREE;
+  tree der4c_c3 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der4c_c3"),
+			      char_type_node);
+  DECL_CONTEXT (der4c_c3) = der4c;
+  DECL_CHAIN (der4c_c3) = der4c_c4;
+  tree der4c_c2 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der4c_c2"),
+			      char_type_node);
+  DECL_CONTEXT (der4c_c2) = der4c;
+  DECL_CHAIN (der4c_c2) = der4c_c3;
+  tree der4c_c1 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der4c_c1"),
+			      char_type_node);
+  DECL_CONTEXT (der4c_c1) = der4c;
+  DECL_CHAIN (der4c_c1) = der4c_c2;
+  TYPE_FIELDS (der4c) = der4c_c1;
+  layout_type (der4c);
+
+  tree var4c = create_var (der4c, "var4c");
+
+  context_printer printer6;
+  pretty_printer & pp6 = printer6.pp;
+
+  vec<tree> decls6{};
+  decls6.safe_push (var4c);
+
+  context_builder builder6 {};
+  builder6.add_decls (&decls6);
+  exec_context ctx6 = builder6.build (nullptr, printer6);
+
+  tree mem_var4c = build2 (MEM_REF, long_integer_type_node,
+			   build1 (ADDR_EXPR, ptr_type_node, var4c),
+			   build_int_cst (ptr_type_node, 2));
+
+  tree res6 = printer6.print_first_data_ref_part (ctx6, mem_var4c, 0);
+
+  ASSERT_EQ (res6, char_type_node);
+  const char * str6 = pp_formatted_text (&pp6);
+  ASSERT_STREQ (str6, "var4c.der4c_c3");
+
+
+  tree der1i1d = make_node (RECORD_TYPE);
+  tree der1i1d_d2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1i1d_d2"),
+				der4c);
+  DECL_CONTEXT (der1i1d_d2) = der1i1d;
+  DECL_CHAIN (der1i1d_d2) = NULL_TREE;
+  tree der1i1d_i1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1i1d_i1"),
+				integer_type_node);
+  DECL_CONTEXT (der1i1d_i1) = der1i1d;
+  DECL_CHAIN (der1i1d_i1) = der1i1d_d2;
+  TYPE_FIELDS (der1i1d) = der1i1d_i1;
+  layout_type (der1i1d);
+
+  tree var1i1d = create_var (der1i1d, "var1i1d");
+
+  context_printer printer7;
+  pretty_printer & pp7 = printer7.pp;
+
+  vec<tree> decls7{};
+  decls7.safe_push (var1i1d);
+
+  context_builder builder7 {};
+  builder7.add_decls (&decls7);
+  exec_context ctx7 = builder7.build (nullptr, printer7);
+
+  tree mem_var1i1d = build2 (MEM_REF, char_type_node,
+			     build1 (ADDR_EXPR, ptr_type_node, var1i1d),
+			     build_int_cst (ptr_type_node,
+					    sizeof (int) + 1));
+
+  tree res7 = printer7.print_first_data_ref_part (ctx7, mem_var1i1d, 0);
+
+  ASSERT_EQ (res7, char_type_node);
+  const char * str7 = pp_formatted_text (&pp7);
+  ASSERT_STREQ (str7, "var1i1d.der1i1d_d2.der4c_c2");
+
+
+  tree i5 = build_array_type_nelts (integer_type_node, 5);
+
+  tree var_i5 = create_var (i5, "var_i5");
+
+  context_printer printer8;
+  pretty_printer & pp8 = printer8.pp;
+
+  vec<tree> decls8{};
+  decls8.safe_push (var_i5);
+
+  context_builder builder8 {};
+  builder8.add_decls (&decls8);
+  exec_context ctx8 = builder8.build (nullptr, printer8);
+
+  tree mem_var_i5 = build2 (MEM_REF, char_type_node,
+			    build1 (ADDR_EXPR, ptr_type_node, var_i5),
+			    build_int_cst (ptr_type_node,
+					   3 * sizeof (int)));
+
+  tree res8 = printer8.print_first_data_ref_part (ctx8, mem_var_i5, 0);
+
+  ASSERT_EQ (res8, integer_type_node);
+  const char * str8 = pp_formatted_text (&pp8);
+  ASSERT_STREQ (str8, "var_i5[3]");
+
+
+  context_printer printer9;
+  pretty_printer & pp9 = printer9.pp;
+
+  context_builder builder9 {};
+  builder9.add_decls (&decls8);
+  exec_context ctx9 = builder9.build (nullptr, printer9);
+
+  tree mem2_var_i5 = build2 (MEM_REF, char_type_node,
+			     build1 (ADDR_EXPR, ptr_type_node, var_i5),
+			     build_int_cst (ptr_type_node,
+					    sizeof (int)));
+
+  tree res9 = printer9.print_first_data_ref_part (ctx9, mem2_var_i5,
+						  HOST_BITS_PER_INT);
+
+  ASSERT_EQ (res9, integer_type_node);
+  const char * str9 = pp_formatted_text (&pp9);
+  ASSERT_STREQ (str9, "var_i5[2]");
+
+
+  tree a5c4 = build_array_type_nelts (der4c, 5);
+
+  tree der1i1a5d = make_node (RECORD_TYPE);
+  tree der1i1a5d_a5d2 = build_decl (input_location, FIELD_DECL,
+				    get_identifier ("der1i1a5d_a5d2"),
+				    a5c4);
+  DECL_CONTEXT (der1i1a5d_a5d2) = der1i1a5d;
+  DECL_CHAIN (der1i1a5d_a5d2) = NULL_TREE;
+  tree der1i1a5d_i1 = build_decl (input_location, FIELD_DECL,
+				  get_identifier ("der1i1a5d_i1"),
+				  integer_type_node);
+  DECL_CONTEXT (der1i1a5d_i1) = der1i1a5d;
+  DECL_CHAIN (der1i1a5d_i1) = der1i1a5d_a5d2;
+  TYPE_FIELDS (der1i1a5d) = der1i1a5d_i1;
+  layout_type (der1i1a5d);
+
+  tree var_d1i1a5d = create_var (der1i1a5d, "var_d1i1a5d");
+
+  context_printer printer10;
+  pretty_printer & pp10 = printer10.pp;
+
+  vec<tree> decls10{};
+  decls10.safe_push (var_d1i1a5d);
+
+  context_builder builder10 {};
+  builder10.add_decls (&decls10);
+  exec_context ctx10 = builder10.build (nullptr, printer10);
+
+  tree mem_var_d1i1a5d = build2 (MEM_REF, char_type_node,
+				 build1 (ADDR_EXPR, ptr_type_node, var_d1i1a5d),
+				 build_int_cst (ptr_type_node,
+						sizeof (int) + 13));
+
+  tree res10 = printer10.print_first_data_ref_part (ctx10, mem_var_d1i1a5d, 0);
+
+  ASSERT_EQ (res10, char_type_node);
+  const char * str10 = pp_formatted_text (&pp10);
+  ASSERT_STREQ (str10, "var_d1i1a5d.der1i1a5d_a5d2[3].der4c_c2");
+
+
+  tree var_i = create_var (integer_type_node, "var_i");
+  tree ptr = create_var (ptr_type_node, "ptr");
+
+  context_printer printer11;
+  pretty_printer & pp11 = printer11.pp;
+
+  vec<tree> decls11{};
+  decls11.safe_push (var_i);
+  decls11.safe_push (ptr);
+
+  context_builder builder11 {};
+  builder11.add_decls (&decls11);
+  exec_context ctx11 = builder11.build (nullptr, printer11);
+
+  data_storage *var_storage = ctx11.find_reachable_var (var_i);
+
+  data_value ptr_val (ctx11, ptr_type_node);
+  ptr_val.set_address (*var_storage);
+
+  data_storage *ptr_storage = ctx11.find_reachable_var (ptr);
+  ptr_storage->set (ptr_val);
+
+  tree ref_ptr = build2 (MEM_REF, integer_type_node, ptr,
+			 build_zero_cst (ptr_type_node));
+
+  tree res11 = printer11.print_first_data_ref_part (ctx11, ref_ptr, 0);
+
+  ASSERT_EQ (res11, integer_type_node);
+  const char * str11 = pp_formatted_text (&pp11);
+  ASSERT_STREQ (str11, "var_i");
+}
+
+
+void
+context_printer_print_value_update_tests ()
+{
+  context_printer printer;
+  pretty_printer & pp = printer.pp;
+  pp_buffer (&pp)->m_flush_p = false;
+
+  tree my_var = create_var (ptr_type_node, "my_var");
+  tree y = create_var (ptr_type_node, "y");
+  tree my_lhs = create_var (ptr_type_node, "my_lhs");
+
+  vec<tree> decls{};
+  decls.safe_push (my_var);
+  decls.safe_push (y);
+  decls.safe_push (my_lhs);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_value val1(ctx, ptr_type_node);
+  data_storage *storage = ctx.find_reachable_var (my_var);
+  val1.set_address (*storage);
+
+  printer.print_value_update (ctx, my_lhs, val1);
+  const char *str = pp_formatted_text (&pp);
+  ASSERT_STREQ (str, "# my_lhs = &my_var\n");
+
+  context_printer printer2;
+  pretty_printer & pp2 = printer2.pp;
+  pp_buffer (&pp2)->m_flush_p = false;
+
+  exec_context ctx2 = builder.build (nullptr, printer2);
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  data_value val2(ctx2, vec2ptr);
+  data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
+  val2.set_address_at (*strg_my_var, 0);
+  data_storage *strg_x = ctx2.find_reachable_var (y);
+  val2.set_address_at (*strg_x, HOST_BITS_PER_PTR);
+
+  tree vec_lhs = create_var (vec2ptr, "vec_lhs");
+
+  printer2.print_value_update (ctx2, vec_lhs, val2);
+  const char *str2 = pp_formatted_text (&pp2);
+  ASSERT_STREQ (str2, "# vec_lhs = { &my_var, &y }\n");
+
+
+  context_printer printer3;
+  pretty_printer & pp3 = printer3.pp;
+  pp_buffer (&pp3)->m_flush_p = false;
+
+  tree der2c = make_node (RECORD_TYPE);
+  tree der2c_c2 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2c_c2"),
+			      char_type_node);
+  DECL_CONTEXT (der2c_c2) = der2c;
+  DECL_CHAIN (der2c_c2) = NULL_TREE;
+  tree der2c_c1 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2c_c1"),
+			      char_type_node);
+  DECL_CONTEXT (der2c_c1) = der2c;
+  DECL_CHAIN (der2c_c1) = der2c_c2;
+  TYPE_FIELDS (der2c) = der2c_c1;
+  layout_type (der2c);
+
+  tree var2c = create_var (der2c, "var2c");
+
+  vec<tree> decls3{};
+  decls3.safe_push (var2c);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (nullptr, printer3);
+
+  tree mem_var2c = build2 (MEM_REF, short_integer_type_node,
+			   build1 (ADDR_EXPR, ptr_type_node, var2c),
+			   build_int_cst (ptr_type_node, 0));
+
+  data_value val259 (ctx3, short_integer_type_node);
+  wide_int wi259 = wi::shwi (259, HOST_BITS_PER_SHORT);
+  val259.set_cst (wi259);
+
+  printer3.print_value_update (ctx3, mem_var2c, val259);
+
+  const char *str3 = pp_formatted_text (&pp3);
+  ASSERT_STREQ (str3, "# var2c.der2c_c1 = 3\n# var2c.der2c_c2 = 1\n");
+
+
+  context_printer printer4;
+  pretty_printer & pp4 = printer4.pp;
+  pp_buffer (&pp4)->m_flush_p = false;
+
+  tree der2i = make_node (RECORD_TYPE);
+  tree der2i_i2 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2i_i2"), integer_type_node);
+  DECL_CONTEXT (der2i_i2) = der2i;
+  DECL_CHAIN (der2i_i2) = NULL_TREE;
+  tree der2i_i1 = build_decl (input_location, FIELD_DECL,
+			      get_identifier ("der2i_i1"), integer_type_node);
+  DECL_CONTEXT (der2i_i1) = der2i;
+  DECL_CHAIN (der2i_i1) = der2i_i2;
+  TYPE_FIELDS (der2i) = der2i_i1;
+  layout_type (der2i);
+
+  tree v2i = create_var (der2i, "v2i");
+
+  vec<tree> decls4{};
+  decls4.safe_push (v2i);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (nullptr, printer4);
+
+  tree vec2i = build_vector_type (integer_type_node, 2);
+
+  tree mem_v2i = build2 (MEM_REF, vec2i,
+			 build1 (ADDR_EXPR, ptr_type_node, v2i),
+			 build_int_cst (ptr_type_node, 0));
+
+  data_value val2i = data_value (ctx4, vec2i);
+  wide_int cst2 = wi::shwi (2, HOST_BITS_PER_INT);
+  wide_int cst11 = wi::shwi (11, HOST_BITS_PER_INT);
+  val2i.set_cst_at (cst2, 0);
+  val2i.set_cst_at (cst11, HOST_BITS_PER_INT);
+
+  printer4.print_value_update (ctx4, mem_v2i, val2i);
+
+  const char *str4 = pp_formatted_text (&pp4);
+  ASSERT_STREQ (str4, "# v2i.der2i_i1 = 2\n# v2i.der2i_i2 = 11\n");
+}
+
+
+void
+exec_context_evaluate_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  tree int_ptr = build_pointer_type (integer_type_node);
+  tree var_addr = build1 (ADDR_EXPR,  int_ptr, a);
+
+  data_value val = ctx.evaluate (var_addr);
+  data_storage *strg_ptr = val.get_address ();
+  ASSERT_NE (strg_ptr, nullptr);
+  ASSERT_PRED1 (strg_ptr->matches, a);
+
+  exec_context ctx2 = context_builder ().build (&ctx, printer);
+
+  data_value val2 = ctx2.evaluate (var_addr);
+  data_storage *strg_ptr2 = val2.get_address ();
+  ASSERT_NE (strg_ptr, nullptr);
+  ASSERT_PRED1 (strg_ptr2->matches, a);
+
+
+  data_storage *strg_a = ctx.find_reachable_var (a);
+  gcc_assert (strg_a != nullptr);
+  data_value tmp22 (ctx, integer_type_node);
+  wide_int wi22 = wi::shwi (22, HOST_BITS_PER_INT);
+  tmp22.set_cst (wi22);
+  strg_a->set (tmp22);
+
+  data_value val_a = ctx.evaluate (a);
+
+  ASSERT_EQ (val_a.classify (), VAL_CONSTANT);
+  wide_int wi_a = val_a.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_a);
+  ASSERT_EQ (wi_a.to_shwi (), 22);
+
+
+  tree cst33 = build_int_cst (integer_type_node, 33);
+
+  data_value val_33 = ctx.evaluate (cst33);
+
+  ASSERT_EQ (val_33.get_bitwidth (), HOST_BITS_PER_INT);
+  ASSERT_EQ (val_33.classify (), VAL_CONSTANT);
+  wide_int wi33 = val_33.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi33);
+  ASSERT_EQ (wi33.to_shwi (), 33);
+
+
+  vec<constructor_elt, va_gc> * vec_elts = nullptr;
+  tree cst2 = build_int_cst (integer_type_node, 2);
+  CONSTRUCTOR_APPEND_ELT (vec_elts, NULL_TREE, cst2);
+  tree cst11 = build_int_cst (integer_type_node, 11);
+  CONSTRUCTOR_APPEND_ELT (vec_elts, NULL_TREE, cst11);
+
+  tree vec2int = build_vector_type (integer_type_node, 2);
+  tree v = build_vector_from_ctor (vec2int, vec_elts);
+
+  data_value val_v = ctx.evaluate (v);
+
+  ASSERT_EQ (val_v.get_bitwidth (), 64);
+  ASSERT_EQ (val_v.classify (), VAL_CONSTANT);
+  wide_int low_part = val_v.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_shwi_p, low_part);
+  ASSERT_EQ (low_part.to_shwi (), 2);
+  wide_int high_part = val_v.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_shwi_p, high_part);
+  ASSERT_EQ (high_part.to_shwi (), 11);
+
+
+  vec<constructor_elt, va_gc> * vec_elts2 = nullptr;
+  tree cstr2 = build_real (double_type_node, dconst2);
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, NULL_TREE, cstr2);
+  tree cstm1 = build_real (double_type_node, dconstm1);
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, NULL_TREE, cstm1);
+
+  tree vec2float = build_vector_type (float_type_node, 2);
+  tree v2 = build_vector_from_ctor (vec2float, vec_elts2);
+
+  data_value val_v2 = ctx.evaluate (v2);
+
+  ASSERT_EQ (val_v2.get_bitwidth (), 64);
+  ASSERT_EQ (val_v2.classify (), VAL_CONSTANT);
+
+  tree sint = make_signed_type (TYPE_PRECISION (float_type_node));
+
+#define HOST_BITS_PER_FLOAT (sizeof (float) * CHAR_BIT)
+  wide_int low_wi = val_v2.get_cst_at (0, HOST_BITS_PER_FLOAT);
+  tree low_int = wide_int_to_tree (sint, low_wi);
+  tree low_float = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, low_int);
+  ASSERT_EQ (TREE_CODE (low_float), REAL_CST);
+  ASSERT_TRUE (real_identical (TREE_REAL_CST_PTR (low_float), &dconst2));
+
+  wide_int high_wi = val_v2.get_cst_at (HOST_BITS_PER_FLOAT, HOST_BITS_PER_FLOAT);
+  tree high_int = wide_int_to_tree (sint, high_wi);
+  tree high_float = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, high_int);
+  ASSERT_EQ (TREE_CODE (high_float), REAL_CST);
+  ASSERT_TRUE (real_identical (TREE_REAL_CST_PTR (high_float), &dconstm1));
+#undef HOST_BITS_PER_FLOAT
+
+
+  tree a5i = build_array_type_nelts (integer_type_node, 5);
+  tree v5i = create_var (a5i, "v5i");
+
+  vec<tree> decls2{};
+  decls2.safe_push (v5i);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls2);
+  exec_context ctx3 = builder3.build (nullptr, printer);
+
+  wide_int cst18 = wi::shwi (18, HOST_BITS_PER_INT);
+
+  data_value value (ctx3, a5i);
+  value.set_cst_at (cst18, 3 * HOST_BITS_PER_INT);
+
+  data_storage *storage = ctx3.find_reachable_var (v5i);
+  gcc_assert (storage != nullptr);
+  storage->set (value);
+
+  tree v5ref = build4 (ARRAY_REF, integer_type_node, v5i,
+		       build_int_cst (integer_type_node, 3),
+		       NULL_TREE, NULL_TREE);
+
+  data_value evaluation = ctx3.evaluate (v5ref);
+
+  ASSERT_EQ (evaluation.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (evaluation.classify (), VAL_CONSTANT);
+  wide_int wi_val = evaluation.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
+  ASSERT_EQ (wi_val.to_shwi (), 18);
+
+
+  tree derived = make_node (RECORD_TYPE);
+  tree field2 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (field2) = derived;
+  DECL_CHAIN (field2) = NULL_TREE;
+  tree field1 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field1) = derived;
+  DECL_CHAIN (field1) = field2;
+  TYPE_FIELDS (derived) = field1;
+  layout_type (derived);
+
+  tree a3d = build_array_type_nelts (derived, 3);
+  tree v3d = create_var (a3d, "v3d");
+
+  vec<tree> decls3{};
+  decls3.safe_push (v3d);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls3);
+  exec_context ctx4 = builder4.build (nullptr, printer);
+
+  wide_int cst15 = wi::shwi (15, HOST_BITS_PER_INT);
+
+  data_value tmp (ctx4, a3d);
+  tmp.set_cst_at (cst15, 3 * HOST_BITS_PER_INT);
+
+  data_storage *storage2 = ctx4.find_reachable_var (v3d);
+  gcc_assert (storage2 != nullptr);
+  storage2->set (tmp);
+
+  tree v3aref = build4 (ARRAY_REF, derived, v3d,
+		       build_int_cst (integer_type_node, 1),
+		       NULL_TREE, NULL_TREE);
+  tree v3cref = build3 (COMPONENT_REF, integer_type_node, v3aref,
+			field2, NULL_TREE);
+
+  data_value eval2 = ctx4.evaluate (v3cref);
+
+  ASSERT_EQ (eval2.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (eval2.classify (), VAL_CONSTANT);
+  wide_int wi_val2 = eval2.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val2);
+  ASSERT_EQ (wi_val2.to_shwi (), 15);
+
+
+  tree func_type = build_function_type (void_type_node, NULL_TREE);
+  layout_type (func_type);
+
+  tree func = build_decl (input_location, FUNCTION_DECL,
+			  get_identifier ("func"),
+			  func_type);
+  tree result = build_decl (input_location, RESULT_DECL,
+			    get_identifier ("result"), void_type_node);
+  DECL_CONTEXT (result) = func;
+  DECL_RESULT (func) = result;
+
+  init_lowered_empty_function (func, true, profile_count::one ());
+
+  tree def_var = create_var (integer_type_node, "def_var");
+  DECL_CONTEXT (def_var) = func;
+  tree ssa_var = make_ssa_name_fn (DECL_STRUCT_FUNCTION (func), def_var, nullptr);
+  SSA_NAME_IS_DEFAULT_DEF (ssa_var) = 1;
+
+  vec<tree> decls5{};
+  decls5.safe_push (def_var);
+  decls5.safe_push (ssa_var);
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (nullptr, printer);
+
+  wide_int cst14 = wi::shwi (14, HOST_BITS_PER_INT);
+
+  data_value tmp14 (ctx5, integer_type_node);
+  tmp14.set_cst (cst14);
+
+  data_storage *storage5 = ctx5.find_reachable_var (def_var);
+  gcc_assert (storage5 != nullptr);
+  storage5->set (tmp14);
+
+  data_value eval5 = ctx5.evaluate (ssa_var);
+
+  ASSERT_EQ (eval5.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (eval5.classify (), VAL_CONSTANT);
+  wide_int wi_val5 = eval5.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val5);
+  ASSERT_EQ (wi_val5.to_shwi (), 14);
+
+
+  tree a5c = build_array_type_nelts (char_type_node, 5);
+  tree v5c = create_var (a5c,"v5c");
+
+  vec<tree> decls6{};
+  decls6.safe_push (v5c);
+
+  context_builder builder6 {};
+  builder6.add_decls (&decls6);
+  exec_context ctx6 = builder6.build (nullptr, printer);
+
+  wide_int cst8 = wi::shwi (8, CHAR_BIT);
+
+  data_value tmp8 (ctx6, a5c);
+  tmp8.set_cst_at (cst8, 3 * CHAR_BIT);
+
+  data_storage *storage6 = ctx6.find_reachable_var (v5c);
+  gcc_assert (storage5 != nullptr);
+  storage6->set (tmp8);
+
+  tree ref = build2 (MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, v5c),
+		     build_int_cst (ptr_type_node, 3));
+
+  data_value eval6 = ctx6.evaluate (ref);
+
+  ASSERT_EQ (eval6.get_bitwidth(), CHAR_BIT);
+  ASSERT_EQ (eval6.classify (), VAL_CONSTANT);
+  wide_int wi_val6 = eval6.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val6);
+  ASSERT_EQ (wi_val6.to_shwi (), 8);
+}
+
+
+void
+exec_context_evaluate_literal_tests ()
+{
+  context_printer printer;
+
+  vec<tree> empty{};
+  vec<tree> empty2{};
+
+  exec_context ctx = context_builder ().build (nullptr, printer);
+
+  tree cst = build_int_cst (integer_type_node, 13);
+
+  data_value val = ctx.evaluate_literal (INTEGER_CST, cst);
+  ASSERT_EQ (val.classify (), VAL_CONSTANT);
+  wide_int wi_value = val.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_value);
+  int int_value = wi_value.to_shwi ();
+  ASSERT_EQ (int_value, 13);
+}
+
+void
+exec_context_evaluate_unary_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  tree int_ptr = build_pointer_type (integer_type_node);
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  tree addr1 = build1 (ADDR_EXPR, int_ptr, a);
+  tree addr2 = build1 (ADDR_EXPR, int_ptr, b);
+  vec<constructor_elt, va_gc> * vec_elts = nullptr;
+  CONSTRUCTOR_APPEND_ELT (vec_elts, NULL_TREE, addr1);
+  CONSTRUCTOR_APPEND_ELT (vec_elts, NULL_TREE, addr2);
+  tree cstr = build_constructor (vec2ptr, vec_elts);
+
+  data_value val_cstr = ctx.evaluate_unary (CONSTRUCTOR, cstr);
+  data_storage *strg1 = val_cstr.get_address_at (0);
+  ASSERT_NE (strg1, nullptr);
+  ASSERT_PRED1 (strg1->matches, a);
+  data_storage *strg2 = val_cstr.get_address_at (HOST_BITS_PER_PTR);
+  ASSERT_NE (strg2, nullptr);
+  ASSERT_PRED1 (strg2->matches, b);
+}
+
+void
+exec_context_execute_assign_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+
+  tree derived = make_node (RECORD_TYPE);
+  tree field2 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (field2) = derived;
+  DECL_CHAIN (field2) = NULL_TREE;
+  tree field1 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field1) = derived;
+  DECL_CHAIN (field1) = field2;
+  TYPE_FIELDS (derived) = field1;
+  layout_type (derived);
+
+  tree b = create_var (derived, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  data_storage *storage_a = ctx.find_reachable_var (a);
+  data_storage *storage_b = ctx.find_reachable_var (b);
+
+  tree cst = build_int_cst (integer_type_node, 13);
+
+  gimple *gassign1 = gimple_build_assign (a, cst);
+
+  data_value val = storage_a->get_value ();
+  ASSERT_EQ (val.classify (), VAL_UNDEFINED);
+
+  ctx.execute (gassign1);
+
+  data_value val2 = storage_a->get_value ();
+  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+  wide_int wi_val2 = val2.get_cst ();
+  ASSERT_TRUE (wi::fits_shwi_p (wi_val2));
+  ASSERT_EQ (wi_val2.to_shwi (), 13);
+
+
+  tree lhs = build3 (COMPONENT_REF, integer_type_node, b, field1, NULL_TREE);
+
+  gimple *gassign2 = gimple_build_assign (lhs, cst);
+
+  data_value val3 = storage_b->get_value ();
+  ASSERT_EQ (val3.classify (), VAL_UNDEFINED);
+
+  ctx.execute (gassign2);
+
+  data_value val4 = storage_b->get_value ();
+  ASSERT_EQ (val4.classify (), VAL_MIXED);
+  ASSERT_EQ (val4.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  wide_int wi_val4 = val4.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_TRUE (wi::fits_shwi_p (wi_val4));
+  ASSERT_EQ (wi_val4.to_shwi (), 13);
+
+  tree lhs2 = build3 (COMPONENT_REF, integer_type_node, b, field2, NULL_TREE);
+  tree cst2 = build_int_cst (integer_type_node, 17);
+  gimple *gassign3 = gimple_build_assign (lhs2, cst2);
+
+  data_value val5 = storage_b->get_value ();
+  ASSERT_EQ (val5.classify (), VAL_MIXED);
+  ASSERT_EQ (val5.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_UNDEFINED);
+
+  ctx.execute (gassign3);
+
+  data_value val6 = storage_b->get_value ();
+  ASSERT_EQ (val6.classify (), VAL_CONSTANT);
+  wide_int wi_val6 = val6.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_TRUE (wi::fits_shwi_p (wi_val4));
+  ASSERT_EQ (wi_val6.to_shwi (), 17);
+
+
+  tree ssa1 = make_node (SSA_NAME);
+  TREE_TYPE (ssa1) = integer_type_node;
+
+  vec<tree> ssanames{};
+  ssanames.safe_push (ssa1);
+  
+  context_builder builder2 {};
+  builder2.add_decls (&decls);
+  builder2.add_decls (&ssanames);
+  exec_context ctx2 = builder2.build (nullptr, printer);
+
+  tree i66 = build_int_cst (integer_type_node, 66);
+  gimple *gassign5 = gimple_build_assign (ssa1, i66);
+
+  data_storage *ssa1_strg = ctx2.find_reachable_var (ssa1);
+  gcc_assert (ssa1_strg != nullptr);
+  data_value ssa1_val = ssa1_strg->get_value ();
+
+  ASSERT_EQ (ssa1_val.classify (), VAL_UNDEFINED);
+
+  ctx2.execute (gassign5);
+
+  data_value ssa1_val2 = ssa1_strg->get_value ();
+  ASSERT_EQ (ssa1_val2.classify (), VAL_CONSTANT);
+  wide_int wi_ssa1_2 = ssa1_val2.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_ssa1_2);
+  ASSERT_EQ (wi_ssa1_2.to_shwi (), 66);
+
+
+  data_value cst66 (ctx2, integer_type_node);
+  wide_int wi66 = wi::shwi (66, HOST_BITS_PER_INT);
+  cst66.set_cst (wi66);
+
+  ssa1_strg->set (cst66);
+
+  gimple *gassign4 = gimple_build_assign (a, ssa1);
+
+  data_storage *strg_a_ctx2 = ctx2.find_reachable_var (a);
+  gcc_assert (strg_a_ctx2 != nullptr);
+  data_value val_a = strg_a_ctx2->get_value ();
+
+  ASSERT_EQ (val_a.classify (), VAL_UNDEFINED);
+
+  ctx2.execute (gassign4);
+
+  data_value val_a2 = strg_a_ctx2->get_value ();
+  ASSERT_EQ (val_a2.classify (), VAL_CONSTANT);
+  wide_int wi_a2 = val_a2.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_a2);
+  HOST_WIDE_INT hwi_a2 = wi_a2.to_shwi ();
+  ASSERT_EQ (hwi_a2, 66);
+
+
+  tree ptr = create_var (ptr_type_node, "ptr");
+
+  vec<tree> decls2{};
+  decls2.safe_push (ptr);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls2);
+  exec_context ctx3 = builder3.build (nullptr, printer);
+
+  data_storage *alloc1 = ctx3.allocate (12);
+
+  data_storage *pointer = ctx3.find_reachable_var (ptr);
+  gcc_assert (pointer != nullptr);
+  data_value p (ctx3, ptr_type_node);
+  p.set_address (*alloc1);
+  pointer->set (p);
+  
+  tree ref = build2 (MEM_REF, integer_type_node, ptr,
+		     build_int_cst (ptr_type_node, 0));
+  tree cst3 = build_int_cst (integer_type_node, 123);
+
+  gimple *assign = gimple_build_assign (ref, cst3);
+
+  data_value val_alloc1 = alloc1->get_value ();
+  ASSERT_EQ (val_alloc1.classify (), VAL_UNDEFINED);
+
+  ctx3.execute (assign);
+
+  data_value val_alloc2 = alloc1->get_value ();
+  ASSERT_EQ (val_alloc2.classify (), VAL_MIXED);
+  ASSERT_EQ (val_alloc2.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  wide_int wi_val_alloc2 = val_alloc2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val_alloc2);
+  ASSERT_EQ (wi_val_alloc2.to_shwi (), 123);
+
+
+  tree u = create_var (integer_type_node, "u");
+
+  vec<tree> decls3{};
+  decls3.safe_push (u);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls3);
+  exec_context ctx4 = builder4.build (nullptr, printer);
+
+  data_storage *strg_u = ctx4.find_reachable_var (u);
+  gcc_assert (strg_u != nullptr);
+  
+  tree addr_u = build1 (ADDR_EXPR, ptr_type_node, u);
+  tree ref_u = build2 (MEM_REF, integer_type_node, addr_u,
+		     build_int_cst (ptr_type_node, 0));
+  tree cst44 = build_int_cst (integer_type_node, 44);
+
+  gimple *assign44 = gimple_build_assign (ref_u, cst44);
+
+  data_value val_u = strg_u->get_value ();
+  ASSERT_EQ (val_u.classify (), VAL_UNDEFINED);
+
+  ctx4.execute (assign44);
+
+  data_value val_u2 = strg_u->get_value ();
+  ASSERT_EQ (val_u2.classify (), VAL_CONSTANT);
+  wide_int wi_u2 = val_u2.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_u2);
+  ASSERT_EQ (wi_u2.to_shwi (), 44);
+
+
+  tree var6 = create_var (integer_type_node, "var6");
+  tree var2i = create_var (derived, "var2i");
+
+  vec<tree> decls5{};
+  decls5.safe_push (var2i);
+  decls5.safe_push (var6);
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (nullptr, printer);
+
+  wide_int wi8 = wi::shwi (8, HOST_BITS_PER_INT);
+  wide_int wi13 = wi::shwi (13, HOST_BITS_PER_INT);
+
+  data_value val7 (ctx5, derived);
+  val7.set_cst_at (wi8, 0);
+  val7.set_cst_at (wi13, HOST_BITS_PER_INT);
+
+  data_storage *strg = ctx5.find_reachable_var (var2i);
+  gcc_assert (strg != nullptr);
+  strg->set (val7);
+  
+  tree comp = build3 (COMPONENT_REF, integer_type_node, var2i, field2,
+		      NULL_TREE);
+
+  gimple *assign5 = gimple_build_assign (var6, comp);
+
+  data_storage *strg5 = ctx5.find_reachable_var (var6);
+  gcc_assert (strg5 != nullptr);
+  data_value before = strg5->get_value ();
+  ASSERT_EQ (before.classify (), VAL_UNDEFINED);
+
+  ctx5.execute (assign5);
+
+  gcc_assert (strg5 != nullptr);
+  data_value after = strg5->get_value ();
+  ASSERT_EQ (after.classify (), VAL_CONSTANT);
+  wide_int wi7 = after.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi7);
+  ASSERT_EQ (wi7.to_shwi (), 13);
+
+
+  tree a5c = build_array_type_nelts (char_type_node, 5);
+  tree v5c = create_var (a5c,"v5c");
+
+  vec<tree> decls6{};
+  decls6.safe_push (v5c);
+
+  context_builder builder6 {};
+  builder6.add_decls (&decls6);
+  exec_context ctx6 = builder6.build (nullptr, printer);
+
+  tree c8 = build_int_cst (char_type_node, 8);
+
+  tree ref2 = build2 (MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, v5c),
+		     build_int_cst (ptr_type_node, 3));
+
+  gassign *assign2 = gimple_build_assign (ref2, c8);
+
+  ctx6.execute (assign2);
+
+  data_storage *storage = ctx6.find_reachable_var (v5c);
+  gcc_assert (storage != nullptr);
+  data_value c8val = storage->get_value ();
+
+  ASSERT_EQ (c8val.classify(), VAL_MIXED);
+  ASSERT_EQ (c8val.classify (3 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
+  wide_int wi_val = c8val.get_cst_at (3 * CHAR_BIT, CHAR_BIT);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
+  ASSERT_EQ (wi_val.to_shwi (), 8);
+}
+
+void
+exec_context_execute_call_tests ()
+{
+  context_printer printer;
+
+  vec<tree> empty{};
+
+  tree func_type = build_function_type (void_type_node, NULL_TREE);
+  layout_type (func_type);
+
+  exec_context ctx = context_builder ().build (nullptr, printer);
+
+  tree set_args_fn = build_decl (input_location, FUNCTION_DECL,
+				 get_identifier ("_gfortran_set_args"),
+				 func_type);
+  //DECL_EXTERNAL (set_args_fn) = 1;
+  //TREE_PUBLIC (set_args_fn) = 1;
+
+  gcall * set_args_call = gimple_build_call (set_args_fn, 0);
+
+  ctx.execute (set_args_call);
+
+  tree set_options_fn = build_decl (input_location, FUNCTION_DECL,
+				    get_identifier ("_gfortran_set_options"),
+				    func_type);
+  //DECL_EXTERNAL (set_args) = 1;
+  //TREE_PUBLIC (set_args) = 0;
+
+  gcall * set_options_call = gimple_build_call (set_options_fn, 0);
+
+  ctx.execute (set_options_call);
+
+  tree p = create_var (ptr_type_node, "p");
+
+  vec<tree> decls{};
+  decls.safe_push (p);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls);
+  exec_context ctx2 = builder2.build (nullptr, printer);
+
+  tree malloc_fn = builtin_decl_explicit (BUILT_IN_MALLOC);
+  tree cst = build_int_cst (size_type_node, 12);
+
+  gcall * malloc_call = gimple_build_call (malloc_fn, 1, cst);
+  gimple_set_lhs (malloc_call, p);
+
+  ASSERT_EQ (ctx2.find_alloc (0), nullptr);
+
+  ctx2.execute (malloc_call);
+
+  data_storage *alloc_strg = ctx2.find_alloc (0);
+  ASSERT_NE (alloc_strg, nullptr);
+  data_value alloc_val = alloc_strg->get_value ();
+  ASSERT_EQ (alloc_val.classify (), VAL_UNDEFINED);
+  ASSERT_EQ (alloc_val.get_bitwidth (), 96);
+
+  data_storage *p_strg = ctx2.find_var (p);
+  ASSERT_NE (p_strg, nullptr);
+  data_value p_val = p_strg->get_value ();
+  ASSERT_EQ (p_val.classify (), VAL_ADDRESS);
+  ASSERT_EQ (p_val.get_address (), alloc_strg);
+
+  tree cst2 = build_int_cst (size_type_node, 10);
+
+  gcall * malloc_call2 = gimple_build_call (malloc_fn, 1, cst2);
+  gimple_set_lhs (malloc_call2, p);
+
+  ASSERT_EQ (ctx2.find_alloc (1), nullptr);
+
+  ctx2.execute (malloc_call2);
+
+  data_storage *alloc_strg2 = ctx2.find_alloc (1);
+  ASSERT_NE (alloc_strg2, nullptr);
+  data_value alloc_val2 = alloc_strg2->get_value ();
+  ASSERT_EQ (alloc_val2.classify (), VAL_UNDEFINED);
+  ASSERT_EQ (alloc_val2.get_bitwidth (), 80);
+
+
+  tree cst6 = build_int_cst (integer_type_node, 6);
+
+  tree int_func_type = build_function_type (integer_type_node, NULL_TREE);
+  layout_type (int_func_type);
+
+  tree my_int_func = build_decl (input_location, FUNCTION_DECL,
+				 get_identifier ("my_int_func"),
+				 int_func_type);
+  tree result = build_decl (input_location, RESULT_DECL,
+			    get_identifier ("result"), integer_type_node);
+  DECL_CONTEXT (result) = my_int_func;
+  DECL_RESULT (my_int_func) = result;
+
+  basic_block bb = init_lowered_empty_function (my_int_func, true, profile_count::one ());
+  gimple_stmt_iterator gsi = gsi_last_bb (bb);
+  greturn *ret_stmt = gimple_build_return (cst6);
+  gsi_insert_after (&gsi, ret_stmt, GSI_CONTINUE_LINKING);
+
+  tree ivar = create_var (integer_type_node, "ivar");
+
+  gcall *my_call = gimple_build_call (my_int_func, 0);
+  gimple_set_lhs (my_call, ivar);
+
+  vec<tree> decls2{};
+  decls2.safe_push (ivar);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls2);
+  exec_context ctx3 = builder3.build (nullptr, printer);
+
+  data_value ival = ctx3.evaluate (ivar);
+  ASSERT_EQ (ival.classify (), VAL_UNDEFINED);
+
+  ctx3.execute (my_call);
+
+  data_value ival2 = ctx3.evaluate (ivar);
+  ASSERT_EQ (ival2.classify (), VAL_CONSTANT);
+  wide_int func_result = ival2.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, func_result);
+  ASSERT_EQ (func_result.to_shwi (), 6);
+
+
+  tree int_func_arg_type = build_function_type_list (integer_type_node,
+						     integer_type_node,
+						     NULL_TREE);
+  layout_type (int_func_arg_type);
+
+  tree my_int_func_with_arg = build_decl (input_location, FUNCTION_DECL,
+					  get_identifier ("my_int_func_with_arg"),
+					  int_func_type);
+
+  tree fn_result = build_decl (input_location, RESULT_DECL,
+			       get_identifier ("fn_result"), integer_type_node);
+  DECL_CONTEXT (fn_result) = my_int_func_with_arg;
+  DECL_RESULT (my_int_func_with_arg) = fn_result;
+
+  tree arg = build_decl (input_location, PARM_DECL,
+			 get_identifier ("arg"), integer_type_node);
+  DECL_ARG_TYPE (arg) = TREE_VALUE (TYPE_ARG_TYPES (int_func_arg_type));
+  DECL_CONTEXT (arg) = my_int_func_with_arg;
+  DECL_ARGUMENTS (my_int_func_with_arg) = arg;
+  layout_decl (arg, 0);
+
+  basic_block bb2 = init_lowered_empty_function (my_int_func_with_arg, true, profile_count::one ());
+  gimple_stmt_iterator gsi2 = gsi_last_bb (bb2);
+  greturn *ret_stmt2 = gimple_build_return (arg);
+  gsi_insert_after (&gsi2, ret_stmt2, GSI_CONTINUE_LINKING);
+
+  tree i19 = build_int_cst (integer_type_node, 19);
+  gcall *my_call2 = gimple_build_call (my_int_func_with_arg, 1, i19);
+
+  tree ivar2 = create_var (integer_type_node, "ivar2");
+  gimple_set_lhs (my_call2, ivar2);
+
+  vec<tree> decls3{};
+  decls3.safe_push (ivar2);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls3);
+  exec_context ctx4 = builder4.build (nullptr, printer);
+
+  data_value ival3 = ctx4.evaluate (ivar2);
+  ASSERT_EQ (ival3.classify (), VAL_UNDEFINED);
+
+  ctx4.execute (my_call2);
+
+  data_value ival4 = ctx4.evaluate (ivar2);
+  ASSERT_EQ (ival4.classify (), VAL_CONSTANT);
+  wide_int func_result2 = ival4.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, func_result2);
+  ASSERT_EQ (func_result2.to_shwi (), 19);
+}
+
+void
+gimple_exec_cc_tests ()
+{
+  //get_constant_type_size_tests ();
+  data_value_classify_tests ();
+  exec_context_find_reachable_var_tests ();
+  data_value_set_address_tests ();
+  data_value_set_tests ();
+  data_value_set_at_tests ();
+  data_value_print_tests ();
+  context_printer_print_first_data_ref_part_tests ();
+  context_printer_print_value_update_tests ();
+  exec_context_evaluate_tests ();
+  exec_context_evaluate_literal_tests ();
+  exec_context_evaluate_unary_tests ();
+  exec_context_execute_assign_tests ();
+  exec_context_execute_call_tests ();
+}
+
+}
+
+#endif

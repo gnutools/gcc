@@ -2098,7 +2098,7 @@ gfc_get_symbol_decl (gfc_symbol * sym)
   if (sym->attr.vtab || def_init)
     {
       DECL_ARTIFICIAL (decl) = 1;
-      if (def_init && sym->value)
+      if (sym->attr.vtab || sym->value)
 	TREE_READONLY (decl) = 1;
     }
 

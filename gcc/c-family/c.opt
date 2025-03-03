@@ -214,6 +214,10 @@ fgimple
 C Var(flag_gimple) Init(0)
 Enable parsing GIMPLE.
 
+fgimple-exec
+C Var(flag_gimple_exec) Init(0)
+Enable execution of GIMPLE.
+
 H
 C ObjC C++ ObjC++
 Print the name of header files as they are used.
