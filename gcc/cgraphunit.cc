@@ -2371,14 +2371,34 @@ enum value_type
 };
 
 
+enum storage_type
+{
+  STRG_VARIABLE,
+  STRG_ALLOC
+};
+
+class heap_memory;
+
 struct storage_ref
 {
-  const exec_context & context;
+  enum storage_type type;
+  union u
+    {
+      u (const exec_context & ctx) : var_context (&ctx) {}
+      u (const heap_memory & m) : alloc_mem (&m) {}
+      const exec_context * var_context;
+      const heap_memory * alloc_mem;
+    }
+  u;
   unsigned storage_index;
 
   storage_ref (const exec_context & ctx, unsigned idx)
-    : context (ctx), storage_index (idx)
+    : type (STRG_VARIABLE), u (ctx), storage_index (idx)
   {}
+  storage_ref (const heap_memory & mem, unsigned idx)
+    : type (STRG_ALLOC), u (mem), storage_index (idx)
+  {}
+  storage_ref (const storage_ref & other) = default;
   data_storage & get () const;
 };
 
@@ -2388,8 +2408,8 @@ struct storage_address
   storage_ref storage;
   unsigned offset;
 
-  storage_address (const exec_context & ctx, unsigned idx, unsigned off)
-    : storage (ctx, idx), offset (off)
+  storage_address (const storage_ref & ref, unsigned off)
+    : storage (ref), offset (off)
   {}
 };
 
@@ -2408,6 +2428,7 @@ namespace selftest
   void exec_context_evaluate_binary_tests ();
   void exec_context_execute_assign_tests ();
   void exec_context_execute_call_tests ();
+  void exec_context_allocate_tests ();
 }
 
 
@@ -2461,57 +2482,54 @@ public:
 };
 
 
-enum storage_type
-{
-  STRG_VARIABLE,
-  STRG_ALLOC
-};
+class heap_memory;
+class context_printer;
 
 
 class data_storage
 {
-  const exec_context & context;
   const storage_type type;
   data_value value;
 
   union u
     {
-      u (tree t) : variable (t) {}
-      u (unsigned alloc_idx, unsigned alloc_amount)
-	: allocated (alloc_idx, alloc_amount)
+      u (const exec_context & ctx, tree t) : variable (ctx, t) {}
+      u (const heap_memory & mem, unsigned alloc_idx, unsigned alloc_amount)
+	: allocated (mem, alloc_idx, alloc_amount)
       {}
       //~u () {}
 
       struct v
 	{
-	  v (tree t) : decl (t) {}
+	  v (const exec_context & ctx, tree t) : context (ctx), decl (t) {}
+	  const exec_context & context;
 	  const tree decl;
 	}
       variable;
 
       const struct a
 	{
-	  a (unsigned alloc_idx, unsigned alloc_amount)
-	    : index (alloc_idx), amount_bits (alloc_amount)
+	  a (const heap_memory & mem, unsigned alloc_idx, unsigned alloc_amount)
+	    : alloc_mem (mem), index (alloc_idx), amount_bits (alloc_amount)
 	  {}
-	  unsigned index;
-	  unsigned amount_bits;
+	  const heap_memory & alloc_mem;
+	  const unsigned index;
+	  const unsigned amount_bits;
 	}
       allocated;
     }
   u;
 
 public:
-  data_storage (const exec_context &ctx, tree decl)
-    : context (ctx), type (STRG_VARIABLE), value (TREE_TYPE (decl)),
-    u (decl)
+  data_storage (const exec_context & ctx, tree decl)
+    : type (STRG_VARIABLE), value (TREE_TYPE (decl)),
+    u (ctx, decl)
   {}
-  data_storage (const exec_context &ctx, unsigned alloc_index, unsigned alloc_amount)
-    : context (ctx), type (STRG_ALLOC), value (alloc_amount),
-    u (alloc_index, alloc_amount)
+  data_storage (const heap_memory & mem, unsigned alloc_index, unsigned alloc_amount)
+    : type (STRG_ALLOC), value (alloc_amount),
+    u (mem, alloc_index, alloc_amount)
   {}
   storage_type get_type () const { return type; }
-  const exec_context & get_context () const { return context; }
   tree get_variable () const;
 
   bool matches (tree var) const
@@ -2524,7 +2542,8 @@ public:
   data_storage & operator= (const data_storage& other) = default;
   void set (const data_value & val) { return value.set (val); }
   void set_at (const data_value & val, unsigned offset) { return value.set_at (val, offset); }
-  void print (pretty_printer & pp) const;
+  void print (context_printer & printer) const;
+  storage_ref get_ref () const;
 };
 
 
@@ -2542,6 +2561,7 @@ class context_printer
 public:
   context_printer ();
   context_printer (dump_flags_t f);
+  pretty_printer & get_pretty_printer () const { return const_cast <pretty_printer &> (pp); }
   void begin_stmt (gimple *);
   void print (tree);
   void print_newline ();
@@ -2559,15 +2579,30 @@ public:
 
 
 static data_value
-execute (struct function *func, exec_context *caller,
+execute (struct function *func, exec_context &caller,
 	 context_printer & printer, vec<tree> * args);
+
+
+class heap_memory
+{
+  vec<data_storage> storages;
+  unsigned next_alloc_index;
+
+public:
+  heap_memory () : storages (), next_alloc_index (0) {}
+  data_storage *find_alloc (unsigned index) const;
+  int find (const data_storage & storage) const;
+  data_storage & allocate (unsigned amount);
+  data_storage & get_storage (unsigned idx) const;
+};
+
 
 class exec_context
 {
   exec_context * const parent;
   context_printer & printer;
-  vec<data_storage> storages;
-  unsigned next_alloc_index;
+  heap_memory & alloc_mem;
+  vec<data_storage> var_storages;
   data_value evaluate_constructor (tree cstr) const;
   data_value evaluate_unary (enum tree_code code, tree type, tree arg) const;
   data_value evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const;
@@ -2582,9 +2617,11 @@ class exec_context
   void execute_call (gcall *g);
   data_storage *find_var (tree variable) const;
   data_storage *find_alloc (unsigned index) const;
-  data_storage *allocate (unsigned amount);
+  data_storage &allocate (unsigned amount);
   void decompose_ref (tree data_ref, data_storage * & storage, int & offset) const;
   void execute_phi (gphi *phi, edge e);
+  exec_context (exec_context * caller, context_printer & printer,
+		heap_memory & mem, vec<tree> & decls);
 
   friend void selftest::data_value_print_tests ();
   friend void selftest::data_value_set_address_tests ();
@@ -2593,14 +2630,15 @@ class exec_context
   friend void selftest::exec_context_evaluate_binary_tests ();
   friend void selftest::exec_context_execute_assign_tests ();
   friend void selftest::exec_context_execute_call_tests ();
+  friend void selftest::exec_context_allocate_tests ();
 
 public:
-  exec_context (exec_context *caller, context_printer & printer,
+  exec_context (exec_context & caller, context_printer & printer,
 		vec<tree> & decls);
+  exec_context (heap_memory & mem, context_printer & printer, vec<tree> & decls);
   const exec_context & root () const;
   int find (const data_storage &storage) const;
   data_storage *find_reachable_var (tree variable) const;
-  data_storage *find_malloc (unsigned index) const;
   gimple * execute (basic_block bb);
   data_storage & get_storage (unsigned idx) const;
   context_printer & get_printer () const { return printer; }
@@ -2617,7 +2655,8 @@ class context_builder
 
 public:
   context_builder ();
-  exec_context build (exec_context * caller, context_printer & printer);
+  exec_context build (exec_context & caller, context_printer & printer);
+  exec_context build (heap_memory & mem, context_printer & printer);
   template <typename A, typename L>
   void add_decls (vec<tree, A, L> *additional_decls);
   //void add_decls (vec<tree> *additional_decls);
@@ -2663,18 +2702,35 @@ context_builder::add_decls (vec<tree> *additional_decls)
 
 
 exec_context
-context_builder::build (exec_context * caller, context_printer & printer)
+context_builder::build (exec_context & caller, context_printer & printer)
 {
   return exec_context (caller, printer, decls);
 }
 
 
+exec_context
+context_builder::build (heap_memory & mem, context_printer & printer)
+{
+  return exec_context (mem, printer, decls);
+}
+
+
 exec_context::exec_context (exec_context *caller, context_printer & printer,
-			    vec<tree> & decls)
-  : parent (caller), printer (printer), storages (vNULL), next_alloc_index (0)
+			    heap_memory & mem, vec<tree> & decls)
+  : parent (caller), printer (printer), alloc_mem (mem), var_storages ()
 {
   add_variables (&decls);
 }
+
+exec_context::exec_context (exec_context & caller, context_printer & printer,
+			    vec<tree> & decls)
+  : exec_context::exec_context (&caller, printer, caller.alloc_mem, decls)
+{}
+
+exec_context::exec_context (heap_memory & mem, context_printer & printer,
+			    vec<tree> & decls)
+  : exec_context::exec_context (nullptr, printer, mem, decls)
+{}
 
 
 template <typename A, typename L>
@@ -2684,14 +2740,14 @@ exec_context::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
   if (vars_count == 0)
     return;
 
-  storages.reserve (vars_count);
+  var_storages.reserve (vars_count);
 
   tree *varp;
   unsigned i;
   FOR_EACH_VEC_ELT (*variables, i, varp)
     if (*varp != NULL_TREE
 	&& TYPE_SIZE (TREE_TYPE (*varp)) != NULL_TREE)
-      storages.quick_push (data_storage (*this, *varp));
+      var_storages.quick_push (data_storage (*this, *varp));
 }
 
 template <typename A>
@@ -2946,7 +3002,44 @@ context_printer::end_stmt (gimple *g ATTRIBUTE_UNUSED)
 data_storage &
 storage_ref::get () const
 {
-  return context.get_storage (storage_index);
+  switch (type)
+    {
+    case STRG_VARIABLE:
+      return u.var_context->get_storage (storage_index);
+
+    case STRG_ALLOC:
+      return u.alloc_mem->get_storage (storage_index);
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+
+storage_ref
+data_storage::get_ref () const
+{
+  switch (type)
+    {
+    case STRG_VARIABLE:
+      {
+	const exec_context & ctx = u.variable.context;
+	int idx = ctx.find (*this);
+	gcc_assert (idx >= 0);
+	return storage_ref (ctx, idx);
+      }
+
+    case STRG_ALLOC:
+      {
+	const heap_memory & mem = u.allocated.alloc_mem;
+	int idx = mem.find (*this);
+	gcc_assert (idx >= 0);
+	return storage_ref (mem, idx);
+      }
+
+    default:
+      gcc_unreachable ();
+    }
 }
 
 
@@ -3023,12 +3116,7 @@ data_value::set_address_at (data_storage &storage, unsigned offset)
   constant_mask &= ~mask;
   address_mask |= mask;
 
-  const exec_context & ctx = storage.get_context ();
-
-  int idx = ctx.find (storage);
-  gcc_assert (idx >= 0);
-
-  storage_address addr_info (ctx, idx, offset);;
+  storage_address addr_info (storage.get_ref (), offset);;
   addresses.safe_push (addr_info);
 }
 
@@ -3339,7 +3427,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	    pp_ampersand (&pp);
 	    data_storage *target_storage = value.get_address_at (offset);
 	    gcc_assert (target_storage != nullptr);
-	    target_storage->print (pp);
+	    target_storage->print (*this);
 	  }
 	  break;
 
@@ -3407,14 +3495,15 @@ data_storage::get_variable () const
 }
 
 void
-data_storage::print (pretty_printer & pp) const
+data_storage::print (context_printer & printer) const
 {
+  pretty_printer & pp = printer.get_pretty_printer ();
   switch (type)
     {
     case STRG_VARIABLE:
       {
 	tree decl = get_variable ();
-	context.get_printer ().print (decl);
+	printer.print (decl);
       }
       break;
 
@@ -3436,7 +3525,7 @@ data_storage::print (pretty_printer & pp) const
 
 
 int
-exec_context::find (const data_storage & storage) const
+heap_memory::find (const data_storage & storage) const
 {
   data_storage *strgp;
   unsigned i;
@@ -3447,6 +3536,21 @@ exec_context::find (const data_storage & storage) const
       return i;
 
   return -1;
+}
+
+
+int
+exec_context::find (const data_storage & storage) const
+{
+  data_storage *strgp;
+  unsigned i;
+  FOR_EACH_VEC_ELT (var_storages, i, strgp)
+    if (i > INT_MAX)
+      return -2;
+    else if (strgp == &storage)
+      return i;
+
+  return alloc_mem.find (storage);
 }
 
 
@@ -3467,7 +3571,7 @@ exec_context::find_var (tree var) const
 {
   data_storage *strgp;
   unsigned i;
-  FOR_EACH_VEC_ELT (storages, i, strgp)
+  FOR_EACH_VEC_ELT (var_storages, i, strgp)
     if (strgp->matches (var))
       return strgp;
 
@@ -3490,34 +3594,54 @@ exec_context::find_reachable_var (tree variable) const
 
 
 data_storage *
-exec_context::find_alloc (unsigned index) const
+heap_memory::find_alloc (unsigned index) const
 {
-  data_storage *strgp;
-  unsigned i;
-  FOR_EACH_VEC_ELT (storages, i, strgp)
-    if (strgp->matches_alloc (index))
-      return strgp;
+  if (index >= storages.length ())
+    return nullptr;
 
-  return nullptr;
+  return &const_cast <data_storage &> (storages[index]);
 }
 
 
 data_storage *
-exec_context::allocate (unsigned amount)
+exec_context::find_alloc (unsigned index) const
+{
+  return alloc_mem.find_alloc (index);
+}
+
+
+data_storage &
+heap_memory::get_storage (unsigned idx) const
+{
+  gcc_assert (idx < storages.length ());
+  return const_cast <data_storage &> (storages[idx]);
+}
+
+
+data_storage &
+heap_memory::allocate (unsigned amount)
 {
   unsigned index = next_alloc_index;
+  gcc_assert (index == storages.length ());
   storages.safe_push (data_storage (*this, index, amount * CHAR_BIT));
-  data_storage * result = find_alloc (index);
+  data_storage & result = get_storage (index);
   next_alloc_index++;
   return result;
 }
 
 
 data_storage &
+exec_context::allocate (unsigned amount)
+{
+  return alloc_mem.allocate (amount);
+}
+
+
+data_storage &
 exec_context::get_storage (unsigned idx) const
 {
-  gcc_assert (idx < storages.length ());
-  return const_cast <data_storage &> (storages[idx]);
+  gcc_assert (idx < var_storages.length ());
+  return const_cast <data_storage &> (var_storages[idx]);
 }
 
 
@@ -3686,7 +3810,16 @@ exec_context::evaluate_unary (enum tree_code code, tree type ATTRIBUTE_UNUSED, t
       return evaluate (arg);
 
     default:
-      gcc_unreachable ();
+      {
+	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
+		    || TREE_CODE (type) == BOOLEAN_TYPE);
+	tree val = evaluate (arg).to_tree (TREE_TYPE (arg));
+	tree t = fold_unary (code, type, val);
+	gcc_assert (t != NULL_TREE);
+	data_value result (type);
+	result.set_cst (wi::to_wide (t));
+	return result;
+      }
     }
 }
 
@@ -3855,12 +3988,12 @@ exec_context::execute_call (gcall *g)
       wide_int wi_size = size.get_cst ();
       gcc_assert (wi::fits_uhwi_p (wi_size));
       HOST_WIDE_INT alloc_amount = wi_size.to_uhwi ();
-      data_storage *storage = allocate (alloc_amount);
+      data_storage &storage = allocate (alloc_amount);
 
       tree lhs = gimple_call_lhs (g);
       gcc_assert (lhs != NULL_TREE);
       data_value ptr (TREE_TYPE (lhs));
-      ptr.set_address (*storage);
+      ptr.set_address (storage);
 
       printer.print_value_update (*this, lhs, ptr);
       data_storage *lhs_strg = find_var (lhs);
@@ -3886,7 +4019,7 @@ exec_context::execute_call (gcall *g)
       for (unsigned i = 0; i < nargs; i++)
 	arguments.quick_push (gimple_call_arg (g, i));
 
-      data_value result = ::execute (DECL_STRUCT_FUNCTION (fn), this, printer,
+      data_value result = ::execute (DECL_STRUCT_FUNCTION (fn), *this, printer,
 				     &arguments);
       printer.print_value_update (*this, lhs, result);
       data_storage *lhs_strg = find_var (lhs);
@@ -4039,7 +4172,7 @@ exec_context::execute_function (struct function *func)
 
 
 static data_value
-execute (struct function *func, exec_context *caller,
+execute (struct function * func, exec_context & caller,
 	 context_printer & printer, vec<tree> * arg_values)
 {
   tree fndecl = func->decl;
@@ -4059,24 +4192,23 @@ execute (struct function *func, exec_context *caller,
   builder.add_decls (&arguments);
 
   exec_context ctx = builder.build (caller, printer);
-  if (caller != nullptr)
+
+  tree *valp = nullptr;
+  unsigned i = 0;
+  arg = DECL_ARGUMENTS (fndecl);
+  while (arg != NULL_TREE && arg_values->iterate (i, &valp))
     {
-      tree *valp = nullptr;
-      unsigned i = 0;
-      tree arg = DECL_ARGUMENTS (fndecl);
-      while (arg != NULL_TREE && arg_values->iterate (i, &valp))
-	{
-	  data_value value = caller->evaluate (*valp);
-	  data_storage *storage = ctx.find_reachable_var (arg);
-	  gcc_assert (storage != nullptr);
-	  storage->set (value);
+      data_value value = caller.evaluate (*valp);
+      data_storage *storage = ctx.find_reachable_var (arg);
+      gcc_assert (storage != nullptr);
+      storage->set (value);
 
-	  arg = TREE_CHAIN (arg);
-	  i++;
-	}
-
-      gcc_assert (arg == NULL_TREE && !arg_values->iterate (i, &valp));
+      arg = TREE_CHAIN (arg);
+      i++;
     }
+
+  gcc_assert (arg == NULL_TREE && !arg_values->iterate (i, &valp));
+
   return ctx.execute_function (func);
 }
 
@@ -4114,18 +4246,20 @@ execute (void)
 	static_vars.safe_push (decl);
     }
 
+  heap_memory alloc_mem;
+
   context_printer printer;
 
   context_builder builder {};
   builder.add_decls (&static_vars);
-  exec_context root_context = builder.build (nullptr, printer);
+  exec_context root_context = builder.build (alloc_mem, printer);
 
   struct function *main = find_main ();
   gcc_assert (main != nullptr);
   vec<tree> args{};
   args.safe_push (build_zero_cst (integer_type_node));
   args.safe_push (null_pointer_node);
-  execute (main, &root_context, printer, &args);
+  execute (main, root_context, printer, &args);
 }
 
 /* Perform simple optimizations based on callgraph.  */
@@ -4513,6 +4647,7 @@ create_var (tree type, const char * name)
 void
 data_value_classify_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node,"a");
@@ -4523,7 +4658,7 @@ data_value_classify_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_value val(integer_type_node);
 
@@ -4593,6 +4728,7 @@ data_value_classify_tests ()
 void
 exec_context_find_reachable_var_tests ()
 {
+  heap_memory mem;
   context_printer printer;
   //printer.pp.set_output_stream (nullptr);
 
@@ -4608,7 +4744,7 @@ exec_context_find_reachable_var_tests ()
   context_builder builder {};
   builder.add_decls (&vars);
   builder.add_decls (&regs);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   ASSERT_EQ (ctx.find_reachable_var (c), nullptr);
   ASSERT_NE (ctx.find_reachable_var (b), nullptr);
@@ -4630,7 +4766,7 @@ exec_context_find_reachable_var_tests ()
   context_builder builder2 {};
   builder.add_decls (&vars2);
   builder.add_decls (&regs2);
-  exec_context ctx2 = builder.build (&ctx, printer);
+  exec_context ctx2 = builder.build (ctx, printer);
 
   ASSERT_NE (ctx2.find_reachable_var (e), nullptr);
   ASSERT_NE (ctx2.find_reachable_var (d), nullptr);
@@ -4639,7 +4775,7 @@ exec_context_find_reachable_var_tests ()
 
   vec<tree> empty{};
 
-  exec_context ctx3 = context_builder ().build (&ctx2, printer);
+  exec_context ctx3 = context_builder ().build (ctx2, printer);
 
   ASSERT_NE (ctx3.find_reachable_var (a), nullptr);
   ASSERT_NE (ctx3.find_reachable_var (b), nullptr);
@@ -4650,6 +4786,7 @@ exec_context_find_reachable_var_tests ()
 void
 data_value_set_address_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -4662,7 +4799,7 @@ data_value_set_address_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_value val1(ptr_type_node);
 
@@ -4678,7 +4815,7 @@ data_value_set_address_tests ()
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
   ASSERT_EQ (val1.get_address (), storage_b);
 
-  exec_context ctx2 = context_builder ().build (&ctx, printer);
+  exec_context ctx2 = context_builder ().build (ctx, printer);
 
   data_value val2(ptr_type_node);
 
@@ -4688,6 +4825,7 @@ data_value_set_address_tests ()
 void
 data_value_set_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -4700,7 +4838,7 @@ data_value_set_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_var (a);
 
@@ -4718,6 +4856,7 @@ data_value_set_tests ()
 void
 data_value_set_at_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -4730,7 +4869,7 @@ data_value_set_at_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
@@ -4864,7 +5003,7 @@ data_value_set_at_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (nullptr, printer);
+  exec_context ctx4 = builder4.build (mem, printer);
 
   data_value mv (mixed);
 
@@ -4906,6 +5045,7 @@ data_value_set_at_tests ()
 void
 data_value_print_tests ()
 {
+  heap_memory mem;
   context_printer printer;
   pretty_printer & pp = printer.pp;
 
@@ -4917,7 +5057,7 @@ data_value_print_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
@@ -4940,7 +5080,7 @@ data_value_print_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (nullptr, printer2);
+  exec_context ctx2 = builder2.build (mem, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
@@ -4966,35 +5106,33 @@ data_value_print_tests ()
   ASSERT_STREQ (pp_formatted_text (&pp3), "17");
 
 
+  heap_memory mem4;
   context_printer printer4;
   pretty_printer & pp4 = printer4.pp;
 
-  exec_context ctx4 = context_builder ().build (nullptr, printer4);
+  exec_context ctx4 = context_builder ().build (mem4, printer4);
 
-  data_storage *alloc1 = ctx4.allocate (12);
-  gcc_assert (alloc1 != nullptr);
+  data_storage & alloc1 = ctx4.allocate (12);
 
   data_value val_ptr (ptr_type_node);
-  val_ptr.set_address (*alloc1);
+  val_ptr.set_address (alloc1);
 
   printer4.print (val_ptr, ptr_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp4), "&<alloc00(12)>");
 
 
+  heap_memory mem5;
   context_printer printer5;
   pretty_printer & pp5 = printer5.pp;
 
-  exec_context ctx5 = context_builder ().build (nullptr, printer5);
+  exec_context ctx5 = context_builder ().build (mem5, printer5);
 
-  data_storage *alloc1_ctx5 = ctx5.allocate (12);
-  gcc_assert (alloc1_ctx5 != nullptr);
-
-  data_storage *alloc2_ctx5 = ctx5.allocate (17);
-  gcc_assert (alloc2_ctx5 != nullptr);
+  ctx5.allocate (12);
+  data_storage & alloc2_ctx5 = ctx5.allocate (17);
 
   data_value val_ptr2 (ptr_type_node);
-  val_ptr.set_address (*alloc2_ctx5);
+  val_ptr.set_address (alloc2_ctx5);
 
   printer5.print (val_ptr, ptr_type_node);
 
@@ -5024,13 +5162,14 @@ data_value_print_tests ()
   ASSERT_STREQ (pp_formatted_text (&pp7), "1");
 
 
+  heap_memory mem8;
   context_printer printer8;
   pretty_printer & pp8 = printer8.pp;
 
-  exec_context ctx8 = context_builder ().build (nullptr, printer8);
-  data_storage * strg = ctx8.allocate (10);
+  exec_context ctx8 = context_builder ().build (mem8, printer8);
+  data_storage & strg = ctx8.allocate (10);
 
-  data_value v = strg->get_value ();
+  data_value v = strg.get_value ();
   wide_int cst41 = wi::shwi (41, CHAR_BIT);
   v.set_cst_at (cst41, HOST_BITS_PER_PTR);
 
@@ -5075,9 +5214,10 @@ context_printer_print_first_data_ref_part_tests ()
 
   tree var2i = create_var (der2i, "var2i");
 
+  heap_memory mem1;
   context_printer printer1;
   pretty_printer & pp1 = printer1.pp;
-  exec_context ctx1 = context_builder ().build (nullptr, printer1);
+  exec_context ctx1 = context_builder ().build (mem1, printer1);
 
   tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0);
 
@@ -5094,7 +5234,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (nullptr, printer2);
+  exec_context ctx2 = builder2.build (mem1, printer2);
 
   tree mem_var2i = build2 (MEM_REF, der2i,
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
@@ -5112,7 +5252,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (nullptr, printer3);
+  exec_context ctx3 = builder3.build (mem1, printer3);
 
   tree long_var2i = build2 (MEM_REF, long_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
@@ -5162,7 +5302,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (nullptr, printer4);
+  exec_context ctx4 = builder4.build (mem1, printer4);
 
   tree mem_var1d1i = build2 (MEM_REF, long_integer_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var1d1i),
@@ -5180,7 +5320,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls4);
-  exec_context ctx5 = builder5.build (nullptr, printer5);
+  exec_context ctx5 = builder5.build (mem1, printer5);
 
   tree mem_var1d1i_s2 = build2 (MEM_REF, short_integer_type_node,
 				build1 (ADDR_EXPR, ptr_type_node, var1d1i),
@@ -5228,7 +5368,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (nullptr, printer6);
+  exec_context ctx6 = builder6.build (mem1, printer6);
 
   tree mem_var4c = build2 (MEM_REF, long_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var4c),
@@ -5265,7 +5405,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder7 {};
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (nullptr, printer7);
+  exec_context ctx7 = builder7.build (mem1, printer7);
 
   tree mem_var1i1d = build2 (MEM_REF, char_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var1i1d),
@@ -5291,7 +5431,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder8 {};
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (nullptr, printer8);
+  exec_context ctx8 = builder8.build (mem1, printer8);
 
   tree mem_var_i5 = build2 (MEM_REF, char_type_node,
 			    build1 (ADDR_EXPR, ptr_type_node, var_i5),
@@ -5310,7 +5450,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder9 {};
   builder9.add_decls (&decls8);
-  exec_context ctx9 = builder9.build (nullptr, printer9);
+  exec_context ctx9 = builder9.build (mem1, printer9);
 
   tree mem2_var_i5 = build2 (MEM_REF, char_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var_i5),
@@ -5351,7 +5491,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder10 {};
   builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (nullptr, printer10);
+  exec_context ctx10 = builder10.build (mem1, printer10);
 
   tree mem_var_d1i1a5d = build2 (MEM_REF, char_type_node,
 				 build1 (ADDR_EXPR, ptr_type_node, var_d1i1a5d),
@@ -5377,7 +5517,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder11 {};
   builder11.add_decls (&decls11);
-  exec_context ctx11 = builder11.build (nullptr, printer11);
+  exec_context ctx11 = builder11.build (mem1, printer11);
 
   data_storage *var_storage = ctx11.find_reachable_var (var_i);
 
@@ -5401,6 +5541,7 @@ context_printer_print_first_data_ref_part_tests ()
 void
 context_printer_print_value_update_tests ()
 {
+  heap_memory mem;
   context_printer printer;
   pretty_printer & pp = printer.pp;
   pp_buffer (&pp)->m_flush_p = false;
@@ -5417,7 +5558,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
@@ -5431,7 +5572,7 @@ context_printer_print_value_update_tests ()
   pretty_printer & pp2 = printer2.pp;
   pp_buffer (&pp2)->m_flush_p = false;
 
-  exec_context ctx2 = builder.build (nullptr, printer2);
+  exec_context ctx2 = builder.build (mem, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
@@ -5472,7 +5613,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (nullptr, printer3);
+  exec_context ctx3 = builder3.build (mem, printer3);
 
   tree mem_var2c = build2 (MEM_REF, short_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var2c),
@@ -5511,7 +5652,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (nullptr, printer4);
+  exec_context ctx4 = builder4.build (mem, printer4);
 
   tree vec2i = build_vector_type (integer_type_node, 2);
 
@@ -5535,6 +5676,7 @@ context_printer_print_value_update_tests ()
 void
 exec_context_evaluate_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -5547,7 +5689,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   tree int_ptr = build_pointer_type (integer_type_node);
   tree var_addr = build1 (ADDR_EXPR,  int_ptr, a);
@@ -5557,7 +5699,7 @@ exec_context_evaluate_tests ()
   ASSERT_NE (strg_ptr, nullptr);
   ASSERT_PRED1 (strg_ptr->matches, a);
 
-  exec_context ctx2 = context_builder ().build (&ctx, printer);
+  exec_context ctx2 = context_builder ().build (ctx, printer);
 
   data_value val2 = ctx2.evaluate (var_addr);
   data_storage *strg_ptr2 = val2.get_address ();
@@ -5649,9 +5791,10 @@ exec_context_evaluate_tests ()
   vec<tree> decls2{};
   decls2.safe_push (v5i);
 
+  heap_memory mem3;
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (nullptr, printer);
+  exec_context ctx3 = builder3.build (mem3, printer);
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_INT);
 
@@ -5695,7 +5838,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (nullptr, printer);
+  exec_context ctx4 = builder4.build (mem3, printer);
 
   wide_int cst15 = wi::shwi (15, HOST_BITS_PER_INT);
 
@@ -5745,7 +5888,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (nullptr, printer);
+  exec_context ctx5 = builder5.build (mem3, printer);
 
   wide_int cst14 = wi::shwi (14, HOST_BITS_PER_INT);
 
@@ -5773,7 +5916,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (nullptr, printer);
+  exec_context ctx6 = builder6.build (mem3, printer);
 
   wide_int cst8 = wi::shwi (8, CHAR_BIT);
 
@@ -5801,12 +5944,13 @@ exec_context_evaluate_tests ()
 void
 exec_context_evaluate_literal_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   vec<tree> empty{};
   vec<tree> empty2{};
 
-  exec_context ctx = context_builder ().build (nullptr, printer);
+  exec_context ctx = context_builder ().build (mem, printer);
 
   tree cst = build_int_cst (integer_type_node, 13);
 
@@ -5821,6 +5965,7 @@ exec_context_evaluate_literal_tests ()
 void
 exec_context_evaluate_constructor_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -5833,7 +5978,7 @@ exec_context_evaluate_constructor_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   tree int_ptr = build_pointer_type (integer_type_node);
 
@@ -5857,6 +6002,7 @@ exec_context_evaluate_constructor_tests ()
 void
 exec_context_evaluate_binary_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -5869,7 +6015,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
@@ -5902,7 +6048,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (nullptr, printer);
+  exec_context ctx2 = builder2.build (mem, printer);
 
   data_value val12_bis (HOST_BITS_PER_INT);
   val12_bis.set_cst (wi::shwi (12, HOST_BITS_PER_INT));
@@ -5925,6 +6071,7 @@ exec_context_evaluate_binary_tests ()
 void
 exec_context_execute_assign_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   tree a = create_var (integer_type_node, "a");
@@ -5950,7 +6097,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (nullptr, printer);
+  exec_context ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
@@ -6013,7 +6160,7 @@ exec_context_execute_assign_tests ()
   context_builder builder2 {};
   builder2.add_decls (&decls);
   builder2.add_decls (&ssanames);
-  exec_context ctx2 = builder2.build (nullptr, printer);
+  exec_context ctx2 = builder2.build (mem, printer);
 
   tree i66 = build_int_cst (integer_type_node, 66);
   gimple *gassign5 = gimple_build_assign (ssa1, i66);
@@ -6064,14 +6211,14 @@ exec_context_execute_assign_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (nullptr, printer);
+  exec_context ctx3 = builder3.build (mem, printer);
 
-  data_storage *alloc1 = ctx3.allocate (12);
+  data_storage & alloc1 = ctx3.allocate (12);
 
   data_storage *pointer = ctx3.find_reachable_var (ptr);
   gcc_assert (pointer != nullptr);
   data_value p (ptr_type_node);
-  p.set_address (*alloc1);
+  p.set_address (alloc1);
   pointer->set (p);
   
   tree ref = build2 (MEM_REF, integer_type_node, ptr,
@@ -6080,12 +6227,12 @@ exec_context_execute_assign_tests ()
 
   gimple *assign = gimple_build_assign (ref, cst3);
 
-  data_value val_alloc1 = alloc1->get_value ();
+  data_value val_alloc1 = alloc1.get_value ();
   ASSERT_EQ (val_alloc1.classify (), VAL_UNDEFINED);
 
   ctx3.execute (assign);
 
-  data_value val_alloc2 = alloc1->get_value ();
+  data_value val_alloc2 = alloc1.get_value ();
   ASSERT_EQ (val_alloc2.classify (), VAL_MIXED);
   ASSERT_EQ (val_alloc2.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
   wide_int wi_val_alloc2 = val_alloc2.get_cst_at (0, HOST_BITS_PER_INT);
@@ -6100,7 +6247,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (nullptr, printer);
+  exec_context ctx4 = builder4.build (mem, printer);
 
   data_storage *strg_u = ctx4.find_reachable_var (u);
   gcc_assert (strg_u != nullptr);
@@ -6133,7 +6280,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (nullptr, printer);
+  exec_context ctx5 = builder5.build (mem, printer);
 
   wide_int wi8 = wi::shwi (8, HOST_BITS_PER_INT);
   wide_int wi13 = wi::shwi (13, HOST_BITS_PER_INT);
@@ -6174,7 +6321,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (nullptr, printer);
+  exec_context ctx6 = builder6.build (mem, printer);
 
   tree c8 = build_int_cst (char_type_node, 8);
 
@@ -6208,7 +6355,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder7 {};
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (nullptr, printer);
+  exec_context ctx7 = builder7.build (mem, printer);
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
@@ -6244,6 +6391,7 @@ exec_context_execute_assign_tests ()
 void
 exec_context_execute_call_tests ()
 {
+  heap_memory mem;
   context_printer printer;
 
   vec<tree> empty{};
@@ -6251,7 +6399,7 @@ exec_context_execute_call_tests ()
   tree func_type = build_function_type (void_type_node, NULL_TREE);
   layout_type (func_type);
 
-  exec_context ctx = context_builder ().build (nullptr, printer);
+  exec_context ctx = context_builder ().build (mem, printer);
 
   tree set_args_fn = build_decl (input_location, FUNCTION_DECL,
 				 get_identifier ("_gfortran_set_args"),
@@ -6278,9 +6426,10 @@ exec_context_execute_call_tests ()
   vec<tree> decls{};
   decls.safe_push (p);
 
+  heap_memory mem2;
   context_builder builder2 {};
   builder2.add_decls (&decls);
-  exec_context ctx2 = builder2.build (nullptr, printer);
+  exec_context ctx2 = builder2.build (mem2, printer);
 
   tree malloc_fn = builtin_decl_explicit (BUILT_IN_MALLOC);
   tree cst = build_int_cst (size_type_node, 12);
@@ -6346,9 +6495,10 @@ exec_context_execute_call_tests ()
   vec<tree> decls2{};
   decls2.safe_push (ivar);
 
+  heap_memory mem3;
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (nullptr, printer);
+  exec_context ctx3 = builder3.build (mem3, printer);
 
   data_value ival = ctx3.evaluate (ivar);
   ASSERT_EQ (ival.classify (), VAL_UNDEFINED);
@@ -6397,9 +6547,10 @@ exec_context_execute_call_tests ()
   vec<tree> decls3{};
   decls3.safe_push (ivar2);
 
+  heap_memory mem4;
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (nullptr, printer);
+  exec_context ctx4 = builder4.build (mem4, printer);
 
   data_value ival3 = ctx4.evaluate (ivar2);
   ASSERT_EQ (ival3.classify (), VAL_UNDEFINED);
@@ -6419,9 +6570,10 @@ exec_context_execute_call_tests ()
   decls5.safe_push (p);
   decls5.safe_push (i18);
 
+  heap_memory mem5;
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (nullptr, printer);
+  exec_context ctx5 = builder5.build (mem5, printer);
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_LONG);
   data_value val18 (size_type_node);
@@ -6451,6 +6603,68 @@ exec_context_execute_call_tests ()
 }
 
 void
+exec_context_allocate_tests ()
+{
+  heap_memory mem;
+  context_printer printer;
+  exec_context ctx1 = context_builder ().build (mem, printer);
+
+  data_storage & storage1 = ctx1.allocate (12);
+
+  ASSERT_EQ (storage1.get_type (), STRG_ALLOC);
+
+
+  data_storage & storage2 = ctx1.allocate (7);
+  data_value val2 = storage2.get_value ();
+
+  ASSERT_EQ (val2.get_bitwidth (), 56);
+  ASSERT_EQ (val2.classify (), VAL_UNDEFINED);
+
+
+  heap_memory mem3;
+  exec_context ctx3 = context_builder ().build (mem3, printer);
+
+  ASSERT_EQ (ctx3.find_alloc (0), nullptr);
+
+  data_storage & storage3 = ctx3.allocate (9);
+
+  ASSERT_NE (ctx3.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx3.find_alloc (0), &storage3);
+  ASSERT_EQ (ctx3.find_alloc (1), nullptr);
+
+
+  exec_context ctx4 = context_builder ().build (ctx3, printer);
+
+  ASSERT_NE (ctx3.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx4.find_alloc (0), &storage3);
+
+
+  heap_memory mem5;
+  exec_context ctx5 = context_builder ().build (mem5, printer);
+  exec_context ctx6 = context_builder ().build (ctx5, printer);
+
+  data_storage & storage5 = ctx5.allocate (16);
+
+  ASSERT_NE (ctx5.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx5.find_alloc (0), &storage5);
+  ASSERT_NE (ctx6.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx6.find_alloc (0), &storage5);
+
+
+  heap_memory mem7;
+  exec_context ctx7 = context_builder ().build (mem7, printer);
+  exec_context ctx8 = context_builder ().build (ctx7, printer);
+
+  data_storage & storage8 = ctx8.allocate (11);
+
+  ASSERT_NE (ctx8.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx8.find_alloc (0), &storage8);
+  ASSERT_NE (ctx7.find_alloc (0), nullptr);
+  ASSERT_EQ (ctx7.find_alloc (0), &storage8);
+}
+
+
+void
 gimple_exec_cc_tests ()
 {
   get_constant_type_size_tests ();
@@ -6468,6 +6682,7 @@ gimple_exec_cc_tests ()
   exec_context_evaluate_binary_tests ();
   exec_context_execute_assign_tests ();
   exec_context_execute_call_tests ();
+  exec_context_allocate_tests ();
 }
 
 }
