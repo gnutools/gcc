@@ -2485,8 +2485,8 @@ public:
   void set_cst (const wide_int & val);
   wide_int get_cst_at (unsigned offset, unsigned width) const;
   wide_int get_cst () const;
-  data_storage *get_address () const;
-  data_storage *get_address_at (unsigned offset) const;
+  storage_address *get_address () const;
+  storage_address *get_address_at (unsigned offset) const;
   data_value get_at (unsigned offset, unsigned width) const;
   bool is_fully_defined () const { return (~(constant_mask | address_mask)) == 0; }
   tree to_tree (tree type) const;
@@ -2869,13 +2869,13 @@ find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset
   if (ptr_val.classify () != VAL_ADDRESS)
     return NULL_TREE;
 
-  data_storage *ptr_target = ptr_val.get_address ();
-  gcc_assert (ptr_target != nullptr);
-  if (ptr_target->get_type () != STRG_VARIABLE)
+  storage_address *ptr_address = ptr_val.get_address ();
+  data_storage &ptr_target = ptr_address->storage.get ();
+  if (ptr_target.get_type () != STRG_VARIABLE)
     return NULL_TREE;
 
   tree access_type = TREE_TYPE (data_ref);
-  tree var_ref = ptr_target->get_variable ();
+  tree var_ref = ptr_target.get_variable ();
   tree var_type = TREE_TYPE (var_ref);
 
   if (var_type == access_type)
@@ -3315,7 +3315,7 @@ data_value::get_cst () const
   return get_cst_at (0, bit_width);
 }
 
-data_storage *
+storage_address *
 data_value::get_address_at (unsigned offset) const
 {
   gcc_assert (classify (offset, HOST_BITS_PER_PTR) == VAL_ADDRESS);
@@ -3324,13 +3324,13 @@ data_value::get_address_at (unsigned offset) const
 
   stored_address *addr_info = find_address (offset);
   if (addr_info != nullptr)
-    return &(addr_info->address.storage.get ());
+    return &(addr_info->address);
 
   return nullptr;
 }
 
 
-data_storage *
+storage_address *
 data_value::get_address () const
 {
   gcc_assert (bit_width == HOST_BITS_PER_PTR);
@@ -3351,9 +3351,7 @@ data_value::get_at (unsigned offset, unsigned width) const
     case VAL_ADDRESS:
       {
 	gcc_assert (width == HOST_BITS_PER_PTR);
-	data_storage *storage = get_address_at (offset);
-	storage_address address (storage->get_ref (), 0);
-	result.set_address (address);
+	result.set_address (*get_address_at (offset));
       }
       break;
 
@@ -3419,9 +3417,9 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	  {
 	    gcc_assert (width == HOST_BITS_PER_PTR);
 	    pp_ampersand (&pp);
-	    data_storage *target_storage = value.get_address_at (offset);
-	    gcc_assert (target_storage != nullptr);
-	    target_storage->print (*this);
+	    storage_address *address = value.get_address_at (offset);
+	    data_storage &target_storage = address->storage.get ();
+	    target_storage.print (*this);
 	  }
 	  break;
 
@@ -3674,9 +3672,9 @@ exec_context::evaluate (tree expr) const
 	tree ptr = TREE_OPERAND (expr, 0);
 	data_value val_ptr = evaluate (ptr);
 	gcc_assert (val_ptr.classify () == VAL_ADDRESS);
-	data_storage *storage = val_ptr.get_address ();
-	gcc_assert (storage != nullptr);
-	data_value storage_value = storage->get_value ();
+	storage_address *address = val_ptr.get_address ();
+	gcc_assert (address != nullptr);
+	data_value storage_value = address->storage.get ().get_value ();
 
 	tree offset_bytes = TREE_OPERAND (expr, 1);
 	data_value val_off = evaluate (offset_bytes);
@@ -3927,7 +3925,7 @@ exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offs
 	tree var = TREE_OPERAND (data_ref, 0);
 	data_value addr = evaluate (var);
 	gcc_assert (addr.classify () == VAL_ADDRESS);
-	storage = addr.get_address ();
+	storage = &(addr.get_address ()->storage.get ());
 
 	tree off = TREE_OPERAND (data_ref, 1);
 	data_value off_val = evaluate (off);
@@ -4840,14 +4838,14 @@ data_value_set_address_tests ()
   val1.set_address (address_a);
 
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
-  ASSERT_EQ (val1.get_address (), storage_a);
+  ASSERT_EQ (&val1.get_address ()->storage.get (), storage_a);
 
   data_storage *storage_b = ctx.find_reachable_var (b);
   storage_address address_b (storage_b->get_ref (), 0);
   val1.set_address (address_b);
 
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
-  ASSERT_EQ (val1.get_address (), storage_b);
+  ASSERT_EQ (&val1.get_address ()->storage.get (), storage_b);
 
   exec_context ctx2 = context_builder ().build (ctx, printer);
 
@@ -4885,7 +4883,7 @@ data_value_set_tests ()
 
   val2.set (val1);
   ASSERT_EQ (val2.classify (), VAL_ADDRESS);
-  ASSERT_EQ (val2.get_address (), storage_a);
+  ASSERT_EQ (&val2.get_address ()->storage.get (), storage_a);
 }
 
 void
@@ -4921,21 +4919,21 @@ data_value_set_at_tests ()
 
   val2.set_at (val1, HOST_BITS_PER_PTR);
   ASSERT_EQ (val2.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val2.get_address_at (HOST_BITS_PER_PTR), storage_a);
+  ASSERT_EQ (&val2.get_address_at (HOST_BITS_PER_PTR)->storage.get (), storage_a);
 
   val1.set_address (address_b);
 
   val2.set_at (val1, 0);
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val2.get_address_at (0), storage_b);
+  ASSERT_EQ (&val2.get_address_at (0)->storage.get (), storage_b);
 
   data_value val3(vec2ptr);
   val3.set_at (val2, 0);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val3.get_address_at (0), storage_b);
+  ASSERT_EQ (&val3.get_address_at (0)->storage.get (), storage_b);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val3.get_address_at (HOST_BITS_PER_PTR), storage_a);
+  ASSERT_EQ (&val3.get_address_at (HOST_BITS_PER_PTR)->storage.get (), storage_a);
 
   tree derived = make_node (RECORD_TYPE);
   tree field2 = build_decl (input_location, FIELD_DECL,
@@ -5068,10 +5066,11 @@ data_value_set_at_tests ()
   ASSERT_EQ (wi_i1.to_shwi (), 4);
 
   ASSERT_EQ (mv2.classify (HOST_BITS_PER_LONG, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  data_storage *storage2 = mv2.get_address_at (HOST_BITS_PER_LONG);
-  gcc_assert (storage2 != nullptr);
-  ASSERT_EQ (storage2->get_type (), STRG_VARIABLE);
-  ASSERT_EQ (storage2->get_variable (), t);
+  storage_address *address2 = mv2.get_address_at (HOST_BITS_PER_LONG);
+  gcc_assert (address2 != nullptr);
+  data_storage &storage2 = address2->storage.get ();
+  ASSERT_EQ (storage2.get_type (), STRG_VARIABLE);
+  ASSERT_EQ (storage2.get_variable (), t);
 
   ASSERT_EQ (mv2.classify (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
 			   HOST_BITS_PER_INT),
@@ -5745,16 +5744,18 @@ exec_context_evaluate_tests ()
   tree var_addr = build1 (ADDR_EXPR,  int_ptr, a);
 
   data_value val = ctx.evaluate (var_addr);
-  data_storage *strg_ptr = val.get_address ();
-  ASSERT_NE (strg_ptr, nullptr);
-  ASSERT_PRED1 (strg_ptr->matches, a);
+  storage_address *ptr_addr = val.get_address ();
+  ASSERT_NE (ptr_addr, nullptr);
+  data_storage &strg_ptr = ptr_addr->storage.get ();
+  ASSERT_PRED1 (strg_ptr.matches, a);
 
   exec_context ctx2 = context_builder ().build (ctx, printer);
 
   data_value val2 = ctx2.evaluate (var_addr);
-  data_storage *strg_ptr2 = val2.get_address ();
-  ASSERT_NE (strg_ptr, nullptr);
-  ASSERT_PRED1 (strg_ptr2->matches, a);
+  storage_address *ptr2_addr = val2.get_address ();
+  ASSERT_NE (ptr2_addr, nullptr);
+  data_storage &strg_ptr2 = ptr2_addr->storage.get ();
+  ASSERT_PRED1 (strg_ptr2.matches, a);
 
 
   data_storage *strg_a = ctx.find_reachable_var (a);
@@ -6147,12 +6148,14 @@ exec_context_evaluate_constructor_tests ()
   tree cstr = build_constructor (vec2ptr, vec_elts);
 
   data_value val_cstr = ctx.evaluate (cstr);
-  data_storage *strg1 = val_cstr.get_address_at (0);
-  ASSERT_NE (strg1, nullptr);
-  ASSERT_PRED1 (strg1->matches, a);
-  data_storage *strg2 = val_cstr.get_address_at (HOST_BITS_PER_PTR);
-  ASSERT_NE (strg2, nullptr);
-  ASSERT_PRED1 (strg2->matches, b);
+  storage_address *addr1_bis = val_cstr.get_address_at (0);
+  ASSERT_NE (addr1_bis, nullptr);
+  data_storage &strg1 = addr1_bis->storage.get ();
+  ASSERT_PRED1 (strg1.matches, a);
+  storage_address *addr2_bis = val_cstr.get_address_at (HOST_BITS_PER_PTR);
+  ASSERT_NE (addr2_bis, nullptr);
+  data_storage &strg2 = addr2_bis->storage.get ();
+  ASSERT_PRED1 (strg2.matches, b);
 }
 
 void
@@ -6722,7 +6725,7 @@ exec_context_execute_call_tests ()
   ASSERT_NE (p_strg, nullptr);
   data_value p_val = p_strg->get_value ();
   ASSERT_EQ (p_val.classify (), VAL_ADDRESS);
-  ASSERT_EQ (p_val.get_address (), alloc_strg);
+  ASSERT_EQ (&p_val.get_address ()->storage.get (), alloc_strg);
 
   tree cst2 = build_int_cst (size_type_node, 10);
 
@@ -6870,7 +6873,7 @@ exec_context_execute_call_tests ()
   ASSERT_NE (p_strg5, nullptr);
   data_value p_val5 = p_strg5->get_value ();
   ASSERT_EQ (p_val5.classify (), VAL_ADDRESS);
-  ASSERT_EQ (p_val5.get_address (), alloc_strg5);
+  ASSERT_EQ (&p_val5.get_address ()->storage.get (), alloc_strg5);
 }
 
 void
