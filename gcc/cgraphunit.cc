@@ -2333,15 +2333,21 @@ class data_storage;
 static bool
 get_constant_type_size (tree type, unsigned &result)
 {
-  tree tree_size = TYPE_SIZE (type);
-  gcc_assert (TREE_CODE (tree_size) == INTEGER_CST);
-  wide_int wi_size = wi::to_wide (tree_size);
+  if (TREE_CODE (type) == INTEGER_TYPE
+      || TREE_CODE (type) == BOOLEAN_TYPE)
+    result = TYPE_PRECISION (type);
+  else
+    {
+      tree tree_size = TYPE_SIZE (type);
+      gcc_assert (TREE_CODE (tree_size) == INTEGER_CST);
+      wide_int wi_size = wi::to_wide (tree_size);
 
-  gcc_assert (wi::fits_uhwi_p (wi_size));
-  unsigned HOST_WIDE_INT hwi_size = wi_size.to_uhwi ();
+      gcc_assert (wi::fits_uhwi_p (wi_size));
+      unsigned HOST_WIDE_INT hwi_size = wi_size.to_uhwi ();
 
-  gcc_assert (hwi_size <= UINT_MAX);
-  result = hwi_size;
+      gcc_assert (hwi_size <= UINT_MAX);
+      result = hwi_size;
+    }
   return true;
 }
 
@@ -2398,8 +2404,8 @@ namespace selftest
   void context_printer_print_first_data_ref_part_tests ();
   void context_printer_print_value_update_tests ();
   void exec_context_evaluate_tests ();
-  void exec_context_evaluate_unary_tests ();
   void exec_context_evaluate_literal_tests ();
+  void exec_context_evaluate_binary_tests ();
   void exec_context_execute_assign_tests ();
   void exec_context_execute_call_tests ();
 }
@@ -2451,6 +2457,7 @@ public:
   data_storage *get_address_at (unsigned offset) const;
   data_value get_at (unsigned offset, unsigned width) const;
   bool is_fully_defined () const { return (~(constant_mask | address_mask)) == 0; }
+  tree to_tree (tree type) const;
 };
 
 
@@ -2561,9 +2568,9 @@ class exec_context
   context_printer & printer;
   vec<data_storage> storages;
   unsigned next_alloc_index;
-  //void add_variables (const exec_context &);
   data_value evaluate_constructor (tree cstr) const;
-  data_value evaluate_unary (enum tree_code code, tree arg) const;
+  data_value evaluate_unary (enum tree_code code, tree type, tree arg) const;
+  data_value evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const;
   template <typename A, typename L>
   void add_variables (vec<tree, A, L> *variables, unsigned vars_count);
   template <typename A>
@@ -2578,32 +2585,18 @@ class exec_context
   data_storage *allocate (unsigned amount);
   void decompose_ref (tree data_ref, data_storage * & storage, int & offset) const;
   void execute_phi (gphi *phi, edge e);
-#if 0
-  template <typename A, typename L>
-  exec_context (exec_context *caller, context_printer & printer,
-		unsigned storage_size,
-		vec<tree, A, L> *local_decls, vec<tree, A, L> *ssa_names);
-#endif
 
   friend void selftest::data_value_print_tests ();
   friend void selftest::data_value_set_address_tests ();
   friend void selftest::data_value_set_tests ();
-  friend void selftest::exec_context_evaluate_unary_tests ();
   friend void selftest::exec_context_evaluate_literal_tests ();
+  friend void selftest::exec_context_evaluate_binary_tests ();
   friend void selftest::exec_context_execute_assign_tests ();
   friend void selftest::exec_context_execute_call_tests ();
 
 public:
   exec_context (exec_context *caller, context_printer & printer,
 		vec<tree> & decls);
-#if 0
-  template <typename A>
-  exec_context (exec_context *caller, context_printer & printer,
-		vec<tree, A, vl_embed> *local_decls, vec<tree, A, vl_embed> *ssa_names);
-  template <typename A>
-  exec_context (exec_context *caller, context_printer & printer,
-		vec<tree, A, vl_ptr> *local_decls, vec<tree, A, vl_ptr> *ssa_names);
-#endif
   const exec_context & root () const;
   int find (const data_storage &storage) const;
   data_storage *find_reachable_var (tree variable) const;
@@ -2615,7 +2608,6 @@ public:
   data_value execute_function (struct function *);
   edge select_leaving_edge (basic_block bb, gimple *last_stmt);
   void jump (edge e);
-//  bool evaluate (tree var, tree *result) const;
 };
 
 
@@ -2685,24 +2677,6 @@ exec_context::exec_context (exec_context *caller, context_printer & printer,
 }
 
 
-#if 0
-void
-exec_context::add_variables (const exec_context & ctx)
-{
-  storages.reserve (ctx.storages.length ());
-
-  auto_vec<tree> ctx_vars(ctx.storages.length ());
-
-  data_storage *strgp;
-  unsigned i;
-  FOR_EACH_VEC_ELT (ctx.storages, i, strgp)
-    ctx_vars.quick_push (strgp->get_variable ());
-
-  add_variables (&ctx_vars);
-}
-#endif
-
-
 template <typename A, typename L>
 void
 exec_context::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
@@ -2733,29 +2707,6 @@ exec_context::add_variables (vec<tree, A, vl_embed> *variables)
 {
   add_variables (variables, vec_safe_length (variables));
 }
-
-#if 0
-template <typename A, typename L>
-exec_context::exec_context (exec_context *caller,
-			    context_printer & cp,
-			    vec<tree> &decls)
-  : parent (caller), printer (cp), storages (vNULL), next_alloc_index (0)
-{
-  if (vars_count == 0)
-    return;
-
-  storages.reserve (vars_count);
-
-  tree *varp;
-  unsigned i;
-  FOR_EACH_VEC_ELT (decls, i, varp)
-    if (*varp != NULL_TREE
-	&& TYPE_SIZE (TREE_TYPE (*varp)) != NULL_TREE)
-      storages.quick_push (data_storage (*this, *varp));
-}
-#endif
-
-
 
 context_printer::context_printer (dump_flags_t f)
   : pp (), flags (f), indent (0)
@@ -3335,6 +3286,22 @@ data_value::get_at (unsigned offset, unsigned width) const
 }
 
 
+tree
+data_value::to_tree (tree type) const
+{
+  gcc_assert (classify () == VAL_CONSTANT);
+  wide_int value = get_cst ();
+  if (TREE_CODE (type) == INTEGER_TYPE)
+    return wide_int_to_tree (type, value);
+  else
+    {
+      tree int_type = build_nonstandard_integer_type (bit_width, false);
+      tree int_val = wide_int_to_tree (int_type, value);
+      return fold_build1 (VIEW_CONVERT_EXPR, type, int_val);
+    }
+}
+
+
 void
 context_printer::print_at (const data_value & value, tree type, unsigned offset,
 			   unsigned width)
@@ -3711,7 +3678,7 @@ exec_context::evaluate_constructor (tree cstr) const
 
 
 data_value
-exec_context::evaluate_unary (enum tree_code code, tree arg) const
+exec_context::evaluate_unary (enum tree_code code, tree type ATTRIBUTE_UNUSED, tree arg) const
 {
   switch (code)
     {
@@ -3720,6 +3687,31 @@ exec_context::evaluate_unary (enum tree_code code, tree arg) const
 
     default:
       gcc_unreachable ();
+    }
+}
+
+data_value
+exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
+{
+  gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
+	      || (TREE_CODE (rhs) == INTEGER_CST
+		  && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
+		  && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
+		  && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs))));
+  switch (code)
+    {
+    default:
+      {
+	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
+		    || TREE_CODE (type) == BOOLEAN_TYPE);
+	tree lval = evaluate (lhs).to_tree (TREE_TYPE (lhs));
+	tree rval = evaluate (rhs).to_tree (TREE_TYPE (rhs));
+	tree t = fold_binary (code, type, lval, rval);
+	gcc_assert (t != NULL_TREE);
+	data_value result (type);
+	result.set_cst (wi::to_wide (t));
+	return result;
+      }
     }
 }
 
@@ -3816,7 +3808,8 @@ exec_context::execute_assign (gassign *g)
 	      || TREE_CODE (lhs) == SSA_NAME
 	      || TREE_CODE (lhs) == VAR_DECL
 	      || TREE_CODE (lhs) == COMPONENT_REF);
-  data_value value (TREE_TYPE (lhs));
+  tree lhs_type = TREE_TYPE (lhs);
+  data_value value (lhs_type);
 
   enum tree_code rhs_code = gimple_assign_rhs_code (g);
   enum gimple_rhs_class rhs_class = get_gimple_rhs_class (rhs_code);
@@ -3827,7 +3820,12 @@ exec_context::execute_assign (gassign *g)
       break;
 
     case GIMPLE_UNARY_RHS:
-      value = evaluate_unary (rhs_code, gimple_assign_rhs1 (g));
+      value = evaluate_unary (rhs_code, lhs_type, gimple_assign_rhs1 (g));
+      break;
+
+    case GIMPLE_BINARY_RHS:
+      value = evaluate_binary (rhs_code, lhs_type,
+			       gimple_assign_rhs1 (g), gimple_assign_rhs2 (g));
       break;
 
     default:
@@ -3852,8 +3850,11 @@ exec_context::execute_call (gcall *g)
     {
       gcc_assert (gimple_call_num_args (g) == 1);
       tree arg = gimple_call_arg (g, 0);
-      gcc_assert (tree_fits_uhwi_p (arg));
-      HOST_WIDE_INT alloc_amount = tree_to_uhwi (arg);
+      data_value size = evaluate (arg);
+      gcc_assert (size.classify () == VAL_CONSTANT);
+      wide_int wi_size = size.get_cst ();
+      gcc_assert (wi::fits_uhwi_p (wi_size));
+      HOST_WIDE_INT alloc_amount = wi_size.to_uhwi ();
       data_storage *storage = allocate (alloc_amount);
 
       tree lhs = gimple_call_lhs (g);
@@ -3950,20 +3951,10 @@ exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
 
       enum tree_code code = gimple_cond_code (cond);
       tree lhs = gimple_cond_lhs (cond);
-      data_value lhs_val = evaluate (lhs);
-      gcc_assert (lhs_val.classify () == VAL_CONSTANT);
-      wide_int wi_lhs = lhs_val.get_cst ();
-      tree ltype = build_nonstandard_integer_type (lhs_val.get_bitwidth (), false);
-      tree lval = wide_int_to_tree (ltype, wi_lhs);
-      lval = fold_build1 (VIEW_CONVERT_EXPR, TREE_TYPE (lhs), lval);
-
       tree rhs = gimple_cond_rhs (cond);
-      data_value rhs_val = evaluate (rhs);
-      gcc_assert (rhs_val.classify () == VAL_CONSTANT);
-      wide_int wi_rhs = rhs_val.get_cst ();
-      tree rtype = build_nonstandard_integer_type (rhs_val.get_bitwidth (), false);
-      tree rval = wide_int_to_tree (rtype, wi_rhs);
-      rval = fold_build1 (VIEW_CONVERT_EXPR, TREE_TYPE (rhs), rval);
+
+      tree lval = evaluate (lhs).to_tree (TREE_TYPE (lhs));
+      tree rval = evaluate (rhs).to_tree (TREE_TYPE (rhs));
 
       tree result = fold_binary (code, boolean_type_node, lval, rval);
       gcc_assert (result != NULL_TREE);
@@ -4497,17 +4488,19 @@ cgraph_node::create_wrapper (cgraph_node *target)
 namespace selftest
 {
 
-//void
-//get_constant_type_size_tests ()
-//{
-//  ASSERT_EQ (get_constant_type_size (ptr_type_node), HOST_BITS_PER_PTR);
-//
-//  tree vec2ptr = build_vector_type (ptr_type_node, 2);
-//  
-//  int val = get_constant_type_size (vec2ptr);
-//  ASSERT_EQ (val, 2 * HOST_BITS_PER_PTR);
-//  //ASSERT_EQ (get_constant_type_size (vec2ptr), 2 * HOST_BITS_PER_PTR);
-//}
+void
+get_constant_type_size_tests ()
+{
+  ASSERT_EQ (get_constant_type_size (integer_type_node), HOST_BITS_PER_INT);
+
+  ASSERT_EQ (get_constant_type_size (ptr_type_node), HOST_BITS_PER_PTR);
+
+  tree vec2ptr = build_vector_type (ptr_type_node, 2);
+  int val = get_constant_type_size (vec2ptr);
+  ASSERT_EQ (val, 2 * HOST_BITS_PER_PTR);
+
+  ASSERT_EQ (get_constant_type_size (boolean_type_node), 1);
+}
 
 static tree
 create_var (tree type, const char * name)
@@ -5862,6 +5855,74 @@ exec_context_evaluate_constructor_tests ()
 }
 
 void
+exec_context_evaluate_binary_tests ()
+{
+  context_printer printer;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls{};
+  decls.safe_push (a);
+  decls.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (nullptr, printer);
+
+  wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
+  data_value val12 (HOST_BITS_PER_INT);
+  val12.set_cst (cst12);
+  data_storage *strg_a = ctx.find_reachable_var (a);
+  gcc_assert (strg_a != nullptr);
+  strg_a->set (val12);
+
+  wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
+  data_value val7 (HOST_BITS_PER_INT);
+  val7.set_cst (cst7);
+  data_storage *strg_b = ctx.find_reachable_var (b);
+  gcc_assert (strg_b != nullptr);
+  strg_b->set (val7);
+
+  data_value val = ctx.evaluate_binary (MINUS_EXPR, integer_type_node, a, b);
+
+  ASSERT_EQ (val.classify (), VAL_CONSTANT);
+  wide_int wi_val = val.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
+  ASSERT_EQ (wi_val.to_shwi (), 5);
+
+
+  tree a_bis = create_var (integer_type_node, "a");
+  tree b_bis = create_var (integer_type_node, "b");
+
+  vec<tree> decls2{};
+  decls2.safe_push (a_bis);
+  decls2.safe_push (b_bis);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (nullptr, printer);
+
+  data_value val12_bis (HOST_BITS_PER_INT);
+  val12_bis.set_cst (wi::shwi (12, HOST_BITS_PER_INT));
+  ctx2.find_reachable_var (a_bis)->set (val12_bis);
+
+  data_value val7_bis (HOST_BITS_PER_INT);
+  val7_bis.set_cst (wi::shwi (7, HOST_BITS_PER_INT));
+  ctx2.find_reachable_var (b_bis)->set (val7_bis);
+
+  data_value val2 = ctx2.evaluate_binary (GT_EXPR, boolean_type_node, a_bis, b_bis);
+
+  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val2.get_bitwidth (), 1);
+  wide_int wi_val2 = val2.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_val2);
+  ASSERT_EQ (wi_val2.to_uhwi (), 1);
+}
+
+
+void
 exec_context_execute_assign_tests ()
 {
   context_printer printer;
@@ -6134,6 +6195,50 @@ exec_context_execute_assign_tests ()
   wide_int wi_val = c8val.get_cst_at (3 * CHAR_BIT, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
   ASSERT_EQ (wi_val.to_shwi (), 8);
+
+
+  tree var_a = create_var (integer_type_node, "var_a");
+  tree var_b = create_var (integer_type_node, "var_b");
+  tree var_x = create_var (integer_type_node, "var_x");
+
+  vec<tree> decls7{};
+  decls7.safe_push (var_a);
+  decls7.safe_push (var_b);
+  decls7.safe_push (var_x);
+
+  context_builder builder7 {};
+  builder7.add_decls (&decls7);
+  exec_context ctx7 = builder7.build (nullptr, printer);
+
+  wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
+  data_value val12 (HOST_BITS_PER_INT);
+  val12.set_cst (cst12);
+  data_storage *strg_a = ctx7.find_reachable_var (var_a);
+  gcc_assert (strg_a != nullptr);
+  strg_a->set (val12);
+
+  wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
+  data_value val7_bis (HOST_BITS_PER_INT);
+  val7_bis.set_cst (cst7);
+  data_storage *strg_b = ctx7.find_reachable_var (var_b);
+  gcc_assert (strg_b != nullptr);
+  strg_b->set (val7_bis);
+
+  data_storage *strg_x = ctx7.find_reachable_var (var_x);
+  gcc_assert (strg_x != nullptr);
+
+  gassign *assign7 = gimple_build_assign (var_x, MINUS_EXPR, var_a, var_b);
+
+  data_value x_before = strg_x->get_value ();
+  ASSERT_EQ (x_before.classify (), VAL_UNDEFINED);
+
+  ctx7.execute (assign7);
+
+  data_value x_after = strg_x->get_value ();
+  ASSERT_EQ (x_after.classify (), VAL_CONSTANT);
+  wide_int x_val = x_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, x_val);
+  ASSERT_EQ (x_val.to_shwi (), 5);
 }
 
 void
@@ -6306,12 +6411,49 @@ exec_context_execute_call_tests ()
   wide_int func_result2 = ival4.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, func_result2);
   ASSERT_EQ (func_result2.to_shwi (), 19);
+
+
+  tree i18 = create_var (size_type_node, "i18");
+
+  vec<tree> decls5{};
+  decls5.safe_push (p);
+  decls5.safe_push (i18);
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (nullptr, printer);
+
+  wide_int cst18 = wi::shwi (18, HOST_BITS_PER_LONG);
+  data_value val18 (size_type_node);
+  val18.set_cst (cst18);
+  data_storage *i18_strg = ctx5.find_reachable_var (i18);
+  gcc_assert (i18_strg != nullptr);
+  i18_strg->set (val18);
+
+  gcall * malloc_call5 = gimple_build_call (malloc_fn, 1, i18);
+  gimple_set_lhs (malloc_call5, p);
+
+  ASSERT_EQ (ctx5.find_alloc (0), nullptr);
+
+  ctx5.execute (malloc_call5);
+
+  data_storage *alloc_strg5 = ctx5.find_alloc (0);
+  ASSERT_NE (alloc_strg5, nullptr);
+  data_value alloc_val5 = alloc_strg5->get_value ();
+  ASSERT_EQ (alloc_val5.classify (), VAL_UNDEFINED);
+  ASSERT_EQ (alloc_val5.get_bitwidth (), 144);
+
+  data_storage *p_strg5 = ctx5.find_var (p);
+  ASSERT_NE (p_strg5, nullptr);
+  data_value p_val5 = p_strg5->get_value ();
+  ASSERT_EQ (p_val5.classify (), VAL_ADDRESS);
+  ASSERT_EQ (p_val5.get_address (), alloc_strg5);
 }
 
 void
 gimple_exec_cc_tests ()
 {
-  //get_constant_type_size_tests ();
+  get_constant_type_size_tests ();
   data_value_classify_tests ();
   exec_context_find_reachable_var_tests ();
   data_value_set_address_tests ();
@@ -6323,6 +6465,7 @@ gimple_exec_cc_tests ()
   exec_context_evaluate_tests ();
   exec_context_evaluate_literal_tests ();
   exec_context_evaluate_constructor_tests ();
+  exec_context_evaluate_binary_tests ();
   exec_context_execute_assign_tests ();
   exec_context_execute_call_tests ();
 }
