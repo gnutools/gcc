@@ -3668,6 +3668,9 @@ exec_context::evaluate (tree expr) const
 	return result;
       }
 
+    case CONSTRUCTOR:
+      return evaluate_constructor (expr);
+
     default:
       gcc_unreachable ();
     }
@@ -3715,9 +3718,6 @@ exec_context::evaluate_unary (enum tree_code code, tree arg) const
     {
     case NOP_EXPR:
       return evaluate (arg);
-
-    case CONSTRUCTOR:
-      return evaluate_constructor (arg);
 
     default:
       gcc_unreachable ();
@@ -3839,18 +3839,15 @@ exec_context::execute_assign (gassign *g)
   data_value value (TREE_TYPE (lhs));
 
   enum tree_code rhs_code = gimple_assign_rhs_code (g);
-  switch (rhs_code)
+  enum gimple_rhs_class rhs_class = get_gimple_rhs_class (rhs_code);
+  switch (rhs_class)
     {
-    case NOP_EXPR:
-    case CONSTRUCTOR:
-      value = evaluate_unary (rhs_code, gimple_assign_rhs1 (g));
+    case GIMPLE_SINGLE_RHS:
+      value = evaluate (gimple_assign_rhs1 (g));
       break;
 
-    case VECTOR_CST:
-    case INTEGER_CST:
-    case SSA_NAME:
-    case COMPONENT_REF:
-      value = evaluate (gimple_assign_rhs1 (g));
+    case GIMPLE_UNARY_RHS:
+      value = evaluate_unary (rhs_code, gimple_assign_rhs1 (g));
       break;
 
     default:
@@ -5849,7 +5846,7 @@ exec_context_evaluate_literal_tests ()
 }
 
 void
-exec_context_evaluate_unary_tests ()
+exec_context_evaluate_constructor_tests ()
 {
   context_printer printer;
 
@@ -5875,7 +5872,7 @@ exec_context_evaluate_unary_tests ()
   CONSTRUCTOR_APPEND_ELT (vec_elts, NULL_TREE, addr2);
   tree cstr = build_constructor (vec2ptr, vec_elts);
 
-  data_value val_cstr = ctx.evaluate_unary (CONSTRUCTOR, cstr);
+  data_value val_cstr = ctx.evaluate (cstr);
   data_storage *strg1 = val_cstr.get_address_at (0);
   ASSERT_NE (strg1, nullptr);
   ASSERT_PRED1 (strg1->matches, a);
@@ -6345,7 +6342,7 @@ gimple_exec_cc_tests ()
   context_printer_print_value_update_tests ();
   exec_context_evaluate_tests ();
   exec_context_evaluate_literal_tests ();
-  exec_context_evaluate_unary_tests ();
+  exec_context_evaluate_constructor_tests ();
   exec_context_execute_assign_tests ();
   exec_context_execute_call_tests ();
 }
