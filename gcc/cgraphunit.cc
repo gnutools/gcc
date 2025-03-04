@@ -3366,6 +3366,9 @@ data_value::get_at (unsigned offset, unsigned width) const
       result.set_address (*get_address_at (offset));
       break;
 
+    case VAL_UNDEFINED:
+      break;
+
     default:
       gcc_unreachable ();
     }
@@ -3675,6 +3678,7 @@ exec_context::evaluate (tree expr) const
       break;
 
     case MEM_REF:
+    case TARGET_MEM_REF:
       {
 	tree ptr = TREE_OPERAND (expr, 0);
 	data_value val_ptr = evaluate (ptr);
@@ -3686,7 +3690,7 @@ exec_context::evaluate (tree expr) const
 	tree offset_bytes = TREE_OPERAND (expr, 1);
 	data_value val_off = evaluate (offset_bytes);
 	gcc_assert (val_off.classify () == VAL_CONSTANT);
-	wide_int wi_off = val_off.get_cst () * CHAR_BIT;
+	wide_int wi_off = val_off.get_cst ();
 	gcc_assert (wi::fits_uhwi_p (wi_off));
 	unsigned offset = wi_off.to_uhwi ();
 
@@ -3694,7 +3698,24 @@ exec_context::evaluate (tree expr) const
 	if (!get_constant_type_size (TREE_TYPE (expr), bit_width))
 	  gcc_unreachable ();
 
-	return storage_value.get_at (offset, bit_width);
+	if (code == TARGET_MEM_REF)
+	  {
+	    tree index = TREE_OPERAND (expr, 2);
+	    data_value val_idx = evaluate (index);
+	    gcc_assert (val_idx.classify () == VAL_CONSTANT);
+	    wide_int wi_idx = val_idx.get_cst ();
+
+	    tree step = TREE_OPERAND (expr, 3);
+	    data_value val_step = evaluate (step);
+	    gcc_assert (val_step.classify () == VAL_CONSTANT);
+	    wide_int wi_step = val_step.get_cst ();
+
+	    wide_int additional_off = wi_idx * wi_step;
+	    gcc_assert (wi::fits_uhwi_p (additional_off));
+	    offset += additional_off.to_uhwi ();
+	  }
+
+	return storage_value.get_at (offset * CHAR_BIT, bit_width);
       }
       break;
 
@@ -3852,7 +3873,8 @@ void
 exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
 {
   offset = -1;
-  switch (TREE_CODE (data_ref))
+  enum tree_code code = TREE_CODE (data_ref);
+  switch (code)
     {
     case VAR_DECL:
     case SSA_NAME:
@@ -3908,6 +3930,7 @@ exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offs
       break;
 
     case MEM_REF:
+    case TARGET_MEM_REF:
       {
 	tree var = TREE_OPERAND (data_ref, 0);
 	data_value addr = evaluate (var);
@@ -3920,6 +3943,24 @@ exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offs
 	wide_int wi_off = off_val.get_cst ();
 	gcc_assert (wi::fits_uhwi_p (wi_off));
 	unsigned HOST_WIDE_INT uhwi_off = wi_off.to_uhwi ();
+
+	if (code == TARGET_MEM_REF)
+	  {
+	    tree index = TREE_OPERAND (data_ref, 2);
+	    data_value idx_val = evaluate (index);
+	    gcc_assert (idx_val.classify () == VAL_CONSTANT);
+	    wide_int wi_idx = idx_val.get_cst ();
+
+	    tree step = TREE_OPERAND (data_ref, 3);
+	    data_value step_val = evaluate (step);
+	    gcc_assert (step_val.classify () == VAL_CONSTANT);
+	    wide_int wi_step = step_val.get_cst ();
+
+	    wide_int additional_off = wi_idx * wi_step;
+	    gcc_assert (wi::fits_uhwi_p (additional_off));
+	    uhwi_off += additional_off.to_uhwi ();
+	  }
+
 	gcc_assert (uhwi_off <= UINT_MAX / CHAR_BIT);
 	offset = uhwi_off * CHAR_BIT;
       }
@@ -3937,10 +3978,6 @@ void
 exec_context::execute_assign (gassign *g)
 {
   tree lhs = gimple_assign_lhs (g);
-  gcc_assert (TREE_CODE (lhs) == MEM_REF
-	      || TREE_CODE (lhs) == SSA_NAME
-	      || TREE_CODE (lhs) == VAR_DECL
-	      || TREE_CODE (lhs) == COMPONENT_REF);
   tree lhs_type = TREE_TYPE (lhs);
   data_value value (lhs_type);
 
@@ -5938,6 +5975,112 @@ exec_context_evaluate_tests ()
   wide_int wi_val6 = eval6.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val6);
   ASSERT_EQ (wi_val6.to_shwi (), 8);
+
+
+  tree c29 = build_array_type_nelts (char_type_node, 29);
+  tree a29 = create_var (c29, "a29");
+  tree ssa8 = make_node (SSA_NAME);
+  TREE_TYPE (ssa8) = size_type_node;
+  tree ssa9 = make_node (SSA_NAME);
+  TREE_TYPE (ssa9) = size_type_node;
+
+  vec<tree> decls8{};
+  decls8.safe_push (a29);
+  decls8.safe_push (ssa8);
+  decls8.safe_push (ssa9);
+
+  context_builder builder8;
+  builder8.add_decls (&decls8);
+  exec_context ctx8 = builder8.build (mem, printer);
+
+  data_storage * strg29 = ctx8.find_reachable_var (a29);
+  gcc_assert (strg29 != nullptr);
+
+  tree ref0 = build5 (TARGET_MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, a29),
+		     build_zero_cst (ptr_type_node),
+		     size_zero_node, size_zero_node, NULL_TREE);
+
+  wide_int cst21 = wi::shwi (21, CHAR_BIT);
+  data_value tmp29_0 (CHAR_BIT);
+  tmp29_0.set_cst (cst21);
+  strg29->set_at (tmp29_0, 0);
+
+  data_value val29_0 = ctx8.evaluate (ref0);
+
+  ASSERT_EQ (val29_0.get_bitwidth (), CHAR_BIT);
+  ASSERT_EQ (val29_0.classify (), VAL_CONSTANT);
+  wide_int wi29_0 = val29_0.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
+  ASSERT_EQ  (wi29_0.to_uhwi (), 21);
+
+  tree ref3 = build5 (TARGET_MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, a29),
+		     build_int_cst (ptr_type_node, 3),
+		     size_zero_node, size_zero_node, NULL_TREE);
+
+  wide_int cst26 = wi::shwi (26, CHAR_BIT);
+  data_value tmp29_3 (CHAR_BIT);
+  tmp29_3.set_cst (cst26);
+  strg29->set_at (tmp29_3, 24);
+
+  data_value val29_3 = ctx8.evaluate (ref3);
+
+  ASSERT_EQ (val29_3.get_bitwidth (), CHAR_BIT);
+  ASSERT_EQ (val29_3.classify (), VAL_CONSTANT);
+  wide_int wi29_3 = val29_3.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
+  ASSERT_EQ  (wi29_3.to_uhwi (), 26);
+
+  tree ref12 = build5 (TARGET_MEM_REF, char_type_node,
+		       build1 (ADDR_EXPR, ptr_type_node, a29),
+		       build_zero_cst (ptr_type_node),
+		       ssa8, build_int_cst (size_type_node, 4), NULL_TREE);
+
+  wide_int cst17 = wi::shwi (17, CHAR_BIT);
+  data_value tmp29_12 (CHAR_BIT);
+  tmp29_12.set_cst (cst17);
+  strg29->set_at (tmp29_12, 96);
+
+  wide_int cst3_bis = wi::shwi (3, sizeof (size_t) * CHAR_BIT);
+  data_value val3_bis (sizeof (size_t) * CHAR_BIT);
+  val3_bis.set_cst (cst3_bis);
+  data_storage * ssa8_strg = ctx8.find_reachable_var (ssa8);
+  gcc_assert (ssa8_strg != nullptr);
+  ssa8_strg->set (val3_bis);
+
+  data_value val29_12 = ctx8.evaluate (ref12);
+
+  ASSERT_EQ (val29_12.get_bitwidth (), CHAR_BIT);
+  ASSERT_EQ (val29_12.classify (), VAL_CONSTANT);
+  wide_int wi29_12 = val29_12.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
+  ASSERT_EQ  (wi29_12.to_uhwi (), 17);
+
+  tree ref27 = build5 (TARGET_MEM_REF, char_type_node,
+		       build1 (ADDR_EXPR, ptr_type_node, a29),
+		       build_int_cst (ptr_type_node, 7),
+		       ssa9, build_int_cst (size_type_node, 4), NULL_TREE);
+
+  wide_int cst14_bis = wi::shwi (14, CHAR_BIT);
+  data_value tmp29_27 (CHAR_BIT);
+  tmp29_27.set_cst (cst14_bis);
+  strg29->set_at (tmp29_27, 216);
+
+  wide_int cst5 = wi::shwi (5, sizeof (size_t) * CHAR_BIT);
+  data_value val5_bis (sizeof (size_t) * CHAR_BIT);
+  val5_bis.set_cst (cst5);
+  data_storage * ssa9_strg = ctx8.find_reachable_var (ssa9);
+  gcc_assert (ssa9_strg != nullptr);
+  ssa9_strg->set (val5_bis);
+
+  data_value val29_27 = ctx8.evaluate (ref27);
+
+  ASSERT_EQ (val29_27.get_bitwidth (), CHAR_BIT);
+  ASSERT_EQ (val29_27.classify (), VAL_CONSTANT);
+  wide_int wi29_27 = val29_27.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
+  ASSERT_EQ  (wi29_27.to_uhwi (), 14);
 }
 
 
@@ -6386,6 +6529,120 @@ exec_context_execute_assign_tests ()
   wide_int x_val = x_after.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, x_val);
   ASSERT_EQ (x_val.to_shwi (), 5);
+
+
+  tree c29 = build_array_type_nelts (char_type_node, 29);
+  tree a29 = create_var (c29, "a29");
+  tree ssa8 = make_node (SSA_NAME);
+  TREE_TYPE (ssa8) = size_type_node;
+  tree ssa9 = make_node (SSA_NAME);
+  TREE_TYPE (ssa9) = size_type_node;
+
+  vec<tree> decls8{};
+  decls8.safe_push (a29);
+  decls8.safe_push (ssa8);
+  decls8.safe_push (ssa9);
+
+  context_builder builder8;
+  builder8.add_decls (&decls8);
+  exec_context ctx8 = builder8.build (mem, printer);
+
+  data_storage * strg29 = ctx8.find_reachable_var (a29);
+  gcc_assert (strg29 != nullptr);
+
+  tree ref0 = build5 (TARGET_MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, a29),
+		     build_zero_cst (ptr_type_node),
+		     size_zero_node, size_zero_node, NULL_TREE);
+  tree cst21 = build_int_cst (char_type_node, 21);
+  gassign * assign29_0 = gimple_build_assign (ref0, cst21);
+
+  data_value val29_before0 = strg29->get_value ();
+  data_value val0_before = val29_before0.get_at (0, CHAR_BIT);
+  ASSERT_EQ (val0_before.classify (), VAL_UNDEFINED);
+
+  ctx8.execute (assign29_0);
+
+  data_value val29_after0 = strg29->get_value ();
+  data_value val0_after = val29_after0.get_at (0, CHAR_BIT);
+  ASSERT_EQ (val0_after.classify (), VAL_CONSTANT);
+  wide_int wi29_0 = val0_after.get_cst_at (0, CHAR_BIT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
+  ASSERT_EQ  (wi29_0.to_uhwi (), 21);
+
+  tree ref3 = build5 (TARGET_MEM_REF, char_type_node,
+		     build1 (ADDR_EXPR, ptr_type_node, a29),
+		     build_int_cst (ptr_type_node, 3),
+		     size_zero_node, size_zero_node, NULL_TREE);
+  tree cst26 = build_int_cst (char_type_node, 26);
+  gassign * assign29_3 = gimple_build_assign (ref3, cst26);
+
+  data_value val29_before3 = strg29->get_value ();
+  data_value val3_before = val29_before3.get_at (24, CHAR_BIT);
+  ASSERT_EQ (val3_before.classify (), VAL_UNDEFINED);
+
+  ctx8.execute (assign29_3);
+
+  data_value val29_after3 = strg29->get_value ();
+  data_value val3_after = val29_after3.get_at (24, CHAR_BIT);
+  ASSERT_EQ (val3_after.classify (), VAL_CONSTANT);
+  wide_int wi29_3 = val3_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
+  ASSERT_EQ  (wi29_3.to_uhwi (), 26);
+
+  tree ref12 = build5 (TARGET_MEM_REF, char_type_node,
+		       build1 (ADDR_EXPR, ptr_type_node, a29),
+		       build_zero_cst (ptr_type_node),
+		       ssa8, build_int_cst (size_type_node, 4), NULL_TREE);
+  tree cst17 = build_int_cst (char_type_node, 17);
+  gassign * assign29_12 = gimple_build_assign (ref12, cst17);
+
+  wide_int cst3_bis = wi::shwi (3, sizeof (size_t) * CHAR_BIT);
+  data_value val3_bis (sizeof (size_t) * CHAR_BIT);
+  val3_bis.set_cst (cst3_bis);
+  data_storage * ssa8_strg = ctx8.find_reachable_var (ssa8);
+  gcc_assert (ssa8_strg != nullptr);
+  ssa8_strg->set (val3_bis);
+
+  data_value val29_before12 = strg29->get_value ();
+  data_value val12_before = val29_before12.get_at (96, CHAR_BIT);
+  ASSERT_EQ (val12_before.classify (), VAL_UNDEFINED);
+
+  ctx8.execute (assign29_12);
+
+  data_value val29_after12 = strg29->get_value ();
+  data_value val12_after = val29_after12.get_at (96, CHAR_BIT);
+  ASSERT_EQ (val12_after.classify (), VAL_CONSTANT);
+  wide_int wi29_12 = val12_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
+  ASSERT_EQ  (wi29_12.to_uhwi (), 17);
+
+  tree ref27 = build5 (TARGET_MEM_REF, char_type_node,
+		       build1 (ADDR_EXPR, ptr_type_node, a29),
+		       build_int_cst (ptr_type_node, 7),
+		       ssa9, build_int_cst (size_type_node, 4), NULL_TREE);
+  tree cst14 = build_int_cst (char_type_node, 14);
+  gassign * assign29_27 = gimple_build_assign (ref27, cst14);
+
+  wide_int cst5 = wi::shwi (5, sizeof (size_t) * CHAR_BIT);
+  data_value val5_bis (sizeof (size_t) * CHAR_BIT);
+  val5_bis.set_cst (cst5);
+  data_storage * ssa9_strg = ctx8.find_reachable_var (ssa9);
+  gcc_assert (ssa9_strg != nullptr);
+  ssa9_strg->set (val5_bis);
+
+  data_value val29_before27 = strg29->get_value ();
+  data_value val27_before = val29_before27.get_at (216, CHAR_BIT);
+  ASSERT_EQ (val27_before.classify (), VAL_UNDEFINED);
+
+  ctx8.execute (assign29_27);
+
+  data_value val29_after27 = strg29->get_value ();
+  data_value val27_after = val29_after27.get_at (216, CHAR_BIT);
+  ASSERT_EQ (val27_after.classify (), VAL_CONSTANT);
+  wide_int wi29_27 = val27_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
+  ASSERT_EQ  (wi29_27.to_uhwi (), 14);
 }
 
 void
