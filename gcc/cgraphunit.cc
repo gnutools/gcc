@@ -2413,6 +2413,17 @@ struct storage_address
   {}
 };
 
+
+struct stored_address
+{
+  storage_address address;
+  unsigned position;
+
+  stored_address (storage_address addr, unsigned pos)
+    : address (addr), position (pos)
+  {}
+};
+
 namespace selftest
 {
   void data_value_classify_tests ();
@@ -2438,10 +2449,10 @@ class data_value
   wide_int constant_mask;
   wide_int address_mask;
   wide_int constant_value;
-  vec<storage_address> addresses;
+  vec<stored_address> addresses;
   void set_cst_at (unsigned dest_offset, unsigned value_width,
 		   const wide_int &val, unsigned src_offset);
-  storage_address *find_address (unsigned offset) const;
+  stored_address *find_address (unsigned offset) const;
   void set_at (unsigned dest_offset, unsigned value_width,
 	       const data_value & value_src, unsigned src_offset);
 
@@ -2466,8 +2477,8 @@ public:
   value_type classify () const;
   value_type classify (unsigned offset, unsigned width) const;
   unsigned get_bitwidth () const { return bit_width; }
-  void set_address_at (data_storage &storage, unsigned offset);
-  void set_address (data_storage &);
+  void set_address_at (storage_address & address, unsigned offset);
+  void set_address (storage_address & address);
   void set_at (const data_value & value, unsigned offset);
   void set (const data_value & value);
   void set_cst_at (const wide_int & val, unsigned offset);
@@ -3078,19 +3089,19 @@ data_value::classify (unsigned offset, unsigned width) const
 }
 
 
-storage_address *
+stored_address *
 data_value::find_address (unsigned offset) const
 {
   gcc_assert (offset <= bit_width - HOST_BITS_PER_PTR);
 
-  storage_address *result = nullptr;
-  storage_address *strg_address;
+  stored_address *result = nullptr;
+  stored_address *strd_address;
   unsigned i;
-  FOR_EACH_VEC_ELT (addresses, i, strg_address)
-    if (strg_address->offset == offset)
+  FOR_EACH_VEC_ELT (addresses, i, strd_address)
+    if (strd_address->position == offset)
       {
 	gcc_assert (result == nullptr);
-	result = strg_address;
+	result = strd_address;
       }
 
   return result;
@@ -3098,34 +3109,36 @@ data_value::find_address (unsigned offset) const
 
 
 void
-data_value::set_address_at (data_storage &storage, unsigned offset)
+data_value::set_address_at (storage_address & address, unsigned offset)
 {
   wide_int mask = wi::shifted_mask (offset, HOST_BITS_PER_PTR, false,
 				    bit_width);
   enum value_type type = classify (offset, HOST_BITS_PER_PTR);
+  /* Assume we don't store both regular integers and address
+     in the same variable over time.  */
   gcc_assert (type == VAL_ADDRESS || type == VAL_UNDEFINED);
 
   if (type == VAL_ADDRESS)
     {
-      storage_address *existing_address = find_address (offset);
+      stored_address *existing_address = find_address (offset);
       gcc_assert (existing_address != nullptr);
       /* Invalidate existing address.  */
-      existing_address->offset = -1;
+      existing_address->position = -1;
     }
 
   constant_mask &= ~mask;
   address_mask |= mask;
 
-  storage_address addr_info (storage.get_ref (), offset);;
-  addresses.safe_push (addr_info);
+  stored_address new_address (address, offset);
+  addresses.safe_push (new_address);
 }
 
 
 void
-data_value::set_address (data_storage &storage)
+data_value::set_address (storage_address & address)
 {
   gcc_assert (bit_width == HOST_BITS_PER_PTR);
-  set_address_at (storage, 0);
+  set_address_at (address, 0);
 }
 
 
@@ -3180,14 +3193,14 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
       {
 	if (value_width == HOST_BITS_PER_PTR)
 	  {
-	    storage_address *found_address = value_src.find_address (src_offset);
+	    stored_address *found_address = value_src.find_address (src_offset);
 	    gcc_assert (found_address != nullptr);
-
-	    data_storage &storage = found_address->storage.get ();
-	    set_address_at (storage, dest_offset);
+	    set_address_at (found_address->address, dest_offset);
 	  }
 	else
 	  {
+	    /* Several addresses side by side in the same area.  Set them one
+	       by one  */
 	    gcc_assert (value_width > HOST_BITS_PER_PTR);
 	    gcc_assert (value_width % HOST_BITS_PER_PTR == 0);
 	    gcc_assert (dest_offset % HOST_BITS_PER_PTR == 0);
@@ -3259,32 +3272,6 @@ void
 data_value::set_at (const data_value & value, unsigned offset)
 {
   set_at (offset, value.bit_width, value, 0);
-#if 0
-  unsigned value_width = value.get_bitwidth ();
-  gcc_assert (offset < bit_width);
-  gcc_assert (value_width <= bit_width - offset);
-
-  enum value_type type = value.classify ();
-  switch (type)
-    {
-    case VAL_CONSTANT:
-      set_cst_at (offset, value.bit_width, value.constant_value, 0);
-      break;
-
-    case VAL_ADDRESS:
-      {
-	storage_address *found_address = value.find_address (0);
-	gcc_assert (found_address != nullptr);
-
-	data_storage &storage = found_address->storage.get ();
-	set_address_at (storage, offset);
-      }
-      break;
-
-    default:
-      gcc_unreachable ();
-    }
-#endif
 }
 
 
@@ -3335,9 +3322,9 @@ data_value::get_address_at (unsigned offset) const
   wide_int mask = wi::shifted_mask (offset, HOST_BITS_PER_PTR, false,
 				    bit_width);
 
-  storage_address *addr_info = find_address (offset);
+  stored_address *addr_info = find_address (offset);
   if (addr_info != nullptr)
-    return &(addr_info->storage.get ());
+    return &(addr_info->address.storage.get ());
 
   return nullptr;
 }
@@ -3362,8 +3349,12 @@ data_value::get_at (unsigned offset, unsigned width) const
       break;
 
     case VAL_ADDRESS:
-      gcc_assert (width == HOST_BITS_PER_PTR);
-      result.set_address (*get_address_at (offset));
+      {
+	gcc_assert (width == HOST_BITS_PER_PTR);
+	data_storage *storage = get_address_at (offset);
+	storage_address address (storage->get_ref (), 0);
+	result.set_address (address);
+      }
       break;
 
     case VAL_UNDEFINED:
@@ -3745,8 +3736,9 @@ exec_context::evaluate (tree expr) const
       {
 	data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
 	gcc_assert (strg != nullptr);
+	storage_address address (strg->get_ref (), 0);
 	data_value result (TREE_TYPE (expr));
-	result.set_address (*strg);
+	result.set_address (address);
 	return result;
       }
 
@@ -4030,7 +4022,8 @@ exec_context::execute_call (gcall *g)
       tree lhs = gimple_call_lhs (g);
       gcc_assert (lhs != NULL_TREE);
       data_value ptr (TREE_TYPE (lhs));
-      ptr.set_address (storage);
+      storage_address address (storage.get_ref (), 0);
+      ptr.set_address (address);
 
       printer.print_value_update (*this, lhs, ptr);
       data_storage *lhs_strg = find_var (lhs);
@@ -4711,11 +4704,13 @@ data_value_classify_tests ()
   data_storage *storage_a = ctx.find_reachable_var (a);
   gcc_assert (storage_a != nullptr);
 
+  storage_address address_a (storage_a->get_ref (), 0);
+
   data_value ptr(ptr_type_node);
 
   ASSERT_EQ (ptr.classify (), VAL_UNDEFINED);
 
-  ptr.set_address (*storage_a);
+  ptr.set_address (address_a);
 
   ASSERT_EQ (ptr.classify (), VAL_ADDRESS);
 
@@ -4749,13 +4744,13 @@ data_value_classify_tests ()
 	     VAL_UNDEFINED);
   ASSERT_EQ (val3.classify (), VAL_UNDEFINED);
 
-  val3.set_address_at (*storage_a, HOST_BITS_PER_PTR);
+  val3.set_address_at (address_a, HOST_BITS_PER_PTR);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_UNDEFINED);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (val3.classify (), VAL_MIXED);
 
-  val3.set_address_at (*storage_a, 0);
+  val3.set_address_at (address_a, 0);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
@@ -4841,13 +4836,15 @@ data_value_set_address_tests ()
   data_value val1(ptr_type_node);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
-  val1.set_address (*storage_a);
+  storage_address address_a (storage_a->get_ref (), 0);
+  val1.set_address (address_a);
 
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
   ASSERT_EQ (val1.get_address (), storage_a);
 
   data_storage *storage_b = ctx.find_reachable_var (b);
-  val1.set_address (*storage_b);
+  storage_address address_b (storage_b->get_ref (), 0);
+  val1.set_address (address_b);
 
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
   ASSERT_EQ (val1.get_address (), storage_b);
@@ -4878,10 +4875,11 @@ data_value_set_tests ()
   exec_context ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_var (a);
+  storage_address address_a (storage_a->get_ref (), 0);
 
   data_value val1(ptr_type_node);
 
-  val1.set_address (*storage_a);
+  val1.set_address (address_a);
 
   data_value val2(ptr_type_node);
 
@@ -4911,9 +4909,12 @@ data_value_set_at_tests ()
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
 
+  storage_address address_a (storage_a->get_ref (), 0);
+  storage_address address_b (storage_b->get_ref (), 0);
+
   data_value val1(ptr_type_node);
 
-  val1.set_address (*storage_a);
+  val1.set_address (address_a);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2(vec2ptr);
@@ -4922,7 +4923,7 @@ data_value_set_at_tests ()
   ASSERT_EQ (val2.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (val2.get_address_at (HOST_BITS_PER_PTR), storage_a);
 
-  val1.set_address (*storage_b);
+  val1.set_address (address_b);
 
   val2.set_at (val1, 0);
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
@@ -5049,7 +5050,9 @@ data_value_set_at_tests ()
 
   data_storage *storage = ctx4.find_reachable_var (t);
   gcc_assert (storage != nullptr);
-  mv.set_address_at (*storage, HOST_BITS_PER_LONG);
+  storage_address address (storage->get_ref (), 0);
+
+  mv.set_address_at (address, HOST_BITS_PER_LONG);
 
   wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
   mv.set_cst_at (wi7, HOST_BITS_PER_LONG + HOST_BITS_PER_PTR);
@@ -5098,7 +5101,9 @@ data_value_print_tests ()
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
-  val1.set_address (*storage);
+  storage_address address (storage->get_ref (), 0);
+
+  val1.set_address (address);
 
   printer.print (val1, ptr_type_node);
   ASSERT_STREQ (pp_formatted_text (&pp), "&my_var");
@@ -5122,9 +5127,11 @@ data_value_print_tests ()
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
   data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
-  val2.set_address_at (*strg_my_var, 0);
+  storage_address addr_my_var (strg_my_var->get_ref (), 0);
+  val2.set_address_at (addr_my_var, 0);
   data_storage *strg_x = ctx2.find_reachable_var (y);
-  val2.set_address_at (*strg_x, HOST_BITS_PER_PTR);
+  storage_address addr_x (strg_x->get_ref (), 0);
+  val2.set_address_at (addr_x, HOST_BITS_PER_PTR);
 
   printer2.print (val2, vec2ptr);
   const char *str2 = pp_formatted_text (&pp2);
@@ -5150,9 +5157,10 @@ data_value_print_tests ()
   exec_context ctx4 = context_builder ().build (mem4, printer4);
 
   data_storage & alloc1 = ctx4.allocate (12);
+  storage_address address1 (alloc1.get_ref (), 0);
 
   data_value val_ptr (ptr_type_node);
-  val_ptr.set_address (alloc1);
+  val_ptr.set_address (address1);
 
   printer4.print (val_ptr, ptr_type_node);
 
@@ -5167,9 +5175,10 @@ data_value_print_tests ()
 
   ctx5.allocate (12);
   data_storage & alloc2_ctx5 = ctx5.allocate (17);
+  storage_address address2_ctx5 (alloc2_ctx5.get_ref (), 0);
 
   data_value val_ptr2 (ptr_type_node);
-  val_ptr.set_address (alloc2_ctx5);
+  val_ptr.set_address (address2_ctx5);
 
   printer5.print (val_ptr, ptr_type_node);
 
@@ -5557,9 +5566,10 @@ context_printer_print_first_data_ref_part_tests ()
   exec_context ctx11 = builder11.build (mem1, printer11);
 
   data_storage *var_storage = ctx11.find_reachable_var (var_i);
+  storage_address var_address (var_storage->get_ref (), 0);
 
   data_value ptr_val (ptr_type_node);
-  ptr_val.set_address (*var_storage);
+  ptr_val.set_address (var_address);
 
   data_storage *ptr_storage = ctx11.find_reachable_var (ptr);
   ptr_storage->set (ptr_val);
@@ -5599,7 +5609,8 @@ context_printer_print_value_update_tests ()
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
-  val1.set_address (*storage);
+  storage_address address (storage->get_ref (), 0);
+  val1.set_address (address);
 
   printer.print_value_update (ctx, my_lhs, val1);
   const char *str = pp_formatted_text (&pp);
@@ -5614,9 +5625,11 @@ context_printer_print_value_update_tests ()
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
   data_storage *strg_my_var = ctx2.find_reachable_var (my_var);
-  val2.set_address_at (*strg_my_var, 0);
+  storage_address addr_my_var (strg_my_var->get_ref (), 0);
+  val2.set_address_at (addr_my_var, 0);
   data_storage *strg_x = ctx2.find_reachable_var (y);
-  val2.set_address_at (*strg_x, HOST_BITS_PER_PTR);
+  storage_address addr_x (strg_x->get_ref (), 0);
+  val2.set_address_at (addr_x, HOST_BITS_PER_PTR);
 
   tree vec_lhs = create_var (vec2ptr, "vec_lhs");
 
@@ -6357,11 +6370,12 @@ exec_context_execute_assign_tests ()
   exec_context ctx3 = builder3.build (mem, printer);
 
   data_storage & alloc1 = ctx3.allocate (12);
+  storage_address address1 (alloc1.get_ref (), 0);
 
   data_storage *pointer = ctx3.find_reachable_var (ptr);
   gcc_assert (pointer != nullptr);
   data_value p (ptr_type_node);
-  p.set_address (alloc1);
+  p.set_address (address1);
   pointer->set (p);
   
   tree ref = build2 (MEM_REF, integer_type_node, ptr,
