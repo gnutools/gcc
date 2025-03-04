@@ -2563,7 +2563,6 @@ class exec_context
   unsigned next_alloc_index;
   //void add_variables (const exec_context &);
   data_value evaluate_constructor (tree cstr) const;
-  data_value evaluate_literal (enum tree_code code, tree value) const;
   data_value evaluate_unary (enum tree_code code, tree arg) const;
   template <typename A, typename L>
   void add_variables (vec<tree, A, L> *variables, unsigned vars_count);
@@ -3722,25 +3721,6 @@ exec_context::evaluate_unary (enum tree_code code, tree arg) const
     default:
       gcc_unreachable ();
     }
-}
-
-data_value
-exec_context::evaluate_literal (enum tree_code code, tree value) const
-{
-  data_value result(TREE_TYPE (value));
-  switch (code)
-    {
-    case INTEGER_CST:
-      {
-	wide_int wi_val = wi::to_wide (value);
-	result.set_cst (wi_val);
-      }
-      break;
-
-    default:
-      gcc_unreachable ();
-    }
-  return result;
 }
 
 void
@@ -5837,7 +5817,7 @@ exec_context_evaluate_literal_tests ()
 
   tree cst = build_int_cst (integer_type_node, 13);
 
-  data_value val = ctx.evaluate_literal (INTEGER_CST, cst);
+  data_value val = ctx.evaluate (cst);
   ASSERT_EQ (val.classify (), VAL_CONSTANT);
   wide_int wi_value = val.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_value);
