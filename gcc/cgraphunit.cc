@@ -2624,7 +2624,6 @@ class exec_context
   void add_variables (vec<tree, A, vl_ptr> *variables);
   template <typename A>
   void add_variables (vec<tree, A, vl_embed> *variables);
-  void execute (gimple *g);
   void execute_assign (gassign *g);
   void execute_call (gcall *g);
   data_storage *find_var (tree variable) const;
@@ -2652,6 +2651,7 @@ public:
   const exec_context & root () const;
   int find (const data_storage &storage) const;
   data_storage *find_reachable_var (tree variable) const;
+  void execute (gimple *g);
   gimple * execute (basic_block bb);
   data_storage & get_storage (unsigned idx) const;
   context_printer & get_printer () const { return printer; }
@@ -3742,11 +3742,21 @@ exec_context::evaluate (tree expr) const
 
     case ADDR_EXPR:
       {
-	data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
-	gcc_assert (strg != nullptr);
-	storage_address address (strg->get_ref (), 0);
+	tree decl = TREE_OPERAND (expr, 0);
 	data_value result (TREE_TYPE (expr));
-	result.set_address (address);
+	if (TREE_CODE (decl) == FUNCTION_DECL)
+	  {
+	    // Unimplemented, set to NULL and hope that it won't be used.
+	    wide_int zero = wi::zero (result.get_bitwidth ());
+	    result.set_cst (zero);
+	  }
+	else
+	  {
+	    data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
+	    gcc_assert (strg != nullptr);
+	    storage_address address (strg->get_ref (), 0);
+	    result.set_address (address);
+	  }
 	return result;
       }
 
@@ -3791,10 +3801,20 @@ data_value
 exec_context::evaluate_constructor (tree cstr) const
 {
   unsigned bit_width;
-  gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE);
+  gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE
+	      || TREE_CODE (TREE_TYPE (cstr)) == ARRAY_TYPE
+	      || TREE_CODE (TREE_TYPE (cstr)) == RECORD_TYPE);
+
   gcc_assert (get_constant_type_size (TREE_TYPE (cstr), bit_width));
 
   data_value result(bit_width);
+
+  if (CONSTRUCTOR_NELTS (cstr) == 0)
+    {
+      wide_int zero = wi::zero (bit_width);
+      result.set_cst (zero);
+      return result;
+    }
 
   unsigned i;
   tree idx, elt;
@@ -3802,20 +3822,31 @@ exec_context::evaluate_constructor (tree cstr) const
     {
       data_value val = evaluate (elt);
 
-      gcc_assert (idx == NULL_TREE);
-      //gcc_assert (TREE_CODE (idx) == INTEGER_CST);
-      //wide_int wi_idx = wi::to_wide (idx);
+      wide_int offset;
+      if (idx != NULL_TREE
+	  && TREE_CODE (idx) == FIELD_DECL)
+	offset = wi::to_wide (bit_position (idx));
+      else
+	{
+	  wide_int wi_idx;
+	  if (idx == NULL_TREE)
+	    wi_idx = wi::uhwi (i, HOST_BITS_PER_WIDE_INT);
+	  else
+	    wi_idx = wi::to_wide (idx);
 
-      unsigned elt_size;
-      gcc_assert (get_constant_type_size (TREE_TYPE (elt), elt_size));
-      gcc_assert (elt_size == HOST_BITS_PER_PTR);
+	  unsigned elt_size;
+	  gcc_assert (get_constant_type_size (TREE_TYPE (elt), elt_size));
 
-      //wide_int offset = wi_idx * elt_size;
-      //gcc_assert (wi::fits_uhwi_p (offset));
-      gcc_assert (i < bit_width / HOST_BITS_PER_PTR);
-      unsigned offset = i * elt_size;
+	  wide_int max_idx = wi::uhwi (bit_width / elt_size,
+				       wi_idx.get_precision ());
+	  gcc_assert (wi::ltu_p (wi_idx, max_idx));
+	  offset = wi_idx * elt_size;
+	}
 
-      result.set_at (val, offset);
+      gcc_assert (wi::fits_uhwi_p (offset)
+		  && wi::ltu_p (offset, UINT_MAX));
+
+      result.set_at (val, offset.to_uhwi ());
     }
 
   return result;
@@ -4347,6 +4378,15 @@ execute (void)
   context_builder builder {};
   builder.add_decls (&static_vars);
   exec_context root_context = builder.build (alloc_mem, printer);
+
+  tree *varp = nullptr;
+  unsigned i = 0;
+  FOR_EACH_VEC_ELT (static_vars, i, varp)
+    {
+      tree var = *varp;
+      gassign *tmp_assign = gimple_build_assign (var, DECL_INITIAL (var));
+      root_context.execute (tmp_assign);
+    }
 
   struct function *main = find_main ();
   gcc_assert (main != nullptr);
@@ -6374,6 +6414,105 @@ exec_context_evaluate_constructor_tests ()
   ASSERT_NE (addr2_bis, nullptr);
   data_storage &strg2 = addr2_bis->storage.get ();
   ASSERT_PRED1 (strg2.matches, b);
+
+
+  tree a2i = build_array_type_nelts (integer_type_node, 2);
+
+  exec_context ctx2 = context_builder ().build (mem, printer);
+
+  tree cst3 = build_int_cst (integer_type_node, 3);
+  tree cst7 = build_int_cst (integer_type_node, 7);
+  vec<constructor_elt, va_gc> * vec_elts2 = nullptr;
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, NULL_TREE, cst3);
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, NULL_TREE, cst7);
+  tree cstr2 = build_constructor (a2i, vec_elts2);
+
+  data_value val_cstr2 = ctx2.evaluate (cstr2);
+
+  ASSERT_EQ (val_cstr2.classify (), VAL_CONSTANT);
+  wide_int wi_3 = val_cstr2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_3);
+  ASSERT_EQ (wi_3.to_uhwi (), 3);
+  wide_int wi_7 = val_cstr2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_7);
+  ASSERT_EQ (wi_7.to_uhwi (), 7);
+
+  vec_elts2 = nullptr;
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, integer_zero_node, cst3);
+  CONSTRUCTOR_APPEND_ELT (vec_elts2, integer_one_node, cst7);
+  cstr2 = build_constructor (a2i, vec_elts2);
+
+  val_cstr2 = ctx2.evaluate (cstr2);
+
+  ASSERT_EQ (val_cstr2.classify (), VAL_CONSTANT);
+  wi_3 = val_cstr2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_3);
+  ASSERT_EQ (wi_3.to_uhwi (), 3);
+  wi_7 = val_cstr2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_7);
+  ASSERT_EQ (wi_7.to_uhwi (), 7);
+
+
+  tree derived = make_node (RECORD_TYPE);
+  tree fi2 = build_decl (input_location, FIELD_DECL,
+			 get_identifier ("fi2"), integer_type_node);
+  DECL_CONTEXT (fi2) = derived;
+  DECL_CHAIN (fi2) = NULL_TREE;
+  tree fp1 = build_decl (input_location, FIELD_DECL,
+			 get_identifier ("fp1"), ptr_type_node);
+  DECL_CONTEXT (fp1) = derived;
+  DECL_CHAIN (fp1) = fi2;
+  TYPE_FIELDS (derived) = fp1;
+  layout_type (derived);
+
+  tree var3 = create_var (integer_type_node, "var3");
+
+  vec<tree> decls3;
+  decls3.safe_push (var3);
+
+  context_builder builder3;
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (mem, printer);
+
+  data_storage *strg_var3 = ctx3.find_reachable_var (var3);
+  gcc_assert (strg_var3 != nullptr);
+
+  tree pvar3 = build1 (ADDR_EXPR, ptr_type_node, var3);
+  tree cst2 = build_int_cst (integer_type_node, 2);
+  vec<constructor_elt, va_gc> * vec_elts3 = nullptr;
+  CONSTRUCTOR_APPEND_ELT (vec_elts3, fp1, pvar3);
+  CONSTRUCTOR_APPEND_ELT (vec_elts3, fi2, cst2);
+  tree cstr3 = build_constructor (derived, vec_elts3);
+
+  data_value val_cstr3 = ctx3.evaluate (cstr3);
+
+  ASSERT_EQ (val_cstr3.classify (), VAL_MIXED);
+
+  ASSERT_EQ (val_cstr3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  storage_address *cstr3_addr0 = val_cstr3.get_address_at (0);
+  ASSERT_NE (cstr3_addr0, nullptr);
+  ASSERT_EQ (&cstr3_addr0->storage.get (), strg_var3);
+
+  ASSERT_EQ (val_cstr3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_INT),
+	     VAL_CONSTANT);
+  wide_int wi_2 = val_cstr3.get_cst_at (HOST_BITS_PER_PTR, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_2);
+  ASSERT_EQ (wi_2.to_uhwi (), 2);
+
+
+  exec_context ctx4 = context_builder ().build (mem, printer);
+
+  tree cstr4 = build_constructor (a2i, nullptr);
+
+  data_value val_cstr4 = ctx4.evaluate (cstr4);
+
+  ASSERT_EQ (val_cstr4.classify (), VAL_CONSTANT);
+  wide_int wi_0 = val_cstr4.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_0);
+  ASSERT_EQ (wi_0.to_uhwi (), 0);
+  wide_int wi_0_bis = val_cstr4.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_0_bis);
+  ASSERT_EQ (wi_0_bis.to_uhwi (), 0);
 }
 
 
