@@ -3114,9 +3114,6 @@ data_value::set_address_at (storage_address & address, unsigned offset)
   wide_int mask = wi::shifted_mask (offset, HOST_BITS_PER_PTR, false,
 				    bit_width);
   enum value_type type = classify (offset, HOST_BITS_PER_PTR);
-  /* Assume we don't store both regular integers and address
-     in the same variable over time.  */
-  gcc_assert (type == VAL_ADDRESS || type == VAL_UNDEFINED);
 
   if (type == VAL_ADDRESS)
     {
@@ -3841,20 +3838,57 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
 	      || (TREE_CODE (rhs) == INTEGER_CST
 		  && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
 		  && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
-		  && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs))));
+		  && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs)))
+	      || code == POINTER_PLUS_EXPR);
   switch (code)
     {
     default:
       {
 	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
-		    || TREE_CODE (type) == BOOLEAN_TYPE);
-	tree lval = evaluate (lhs).to_tree (TREE_TYPE (lhs));
-	tree rval = evaluate (rhs).to_tree (TREE_TYPE (rhs));
-	tree t = fold_binary (code, type, lval, rval);
-	gcc_assert (t != NULL_TREE);
-	data_value result (type);
-	result.set_cst (wi::to_wide (t));
-	return result;
+		    || TREE_CODE (type) == BOOLEAN_TYPE
+		    || TREE_CODE (type) == POINTER_TYPE);
+	data_value val_lhs = evaluate (lhs);
+	data_value val_rhs = evaluate (rhs);
+	enum value_type lhs_type = val_lhs.classify ();
+	enum value_type rhs_type = val_rhs.classify ();
+	if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
+	  {
+	    tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
+	    tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
+	    tree t = fold_binary (code, type, lval, rval);
+	    gcc_assert (t != NULL_TREE);
+	    data_value result (type);
+	    result.set_cst (wi::to_wide (t));
+	    return result;
+	  }
+	else
+	  {
+	    data_value *val_address = nullptr, *val_offset = nullptr;
+	    if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	      {
+		val_address = &val_lhs;
+		val_offset = &val_rhs;
+	      }
+	    else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	      {
+		val_address = &val_rhs;
+		val_offset = &val_lhs;
+	      }
+	    else
+	      gcc_unreachable ();
+
+	    storage_address *address = val_address->get_address ();
+	    gcc_assert (address != nullptr);
+	    wide_int offset = val_offset->get_cst ();
+	    wide_int bit_offset = offset * CHAR_BIT;
+	    wide_int total_offset = address->offset + bit_offset;
+	    gcc_assert (wi::fits_uhwi_p (total_offset));
+	    storage_address final_address (address->storage,
+					   total_offset.to_uhwi ());
+	    data_value result (type);
+	    result.set_address (final_address);
+	    return result;
+	  }
       }
     }
 }
@@ -6224,6 +6258,113 @@ exec_context_evaluate_binary_tests ()
   wide_int wi_val2 = val2.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_val2);
   ASSERT_EQ (wi_val2.to_uhwi (), 1);
+
+
+  tree a12c = build_array_type_nelts (char_type_node, 12);
+  tree v12c = create_var (a12c, "v12c");
+  tree p = create_var (ptr_type_node, "p");
+  tree i = create_var (pointer_sized_int_node, "i");
+  tree o = create_var (pointer_sized_int_node, "o");
+
+  vec<tree> decls3{};
+  decls3.safe_push (v12c);
+  decls3.safe_push (p);
+  decls3.safe_push (i);
+  decls3.safe_push (o);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (mem, printer);
+
+  data_storage *v12_storage = ctx3.find_reachable_var (v12c);
+  gcc_assert (v12_storage != nullptr);
+  storage_address v12_address (v12_storage->get_ref (), 0);
+
+  data_value pv12 (ptr_type_node);
+  pv12.set_address (v12_address);
+
+  data_storage *p_storage = ctx3.find_reachable_var (p);
+  gcc_assert (p_storage != nullptr);
+  p_storage->set (pv12);
+
+  data_storage *i_storage = ctx3.find_reachable_var (i);
+  gcc_assert (i_storage != nullptr);
+  i_storage->set (pv12);
+
+  tree addr_v12 = build1 (ADDR_EXPR, ptr_type_node, v12c);
+  tree cst3 = build_int_cst (size_type_node, 3);
+
+  data_value val_addr_p3 = ctx3.evaluate_binary (POINTER_PLUS_EXPR,
+						 ptr_type_node,
+						 addr_v12, cst3);
+
+  ASSERT_EQ (val_addr_p3.classify (), VAL_ADDRESS);
+  storage_address *addr_p3 = val_addr_p3.get_address ();
+  ASSERT_NE (addr_p3, nullptr);
+  ASSERT_EQ (&addr_p3->storage.get (), v12_storage);
+  ASSERT_EQ (addr_p3->offset, 24);
+
+  data_value val_ptr_p3 = ctx3.evaluate_binary (POINTER_PLUS_EXPR,
+						ptr_type_node,
+						p, cst3);
+
+  ASSERT_EQ (val_ptr_p3.classify (), VAL_ADDRESS);
+  storage_address *ptr_p3 = val_ptr_p3.get_address ();
+  ASSERT_EQ (&ptr_p3->storage.get (), v12_storage);
+  ASSERT_EQ (ptr_p3->offset, 24);
+
+  tree ip7 = build_int_cst (pointer_sized_int_node, 7);
+  data_value val_i_p7 = ctx3.evaluate_binary (PLUS_EXPR,
+					      pointer_sized_int_node,
+					      i, ip7);
+
+  ASSERT_EQ (val_i_p7.classify (), VAL_ADDRESS);
+  storage_address *i_p7 = val_i_p7.get_address ();
+  ASSERT_EQ (&i_p7->storage.get (), v12_storage);
+  ASSERT_EQ (i_p7->offset, 56);
+
+  storage_address addr_v12_p5 (v12_address.storage, 40);
+  data_value v12_p5 (ptr_type_node);
+  v12_p5.set_address (addr_v12_p5);
+
+  p_storage->set (v12_p5);
+  i_storage->set (v12_p5);
+
+  tree cst4 = build_int_cst (size_type_node, 4);
+  data_value val_ptr_p9 = ctx3.evaluate_binary (POINTER_PLUS_EXPR,
+						ptr_type_node,
+						p, cst4);
+
+  ASSERT_EQ (val_ptr_p9.classify (), VAL_ADDRESS);
+  storage_address *ptr_p9 = val_ptr_p9.get_address ();
+  ASSERT_EQ (&ptr_p9->storage.get (), v12_storage);
+  ASSERT_EQ (ptr_p9->offset, 72);
+
+  tree cst6 = build_int_cst (pointer_sized_int_node, 6);
+  data_value val_i_p11 = ctx3.evaluate_binary (PLUS_EXPR,
+					       pointer_sized_int_node,
+					       i, cst6);
+
+  ASSERT_EQ (val_i_p11.classify (), VAL_ADDRESS);
+  storage_address *i_p11 = val_i_p11.get_address ();
+  ASSERT_EQ (&i_p11->storage.get (), v12_storage);
+  ASSERT_EQ (i_p11->offset, 88);
+
+  wide_int wi1 = wi::shwi (1, HOST_BITS_PER_PTR);
+  data_value cst1 (pointer_sized_int_node);
+  cst1.set_cst (wi1);
+  data_storage *o_storage = ctx3.find_reachable_var (o);
+  gcc_assert (o_storage != nullptr);
+  o_storage->set (cst1);
+
+  data_value val_i_p6 = ctx3.evaluate_binary (PLUS_EXPR,
+					      pointer_sized_int_node,
+					      o, i);
+
+  ASSERT_EQ (val_i_p6.classify (), VAL_ADDRESS);
+  storage_address *i_p6 = val_i_p6.get_address ();
+  ASSERT_EQ (&i_p6->storage.get (), v12_storage);
+  ASSERT_EQ (i_p6->offset, 48);
 }
 
 
