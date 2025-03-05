@@ -2436,6 +2436,7 @@ namespace selftest
   void context_printer_print_value_update_tests ();
   void exec_context_evaluate_tests ();
   void exec_context_evaluate_literal_tests ();
+  void exec_context_evaluate_unary_tests ();
   void exec_context_evaluate_binary_tests ();
   void exec_context_execute_assign_tests ();
   void exec_context_execute_call_tests ();
@@ -2638,6 +2639,7 @@ class exec_context
   friend void selftest::data_value_set_address_tests ();
   friend void selftest::data_value_set_tests ();
   friend void selftest::exec_context_evaluate_literal_tests ();
+  friend void selftest::exec_context_evaluate_unary_tests ();
   friend void selftest::exec_context_evaluate_binary_tests ();
   friend void selftest::exec_context_execute_assign_tests ();
   friend void selftest::exec_context_execute_call_tests ();
@@ -3821,12 +3823,29 @@ exec_context::evaluate_constructor (tree cstr) const
 
 
 data_value
-exec_context::evaluate_unary (enum tree_code code, tree type ATTRIBUTE_UNUSED, tree arg) const
+exec_context::evaluate_unary (enum tree_code code, tree type, tree arg) const
 {
   switch (code)
     {
     case NOP_EXPR:
-      return evaluate (arg);
+      {
+	data_value value = evaluate (arg);
+	unsigned target_width = get_constant_type_size (type);
+	unsigned source_width = value.get_bitwidth ();
+	if (source_width == target_width)
+	  return value;
+
+	gcc_assert (value.classify () == VAL_CONSTANT);
+	tree t = value.to_tree (TREE_TYPE (arg));
+	tree r = fold_unary (code, type, t);
+	gcc_assert (TREE_CODE (r) == INTEGER_CST);
+	wide_int wi_r = wi::to_wide (r);
+
+	data_value result (type);
+	result.set_cst (wi_r);
+	return result;
+      }
+      break;
 
     default:
       {
@@ -3874,6 +3893,8 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
 	  }
 	else
 	  {
+	    gcc_assert (code == PLUS_EXPR
+			|| code == POINTER_PLUS_EXPR);
 	    data_value *val_address = nullptr, *val_offset = nullptr;
 	    if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
 	      {
@@ -6355,6 +6376,39 @@ exec_context_evaluate_constructor_tests ()
   ASSERT_PRED1 (strg2.matches, b);
 }
 
+
+void
+exec_context_evaluate_unary_tests ()
+{
+  heap_memory mem;
+  context_printer printer;
+
+  tree c1 = create_var (char_type_node, "c1");
+
+  vec<tree> decls1;
+  decls1.safe_push (c1);
+
+  context_builder builder1;
+  builder1.add_decls (&decls1);
+  exec_context ctx1 = builder1.build (mem, printer);
+
+  wide_int wi18 = wi::uhwi (18, CHAR_BIT);
+  data_value val18 (char_type_node);
+  val18.set_cst (wi18);
+  data_storage *strg_c1 = ctx1.find_reachable_var (c1);
+  gcc_assert (strg_c1 != nullptr);
+  strg_c1->set (val18);
+  
+  data_value val1 = ctx1.evaluate_unary (NOP_EXPR, integer_type_node, c1);
+
+  ASSERT_EQ (val1.get_bitwidth (), HOST_BITS_PER_INT);
+  ASSERT_EQ (val1.classify (), VAL_CONSTANT);
+  wide_int wi1 = val1.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi1);
+  ASSERT_EQ (wi1.to_uhwi (), 18);
+}
+
+
 void
 exec_context_evaluate_binary_tests ()
 {
@@ -7258,6 +7312,7 @@ gimple_exec_cc_tests ()
   exec_context_evaluate_tests ();
   exec_context_evaluate_literal_tests ();
   exec_context_evaluate_constructor_tests ();
+  exec_context_evaluate_unary_tests ();
   exec_context_evaluate_binary_tests ();
   exec_context_execute_assign_tests ();
   exec_context_execute_call_tests ();
