@@ -3152,6 +3152,7 @@ data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
   enum value_type orig_type = classify (dest_offset, value_width);
   wide_int dest_mask = wi::shifted_mask (dest_offset, value_width, false,
 					 bit_width);
+  gcc_assert (orig_type != VAL_ADDRESS);
   if (orig_type != VAL_CONSTANT)
     {
       constant_mask |= dest_mask;
@@ -3417,6 +3418,15 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	    storage_address *address = value.get_address_at (offset);
 	    data_storage &target_storage = address->storage.get ();
 	    target_storage.print (*this);
+	    unsigned off = address->offset;
+	    if (off > 0)
+	      {
+		pp_string (&pp, " + ");
+		gcc_assert (off % CHAR_BIT == 0);
+		off /= CHAR_BIT;
+		pp_decimal_int (&pp, off);
+		pp_character (&pp, 'B');
+	      }
 	  }
 	  break;
 
@@ -3672,6 +3682,7 @@ exec_context::evaluate (tree expr) const
 	storage_address *address = val_ptr.get_address ();
 	gcc_assert (address != nullptr);
 	data_value storage_value = address->storage.get ().get_value ();
+	unsigned ptr_offset = address->offset;
 
 	tree offset_bytes = TREE_OPERAND (expr, 1);
 	data_value val_off = evaluate (offset_bytes);
@@ -3701,7 +3712,7 @@ exec_context::evaluate (tree expr) const
 	    offset += additional_off.to_uhwi ();
 	  }
 
-	return storage_value.get_at (offset * CHAR_BIT, bit_width);
+	return storage_value.get_at (offset * CHAR_BIT + ptr_offset, bit_width);
       }
       break;
 
@@ -5275,6 +5286,58 @@ data_value_print_tests ()
 
 
 void
+data_storage_set_at_tests ()
+{
+  heap_memory mem;
+  context_printer printer;
+
+  tree a5i = build_array_type_nelts (integer_type_node, 5);
+  tree v5i = create_var (a5i, "v5i");
+  tree p = create_var (ptr_type_node, "p");
+
+  vec<tree> decls{};
+  decls.safe_push (p);
+  decls.safe_push (v5i);
+  vec<tree> empty{};
+
+  context_builder builder {};
+  builder.add_decls (&decls);
+  exec_context ctx = builder.build (mem, printer);
+
+  data_storage *storage_p = ctx.find_reachable_var (p);
+  gcc_assert (storage_p != nullptr);
+  data_storage *storage_v5 = ctx.find_reachable_var (v5i);
+  gcc_assert (storage_v5 != nullptr);
+
+  ASSERT_EQ (storage_p->get_value ().classify (), VAL_UNDEFINED);
+
+  storage_address addr0 (storage_v5->get_ref (), 0);
+  data_value val0 (ptr_type_node);
+  val0.set_address (addr0);
+
+  storage_p->set (val0);
+
+  data_value valp0 = storage_p->get_value ();
+  ASSERT_EQ (valp0.classify (), VAL_ADDRESS);
+  storage_address *addrp0 = valp0.get_address ();
+  ASSERT_EQ (&addrp0->storage.get (), storage_v5);
+  ASSERT_EQ (addrp0->offset, 0);
+
+  storage_address addr3 (storage_v5->get_ref (), 24);
+  data_value val3 (ptr_type_node);
+  val3.set_address (addr3);
+
+  storage_p->set (val3);
+
+  data_value valp3 = storage_p->get_value ();
+  ASSERT_EQ (valp3.classify (), VAL_ADDRESS);
+  storage_address *addrp3 = valp3.get_address ();
+  ASSERT_EQ (&addrp3->storage.get (), storage_v5);
+  ASSERT_EQ (addrp3->offset, 24);
+}
+
+
+void
 context_printer_print_first_data_ref_part_tests ()
 {
   vec<tree> empty{};
@@ -5649,6 +5712,7 @@ context_printer_print_value_update_tests ()
   const char *str = pp_formatted_text (&pp);
   ASSERT_STREQ (str, "# my_lhs = &my_var\n");
 
+
   context_printer printer2;
   pretty_printer & pp2 = printer2.pp;
   pp_buffer (&pp2)->m_flush_p = false;
@@ -5753,6 +5817,33 @@ context_printer_print_value_update_tests ()
 
   const char *str4 = pp_formatted_text (&pp4);
   ASSERT_STREQ (str4, "# v2i.der2i_i1 = 2\n# v2i.der2i_i2 = 11\n");
+
+
+  heap_memory mem5;
+  context_printer printer5;
+  pretty_printer & pp5 = printer5.pp;
+  pp_buffer (&pp5)->m_flush_p = false;
+
+  tree a5i = build_array_type_nelts (integer_type_node, 5);
+  tree v5i = create_var (a5i, "v5i");
+  tree p = create_var (ptr_type_node, "p");
+
+  vec<tree> decls5{};
+  decls5.safe_push (v5i);
+  decls5.safe_push (p);
+
+  context_builder builder5;
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (mem5, printer5);
+
+  data_storage *strg_v5i = ctx5.find_reachable_var (v5i);
+  storage_address addr_v5i (strg_v5i->get_ref (), 24);
+  data_value val5 (ptr_type_node);;
+  val5.set_address (addr_v5i);
+
+  printer5.print_value_update (ctx5, p, val5);
+  const char *str5 = pp_formatted_text (&pp5);
+  ASSERT_STREQ (str5, "# p = &v5i + 3B\n");
 }
 
 
@@ -6129,6 +6220,78 @@ exec_context_evaluate_tests ()
   wide_int wi29_27 = val29_27.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
   ASSERT_EQ  (wi29_27.to_uhwi (), 14);
+
+
+  tree a9i = build_array_type_nelts (integer_type_node, 9);
+  tree v9i = create_var (a9i, "v9i");
+  tree p = create_var (ptr_type_node, "p");
+
+  vec<tree> decls9;
+  decls9.safe_push (v9i);
+  decls9.safe_push (p);
+
+  context_builder builder9;
+  builder9.add_decls (&decls9);
+  exec_context ctx9 = builder9.build (mem, printer);
+
+  data_storage * strg9 = ctx9.find_reachable_var (v9i);
+  gcc_assert (strg9 != nullptr);
+  wide_int cst10 = wi::shwi (10, HOST_BITS_PER_INT);
+  data_value val10 (integer_type_node);
+  val10.set_cst (cst10);
+  strg9->set_at (val10, HOST_BITS_PER_INT);
+
+  data_storage * strg_p = ctx9.find_reachable_var (p);
+  gcc_assert (strg_p != nullptr);
+  storage_address addr_a9 (strg9->get_ref (), 0);
+  data_value val_addr9 (ptr_type_node);
+  val_addr9.set_address (addr_a9);
+  strg_p->set (val_addr9);
+
+  tree ref1 = build2 (MEM_REF, integer_type_node,
+		      p, build_int_cst (ptr_type_node, sizeof (int)));
+
+  data_value val1 = ctx9.evaluate (ref1);
+
+  ASSERT_EQ (val1.classify (), VAL_CONSTANT);
+  wide_int wi1 = val1.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi1);
+  ASSERT_EQ (wi1.to_uhwi (), 10);
+
+  storage_address addr_a9p3 (strg9->get_ref (), 3 * HOST_BITS_PER_INT);
+  data_value val_addr9p3 (ptr_type_node);
+  val_addr9p3.set_address (addr_a9p3);
+  strg_p->set (val_addr9p3);
+
+  wide_int cst16 = wi::shwi (16, HOST_BITS_PER_INT);
+  data_value val16 (integer_type_node);
+  val16.set_cst (cst16);
+  strg9->set_at (val16, 3 * HOST_BITS_PER_INT);
+
+  tree ref3_bis = build2 (MEM_REF, integer_type_node,
+			  p, build_zero_cst (ptr_type_node));
+
+  data_value val3 = ctx9.evaluate (ref3_bis);
+
+  ASSERT_EQ (val3.classify (), VAL_CONSTANT);
+  wide_int wi3 = val3.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi3);
+  ASSERT_EQ (wi3.to_uhwi (), 16);
+
+  wide_int cst19 = wi::shwi (19, HOST_BITS_PER_INT);
+  data_value val19 (integer_type_node);
+  val19.set_cst (cst19);
+  strg9->set_at (val19, 5 * HOST_BITS_PER_INT);
+
+  tree ref5 = build2 (MEM_REF, integer_type_node,
+		      p, build_int_cst (ptr_type_node, 2 * sizeof (int)));
+
+  data_value val5 = ctx9.evaluate (ref5);
+
+  ASSERT_EQ (val5.classify (), VAL_CONSTANT);
+  wide_int wi5 = val5.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi5);
+  ASSERT_EQ (wi5.to_uhwi (), 19);
 }
 
 
@@ -7089,6 +7252,7 @@ gimple_exec_cc_tests ()
   data_value_set_tests ();
   data_value_set_at_tests ();
   data_value_print_tests ();
+  data_storage_set_at_tests ();
   context_printer_print_first_data_ref_part_tests ();
   context_printer_print_value_update_tests ();
   exec_context_evaluate_tests ();
