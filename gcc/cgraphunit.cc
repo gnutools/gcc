@@ -2864,6 +2864,59 @@ context_printer::print_bb_entry (basic_block bb)
 
 
 static tree
+pick_subref_at (tree var_ref, unsigned offset)
+{
+  tree ref = var_ref;
+  unsigned remaining_offset = offset;
+  while (true)
+    {
+      tree var_type = TREE_TYPE (ref);
+      if (TREE_CODE (var_type) == ARRAY_TYPE)
+	{
+	  tree elt_type = TREE_TYPE (var_type);
+	  unsigned elt_width;
+	  gcc_assert (get_constant_type_size (elt_type, elt_width));
+	  unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
+	  tree t_idx = build_int_cst (integer_type_node, hw_idx);
+	  ref = build4 (ARRAY_REF, elt_type, ref,
+			t_idx, NULL_TREE, NULL_TREE);
+	  remaining_offset -= hw_idx * elt_width;
+	}
+      else if (TREE_CODE (var_type) == RECORD_TYPE)
+	{
+	  tree field = NULL_TREE;
+	  HOST_WIDE_INT field_position = -1;
+	  tree next_field = TYPE_FIELDS (TREE_TYPE (ref));
+
+	  do
+	    {
+	      HOST_WIDE_INT next_position;
+	      next_position = int_bit_position (next_field);
+	      if (next_position > remaining_offset)
+		break;
+
+	      field = next_field;
+	      field_position = next_position;
+	      next_field = TREE_CHAIN (field);
+	    }
+	  while (next_field != NULL_TREE);
+
+	  gcc_assert (field != NULL_TREE
+		      && field_position >= 0);
+
+	  ref = build3 (COMPONENT_REF, TREE_TYPE (field),
+			ref, field, NULL_TREE);
+	  remaining_offset -= field_position;
+	}
+      else
+	break;
+    }
+  gcc_assert (remaining_offset == 0);
+  return ref;
+}
+
+
+static tree
 find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset)
 {
   tree ptr = TREE_OPERAND (data_ref, 0);
@@ -2891,53 +2944,10 @@ find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset
       gcc_assert (offset < UINT_MAX - shwi_offset);
       HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT + offset;
 
-      while (true)
-	{
-	  if (TREE_CODE (var_type) == ARRAY_TYPE)
-	    {
-	      tree elt_type = TREE_TYPE (var_type);
-	      unsigned elt_width;
-	      gcc_assert (get_constant_type_size (elt_type, elt_width));
-	      unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
-	      tree t_idx = build_int_cst (integer_type_node, hw_idx);
-	      var_ref = build4 (ARRAY_REF, elt_type, var_ref,
-				t_idx, NULL_TREE, NULL_TREE);
-	      remaining_offset -= hw_idx * elt_width;
-	    }
-	  else if (TREE_CODE (var_type) == RECORD_TYPE)
-	    {
-	      tree field = NULL_TREE;
-	      HOST_WIDE_INT field_position = -1;
-	      tree next_field = TYPE_FIELDS (TREE_TYPE (var_ref));
-
-	      do
-		{
-		  HOST_WIDE_INT next_position;
-		  next_position = int_bit_position (next_field);
-		  if (next_position > remaining_offset)
-		    break;
-
-		  field = next_field;
-		  field_position = next_position;
-		  next_field = TREE_CHAIN (field);
-		}
-	      while (next_field != NULL_TREE);
-
-	      gcc_assert (field != NULL_TREE
-			  && field_position >= 0);
-
-	      var_ref = build3 (COMPONENT_REF, TREE_TYPE (field),
-				var_ref, field, NULL_TREE);
-	      remaining_offset -= field_position;
-	    }
-	  else
-	    break;
-	  var_type = TREE_TYPE (var_ref);
-	}
-      gcc_assert (remaining_offset == 0);
-      return var_ref;
+      return pick_subref_at (var_ref, remaining_offset);
     }
 }
+
 
 tree
 context_printer::print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset)
@@ -2955,10 +2965,10 @@ context_printer::print_first_data_ref_part (exec_context & context, tree data_re
     /* Fall through.  */
 
     default:
-      print (data_ref);
+      tree ref = pick_subref_at (data_ref, offset);
+      print (ref);
+      return TREE_TYPE (ref);
     }
-
-  return TREE_TYPE (data_ref);
 }
 
 void
@@ -2983,25 +2993,6 @@ context_printer::print_value_update (exec_context & context, tree lhs, const dat
       print_newline ();
       previously_done += just_done;
     }
-  //pp_newline_and_indent (&pp, -2);
-#if 0
-  tree type = TREE_TYPE (lhs);
-  if (TREE_CODE (type) == VECTOR_TYPE)
-    {
-      unsigned size = get_constant_type_size (type);
-      tree elt_type = TREE_TYPE (type);
-      unsigned chunk_size = get_constant_type_size (elt_type);
-      gcc_assert (size % chunk_size == 0);
-      for (unsigned i = 0; i < size / chunk_size; i++)
-      //for (unsigned i = 0; i < TREE_VEC_LENGTH (type); i++)
-	{
-	  tree lhs_part = TREE_VEC_ELT (lhs, i);
-	  print_part_update (lhs_part, value, i * chunk_size);
-	}
-    }
-  else
-    print_part_update (lhs, value, 0);
-#endif
 }
 
 
@@ -5424,9 +5415,9 @@ context_printer_print_first_data_ref_part_tests ()
 
   tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0);
 
-  ASSERT_EQ (res1, der2i);
+  ASSERT_EQ (res1, integer_type_node);
   const char * str1 = pp_formatted_text (&pp1);
-  ASSERT_STREQ (str1, "var2i");
+  ASSERT_STREQ (str1, "var2i.der2i_i1");
 
 
   context_printer printer2;
@@ -5445,9 +5436,9 @@ context_printer_print_first_data_ref_part_tests ()
 
   tree res2 = printer2.print_first_data_ref_part (ctx2, mem_var2i, 0);
 
-  ASSERT_EQ (res2, der2i);
+  ASSERT_EQ (res2, integer_type_node);
   const char * str2 = pp_formatted_text (&pp2);
-  ASSERT_STREQ (str2, "var2i");
+  ASSERT_STREQ (str2, "var2i.der2i_i1");
 
 
   context_printer printer3;
@@ -5905,6 +5896,45 @@ context_printer_print_value_update_tests ()
   printer5.print_value_update (ctx5, p, val5);
   const char *str5 = pp_formatted_text (&pp5);
   ASSERT_STREQ (str5, "# p = &v5i + 3B\n");
+
+
+  context_printer printer6;
+  pretty_printer & pp6 = printer6.pp;
+  pp_buffer (&pp6)->m_flush_p = false;
+
+  tree der2i_bis = make_node (RECORD_TYPE);
+  tree der2i_i2_bis = build_decl (input_location, FIELD_DECL,
+				  get_identifier ("der2i_i2_bis"),
+				  integer_type_node);
+  DECL_CONTEXT (der2i_i2_bis) = der2i_bis;
+  DECL_CHAIN (der2i_i2_bis) = NULL_TREE;
+  tree der2i_i1_bis = build_decl (input_location, FIELD_DECL,
+				  get_identifier ("der2i_i1_bis"),
+				  integer_type_node);
+  DECL_CONTEXT (der2i_i1_bis) = der2i_bis;
+  DECL_CHAIN (der2i_i1_bis) = der2i_i2_bis;
+  TYPE_FIELDS (der2i_bis) = der2i_i1_bis;
+  layout_type (der2i_bis);
+
+  tree var2i = create_var (der2i_bis, "var2i");
+
+  vec<tree> decls6{};
+  decls6.safe_push (var2i);
+
+  context_builder builder6;
+  builder6.add_decls (&decls6);
+  exec_context ctx6 = builder6.build (mem, printer6);
+
+  wide_int wi12 = wi::shwi (12, HOST_BITS_PER_INT);
+  wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
+  data_value cstr_12_7 (der2i_bis);
+  cstr_12_7.set_cst_at (wi12, 0);
+  cstr_12_7.set_cst_at (wi7, HOST_BITS_PER_INT);
+
+  printer6.print_value_update (ctx6, var2i, cstr_12_7);
+
+  const char *str6 = pp_formatted_text (&pp6);
+  ASSERT_STREQ (str6, "# var2i.der2i_i1_bis = 12\n# var2i.der2i_i2_bis = 7\n");
 }
 
 
