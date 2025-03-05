@@ -2581,7 +2581,7 @@ public:
   void print_function_exit (struct function * func);
   void print_bb_jump (edge e);
   void print_bb_entry (basic_block bb);
-  tree print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset);
+  tree print_first_data_ref_part (exec_context & context, tree data_ref, const data_value & value, unsigned offset, int * ignored_bits);
   void print_value_update (exec_context & context, tree, const data_value &); 
   void end_stmt (gimple *);
   void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
@@ -2864,7 +2864,7 @@ context_printer::print_bb_entry (basic_block bb)
 
 
 static tree
-pick_subref_at (tree var_ref, unsigned offset)
+pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
 {
   tree ref = var_ref;
   unsigned remaining_offset = offset;
@@ -2893,7 +2893,20 @@ pick_subref_at (tree var_ref, unsigned offset)
 	      HOST_WIDE_INT next_position;
 	      next_position = int_bit_position (next_field);
 	      if (next_position > remaining_offset)
-		break;
+		{
+		  if (field_position >= remaining_offset)
+		    break;
+
+		  unsigned field_size;
+		  if (!get_constant_type_size (TREE_TYPE (field), field_size))
+		    gcc_unreachable ();
+
+		  // Continue if the remaining offset is not within
+		  // the current field, even if the next field is
+		  // after the remaining offset as in the case of padding.
+		  if (field_position + field_size > remaining_offset)
+		    break;
+		}
 
 	      field = next_field;
 	      field_position = next_position;
@@ -2906,18 +2919,33 @@ pick_subref_at (tree var_ref, unsigned offset)
 
 	  ref = build3 (COMPONENT_REF, TREE_TYPE (field),
 			ref, field, NULL_TREE);
-	  remaining_offset -= field_position;
+	  if (field_position > remaining_offset)
+	    {
+	      gcc_assert (ignored_bits != nullptr);
+	      *ignored_bits = field_position - remaining_offset;
+	      remaining_offset = 0;
+	    }
+	  else
+	    remaining_offset -= field_position;
 	}
       else
 	break;
     }
-  gcc_assert (remaining_offset == 0);
-  return ref;
+
+  if (remaining_offset == 0)
+    return ref;
+  else
+    {
+      gcc_assert (ignored_bits != nullptr);
+      *ignored_bits = remaining_offset;
+      return NULL_TREE;
+    }
 }
 
 
 static tree
-find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset)
+find_mem_ref_replacement (exec_context & context, tree data_ref, 
+			  unsigned offset)
 {
   tree ptr = TREE_OPERAND (data_ref, 0);
   data_value ptr_val = context.evaluate (ptr);
@@ -2936,21 +2964,21 @@ find_mem_ref_replacement (exec_context & context, tree data_ref, unsigned offset
   if (var_type == access_type)
     return var_ref;
   else
-    {
-      tree access_offset = TREE_OPERAND (data_ref, 1);
-      gcc_assert (TREE_CONSTANT (access_offset));
-      gcc_assert (tree_fits_shwi_p (access_offset));
-      HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
-      gcc_assert (offset < UINT_MAX - shwi_offset);
-      HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT + offset;
+  {
+    tree access_offset = TREE_OPERAND (data_ref, 1);
+    gcc_assert (TREE_CONSTANT (access_offset));
+    gcc_assert (tree_fits_shwi_p (access_offset));
+    HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
+    gcc_assert (offset < UINT_MAX - shwi_offset);
+    HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT + offset;
 
-      return pick_subref_at (var_ref, remaining_offset);
-    }
+    return pick_subref_at (var_ref, remaining_offset, nullptr);
+  }
 }
 
 
 tree
-context_printer::print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset)
+context_printer::print_first_data_ref_part (exec_context & context, tree data_ref, const data_value & value, unsigned offset, int * ignored_bits)
 {
   switch (TREE_CODE (data_ref))
     {
@@ -2959,13 +2987,23 @@ context_printer::print_first_data_ref_part (exec_context & context, tree data_re
 	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
 							 offset);
 	if (mem_replacement != NULL_TREE)
-	  return print_first_data_ref_part (context, mem_replacement, 0);
+	  return print_first_data_ref_part (context, mem_replacement, value, 0, ignored_bits);
       }
 
     /* Fall through.  */
 
     default:
-      tree ref = pick_subref_at (data_ref, offset);
+      tree ref = pick_subref_at (data_ref, offset, ignored_bits);
+      if (ref == NULL_TREE)
+	{
+	  gcc_assert (ignored_bits != nullptr
+		      && *ignored_bits > 0);
+	  return NULL_TREE;
+	}
+
+      pp_indent (&pp);
+      pp_character (&pp, '#');
+      pp_space (&pp);
       print (ref);
       return TREE_TYPE (ref);
     }
@@ -2978,20 +3016,28 @@ context_printer::print_value_update (exec_context & context, tree lhs, const dat
   unsigned width = get_constant_type_size (TREE_TYPE (lhs));
   while (previously_done < width)
     {
-      pp_indent (&pp);
-      pp_character (&pp, '#');
-      pp_space (&pp);
-      tree type_output = print_first_data_ref_part (context, lhs, previously_done);
+      int ignored_bits = 0;
+      tree type_done = print_first_data_ref_part (context, lhs, value,
+						  previously_done,
+						  &ignored_bits);
+      if (type_done == NULL_TREE)
+	{
+	  gcc_assert (ignored_bits > 0);
+	  previously_done += ignored_bits;
+	  continue;
+	}
+
       unsigned just_done;
-      gcc_assert (get_constant_type_size (type_output, just_done));
+      if (!get_constant_type_size (type_done, just_done))
+	gcc_unreachable ();
       gcc_assert (just_done > 0);
-      gcc_assert (just_done <= width - previously_done);
+      gcc_assert (just_done + ignored_bits <= width - previously_done);
       pp_space (&pp);
       pp_equal (&pp);
       pp_space (&pp);
-      print_at (value, type_output, previously_done, just_done);
+      print_at (value, type_done, previously_done + ignored_bits, just_done);
       print_newline ();
-      previously_done += just_done;
+      previously_done += just_done + ignored_bits;
     }
 }
 
@@ -5390,350 +5436,6 @@ data_storage_set_at_tests ()
 
 
 void
-context_printer_print_first_data_ref_part_tests ()
-{
-  vec<tree> empty{};
-
-  tree der2i = make_node (RECORD_TYPE);
-  tree der2i_i2 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der2i_i2"), integer_type_node);
-  DECL_CONTEXT (der2i_i2) = der2i;
-  DECL_CHAIN (der2i_i2) = NULL_TREE;
-  tree der2i_i1 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der2i_i1"), integer_type_node);
-  DECL_CONTEXT (der2i_i1) = der2i;
-  DECL_CHAIN (der2i_i1) = der2i_i2;
-  TYPE_FIELDS (der2i) = der2i_i1;
-  layout_type (der2i);
-
-  tree var2i = create_var (der2i, "var2i");
-
-  heap_memory mem1;
-  context_printer printer1;
-  pretty_printer & pp1 = printer1.pp;
-  exec_context ctx1 = context_builder ().build (mem1, printer1);
-
-  tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0);
-
-  ASSERT_EQ (res1, integer_type_node);
-  const char * str1 = pp_formatted_text (&pp1);
-  ASSERT_STREQ (str1, "var2i.der2i_i1");
-
-
-  context_printer printer2;
-  pretty_printer & pp2 = printer2.pp;
-
-  vec<tree> decls2{};
-  decls2.safe_push (var2i);
-
-  context_builder builder2 {};
-  builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem1, printer2);
-
-  tree mem_var2i = build2 (MEM_REF, der2i,
-			   build1 (ADDR_EXPR, ptr_type_node, var2i),
-			   build_zero_cst (ptr_type_node));
-
-  tree res2 = printer2.print_first_data_ref_part (ctx2, mem_var2i, 0);
-
-  ASSERT_EQ (res2, integer_type_node);
-  const char * str2 = pp_formatted_text (&pp2);
-  ASSERT_STREQ (str2, "var2i.der2i_i1");
-
-
-  context_printer printer3;
-  pretty_printer & pp3 = printer3.pp;
-
-  context_builder builder3 {};
-  builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (mem1, printer3);
-
-  tree long_var2i = build2 (MEM_REF, long_integer_type_node,
-			   build1 (ADDR_EXPR, ptr_type_node, var2i),
-			   build_zero_cst (ptr_type_node));
-
-  tree res3 = printer3.print_first_data_ref_part (ctx3, long_var2i, 0);
-
-  ASSERT_EQ (res3, integer_type_node);
-  const char * str3 = pp_formatted_text (&pp3);
-  ASSERT_STREQ (str3, "var2i.der2i_i1");
-
-
-  tree der2s = make_node (RECORD_TYPE);
-  tree der2s_s2 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der2s_s2"),
-			      short_integer_type_node);
-  DECL_CONTEXT (der2s_s2) = der2s;
-  DECL_CHAIN (der2s_s2) = NULL_TREE;
-  tree der2s_s1 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der2s_s1"),
-			      short_integer_type_node);
-  DECL_CONTEXT (der2s_s1) = der2s;
-  DECL_CHAIN (der2s_s1) = der2s_s2;
-  TYPE_FIELDS (der2s) = der2s_s1;
-  layout_type (der2s);
-
-
-  tree der1d1i = make_node (RECORD_TYPE);
-  tree der1d1i_i2 = build_decl (input_location, FIELD_DECL,
-				get_identifier ("der1d1i_i2"), integer_type_node);
-  DECL_CONTEXT (der1d1i_i2) = der1d1i;
-  DECL_CHAIN (der1d1i_i2) = NULL_TREE;
-  tree der1d1i_d1 = build_decl (input_location, FIELD_DECL,
-				get_identifier ("der1d1i_d1"), der2s);
-  DECL_CONTEXT (der1d1i_d1) = der1d1i;
-  DECL_CHAIN (der1d1i_d1) = der1d1i_i2;
-  TYPE_FIELDS (der1d1i) = der1d1i_d1;
-  layout_type (der1d1i);
-
-  tree var1d1i = create_var (der1d1i, "var1d1i");
-
-  context_printer printer4;
-  pretty_printer & pp4 = printer4.pp;
-
-  vec<tree> decls4{};
-  decls4.safe_push (var1d1i);
-
-  context_builder builder4 {};
-  builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem1, printer4);
-
-  tree mem_var1d1i = build2 (MEM_REF, long_integer_type_node,
-			     build1 (ADDR_EXPR, ptr_type_node, var1d1i),
-			     build_zero_cst (ptr_type_node));
-
-  tree res4 = printer4.print_first_data_ref_part (ctx4, mem_var1d1i, 0);
-
-  ASSERT_EQ (res4, short_integer_type_node);
-  const char * str4 = pp_formatted_text (&pp4);
-  ASSERT_STREQ (str4, "var1d1i.der1d1i_d1.der2s_s1");
-
-
-  context_printer printer5;
-  pretty_printer & pp5 = printer5.pp;
-
-  context_builder builder5 {};
-  builder5.add_decls (&decls4);
-  exec_context ctx5 = builder5.build (mem1, printer5);
-
-  tree mem_var1d1i_s2 = build2 (MEM_REF, short_integer_type_node,
-				build1 (ADDR_EXPR, ptr_type_node, var1d1i),
-				build_int_cst (ptr_type_node,
-					       sizeof (short)));
-
-  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0);
-
-  ASSERT_EQ (res5, short_integer_type_node);
-  const char * str5 = pp_formatted_text (&pp5);
-  ASSERT_STREQ (str5, "var1d1i.der1d1i_d1.der2s_s2");
-
-
-  tree der4c = make_node (RECORD_TYPE);
-  tree der4c_c4 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der4c_c4"),
-			      char_type_node);
-  DECL_CONTEXT (der4c_c4) = der4c;
-  DECL_CHAIN (der4c_c4) = NULL_TREE;
-  tree der4c_c3 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der4c_c3"),
-			      char_type_node);
-  DECL_CONTEXT (der4c_c3) = der4c;
-  DECL_CHAIN (der4c_c3) = der4c_c4;
-  tree der4c_c2 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der4c_c2"),
-			      char_type_node);
-  DECL_CONTEXT (der4c_c2) = der4c;
-  DECL_CHAIN (der4c_c2) = der4c_c3;
-  tree der4c_c1 = build_decl (input_location, FIELD_DECL,
-			      get_identifier ("der4c_c1"),
-			      char_type_node);
-  DECL_CONTEXT (der4c_c1) = der4c;
-  DECL_CHAIN (der4c_c1) = der4c_c2;
-  TYPE_FIELDS (der4c) = der4c_c1;
-  layout_type (der4c);
-
-  tree var4c = create_var (der4c, "var4c");
-
-  context_printer printer6;
-  pretty_printer & pp6 = printer6.pp;
-
-  vec<tree> decls6{};
-  decls6.safe_push (var4c);
-
-  context_builder builder6 {};
-  builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (mem1, printer6);
-
-  tree mem_var4c = build2 (MEM_REF, long_integer_type_node,
-			   build1 (ADDR_EXPR, ptr_type_node, var4c),
-			   build_int_cst (ptr_type_node, 2));
-
-  tree res6 = printer6.print_first_data_ref_part (ctx6, mem_var4c, 0);
-
-  ASSERT_EQ (res6, char_type_node);
-  const char * str6 = pp_formatted_text (&pp6);
-  ASSERT_STREQ (str6, "var4c.der4c_c3");
-
-
-  tree der1i1d = make_node (RECORD_TYPE);
-  tree der1i1d_d2 = build_decl (input_location, FIELD_DECL,
-				get_identifier ("der1i1d_d2"),
-				der4c);
-  DECL_CONTEXT (der1i1d_d2) = der1i1d;
-  DECL_CHAIN (der1i1d_d2) = NULL_TREE;
-  tree der1i1d_i1 = build_decl (input_location, FIELD_DECL,
-				get_identifier ("der1i1d_i1"),
-				integer_type_node);
-  DECL_CONTEXT (der1i1d_i1) = der1i1d;
-  DECL_CHAIN (der1i1d_i1) = der1i1d_d2;
-  TYPE_FIELDS (der1i1d) = der1i1d_i1;
-  layout_type (der1i1d);
-
-  tree var1i1d = create_var (der1i1d, "var1i1d");
-
-  context_printer printer7;
-  pretty_printer & pp7 = printer7.pp;
-
-  vec<tree> decls7{};
-  decls7.safe_push (var1i1d);
-
-  context_builder builder7 {};
-  builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (mem1, printer7);
-
-  tree mem_var1i1d = build2 (MEM_REF, char_type_node,
-			     build1 (ADDR_EXPR, ptr_type_node, var1i1d),
-			     build_int_cst (ptr_type_node,
-					    sizeof (int) + 1));
-
-  tree res7 = printer7.print_first_data_ref_part (ctx7, mem_var1i1d, 0);
-
-  ASSERT_EQ (res7, char_type_node);
-  const char * str7 = pp_formatted_text (&pp7);
-  ASSERT_STREQ (str7, "var1i1d.der1i1d_d2.der4c_c2");
-
-
-  tree i5 = build_array_type_nelts (integer_type_node, 5);
-
-  tree var_i5 = create_var (i5, "var_i5");
-
-  context_printer printer8;
-  pretty_printer & pp8 = printer8.pp;
-
-  vec<tree> decls8{};
-  decls8.safe_push (var_i5);
-
-  context_builder builder8 {};
-  builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem1, printer8);
-
-  tree mem_var_i5 = build2 (MEM_REF, char_type_node,
-			    build1 (ADDR_EXPR, ptr_type_node, var_i5),
-			    build_int_cst (ptr_type_node,
-					   3 * sizeof (int)));
-
-  tree res8 = printer8.print_first_data_ref_part (ctx8, mem_var_i5, 0);
-
-  ASSERT_EQ (res8, integer_type_node);
-  const char * str8 = pp_formatted_text (&pp8);
-  ASSERT_STREQ (str8, "var_i5[3]");
-
-
-  context_printer printer9;
-  pretty_printer & pp9 = printer9.pp;
-
-  context_builder builder9 {};
-  builder9.add_decls (&decls8);
-  exec_context ctx9 = builder9.build (mem1, printer9);
-
-  tree mem2_var_i5 = build2 (MEM_REF, char_type_node,
-			     build1 (ADDR_EXPR, ptr_type_node, var_i5),
-			     build_int_cst (ptr_type_node,
-					    sizeof (int)));
-
-  tree res9 = printer9.print_first_data_ref_part (ctx9, mem2_var_i5,
-						  HOST_BITS_PER_INT);
-
-  ASSERT_EQ (res9, integer_type_node);
-  const char * str9 = pp_formatted_text (&pp9);
-  ASSERT_STREQ (str9, "var_i5[2]");
-
-
-  tree a5c4 = build_array_type_nelts (der4c, 5);
-
-  tree der1i1a5d = make_node (RECORD_TYPE);
-  tree der1i1a5d_a5d2 = build_decl (input_location, FIELD_DECL,
-				    get_identifier ("der1i1a5d_a5d2"),
-				    a5c4);
-  DECL_CONTEXT (der1i1a5d_a5d2) = der1i1a5d;
-  DECL_CHAIN (der1i1a5d_a5d2) = NULL_TREE;
-  tree der1i1a5d_i1 = build_decl (input_location, FIELD_DECL,
-				  get_identifier ("der1i1a5d_i1"),
-				  integer_type_node);
-  DECL_CONTEXT (der1i1a5d_i1) = der1i1a5d;
-  DECL_CHAIN (der1i1a5d_i1) = der1i1a5d_a5d2;
-  TYPE_FIELDS (der1i1a5d) = der1i1a5d_i1;
-  layout_type (der1i1a5d);
-
-  tree var_d1i1a5d = create_var (der1i1a5d, "var_d1i1a5d");
-
-  context_printer printer10;
-  pretty_printer & pp10 = printer10.pp;
-
-  vec<tree> decls10{};
-  decls10.safe_push (var_d1i1a5d);
-
-  context_builder builder10 {};
-  builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (mem1, printer10);
-
-  tree mem_var_d1i1a5d = build2 (MEM_REF, char_type_node,
-				 build1 (ADDR_EXPR, ptr_type_node, var_d1i1a5d),
-				 build_int_cst (ptr_type_node,
-						sizeof (int) + 13));
-
-  tree res10 = printer10.print_first_data_ref_part (ctx10, mem_var_d1i1a5d, 0);
-
-  ASSERT_EQ (res10, char_type_node);
-  const char * str10 = pp_formatted_text (&pp10);
-  ASSERT_STREQ (str10, "var_d1i1a5d.der1i1a5d_a5d2[3].der4c_c2");
-
-
-  tree var_i = create_var (integer_type_node, "var_i");
-  tree ptr = create_var (ptr_type_node, "ptr");
-
-  context_printer printer11;
-  pretty_printer & pp11 = printer11.pp;
-
-  vec<tree> decls11{};
-  decls11.safe_push (var_i);
-  decls11.safe_push (ptr);
-
-  context_builder builder11 {};
-  builder11.add_decls (&decls11);
-  exec_context ctx11 = builder11.build (mem1, printer11);
-
-  data_storage *var_storage = ctx11.find_reachable_var (var_i);
-  storage_address var_address (var_storage->get_ref (), 0);
-
-  data_value ptr_val (ptr_type_node);
-  ptr_val.set_address (var_address);
-
-  data_storage *ptr_storage = ctx11.find_reachable_var (ptr);
-  ptr_storage->set (ptr_val);
-
-  tree ref_ptr = build2 (MEM_REF, integer_type_node, ptr,
-			 build_zero_cst (ptr_type_node));
-
-  tree res11 = printer11.print_first_data_ref_part (ctx11, ref_ptr, 0);
-
-  ASSERT_EQ (res11, integer_type_node);
-  const char * str11 = pp_formatted_text (&pp11);
-  ASSERT_STREQ (str11, "var_i");
-}
-
-
-void
 context_printer_print_value_update_tests ()
 {
   heap_memory mem;
@@ -5935,6 +5637,45 @@ context_printer_print_value_update_tests ()
 
   const char *str6 = pp_formatted_text (&pp6);
   ASSERT_STREQ (str6, "# var2i.der2i_i1_bis = 12\n# var2i.der2i_i2_bis = 7\n");
+
+
+  context_printer printer7;
+  pretty_printer & pp7 = printer7.pp;
+  pp_buffer (&pp7)->m_flush_p = false;
+
+  tree der1c1i = make_node (RECORD_TYPE);
+  tree der1c1i_i2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1c1i_i2"),
+				integer_type_node);
+  DECL_CONTEXT (der1c1i_i2) = der1c1i;
+  DECL_CHAIN (der1c1i_i2) = NULL_TREE;
+  tree der1c1i_c1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1c1i_c1"),
+				char_type_node);
+  DECL_CONTEXT (der1c1i_c1) = der1c1i;
+  DECL_CHAIN (der1c1i_c1) = der1c1i_i2;
+  TYPE_FIELDS (der1c1i) = der1c1i_c1;
+  layout_type (der1c1i);
+
+  tree var1c1i = create_var (der1c1i, "var1c1i");
+
+  vec<tree> decls7;
+  decls7.safe_push (var1c1i);
+
+  context_builder builder7;
+  builder7.add_decls (&decls7);
+  exec_context ctx7 = builder7.build (mem, printer7);
+
+  wide_int wi3 = wi::shwi (3, CHAR_BIT);
+  wide_int wi11 = wi::shwi (11, HOST_BITS_PER_INT);
+  data_value cstr_3_11 (der1c1i);
+  cstr_3_11.set_cst_at (wi3, 0);
+  cstr_3_11.set_cst_at (wi11, int_bit_position (der1c1i_i2));
+
+  printer7.print_value_update (ctx7, var1c1i, cstr_3_11);
+
+  const char *str7 = pp_formatted_text (&pp7);
+  ASSERT_STREQ (str7, "# var1c1i.der1c1i_c1 = 3\n# var1c1i.der1c1i_i2 = 11\n");
 }
 
 
@@ -6497,7 +6238,7 @@ exec_context_evaluate_constructor_tests ()
 
   tree var3 = create_var (integer_type_node, "var3");
 
-  vec<tree> decls3;
+  vec<tree> decls3 {};
   decls3.safe_push (var3);
 
   context_builder builder3;
@@ -6554,7 +6295,7 @@ exec_context_evaluate_unary_tests ()
 
   tree c1 = create_var (char_type_node, "c1");
 
-  vec<tree> decls1;
+  vec<tree> decls1 {};
   decls1.safe_push (c1);
 
   context_builder builder1;
@@ -7476,7 +7217,6 @@ gimple_exec_cc_tests ()
   data_value_set_at_tests ();
   data_value_print_tests ();
   data_storage_set_at_tests ();
-  context_printer_print_first_data_ref_part_tests ();
   context_printer_print_value_update_tests ();
   exec_context_evaluate_tests ();
   exec_context_evaluate_literal_tests ();
