@@ -213,6 +213,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "wide-int.h"
 #include "selftest.h"
 #include "tree-ssanames.h"
+#include <optional>
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
    secondary queue used during optimization to accommodate passes that
@@ -2590,7 +2591,7 @@ public:
 };
 
 
-static data_value
+static std::optional <data_value>
 execute (struct function *func, exec_context &caller,
 	 context_printer & printer, vec<tree> * args);
 
@@ -2656,7 +2657,7 @@ public:
   data_storage & get_storage (unsigned idx) const;
   context_printer & get_printer () const { return printer; }
   data_value evaluate (tree expr) const;
-  data_value execute_function (struct function *);
+  std::optional <data_value> execute_function (struct function *);
   edge select_leaving_edge (basic_block bb, gimple *last_stmt);
   void jump (edge e);
 };
@@ -4137,11 +4138,39 @@ exec_context::execute_assign (gassign *g)
 }
 
 
+static bool
+is_ignored_function_call (gcall *g)
+{
+  if (gimple_call_builtin_p (g, BUILT_IN_FREE))
+    return true;
+
+  tree fn = gimple_call_fn (g);
+  if (TREE_CODE (fn) == ADDR_EXPR)
+    fn = TREE_OPERAND (fn, 0);
+  gcc_assert (TREE_CODE (fn) == FUNCTION_DECL);
+  const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fn));
+  if (strcmp (fn_name, "_gfortran_set_args") == 0
+      || strcmp (fn_name, "_gfortran_set_options") == 0)
+    return true;
+
+  return false;
+}
+
+
+
 void
 exec_context::execute_call (gcall *g)
 {
+  if (is_ignored_function_call (g))
+    return;
+
+  tree lhs = gimple_call_lhs (g);
+  std::optional <data_value> result;
   if (gimple_call_builtin_p (g, BUILT_IN_MALLOC))
     {
+      gcc_assert (lhs != NULL_TREE);
+      result.emplace (data_value (TREE_TYPE (lhs)));
+
       gcc_assert (gimple_call_num_args (g) == 1);
       tree arg = gimple_call_arg (g, 0);
       data_value size = evaluate (arg);
@@ -4151,16 +4180,8 @@ exec_context::execute_call (gcall *g)
       HOST_WIDE_INT alloc_amount = wi_size.to_uhwi ();
       data_storage &storage = allocate (alloc_amount);
 
-      tree lhs = gimple_call_lhs (g);
-      gcc_assert (lhs != NULL_TREE);
-      data_value ptr (TREE_TYPE (lhs));
       storage_address address (storage.get_ref (), 0);
-      ptr.set_address (address);
-
-      printer.print_value_update (*this, lhs, ptr);
-      data_storage *lhs_strg = find_var (lhs);
-      gcc_assert (lhs_strg != nullptr);
-      lhs_strg->set (ptr);
+      result->set_address (address);
     }
   else
     {
@@ -4168,12 +4189,7 @@ exec_context::execute_call (gcall *g)
       if (TREE_CODE (fn) == ADDR_EXPR)
 	fn = TREE_OPERAND (fn, 0);
       gcc_assert (TREE_CODE (fn) == FUNCTION_DECL);
-      const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fn));
-      if (strcmp (fn_name, "_gfortran_set_args") == 0
-	  || strcmp (fn_name, "_gfortran_set_options") == 0)
-	return;
 
-      tree lhs = gimple_call_lhs (g);
       unsigned nargs = gimple_call_num_args (g); 
       auto_vec <tree> arguments;
       arguments.reserve (nargs);
@@ -4181,13 +4197,17 @@ exec_context::execute_call (gcall *g)
       for (unsigned i = 0; i < nargs; i++)
 	arguments.quick_push (gimple_call_arg (g, i));
 
-      data_value result = ::execute (DECL_STRUCT_FUNCTION (fn), *this, printer,
-				     &arguments);
-      printer.print_value_update (*this, lhs, result);
-      data_storage *lhs_strg = find_var (lhs);
-      gcc_assert (lhs_strg != nullptr);
-      lhs_strg->set (result);
+      result = ::execute (DECL_STRUCT_FUNCTION (fn), *this, printer,
+			  &arguments);
     }
+
+  if (lhs == NULL_TREE)
+    return;
+
+  printer.print_value_update (*this, lhs, *result);
+  data_storage *lhs_strg = find_var (lhs);
+  gcc_assert (lhs_strg != nullptr);
+  lhs_strg->set (*result);
 }
 
 
@@ -4303,7 +4323,7 @@ exec_context::jump (edge e)
 }
 
 
-data_value
+std::optional <data_value>
 exec_context::execute_function (struct function *func)
 {
   printer.print_function_entry (func);
@@ -4321,19 +4341,26 @@ exec_context::execute_function (struct function *func)
 	  break;
 	}
 
+      if (bb == EXIT_BLOCK_PTR_FOR_FN (func))
+	break;
+
       edge e = select_leaving_edge (bb, last_stmt);
       jump (e);
       bb = e->dest;
     }
 
+  if (final_stmt == nullptr)
+    return {};
   tree retexpr = gimple_return_retval (final_stmt);
+  if (retexpr == NULL_TREE)
+    return {};
   data_value result = evaluate (retexpr);
   printer.print_function_exit (func);
   return result;
 }
 
 
-static data_value
+static std::optional <data_value>
 execute (struct function * func, exec_context & caller,
 	 context_printer & printer, vec<tree> * arg_values)
 {
@@ -7142,6 +7169,27 @@ exec_context_execute_call_tests ()
   data_value p_val5 = p_strg5->get_value ();
   ASSERT_EQ (p_val5.classify (), VAL_ADDRESS);
   ASSERT_EQ (&p_val5.get_address ()->storage.get (), alloc_strg5);
+
+
+  tree simple_type = build_function_type (void_type_node, NULL_TREE);
+  layout_type (simple_type);
+
+  exec_context ctx6 = context_builder ().build (mem, printer);
+
+  tree simple_func = build_decl (input_location, FUNCTION_DECL,
+				 get_identifier ("simple_func"),
+				 simple_type);
+  tree void_result = build_decl (input_location, RESULT_DECL,
+				 get_identifier ("void_result"),
+				 void_type_node);
+  DECL_CONTEXT (void_result) = simple_func;
+  DECL_RESULT (simple_func) = void_result;
+
+  init_lowered_empty_function (simple_func, true, profile_count::one ());
+
+  gcall * simple_call = gimple_build_call (simple_func, 0);
+
+  ctx6.execute (simple_call);
 }
 
 void
