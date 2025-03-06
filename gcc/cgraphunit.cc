@@ -6585,7 +6585,7 @@ exec_context_evaluate_tests ()
   tree v9i = create_var (a9i, "v9i");
   tree p = create_var (ptr_type_node, "p");
 
-  vec<tree> decls9;
+  vec<tree> decls9 {};
   decls9.safe_push (v9i);
   decls9.safe_push (p);
 
