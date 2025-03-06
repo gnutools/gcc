@@ -4257,8 +4257,15 @@ exec_context::execute (basic_block bb)
 edge
 exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
 {
+  if (last_stmt != nullptr)
+    printer.begin_stmt (last_stmt);
+
   if (last_stmt == nullptr || is_a <ggoto *> (last_stmt))
-    return single_succ_edge (bb);
+    {
+      if (last_stmt != nullptr)
+	printer.end_stmt (last_stmt);
+      return single_succ_edge (bb);
+    }
 
   if (is_a <gcond *> (last_stmt))
     {
@@ -4290,6 +4297,8 @@ exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
 	    gcc_assert (selected == nullptr);
 	    selected = e;
 	  }
+
+      printer.end_stmt (last_stmt);
 
       gcc_assert (selected != nullptr);
       return selected;
