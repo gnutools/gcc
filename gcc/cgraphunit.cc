@@ -213,7 +213,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "wide-int.h"
 #include "selftest.h"
 #include "tree-ssanames.h"
-#include <optional>
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
    secondary queue used during optimization to accommodate passes that
@@ -2475,7 +2474,7 @@ public:
   data_value (tree type)
     : data_value (get_constant_type_size (type))
   {}
-  data_value (const data_value &) = default;
+  data_value (const data_value &);
   data_value & operator= (const data_value &);
   value_type classify () const;
   value_type classify (unsigned offset, unsigned width) const;
@@ -2593,7 +2592,50 @@ public:
 };
 
 
-static std::optional <data_value>
+template <typename T>
+class optional 
+{
+  union u
+    {
+      u (T arg) : value (arg) {}
+      u () : dummy (0) {}
+      u (const u & other, bool present) { if (present) { new (&value) T (other.value); } else { new (&dummy) char (0); } }
+      ~u () {} // TODO
+      T value;
+      char dummy;
+    }
+  u;
+  bool present;
+
+public:
+  optional () : u (), present (false) {}
+  optional (T arg) : u (arg), present (true) {}
+  optional (const optional & other) : u (other.u, other.present), present (other.present) {}
+  ~optional () {}  // TODO
+  optional & operator= (const optional & other) { new (this) optional (other); return *this; }
+  T & operator * () const;
+  void emplace (T value);
+};
+
+
+template <typename T>
+T &
+optional<T>::operator* () const
+{
+  gcc_assert (present);
+  return const_cast <T &> (u.value);
+}
+
+template <typename T>
+void
+optional<T>::emplace (T arg)
+{
+  present = true;
+  u.value = arg;
+}
+
+
+static optional <data_value>
 execute (struct function *func, exec_context &caller,
 	 context_printer & printer, vec<tree> * args);
 
@@ -2660,7 +2702,7 @@ public:
   data_storage & get_storage (unsigned idx) const;
   context_printer & get_printer () const { return printer; }
   data_value evaluate (tree expr) const;
-  std::optional <data_value> execute_function (struct function *);
+  optional <data_value> execute_function (struct function *);
   edge select_leaving_edge (basic_block bb, gimple *last_stmt);
   void jump (edge e);
 };
@@ -3138,10 +3180,18 @@ data_storage::get_ref () const
 }
 
 
+data_value::data_value (const data_value & other)
+  : bit_width (other.bit_width),
+  constant_mask (other.constant_mask),
+  address_mask (other.address_mask),
+  constant_value (other.constant_value),
+  addresses (other.addresses)
+{}
+
+
 data_value & data_value::operator= (const data_value & other)
 {
-  gcc_assert (other.bit_width == bit_width);
-  set (other);
+  new (this) data_value (other);
   return *this;
 }
 
@@ -4209,7 +4259,7 @@ exec_context::execute_call (gcall *g)
     return;
 
   tree lhs = gimple_call_lhs (g);
-  std::optional <data_value> result;
+  optional <data_value> result;
   if (gimple_call_builtin_p (g, BUILT_IN_MALLOC))
     {
       gcc_assert (lhs != NULL_TREE);
@@ -4225,7 +4275,7 @@ exec_context::execute_call (gcall *g)
       data_storage &storage = allocate (alloc_amount);
 
       storage_address address (storage.get_ref (), 0);
-      result->set_address (address);
+      (*result).set_address (address);
     }
   else
     {
@@ -4376,7 +4426,7 @@ exec_context::jump (edge e)
 }
 
 
-std::optional <data_value>
+optional <data_value>
 exec_context::execute_function (struct function *func)
 {
   printer.print_function_entry (func);
@@ -4413,7 +4463,7 @@ exec_context::execute_function (struct function *func)
 }
 
 
-static std::optional <data_value>
+static optional <data_value>
 execute (struct function * func, exec_context & caller,
 	 context_printer & printer, vec<tree> * arg_values)
 {
