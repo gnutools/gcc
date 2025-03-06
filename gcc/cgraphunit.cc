@@ -2433,6 +2433,7 @@ namespace selftest
   void data_value_set_at_tests ();
   void data_value_set_address_tests ();
   void data_value_print_tests ();
+  void context_printer_print_tests ();
   void context_printer_print_first_data_ref_part_tests ();
   void context_printer_print_value_update_tests ();
   void exec_context_evaluate_tests ();
@@ -2568,6 +2569,7 @@ class context_printer
 
   friend void selftest::exec_context_evaluate_tests ();
   friend void selftest::data_value_print_tests ();
+  friend void selftest::context_printer_print_tests ();
   friend void selftest::context_printer_print_first_data_ref_part_tests ();
   friend void selftest::context_printer_print_value_update_tests ();
 
@@ -2576,7 +2578,7 @@ public:
   context_printer (dump_flags_t f);
   pretty_printer & get_pretty_printer () const { return const_cast <pretty_printer &> (pp); }
   void begin_stmt (gimple *);
-  void print (tree);
+  void print (exec_context *, tree);
   void print_newline ();
   void print_function_entry (struct function * func);
   void print_function_exit (struct function * func);
@@ -2638,6 +2640,7 @@ class exec_context
   friend void selftest::data_value_print_tests ();
   friend void selftest::data_value_set_address_tests ();
   friend void selftest::data_value_set_tests ();
+  friend void selftest::context_printer_print_tests ();
   friend void selftest::exec_context_evaluate_literal_tests ();
   friend void selftest::exec_context_evaluate_unary_tests ();
   friend void selftest::exec_context_evaluate_binary_tests ();
@@ -2808,9 +2811,50 @@ context_printer::begin_stmt (gimple *g)
 }
 
 void
-context_printer::print (tree expr)
+context_printer::print (exec_context * ctx, tree expr)
 {
-  dump_generic_node (&pp, expr, pp_indentation (&pp), flags, false);
+  switch (TREE_CODE (expr))
+    {
+    case MEM_REF:
+      {
+	gcc_assert (ctx != nullptr);
+	data_value val = ctx->evaluate (TREE_OPERAND (expr, 0));
+	gcc_assert (val.classify () == VAL_ADDRESS);
+	storage_address *address = val.get_address ();
+	gcc_assert (address != nullptr);
+
+	data_value val_off = ctx->evaluate (TREE_OPERAND (expr, 1));
+	gcc_assert (val_off.classify () == VAL_CONSTANT);
+	wide_int wi_off = val_off.get_cst ();
+	wi_off = (wi_off * CHAR_BIT) + address->offset;
+
+	if (!wi::fits_uhwi_p (wi_off))
+	  gcc_unreachable ();
+	unsigned offset_bits = wi_off.to_uhwi ();
+	gcc_assert (offset_bits % CHAR_BIT == 0);
+	unsigned offset_bytes = offset_bits / CHAR_BIT;
+
+	unsigned size_bits;
+	if (!get_constant_type_size (TREE_TYPE (expr), size_bits))
+	  gcc_unreachable ();
+	gcc_assert (size_bits % CHAR_BIT == 0);
+	unsigned size_bytes = size_bits / CHAR_BIT;
+
+	address->storage.get ().print (*this);
+	pp_left_bracket (&pp);
+	pp_decimal_int (&pp, offset_bytes);
+	pp_character (&pp, 'B');
+	pp_colon (&pp);
+	pp_plus (&pp);
+	pp_decimal_int (&pp, size_bytes);
+	pp_character (&pp, 'B');
+	pp_right_bracket (&pp);
+      }
+      break;
+
+    default:
+      dump_generic_node (&pp, expr, pp_indentation (&pp), flags, false);
+    }
 }
 
 
@@ -3005,7 +3049,7 @@ context_printer::print_first_data_ref_part (exec_context & context, tree data_re
       pp_indent (&pp);
       pp_character (&pp, '#');
       pp_space (&pp);
-      print (ref);
+      print (&context, ref);
       return TREE_TYPE (ref);
     }
 }
@@ -3478,7 +3522,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 		tree int_type = make_signed_type (width);
 		tree cst = wide_int_to_tree (int_type, wi_val);
 		tree real = fold_build1 (VIEW_CONVERT_EXPR, type, cst);
-		print (real);
+		print (nullptr, real);
 	      }
 	    else
 	      pp_wide_int (&pp, wi_val, SIGNED); 
@@ -3542,7 +3586,7 @@ data_storage::print (context_printer & printer) const
     case STRG_VARIABLE:
       {
 	tree decl = get_variable ();
-	printer.print (decl);
+	printer.print (nullptr, decl);
       }
       break;
 
@@ -5472,6 +5516,109 @@ data_storage_set_at_tests ()
 
 
 void
+context_printer_print_tests ()
+{
+  heap_memory mem1;
+
+  context_printer printer1;
+  pretty_printer & pp1 = printer1.pp;
+
+  tree p1 = create_var (ptr_type_node, "p1");
+
+  vec<tree> decls1 {};
+  decls1.safe_push (p1);
+
+  context_builder builder1;
+  builder1.add_decls (&decls1);
+  exec_context ctx1 = builder1.build (mem1, printer1);
+
+  data_storage & alloc1 = ctx1.allocate (12);
+
+  storage_address addr_alloc1 (alloc1.get_ref (), 0);
+  data_value val_addr1 (ptr_type_node);
+  val_addr1.set_address (addr_alloc1);
+
+  data_storage *strg_p1 = ctx1.find_reachable_var (p1);
+  gcc_assert (strg_p1 != nullptr);
+  strg_p1->set (val_addr1);
+
+  tree mem_alloc1 = build2 (MEM_REF, char_type_node,
+			    p1, build_zero_cst (ptr_type_node));
+
+  printer1.print (&ctx1, mem_alloc1);
+
+  const char * str1 = pp_formatted_text (&pp1);
+  ASSERT_STREQ (str1, "<alloc00(12)>[0B:+1B]");
+
+
+  heap_memory mem2;
+
+  context_printer printer2;
+  pretty_printer & pp2 = printer2.pp;
+
+  tree p2 = create_var (ptr_type_node, "p2");
+
+  vec<tree> decls2 {};
+  decls2.safe_push (p2);
+
+  context_builder builder2;
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (mem2, printer2);
+
+  data_storage & alloc2 = ctx2.allocate (17);
+
+  storage_address addr_alloc2 (alloc2.get_ref (), 24);
+  data_value val_addr2 (ptr_type_node);
+  val_addr2.set_address (addr_alloc2);
+
+  data_storage *strg_p2 = ctx2.find_reachable_var (p2);
+  gcc_assert (strg_p2 != nullptr);
+  strg_p2->set (val_addr2);
+
+  tree mem_alloc2 = build2 (MEM_REF, char_type_node,
+			    p2, build_int_cst (ptr_type_node, 11));
+
+  printer2.print (&ctx2, mem_alloc2);
+
+  const char * str2 = pp_formatted_text (&pp2);
+  ASSERT_STREQ (str2, "<alloc00(17)>[14B:+1B]");
+
+
+  heap_memory mem3;
+
+  context_printer printer3;
+  pretty_printer & pp3 = printer3.pp;
+
+  tree p3 = create_var (ptr_type_node, "p3");
+
+  vec<tree> decls3 {};
+  decls3.safe_push (p3);
+
+  context_builder builder3;
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (mem3, printer3);
+
+  data_storage & alloc3 = ctx3.allocate (19);
+
+  storage_address addr_alloc3 (alloc3.get_ref (), 40);
+  data_value val_addr3 (ptr_type_node);
+  val_addr3.set_address (addr_alloc3);
+
+  data_storage *strg_p3 = ctx3.find_reachable_var (p3);
+  gcc_assert (strg_p3 != nullptr);
+  strg_p3->set (val_addr3);
+
+  tree mem_alloc3 = build2 (MEM_REF, integer_type_node,
+			    p3, build_int_cst (ptr_type_node, 3));
+
+  printer3.print (&ctx3, mem_alloc3);
+
+  const char * str3 = pp_formatted_text (&pp3);
+  ASSERT_STREQ (str3, "<alloc00(19)>[8B:+4B]");
+}
+
+
+void
 context_printer_print_first_data_ref_part_tests ()
 {
   vec<tree> empty{};
@@ -6039,7 +6186,7 @@ context_printer_print_value_update_tests ()
 
   tree var1c1i = create_var (der1c1i, "var1c1i");
 
-  vec<tree> decls7;
+  vec<tree> decls7 {};
   decls7.safe_push (var1c1i);
 
   context_builder builder7;
@@ -7618,6 +7765,7 @@ gimple_exec_cc_tests ()
   data_value_set_at_tests ();
   data_value_print_tests ();
   data_storage_set_at_tests ();
+  context_printer_print_tests ();
   context_printer_print_first_data_ref_part_tests ();
   context_printer_print_value_update_tests ();
   exec_context_evaluate_tests ();
