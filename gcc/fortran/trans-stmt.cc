@@ -3996,8 +3996,10 @@ gfc_trans_select_rank_cases (gfc_code * code)
   /* Calculate the switch expression.  */
   gfc_init_se (&se, NULL);
   gfc_conv_expr_descriptor (&se, code->expr1);
+  gfc_add_block_to_block (&block, &se.pre);
   rank = gfc_conv_descriptor_rank_get (se.expr);
   rank = gfc_evaluate_now (rank, &block);
+  gfc_add_block_to_block (&block, &se.post);
   symbol_attribute attr = gfc_expr_attr (code->expr1);
   if (!attr.pointer && !attr.allocatable)
     {
