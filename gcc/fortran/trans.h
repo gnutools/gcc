@@ -1040,6 +1040,7 @@ struct GTY(())	lang_type	 {
   tree nonrestricted_type;
   tree caf_token;
   tree caf_offset;
+  tree parent_class_wrapper_type;
 };
 
 struct GTY(()) lang_decl {
@@ -1118,7 +1119,8 @@ struct GTY(()) lang_decl {
   (TYPE_LANG_SPECIFIC(node)->dataptr_type)
 #define GFC_TYPE_ARRAY_BASE_DECL(node, internal) \
   (TYPE_LANG_SPECIFIC(node)->base_decl[(internal)])
-
+#define GFC_TYPE_PARENT_CLASS_TYPE(node) \
+  (TYPE_LANG_SPECIFIC(node)->parent_class_wrapper_type)
 
 /* Build an expression with void type.  */
 #define build1_v(code, arg) \

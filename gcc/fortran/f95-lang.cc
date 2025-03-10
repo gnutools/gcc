@@ -40,6 +40,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-types.h"
 #include "trans-const.h"
 #include "attribs.h"
+#include "alias.h"
 
 /* Language-dependent contents of an identifier.  */
 
@@ -78,6 +79,8 @@ static void gfc_finish (void);
 static void gfc_be_parse_file (void);
 static void gfc_init_ts (void);
 static tree gfc_builtin_function (tree);
+static alias_set_type gfc_get_alias_set (tree t);
+
 
 /* Handle an "omp declare target" attribute; arguments as in
    struct attribute_spec.handler.  */
@@ -134,6 +137,7 @@ gfc_get_sarif_source_language (const char *)
 #undef LANG_HOOKS_TYPE_FOR_MODE
 #undef LANG_HOOKS_TYPE_FOR_SIZE
 #undef LANG_HOOKS_INIT_TS
+#undef LANG_HOOKS_GET_ALIAS_SET
 #undef LANG_HOOKS_OMP_ARRAY_DATA
 #undef LANG_HOOKS_OMP_ARRAY_SIZE
 #undef LANG_HOOKS_OMP_IS_ALLOCATABLE_OR_PTR
@@ -177,6 +181,7 @@ gfc_get_sarif_source_language (const char *)
 #define LANG_HOOKS_TYPE_FOR_MODE	gfc_type_for_mode
 #define LANG_HOOKS_TYPE_FOR_SIZE	gfc_type_for_size
 #define LANG_HOOKS_INIT_TS		gfc_init_ts
+#define LANG_HOOKS_GET_ALIAS_SET        gfc_get_alias_set
 #define LANG_HOOKS_OMP_ARRAY_DATA		gfc_omp_array_data
 #define LANG_HOOKS_OMP_ARRAY_SIZE		gfc_omp_array_size
 #define LANG_HOOKS_OMP_IS_ALLOCATABLE_OR_PTR	gfc_omp_is_allocatable_or_ptr
@@ -308,6 +313,29 @@ gfc_finish (void)
   gfc_release_include_path ();
   return;
 }
+
+
+static alias_set_type
+gfc_get_alias_set (tree t)
+{
+  if (!TYPE_P (t))
+    return -1;
+
+  if (!GFC_CLASS_TYPE_P (t))
+    return -1;
+
+  if (!(TYPE_LANG_SPECIFIC (t) && GFC_TYPE_PARENT_CLASS_TYPE (t)))
+    return -1;
+
+  alias_set_type new_set = get_default_alias_set (t);
+  TYPE_ALIAS_SET (t) = new_set;
+  tree parent_wrapper_type = GFC_TYPE_PARENT_CLASS_TYPE (t);
+  alias_set_type parent_set = get_alias_set (parent_wrapper_type);
+
+  record_alias_subset (parent_set, new_set);
+  return new_set;
+}
+
 
 /* These functions and variables deal with binding contours.  We only
    need these functions for the list of PARM_DECLs, but we leave the
