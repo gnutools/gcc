@@ -2834,6 +2834,60 @@ cobounds_match_decl (const gfc_symbol *derived)
   return true;
 }
 
+
+gfc_symbol *
+get_class_canonical_type (gfc_symbol *cls)
+{
+  gcc_assert (cls->attr.is_class);
+
+  gfc_component * data_comp = cls->components;
+
+  gfc_symbol *derived = data_comp->ts.u.derived;
+  int rank = data_comp->as ? data_comp->as->rank : 0;
+  int corank = data_comp->as ? data_comp->as->corank : 0;
+  const char *class_name = gfc_class_name (derived, rank, corank, 0, 0);
+
+  gfc_namespace *ns = gfc_class_namespace (derived);
+
+  gfc_symbol *canonical_class = nullptr;
+  gfc_find_symbol (class_name, ns, 0, &canonical_class);
+
+  if (canonical_class != nullptr)
+    return canonical_class;
+
+  gfc_typespec ts;
+  memset (&ts, 0, sizeof (ts));
+  ts.type = BT_CLASS;
+  ts.u.derived = derived;
+
+  symbol_attribute attr;
+  memset (&attr, 0, sizeof (attr));
+  attr.dummy = 1;
+  attr.dimension = derived->attr.dimension;
+  attr.codimension = derived->attr.codimension;
+
+  gfc_array_spec as;
+  gfc_array_spec *pas;
+  if (data_comp->as)
+    {
+      memset (&as, 0, sizeof (as));
+      as.type = AS_DEFERRED;
+      as.rank = data_comp->as->rank;
+      as.corank = data_comp->as->corank;
+
+      pas = &as;
+    }
+  else
+    pas = nullptr;
+
+  gfc_build_class_symbol (&ts, &attr, &pas);
+
+  gfc_find_symbol (class_name, ns, 0, &canonical_class);
+
+  return canonical_class;
+}
+
+
 /* Build a tree node for a derived type.  If there are equal
    derived types, with different local names, these are built
    at the same time.  If an equal derived type has been built
@@ -3182,6 +3236,12 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
   /* Now lay out the derived type, including the fields.  */
   if (canonical)
     TYPE_CANONICAL (typenode) = canonical;
+  else if (derived->attr.is_class)
+    {
+      gfc_symbol * canonical_sym = get_class_canonical_type (derived);
+      if (canonical_sym != nullptr)
+	TYPE_CANONICAL (typenode) = gfc_get_derived_type (canonical_sym, codimen);
+    }
 
   gfc_finish_type (typenode);
   gfc_set_decl_location (TYPE_STUB_DECL (typenode), &derived->declared_at);

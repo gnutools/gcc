@@ -632,6 +632,51 @@ gfc_get_len_component (gfc_expr *e, int k)
 }
 
 
+gfc_namespace *
+gfc_class_namespace (gfc_symbol * derived)
+{
+  if (derived->attr.unlimited_polymorphic)
+    {
+      /* Find the top-level namespace.  */
+      for (gfc_namespace * ns = gfc_current_ns; ns; ns = ns->parent)
+	if (!ns->parent)
+	  return ns;
+
+      gcc_unreachable ();
+    }
+  else
+    return derived->ns;
+}
+
+
+char *
+gfc_class_name (gfc_symbol *derived, int rank, int corank,
+		bool allocatable, bool pointer)
+{
+  char tname[GFC_MAX_SYMBOL_LEN+1];
+  char * name;
+
+  get_unique_hashed_string (tname, derived);
+  if (rank == -1)
+    rank = GFC_MAX_DIMENSIONS;
+  bool array = rank != 0 || corank != 0;
+  if (array && allocatable)
+    name = xasprintf ("__class_%s_%d_%da", tname, rank, corank);
+  else if (array && pointer)
+    name = xasprintf ("__class_%s_%d_%dp", tname, rank, corank);
+  else if (array)
+    name = xasprintf ("__class_%s_%d_%dt", tname, rank, corank);
+  else if (pointer)
+    name = xasprintf ("__class_%s_p", tname);
+  else if (allocatable)
+    name = xasprintf ("__class_%s_a", tname);
+  else
+    name = xasprintf ("__class_%s_t", tname);
+
+  return name;
+}
+
+
 /* Build a polymorphic CLASS entity, using the symbol that comes from
    build_sym. A CLASS entity is represented by an encapsulating type,
    which contains the declared type as '_data' component, plus a pointer
@@ -644,7 +689,6 @@ bool
 gfc_build_class_symbol (gfc_typespec *ts, symbol_attribute *attr,
 			gfc_array_spec **as)
 {
-  char tname[GFC_MAX_SYMBOL_LEN+1];
   char *name;
   gfc_typespec *orig_ts = ts;
   gfc_symbol *fclass;
@@ -683,34 +727,15 @@ gfc_build_class_symbol (gfc_typespec *ts, symbol_attribute *attr,
     return true;
 
   /* Determine the name of the encapsulating type.  */
-  rank = !(*as) || (*as)->rank == -1 ? GFC_MAX_DIMENSIONS : (*as)->rank;
+  rank = !(*as) ? 0 : (*as)->rank == -1 ? GFC_MAX_DIMENSIONS : (*as)->rank;
 
   if (!ts->u.derived)
     return false;
 
-  get_unique_hashed_string (tname, ts->u.derived);
-  if ((*as) && attr->allocatable)
-    name = xasprintf ("__class_%s_%d_%da", tname, rank, (*as)->corank);
-  else if ((*as) && attr->pointer)
-    name = xasprintf ("__class_%s_%d_%dp", tname, rank, (*as)->corank);
-  else if ((*as))
-    name = xasprintf ("__class_%s_%d_%dt", tname, rank, (*as)->corank);
-  else if (attr->pointer)
-    name = xasprintf ("__class_%s_p", tname);
-  else if (attr->allocatable)
-    name = xasprintf ("__class_%s_a", tname);
-  else
-    name = xasprintf ("__class_%s_t", tname);
-
-  if (ts->u.derived->attr.unlimited_polymorphic)
-    {
-      /* Find the top-level namespace.  */
-      for (ns = gfc_current_ns; ns; ns = ns->parent)
-	if (!ns->parent)
-	  break;
-    }
-  else
-    ns = ts->u.derived->ns;
+  int corank = (*as) == nullptr ? 0 : (*as)->corank;
+  name = gfc_class_name (ts->u.derived, rank,  corank,
+			 attr->allocatable, attr->pointer);
+  ns = gfc_class_namespace (ts->u.derived);
 
   /* Although this might seem to be counterintuitive, we can build separate
      class types with different array specs because the TKR interface checks
