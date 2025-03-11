@@ -2856,24 +2856,21 @@ get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
   symbol_attribute attr;
   memset (&attr, 0, sizeof (attr));
   attr.dummy = 1;
-  attr.dimension = derived->attr.dimension;
-  attr.codimension = derived->attr.codimension;
+  attr.dimension = rank != 0;
+  attr.codimension = corank != 0;
 
-  gfc_array_spec as;
-  gfc_array_spec *pas;
+  gfc_array_spec *as;
   if (rank != 0 || corank != 0)
     {
-      memset (&as, 0, sizeof (as));
-      as.type = AS_DEFERRED;
-      as.rank = rank;
-      as.corank = corank;
-
-      pas = &as;
+      as = gfc_get_array_spec ();
+      as->type = AS_DEFERRED;
+      as->rank = rank;
+      as->corank = corank;
     }
   else
-    pas = nullptr;
+    as = nullptr;
 
-  gfc_build_class_symbol (&ts, &attr, &pas);
+  gfc_build_class_symbol (&ts, &attr, &as);
 
   gfc_find_symbol (class_name, ns, 0, &canonical_class);
   if (canonical_class)
