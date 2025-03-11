@@ -3553,6 +3553,7 @@ void gfc_maybe_initialize_eh (void);
 /* iresolve.cc */
 const char * gfc_get_string (const char *, ...) ATTRIBUTE_PRINTF_1;
 bool gfc_find_sym_in_expr (gfc_symbol *, gfc_expr *);
+void gfc_resolve_symbol (gfc_symbol *);
 
 /* error.cc */
 locus gfc_get_location_range (locus *, unsigned, locus *, unsigned, locus *);
