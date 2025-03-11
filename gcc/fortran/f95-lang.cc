@@ -315,24 +315,60 @@ gfc_finish (void)
 }
 
 
+static bool
+is_non_root_class_wrapper_type (tree t)
+{
+  if (!TYPE_P (t))
+    return false;
+
+  if (!GFC_CLASS_TYPE_P (t))
+    return false;
+
+  if (!(TYPE_LANG_SPECIFIC (t) && GFC_TYPE_PARENT_CLASS_TYPE (t)))
+    return false;
+
+  return true;
+}
+
+
 static alias_set_type
 gfc_get_alias_set (tree t)
 {
   if (!TYPE_P (t))
     return -1;
 
-  if (!GFC_CLASS_TYPE_P (t))
-    return -1;
+  tree parent_type = NULL_TREE;
+  if (POINTER_TYPE_P (t))
+    {
+      tree pointee_type = TREE_TYPE (t);
+      if (!is_non_root_class_wrapper_type (pointee_type))
+	return -1;
 
-  if (!(TYPE_LANG_SPECIFIC (t) && GFC_TYPE_PARENT_CLASS_TYPE (t)))
+      tree parent_wrapper_type = GFC_TYPE_PARENT_CLASS_TYPE (pointee_type);
+      if (TREE_CODE (t) == REFERENCE_TYPE)
+	parent_type = build_reference_type (parent_wrapper_type);
+      else
+	parent_type = build_pointer_type (parent_wrapper_type);
+    }
+  else if (!is_non_root_class_wrapper_type (t))
     return -1;
+  else
+    parent_type = GFC_TYPE_PARENT_CLASS_TYPE (t);
 
   alias_set_type new_set = get_default_alias_set (t);
   TYPE_ALIAS_SET (t) = new_set;
-  tree parent_wrapper_type = GFC_TYPE_PARENT_CLASS_TYPE (t);
-  alias_set_type parent_set = get_alias_set (parent_wrapper_type);
+  alias_set_type parent_set = get_alias_set (parent_type);
 
   record_alias_subset (parent_set, new_set);
+  
+  if (!POINTER_TYPE_P (t))
+    {
+      alias_set_type parent_base_set = get_alias_set (TREE_TYPE (TYPE_FIELDS (parent_type)));
+      alias_set_type child_base_set = get_alias_set (TREE_TYPE (TYPE_FIELDS (t)));
+
+      record_alias_subset (parent_base_set, child_base_set);
+    }
+
   return new_set;
 }
 
