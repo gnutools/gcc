@@ -2874,7 +2874,11 @@ get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
 
   gfc_find_symbol (class_name, ns, 0, &canonical_class);
   if (canonical_class)
-    gfc_resolve_symbol (canonical_class);
+    {
+      if (derived->module)
+	canonical_class->module = gfc_get_string ("%s", derived->module);
+      gfc_resolve_symbol (canonical_class);
+    }
 
   return canonical_class;
 }
@@ -3247,7 +3251,10 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
     {
       gfc_symbol * canonical_sym = get_class_canonical_type (derived);
       if (canonical_sym != nullptr)
-	TYPE_CANONICAL (typenode) = gfc_get_derived_type (canonical_sym, codimen);
+	{
+	  tree canonical_sym_decl = gfc_get_derived_type (canonical_sym, codimen);
+	  TYPE_CANONICAL (typenode) = TYPE_CANONICAL (canonical_sym_decl);
+	}
       gfc_component * data_comp = derived->components;
       gfc_symbol *orig_type = data_comp->ts.u.derived;
       if (orig_type->attr.extension)
