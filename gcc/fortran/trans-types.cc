@@ -2863,7 +2863,10 @@ get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
   if (rank != 0 || corank != 0)
     {
       as = gfc_get_array_spec ();
-      as->type = AS_DEFERRED;
+      if (rank == -1)
+	as->type = AS_ASSUMED_RANK;
+      else
+	as->type = AS_DEFERRED;
       as->rank = rank;
       as->corank = corank;
     }
