@@ -363,10 +363,17 @@ gfc_get_alias_set (tree t)
   
   if (!POINTER_TYPE_P (t))
     {
-      alias_set_type parent_base_set = get_alias_set (TREE_TYPE (TYPE_FIELDS (parent_type)));
-      alias_set_type child_base_set = get_alias_set (TREE_TYPE (TYPE_FIELDS (t)));
-
+      tree parent_field = TYPE_FIELDS (parent_type);
+      tree child_field = TYPE_FIELDS (t);
+      alias_set_type parent_base_set = get_alias_set (parent_field);
+      alias_set_type child_base_set = get_alias_set (child_field);
       record_alias_subset (parent_base_set, child_base_set);
+
+      parent_field = TREE_CHAIN (parent_field);
+      child_field = TREE_CHAIN (child_field);
+      alias_set_type parent_vtype_ptr_set = get_alias_set (TREE_TYPE (parent_field));
+      alias_set_type child_vtype_ptr_set = get_alias_set (TREE_TYPE (child_field));
+      record_alias_subset (parent_vtype_ptr_set, child_vtype_ptr_set);
     }
 
   return new_set;
