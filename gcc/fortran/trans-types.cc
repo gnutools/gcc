@@ -2836,8 +2836,11 @@ cobounds_match_decl (const gfc_symbol *derived)
 
 
 gfc_symbol *
-get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
+get_class_canonical_type (gfc_symbol *derived, gfc_array_spec *as)
 {
+
+  int rank = as ? as->rank : 0;
+  int corank = as ? as->corank : 0;
   const char *class_name = gfc_class_name (derived, rank, corank, 0, 0);
 
   gfc_namespace *ns = gfc_class_namespace (derived);
@@ -2846,7 +2849,13 @@ get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
   gfc_find_symbol (class_name, ns, 0, &canonical_class);
 
   if (canonical_class != nullptr)
-    return canonical_class;
+    {
+      gfc_array_spec *found_as = canonical_class->components->as;
+      if (gfc_compare_array_spec (as, found_as))
+	return canonical_class;
+      else
+	return nullptr;
+    }
 
   gfc_typespec ts;
   memset (&ts, 0, sizeof (ts));
@@ -2859,21 +2868,9 @@ get_class_canonical_type (gfc_symbol *derived, int rank, int corank)
   attr.dimension = rank != 0;
   attr.codimension = corank != 0;
 
-  gfc_array_spec *as;
-  if (rank != 0 || corank != 0)
-    {
-      as = gfc_get_array_spec ();
-      if (rank == -1)
-	as->type = AS_ASSUMED_RANK;
-      else
-	as->type = AS_DEFERRED;
-      as->rank = rank;
-      as->corank = corank;
-    }
-  else
-    as = nullptr;
+  gfc_array_spec *tmp_as = gfc_copy_array_spec (as);
 
-  gfc_build_class_symbol (&ts, &attr, &as);
+  gfc_build_class_symbol (&ts, &attr, &tmp_as);
 
   gfc_find_symbol (class_name, ns, 0, &canonical_class);
   if (canonical_class)
@@ -2895,10 +2892,8 @@ get_class_canonical_type (gfc_symbol *cls)
   gfc_component * data_comp = cls->components;
 
   gfc_symbol *derived = data_comp->ts.u.derived;
-  int rank = data_comp->as ? data_comp->as->rank : 0;
-  int corank = data_comp->as ? data_comp->as->corank : 0;
 
-  return get_class_canonical_type (derived, rank, corank);
+  return get_class_canonical_type (derived, data_comp->as);
 }
 
 
@@ -2911,9 +2906,10 @@ tree
 gfc_get_derived_type (gfc_symbol * derived, int codimen)
 {
   tree typenode = NULL, field = NULL, field_type = NULL;
-  tree canonical = NULL_TREE;
+  tree canonical = NULL_TREE, class_canonical = NULL_TREE;
   tree *chain = NULL;
   bool got_canonical = false;
+  bool self_is_canonical = false;
   bool unlimited_entity = false;
   gfc_component *c;
   gfc_namespace *ns;
@@ -2976,6 +2972,15 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
       && gfc_get_module_backend_decl (derived))
     goto copy_derived_types;
 
+  if (derived->attr.is_class)
+    {
+      gfc_symbol * canonical_sym = get_class_canonical_type (derived);
+      if (canonical_sym == derived)
+	self_is_canonical = true;
+      else if (canonical_sym != nullptr)
+	class_canonical = gfc_get_derived_type (canonical_sym, codimen);
+    }
+
   /* The derived types from an earlier namespace can be used as the
      canonical type.  */
   if (derived->backend_decl == NULL
@@ -3012,6 +3017,8 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 
       derived->backend_decl = NULL_TREE;
     }
+  else if (class_canonical)
+    canonical = class_canonical;
 
   /* derived->backend_decl != 0 means we saw it before, but its
      components' backend_decl may have not been built.  */
@@ -3253,24 +3260,18 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
   /* Now lay out the derived type, including the fields.  */
   if (canonical)
     TYPE_CANONICAL (typenode) = canonical;
-  else if (derived->attr.is_class)
+  else if (self_is_canonical)
+    TYPE_CANONICAL (typenode) = typenode;
+
+  if (derived->attr.is_class)
     {
-      gfc_symbol * canonical_sym = get_class_canonical_type (derived);
-      if (canonical_sym != nullptr)
-	{
-	  tree canonical_sym_decl = gfc_get_derived_type (canonical_sym, codimen);
-	  TYPE_CANONICAL (typenode) = TYPE_CANONICAL (canonical_sym_decl);
-	}
       gfc_component * data_comp = derived->components;
       gfc_symbol *orig_type = data_comp->ts.u.derived;
       if (orig_type->attr.extension)
 	{
-	  int rank = data_comp->as ? data_comp->as->rank : 0;
-	  int corank = data_comp->as ? data_comp->as->corank : 0;
-
 	  gfc_symbol * parent_type = orig_type->components->ts.u.derived;
 	  gfc_symbol * parent_wrapper = get_class_canonical_type (parent_type, 
-								  rank, corank);
+								  data_comp->as);
 	  if (parent_wrapper != nullptr)
 	    {
 	      tree wrapper_decl = gfc_get_derived_type (parent_wrapper, codimen);
