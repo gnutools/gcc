@@ -2442,6 +2442,7 @@ namespace selftest
   void exec_context_execute_assign_tests ();
   void exec_context_execute_call_tests ();
   void exec_context_allocate_tests ();
+  void exec_context_evaluate_condition_tests ();
 }
 
 
@@ -2663,6 +2664,7 @@ class exec_context
   data_value evaluate_constructor (tree cstr) const;
   data_value evaluate_unary (enum tree_code code, tree type, tree arg) const;
   data_value evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const;
+  bool evaluate_condition (gcond *cond) const;
   template <typename A, typename L>
   void add_variables (vec<tree, A, L> *variables, unsigned vars_count);
   template <typename A>
@@ -2689,6 +2691,7 @@ class exec_context
   friend void selftest::exec_context_execute_assign_tests ();
   friend void selftest::exec_context_execute_call_tests ();
   friend void selftest::exec_context_allocate_tests ();
+  friend void selftest::exec_context_evaluate_condition_tests ();
 
 public:
   exec_context (exec_context & caller, context_printer & printer,
@@ -3579,6 +3582,10 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	  }
 	  break;
 
+	case VAL_UNDEFINED:
+	  pp_string (&pp, "<undef>");
+	  break;
+
 	default:
 	  gcc_unreachable ();
 	}
@@ -4348,6 +4355,59 @@ exec_context::execute (basic_block bb)
 }
 
 
+bool
+exec_context::evaluate_condition (gcond *cond) const
+{
+  enum tree_code code = gimple_cond_code (cond);
+  tree lhs = gimple_cond_lhs (cond);
+  tree rhs = gimple_cond_rhs (cond);
+
+  data_value val_lhs = evaluate (lhs);
+  data_value val_rhs = evaluate (rhs);
+
+  enum value_type lhs_type, rhs_type;
+  lhs_type = val_lhs.classify ();
+  rhs_type = val_rhs.classify ();
+  if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
+    {
+      tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
+      tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
+
+      tree result = fold_binary (code, boolean_type_node, lval, rval);
+      gcc_assert (result != NULL_TREE);
+
+      if (integer_onep (result))
+	return true;
+      else if (integer_zerop (result))
+	return false;
+      else
+	gcc_unreachable ();
+    }
+  else if ((lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	   || (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT))
+    {
+      /* Comparison of an address against a null pointer.  */
+      data_value * null = nullptr;
+      if (lhs_type == VAL_CONSTANT)
+	null = &val_lhs;
+      else if (rhs_type == VAL_CONSTANT)
+	null = &val_rhs;
+      else
+	gcc_unreachable ();
+
+      gcc_assert (null->get_cst () == 0);
+      if (code == EQ_EXPR)
+	return false;
+      else if (code == NE_EXPR)
+	return true;
+      else
+	gcc_unreachable ();
+    }
+  else
+    gcc_unreachable ();
+}
+
+
 edge
 exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
 {
@@ -4363,25 +4423,12 @@ exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
 
   if (is_a <gcond *> (last_stmt))
     {
-      gcond *cond = as_a <gcond *> (last_stmt);
-
-      enum tree_code code = gimple_cond_code (cond);
-      tree lhs = gimple_cond_lhs (cond);
-      tree rhs = gimple_cond_rhs (cond);
-
-      tree lval = evaluate (lhs).to_tree (TREE_TYPE (lhs));
-      tree rval = evaluate (rhs).to_tree (TREE_TYPE (rhs));
-
-      tree result = fold_binary (code, boolean_type_node, lval, rval);
-      gcc_assert (result != NULL_TREE);
-
+      bool cond_result = evaluate_condition (as_a <gcond *> (last_stmt));
       int flag;
-      if (integer_onep (result))
+      if (cond_result)
 	flag = EDGE_TRUE_VALUE;
-      else if (integer_zerop (result))
-	flag = EDGE_FALSE_VALUE;
       else
-	gcc_unreachable ();
+	flag = EDGE_FALSE_VALUE;
 
       edge e, selected = nullptr;
       edge_iterator ei;
@@ -5510,6 +5557,16 @@ data_value_print_tests ()
   printer9.print (v9, float_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp9), "2.0e+0");
+
+
+  context_printer printer10;
+  pretty_printer & pp10 = printer10.pp;
+
+  data_value v10 (integer_type_node);
+
+  printer10.print (v10, integer_type_node);
+
+  ASSERT_STREQ (pp_formatted_text (&pp10), "<undef>");
 }
 
 
@@ -7073,6 +7130,90 @@ exec_context_evaluate_binary_tests ()
 
 
 void
+exec_context_evaluate_condition_tests ()
+{
+  heap_memory mem1;
+  context_printer printer1;
+
+  tree a = create_var (integer_type_node, "a");
+  tree b = create_var (integer_type_node, "b");
+
+  vec<tree> decls1 {};
+  decls1.safe_push (a);
+  decls1.safe_push (b);
+  vec<tree> empty{};
+
+  context_builder builder1 {};
+  builder1.add_decls (&decls1);
+  exec_context ctx1 = builder1.build (mem1, printer1);
+
+  wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
+  data_value val12 (HOST_BITS_PER_INT);
+  val12.set_cst (cst12);
+  data_storage *strg_a = ctx1.find_reachable_var (a);
+  gcc_assert (strg_a != nullptr);
+  strg_a->set (val12);
+
+  wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
+  data_value val7 (HOST_BITS_PER_INT);
+  val7.set_cst (cst7);
+  data_storage *strg_b = ctx1.find_reachable_var (b);
+  gcc_assert (strg_b != nullptr);
+  strg_b->set (val7);
+
+  gcond * cond1 = gimple_build_cond (GT_EXPR, a, b, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx1.evaluate_condition (cond1));
+
+
+  heap_memory mem2;
+  context_printer printer2;
+
+  tree p1 = create_var (ptr_type_node, "p1");
+  tree p2 = create_var (ptr_type_node, "p2");
+  tree v = create_var (integer_type_node, "v");
+
+  vec<tree> decls2 {};
+  decls2.safe_push (p1);
+  decls2.safe_push (p2);
+  decls2.safe_push (v);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (mem2, printer2);
+
+  wide_int wi_null = wi::shwi (0, HOST_BITS_PER_PTR);
+  data_value val_null1 (ptr_type_node);
+  val_null1.set_cst (wi_null);
+
+  data_storage *strg_p1 = ctx2.find_reachable_var (p1);
+  gcc_assert (strg_p1 != nullptr);
+  strg_p1->set (val_null1);
+
+  tree tree_null = build_int_cst (ptr_type_node, 0);
+
+  gcond *cond2 = gimple_build_cond (EQ_EXPR, p1, tree_null, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx2.evaluate_condition (cond2));
+
+  data_storage & alloc3 = ctx2.allocate (3);
+  storage_address addr3 (alloc3.get_ref (), 0);
+  data_value val_addr3 (ptr_type_node);
+  val_addr3.set_address (addr3);
+  data_storage *strg_p2 = ctx2.find_reachable_var (p2);
+  gcc_assert (strg_p2 != nullptr);
+  strg_p2->set (val_addr3);
+
+  gcond *cond3 = gimple_build_cond (EQ_EXPR, p2, tree_null, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx2.evaluate_condition (cond3));
+
+  gcond *cond4 = gimple_build_cond (EQ_EXPR, p1, p2, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx2.evaluate_condition (cond4));
+}
+
+void
 exec_context_execute_assign_tests ()
 {
   heap_memory mem;
@@ -7823,6 +7964,7 @@ gimple_exec_cc_tests ()
   exec_context_evaluate_constructor_tests ();
   exec_context_evaluate_unary_tests ();
   exec_context_evaluate_binary_tests ();
+  exec_context_evaluate_condition_tests ();
   exec_context_execute_assign_tests ();
   exec_context_execute_call_tests ();
   exec_context_allocate_tests ();
