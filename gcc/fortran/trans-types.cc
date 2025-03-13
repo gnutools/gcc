@@ -2978,7 +2978,10 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
       if (canonical_sym == derived)
 	self_is_canonical = true;
       else if (canonical_sym != nullptr)
-	class_canonical = gfc_get_derived_type (canonical_sym, codimen);
+	{
+	  tree canonical_decl = gfc_get_derived_type (canonical_sym, codimen);
+	  class_canonical = TYPE_CANONICAL (canonical_decl);
+	}
     }
 
   /* The derived types from an earlier namespace can be used as the
