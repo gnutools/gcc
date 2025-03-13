@@ -3247,6 +3247,9 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 	GFC_DECL_PTR_ARRAY_P (c->backend_decl) = 1;
     }
 
+  if (derived->attr.is_class)
+    GFC_CLASS_TYPE_P (typenode) = 1;
+
   /* Now lay out the derived type, including the fields.  */
   if (canonical)
     TYPE_CANONICAL (typenode) = canonical;
