@@ -931,7 +931,7 @@ gfc_defer_symbol_init (gfc_symbol * sym)
    an existing backend_decl is found.  */
 
 bool
-gfc_get_module_backend_decl (gfc_symbol *sym)
+gfc_get_module_backend_decl (gfc_symbol *sym, bool create_type_decl)
 {
   gfc_gsymbol *gsym;
   gfc_symbol *s;
@@ -987,6 +987,9 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
 
 	  if (gfc_fl_struct (s->attr.flavor) && !s->backend_decl)
             {
+	      if (!create_type_decl)
+		return false;
+
               if (s->attr.flavor == FL_UNION)
                 s->backend_decl = gfc_get_union_type (s);
               else

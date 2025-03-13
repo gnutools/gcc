@@ -2969,7 +2969,7 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
   if (derived->backend_decl == NULL
       && (derived->attr.use_assoc || derived->attr.used_in_submodule)
       && derived->module
-      && gfc_get_module_backend_decl (derived))
+      && gfc_get_module_backend_decl (derived, false))
     goto copy_derived_types;
 
   if (derived->attr.is_class)
