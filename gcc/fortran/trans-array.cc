@@ -1116,7 +1116,7 @@ private:
 
 public:
   default_init (const symbol_attribute &arg_attr) : attr(arg_attr) { }
-  virtual bool initialize_data () const { return !attr.pointer; }
+  virtual bool initialize_data () const { return !attr.pointer || (gfc_option.rtcheck & GFC_RTCHECK_POINTER); }
   virtual tree get_data_value () const {
     if (!initialize_data ())
       return NULL_TREE;
@@ -14633,7 +14633,7 @@ gfc_trans_deferred_array (gfc_symbol * sym, gfc_wrapped_block * block)
      pointers when -fcheck=pointer is specified.  */
   if (GFC_DESCRIPTOR_TYPE_P (type) && !sym->attr.save
       && (sym->attr.allocatable
-	  || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER))))
+	  || sym->attr.pointer))
     {
       /* Declare the variable static so its array descriptor stays present
 	 after leaving the scope.  It may still be accessed through another
