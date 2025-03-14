@@ -13,9 +13,9 @@
  deallocate(xx,yy,stat=stat, errmsg=errmsg)
  end
 
-! { dg-final { scan-tree-dump-times "_gfortran_caf_register \\(4, 1, &xx.token, \\(void \\*\\) &xx, &stat.., &errmsg, 200\\);" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_register \\(8, 1, &yy.token, \\(void \\*\\) &yy, &stat.., &errmsg, 200\\);" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_deregister .&xx.token, 0, &stat.., &errmsg, 200.;" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_deregister .&yy.token, 0, &stat.., &errmsg, 200.;" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_deregister .&yy.token, 0, 0B, 0B, 0.;" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_deregister .&xx.token, 0, 0B, 0B, 0.;" 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_register \(4, 1, &(?:NON_LVALUE_EXPR <)?xx\.token>?, \(void \*\) &xx, &stat.., &errmsg, 200\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_register \(8, 1, &(?:NON_LVALUE_EXPR <)?yy\.token>?, \(void \*\) &yy, &stat.., &errmsg, 200\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_deregister \(&(?:NON_LVALUE_EXPR <)?xx\.token>?, 0, &stat.., &errmsg, 200\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_deregister \(&(?:NON_LVALUE_EXPR <)?yy\.token>?, 0, &stat.., &errmsg, 200\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_deregister \(&(?:NON_LVALUE_EXPR <)?yy\.token>?, 0, 0B, 0B, 0\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_deregister \(&(?:NON_LVALUE_EXPR <)?xx\.token>?, 0, 0B, 0B, 0\);} 1 "original" } }
