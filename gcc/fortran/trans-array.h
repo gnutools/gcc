@@ -144,6 +144,8 @@ void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
 void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_scalar_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
+void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
+				    gfc_expr *, gfc_expr *, locus *);
 
 /* Get a single array element.  */
 void gfc_conv_array_ref (gfc_se *, gfc_array_ref *, gfc_expr *, locus *);
