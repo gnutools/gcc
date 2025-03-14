@@ -13849,7 +13849,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   stmtblock_t realloc_block;
   stmtblock_t alloc_block;
   stmtblock_t fblock;
-  stmtblock_t loop_pre_block;
   gfc_ref *ref;
   gfc_ss *rss;
   gfc_ss *lss;
