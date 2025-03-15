@@ -1066,7 +1066,6 @@ public:
     : ts(&arg_ts), value(arg_value),  use_tree_type_ (false) { }
   scalar_value(tree arg_value)
     : ts(nullptr), value(arg_value), use_tree_type_ (true) { }
-  virtual bool is_initialization () const { return true; }
   virtual gfc_typespec *get_type () const { return ts; }
   virtual bool use_tree_type () const { return use_tree_type_; }
   virtual bt get_type_type (const gfc_typespec &) const;
@@ -1308,6 +1307,26 @@ build_dtype (gfc_typespec *ts, int rank, const symbol_attribute &,
 }
 
 
+static tree
+get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
+		 int rank, const symbol_attribute &attr)
+{
+  if (change_info.type == UNKNOWN_CHANGE
+      || change_info.type == EXPLICIT_NULLIFICATION)
+    return NULL_TREE;
+
+  const init_info *init_info = nullptr;
+  if (change_info.type == INITIALISATION)
+    init_info = change_info.u.initialization_info;
+  else if (change_info.type == SCALAR_VALUE)
+    init_info = change_info.u.scalar_value.info;
+  else
+    gcc_unreachable ();
+
+  return build_dtype (ts, rank, attr, *init_info);
+}
+
+
 /* Build a null array descriptor constructor.  */
 
 vec<constructor_elt, va_gc> *
@@ -1316,8 +1335,6 @@ get_descriptor_init (tree type, gfc_typespec *ts, int rank,
 		     const descr_change_info &change)
 {
   vec<constructor_elt, va_gc> *v = nullptr;
-
-  const modify_info &init = *get_internal_info (change);
 
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
   gcc_assert (DATA_FIELD == 0);
@@ -1332,11 +1349,10 @@ get_descriptor_init (tree type, gfc_typespec *ts, int rank,
       CONSTRUCTOR_APPEND_ELT (v, data_field, data_value);
     }
 
-  if (init.is_initialization ())
+  tree dtype_value = get_descr_dtype (change, ts, rank, *attr);
+  if (dtype_value != NULL_TREE)
     {
       tree dtype_field = gfc_advance_chain (fields, DTYPE_FIELD);
-      tree dtype_value = build_dtype (ts, rank, *attr,
-				      static_cast<const init_info &> (init));
       CONSTRUCTOR_APPEND_ELT (v, dtype_field, dtype_value);
     }
 
