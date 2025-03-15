@@ -1002,8 +1002,6 @@ class modify_info
 public:
   virtual bool use_tree_type () const { return false; }
   virtual bool is_initialization () const { return false; }
-  virtual bool set_token () const { return true; }
-  virtual tree get_caf_token () const { return null_pointer_node; }
   virtual bt get_type_type (const gfc_typespec &) const { return BT_UNKNOWN; }
   virtual tree get_length (gfc_typespec *ts) const { return get_size_info (*ts); }
 };
@@ -1078,7 +1076,6 @@ public:
   virtual gfc_typespec *get_type () const { return ts; }
   virtual bool use_tree_type () const { return use_tree_type_; }
   virtual bool set_token () const { return clear_token || caf_token != NULL_TREE; }
-  virtual tree get_caf_token () const;
   virtual bt get_type_type (const gfc_typespec &) const;
   virtual tree get_length (gfc_typespec *ts) const;
 };
@@ -1100,7 +1097,13 @@ struct descr_change_info {
       class modify_info *unknown_info;
       class nullification *nullification_info;
       class init_info *initialization_info;
-      class scalar_value *scalar_value_info;
+      struct
+	{
+	  class scalar_value *info;
+	  tree caf_token;
+	  bool clear_token;
+	}
+      scalar_value;
     }
   u;
 };
@@ -1121,7 +1124,7 @@ get_internal_info (const descr_change_info &info)
       return info.u.initialization_info;
 
     case SCALAR_VALUE:
-      return info.u.scalar_value_info;
+      return info.u.scalar_value.info;
 
     default:
       gcc_unreachable ();
@@ -1144,7 +1147,7 @@ get_descr_data_value (const descr_change_info &info)
       return info.u.initialization_info->get_data_value ();
 
     case SCALAR_VALUE:
-      return info.u.scalar_value_info->get_data_value ();
+      return info.u.scalar_value.info->get_data_value ();
 
     default:
       gcc_unreachable ();
@@ -1167,6 +1170,32 @@ get_descr_span (const descr_change_info &info)
 	tree fields = TYPE_FIELDS (info.descriptor_type);
 	tree span_field = gfc_advance_chain (fields, SPAN_FIELD);
 	return build_zero_cst (TREE_TYPE (span_field));
+      }
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+
+static tree
+get_descr_caf_token (const descr_change_info &info)
+{
+  switch (info.type)
+    {
+    case UNKNOWN_CHANGE:
+    case EXPLICIT_NULLIFICATION:
+    case INITIALISATION:
+      return null_pointer_node;
+
+    case SCALAR_VALUE:
+      {
+	if (info.u.scalar_value.caf_token != NULL_TREE)
+	  return info.u.scalar_value.caf_token;
+	else if (info.u.scalar_value.clear_token)
+	  return null_pointer_node;
+	else
+	  return NULL_TREE;
       }
 
     default:
@@ -1239,16 +1268,6 @@ scalar_value::get_length (gfc_typespec * type_info) const
     size = modify_info::get_length (type_info);
 
   return size;
-}
-
-tree
-scalar_value::get_caf_token () const
-{
-  if (set_token ()
-      && caf_token != NULL_TREE)
-    return caf_token;
-  else
-    return modify_info::get_caf_token ();
 }
 
 
@@ -1338,20 +1357,24 @@ get_descriptor_init (tree type, gfc_typespec *ts, int rank,
       CONSTRUCTOR_APPEND_ELT (v, span_field, span_value);
     }
 
-  if (flag_coarray == GFC_FCOARRAY_LIB && attr->codimension
-      && init.set_token ())
+  if (flag_coarray == GFC_FCOARRAY_LIB && attr->codimension)
     {
-      /* Declare the variable static so its array descriptor stays present
-	 after leaving the scope.  It may still be accessed through another
-	 image.  This may happen, for example, with the caf_mpi
-	 implementation.  */
-      bool dim_present = GFC_TYPE_ARRAY_RANK (type) > 0
-			 || GFC_TYPE_ARRAY_CORANK (type) > 0;
-      tree token_field = gfc_advance_chain (fields,
-					    CAF_TOKEN_FIELD - (!dim_present));
-      tree token_value = fold_convert (TREE_TYPE (token_field),
-				       init.get_caf_token ());
-      CONSTRUCTOR_APPEND_ELT (v, token_field, token_value);
+      tree caf_token = get_descr_caf_token (change);
+      if (caf_token != NULL_TREE)
+	{
+	  /* Declare the variable static so its array descriptor stays present
+	     after leaving the scope.  It may still be accessed through another
+	     image.  This may happen, for example, with the caf_mpi
+	     implementation.  */
+	  bool dim_present = GFC_TYPE_ARRAY_RANK (type) > 0
+			     || GFC_TYPE_ARRAY_CORANK (type) > 0;
+	  tree token_field = gfc_advance_chain (fields,
+						CAF_TOKEN_FIELD
+						- (!dim_present));
+	  tree token_value = fold_convert (TREE_TYPE (token_field),
+					   caf_token);
+	  CONSTRUCTOR_APPEND_ELT (v, token_field, token_value);
+	}
     }
 
   return v;
@@ -1866,7 +1889,9 @@ gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor,
   struct descr_change_info info;
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (descriptor);
-  info.u.scalar_value_info = &sv;
+  info.u.scalar_value.info = &sv;
+  info.u.scalar_value.caf_token = value;
+  info.u.scalar_value.clear_token = true;
 
   init_struct (block, descriptor,
 	       get_descriptor_init (TREE_TYPE (descriptor), &sym->ts, 0,
@@ -1882,7 +1907,9 @@ gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
   struct descr_change_info info;
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (desc);
-  info.u.scalar_value_info = &sv;
+  info.u.scalar_value.info = &sv;
+  info.u.scalar_value.caf_token = caf_token;
+  info.u.scalar_value.clear_token = false;
 
   init_struct (block, desc,
 	       get_descriptor_init (TREE_TYPE (desc), nullptr, 0, attr, info));
