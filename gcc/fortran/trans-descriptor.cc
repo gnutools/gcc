@@ -1013,7 +1013,6 @@ class nullification : public modify_info
 class init_info : public modify_info
 {
 public:
-  virtual tree get_data_value () const { return NULL_TREE; }
   virtual bool is_initialization () const { return true; }
   virtual gfc_typespec *get_type () const { return nullptr; }
   virtual bt get_type_type (const gfc_typespec &) const;
@@ -1029,16 +1028,9 @@ class default_init : public init_info
 {
 private:
   const symbol_attribute &attr; 
-  bool initialize_data () const { return !attr.pointer || (gfc_option.rtcheck & GFC_RTCHECK_POINTER); }
 
 public:
   default_init (const symbol_attribute &arg_attr) : attr(arg_attr) { }
-  virtual tree get_data_value () const {
-    if (!initialize_data ())
-      return NULL_TREE;
-
-    return null_pointer_node;
-  }
 };
 
 class null_init : public init_info
@@ -1048,7 +1040,6 @@ private:
 
 public:
   null_init(gfc_typespec &arg_ts) : ts(arg_ts) { }
-  virtual tree get_data_value () const { return null_pointer_node; }
   virtual gfc_typespec *get_type () const { return &ts; }
 };
 
@@ -1078,6 +1069,7 @@ enum descr_change_type {
   EXPLICIT_NULLIFICATION,
   INITIALISATION,
   DEFAULT_INITIALISATION,
+  NULL_INITIALISATION,
   SCALAR_VALUE
 };
 
@@ -1143,10 +1135,11 @@ get_descr_data_value (const descr_change_info &info)
       return NULL_TREE;
 
     case EXPLICIT_NULLIFICATION:
+    case NULL_INITIALISATION:
       return null_pointer_node;
 
     case INITIALISATION:
-      return info.u.initialization_info->get_data_value ();
+      return NULL_TREE;
 
     case DEFAULT_INITIALISATION:
       if (!info.u.default_init.attr->pointer
@@ -1179,6 +1172,7 @@ get_descr_span (const descr_change_info &info)
     case EXPLICIT_NULLIFICATION:
     case INITIALISATION:
     case DEFAULT_INITIALISATION:
+    case NULL_INITIALISATION:
       return NULL_TREE;
 
     case SCALAR_VALUE:
@@ -1203,6 +1197,7 @@ get_descr_caf_token (const descr_change_info &info)
     case EXPLICIT_NULLIFICATION:
     case INITIALISATION:
     case DEFAULT_INITIALISATION:
+    case NULL_INITIALISATION:
       return null_pointer_node;
 
     case SCALAR_VALUE:
