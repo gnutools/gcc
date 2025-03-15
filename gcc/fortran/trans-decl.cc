@@ -52,6 +52,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "attr-fnspec.h"
 #include "tree-iterator.h"
 #include "dependency.h"
+#include "trans-descriptor.h"
 
 #define MAX_LABEL_VALUE 99999
 

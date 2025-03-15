@@ -34,6 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-array.h"
 #include "trans-const.h"
 #include "dependency.h"
+#include "trans-descriptor.h"
 
 typedef struct iter_info
 {

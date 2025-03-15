@@ -33,6 +33,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-types.h"
 #include "trans-const.h"
 #include "options.h"
+#include "trans-descriptor.h"
 
 /* Members of the ioparm structure.  */
 

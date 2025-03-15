@@ -105,6 +105,7 @@ gfc_ss *gfc_reverse_ss (gfc_ss *);
 void gfc_cleanup_loop (gfc_loopinfo *);
 /* Associate a SS chain with a loop.  */
 void gfc_add_ss_to_loop (gfc_loopinfo *, gfc_ss *);
+int gfc_get_array_ref_dim_for_loop_dim (gfc_ss *ss, int loop_dim);
 /* Mark a SS chain as used in this loop.  */
 void gfc_mark_ss_chain_used (gfc_ss *, unsigned);
 /* Free a gfc_ss chain.  */
@@ -138,22 +139,6 @@ void gfc_conv_loop_setup (gfc_loopinfo *, locus *);
 void gfc_set_delta (gfc_loopinfo *);
 /* Resolve array assignment dependencies.  */
 void gfc_conv_resolve_dependencies (gfc_loopinfo *, gfc_ss *, gfc_ss *);
-/* Build a null array descriptor constructor.  */
-tree gfc_build_null_descriptor (tree);
-tree gfc_build_default_class_descriptor (tree, gfc_typespec &);
-void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
-void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
-void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
-void gfc_set_scalar_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
-void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
-				    gfc_expr *, gfc_expr *, locus *);
-tree gfc_get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr);
-void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree,
-				     symbol_attribute *, tree = NULL_TREE);
-void gfc_copy_sequence_descriptor (stmtblock_t &, tree, tree, bool);
-void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
-			   gfc_symbol *, bool, bool, bool);
-int gfc_descriptor_rank (tree);
 
 /* Get a single array element.  */
 void gfc_conv_array_ref (gfc_se *, gfc_array_ref *, gfc_expr *, locus *);
@@ -186,58 +171,6 @@ void gfc_trans_array_cobounds (tree, stmtblock_t *, const gfc_symbol *);
 /* Build expressions for accessing components of an array descriptor.  */
 void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *, tree *,
 					  tree *, tree *, tree *, tree *);
-
-tree gfc_conv_descriptor_data_get (tree);
-tree gfc_conv_descriptor_offset_get (tree);
-tree gfc_conv_descriptor_span_get (tree);
-tree gfc_conv_descriptor_dtype_get (tree);
-tree gfc_conv_descriptor_rank_get (tree);
-tree gfc_conv_descriptor_elem_len_get (tree);
-tree gfc_conv_descriptor_version_get (tree);
-tree gfc_conv_descriptor_attribute_get (tree);
-tree gfc_conv_descriptor_type_get (tree);
-tree gfc_conv_descriptor_dimension_get (tree);
-tree gfc_conv_descriptor_dimensions_get (tree);
-tree gfc_conv_descriptor_dimensions_get (tree, tree);
-tree gfc_conv_descriptor_stride_get (tree, tree);
-tree gfc_conv_descriptor_lbound_get (tree, tree);
-tree gfc_conv_descriptor_ubound_get (tree, tree);
-tree gfc_conv_descriptor_extent_get (tree, tree);
-tree gfc_conv_descriptor_sm_get (tree, tree);
-tree gfc_conv_descriptor_token_get (tree);
-tree gfc_conv_descriptor_token_field (tree);
-
-void gfc_conv_descriptor_data_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_offset_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_token_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_dtype_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_dimensions_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_version_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, int);
-void gfc_conv_descriptor_span_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_stride_set (stmtblock_t *, tree, tree, tree);
-void gfc_conv_descriptor_lbound_set (stmtblock_t *, tree, tree, tree);
-void gfc_conv_descriptor_ubound_set (stmtblock_t *, tree, tree, tree);
-
-/* CFI descriptor.  */
-tree gfc_get_cfi_desc_base_addr (tree);
-tree gfc_get_cfi_desc_elem_len (tree);
-tree gfc_get_cfi_desc_version (tree);
-tree gfc_get_cfi_desc_rank (tree);
-tree gfc_get_cfi_desc_type (tree);
-tree gfc_get_cfi_desc_attribute (tree);
-tree gfc_get_cfi_dim_lbound (tree, tree);
-tree gfc_get_cfi_dim_extent (tree, tree);
-tree gfc_get_cfi_dim_sm (tree, tree);
-
-
-/* Shift lower bound of descriptor, updating ubound and offset.  */
-void gfc_conv_shift_descriptor (stmtblock_t*, tree, const gfc_array_ref &);
-void gfc_conv_shift_descriptor (stmtblock_t*, tree, int);
-void gfc_conv_shift_descriptor (stmtblock_t*, tree, tree, int, tree);
-void gfc_conv_shift_descriptor_subarray (stmtblock_t*, tree, gfc_expr *, gfc_expr *);
-void gfc_conv_shift_descriptor (stmtblock_t *, tree, int, tree *, tree *);
 
 /* Add pre-loop scalarization code for intrinsic functions which require
    special handling.  */

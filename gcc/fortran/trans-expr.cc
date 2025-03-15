@@ -43,6 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dependency.h"
 #include "gimplify.h"
 #include "tm.h"		/* For CHAR_TYPE_SIZE.  */
+#include "trans-descriptor.h"
 
 
 /* Calculate the number of characters in a string.  */

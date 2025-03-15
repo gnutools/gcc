@@ -47,6 +47,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dependency.h"
 #include "gimple-iterator.h" /* For gsi_iterator_update.  */
 #include "gimplify-me.h"  /* For force_gimple_operand.  */
+#include "trans-descriptor.h"
 
 #undef GCC_DIAG_STYLE
 #define GCC_DIAG_STYLE __gcc_tdiag__
