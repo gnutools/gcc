@@ -93,10 +93,17 @@ void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
 				   tree[GFC_MAX_DIMENSIONS], tree[GFC_MAX_DIMENSIONS],
 				   tree[GFC_MAX_DIMENSIONS], int, bool, bool, bool);
 
+void gfc_set_descriptor (stmtblock_t *, tree, tree, gfc_expr *, int, int,
+			 gfc_ss *, gfc_array_info *, tree [GFC_MAX_DIMENSIONS],
+			 tree [GFC_MAX_DIMENSIONS], bool, bool);
+
 tree gfc_descr_init_count (tree, int, int, gfc_expr **, gfc_expr **,
 			   stmtblock_t *, stmtblock_t *, tree *, tree,
 			   gfc_expr *, tree, bool, gfc_expr *, tree, bool,
 			   tree *);
 void
 gfc_copy_descriptor_info (stmtblock_t *, tree, tree, int, gfc_ss *);
+void
+gfc_set_contiguous_array (stmtblock_t *block, tree desc, tree size,
+			  tree data_ptr);
 
