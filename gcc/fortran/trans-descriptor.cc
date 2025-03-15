@@ -1056,7 +1056,6 @@ public:
 class scalar_value : public init_info
 {
 private:
-  bool initialisation;
   gfc_typespec *ts;
   tree value;
   bool use_tree_type_;
@@ -1064,10 +1063,10 @@ private:
 
 public:
   scalar_value(gfc_typespec &arg_ts, tree arg_value)
-    : initialisation(true), ts(&arg_ts), value(arg_value),  use_tree_type_ (false) { }
+    : ts(&arg_ts), value(arg_value),  use_tree_type_ (false) { }
   scalar_value(tree arg_value)
-    : initialisation(true), ts(nullptr), value(arg_value), use_tree_type_ (true) { }
-  virtual bool is_initialization () const { return initialisation; }
+    : ts(nullptr), value(arg_value), use_tree_type_ (true) { }
+  virtual bool is_initialization () const { return true; }
   virtual gfc_typespec *get_type () const { return ts; }
   virtual bool use_tree_type () const { return use_tree_type_; }
   virtual bt get_type_type (const gfc_typespec &) const;
