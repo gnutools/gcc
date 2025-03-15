@@ -1102,6 +1102,7 @@ struct descr_change_info {
 };
 
 
+#if 0
 static modify_info *
 get_internal_info (const descr_change_info &info)
 {
@@ -1123,6 +1124,7 @@ get_internal_info (const descr_change_info &info)
       gcc_unreachable ();
     }
 }
+#endif
 
 
 static tree
