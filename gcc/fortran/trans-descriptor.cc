@@ -1008,8 +1008,6 @@ public:
 
 class nullification : public modify_info
 {
-public:
-  virtual tree get_data_value () const { return null_pointer_node; }
 };
 
 class init_info : public modify_info
@@ -1061,21 +1059,17 @@ private:
   bool initialisation;
   gfc_typespec *ts;
   tree value;
-  tree caf_token;
   bool use_tree_type_;
-  bool clear_token;
   tree get_elt_type () const;
 
 public:
   scalar_value(gfc_typespec &arg_ts, tree arg_value)
-    : initialisation(true), ts(&arg_ts), value(arg_value), caf_token (NULL_TREE),  use_tree_type_ (false), clear_token(true) { }
-  scalar_value(tree arg_value, tree arg_caf_token)
-    : initialisation(true), ts(nullptr), value(arg_value), caf_token (arg_caf_token), use_tree_type_ (true), clear_token(false) { }
+    : initialisation(true), ts(&arg_ts), value(arg_value),  use_tree_type_ (false) { }
+  scalar_value(tree arg_value)
+    : initialisation(true), ts(nullptr), value(arg_value), use_tree_type_ (true) { }
   virtual bool is_initialization () const { return initialisation; }
-  virtual tree get_data_value () const;
   virtual gfc_typespec *get_type () const { return ts; }
   virtual bool use_tree_type () const { return use_tree_type_; }
-  virtual bool set_token () const { return clear_token || caf_token != NULL_TREE; }
   virtual bt get_type_type (const gfc_typespec &) const;
   virtual tree get_length (gfc_typespec *ts) const;
 };
@@ -1100,6 +1094,7 @@ struct descr_change_info {
       struct
 	{
 	  class scalar_value *info;
+	  tree value;
 	  tree caf_token;
 	  bool clear_token;
 	}
@@ -1147,7 +1142,13 @@ get_descr_data_value (const descr_change_info &info)
       return info.u.initialization_info->get_data_value ();
 
     case SCALAR_VALUE:
-      return info.u.scalar_value.info->get_data_value ();
+      {
+	tree value = info.u.scalar_value.value;
+	if (POINTER_TYPE_P (TREE_TYPE (value)))
+	  return value;
+	else
+	  return gfc_build_addr_expr (NULL_TREE, value);
+      }
 
     default:
       gcc_unreachable ();
@@ -1203,15 +1204,6 @@ get_descr_caf_token (const descr_change_info &info)
     }
 }
 
-
-tree
-scalar_value::get_data_value () const
-{
-  if (POINTER_TYPE_P (TREE_TYPE (value)))
-    return value;
-  else
-    return gfc_build_addr_expr (NULL_TREE, value);
-}
 
 tree
 scalar_value::get_elt_type () const
@@ -1890,6 +1882,7 @@ gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor,
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (descriptor);
   info.u.scalar_value.info = &sv;
+  info.u.scalar_value.value = value;
   info.u.scalar_value.caf_token = value;
   info.u.scalar_value.clear_token = true;
 
@@ -1903,11 +1896,12 @@ void
 gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
 				symbol_attribute *attr, tree caf_token)
 {
-  scalar_value sv (scalar, caf_token);
+  scalar_value sv (scalar);
   struct descr_change_info info;
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (desc);
   info.u.scalar_value.info = &sv;
+  info.u.scalar_value.value = scalar;
   info.u.scalar_value.caf_token = caf_token;
   info.u.scalar_value.clear_token = false;
 
