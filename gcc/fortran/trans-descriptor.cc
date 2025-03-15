@@ -1082,6 +1082,7 @@ struct descr_change_info {
       class modify_info *unknown_info;
       class nullification *nullification_info;
       class init_info *initialization_info;
+      class null_init *null_init_info;
       struct
 	{
 	  class default_init *info;
@@ -1331,6 +1332,8 @@ get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
   const init_info *init_info = nullptr;
   if (change_info.type == INITIALISATION)
     init_info = change_info.u.initialization_info;
+  else if (change_info.type == NULL_INITIALISATION)
+    init_info = change_info.u.null_init_info;
   else if (change_info.type == DEFAULT_INITIALISATION)
     init_info = change_info.u.default_init.info;
   else if (change_info.type == SCALAR_VALUE)
@@ -1426,7 +1429,7 @@ get_null_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
 {
   null_init ni (ts);
   struct descr_change_info info;
-  info.type = INITIALISATION;
+  info.type = NULL_INITIALISATION;
   info.descriptor_type = type;
   info.u.initialization_info = &ni;
 
