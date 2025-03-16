@@ -1239,9 +1239,9 @@ get_descr_element_length (const descr_change_info &change_info,
 {
   if (change_info.type == UNKNOWN_CHANGE
       || change_info.type == EXPLICIT_NULLIFICATION
-      || !ts
-      || ts->type == BT_CLASS
-      || (ts->type == BT_CHARACTER && ts->deferred))
+      || (ts
+	  && (ts->type == BT_CLASS
+	      || (ts->type == BT_CHARACTER && ts->deferred))))
     return NULL_TREE;
 
   if (change_info.type == SCALAR_VALUE)
