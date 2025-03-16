@@ -1001,8 +1001,6 @@ class modify_info
 {
 public:
   virtual bool use_tree_type () const { return false; }
-  virtual bool is_initialization () const { return false; }
-  virtual bt get_type_type (const gfc_typespec &) const { return BT_UNKNOWN; }
 };
 
 class nullification : public modify_info
@@ -1011,16 +1009,7 @@ class nullification : public modify_info
 
 class init_info : public modify_info
 {
-public:
-  virtual bool is_initialization () const { return true; }
-  virtual bt get_type_type (const gfc_typespec &) const;
 };
-
-bt
-init_info::get_type_type (const gfc_typespec & type_info) const
-{
-  return get_type_info (type_info.type);
-}
 
 class default_init : public init_info
 {
@@ -1052,7 +1041,6 @@ public:
   scalar_value(tree arg_value, bool arg_use_tree_type)
     : value(arg_value), use_tree_type_ (arg_use_tree_type) { }
   virtual bool use_tree_type () const { return use_tree_type_; }
-  virtual bt get_type_type (const gfc_typespec &) const;
 };
 
 
@@ -1270,6 +1258,48 @@ get_descr_element_length (const descr_change_info &change_info,
 }
 
 
+static tree
+get_descr_type (const struct descr_change_info &change_info,
+		gfc_typespec *type_info)
+{
+  bt n;
+  switch (change_info.type)
+    {
+    case UNKNOWN_CHANGE:
+    case EXPLICIT_NULLIFICATION:
+      n = BT_UNKNOWN;
+      break;
+
+    case INITIALISATION:
+    case DEFAULT_INITIALISATION:
+    case NULL_INITIALISATION:
+      n = get_type_info (type_info->type);
+      break;
+
+    case SCALAR_VALUE:
+      {
+	scalar_value *scalar_value_info = change_info.u.scalar_value.info;
+	if (scalar_value_info->use_tree_type ())
+	  {
+	    tree etype = get_elt_type (change_info.u.scalar_value.value);
+	    gfc_get_type_info (etype, &n, nullptr);
+	  }
+	else
+	  n = get_type_info (type_info->type);
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+
+  tree descriptor_type = change_info.descriptor_type;
+  tree type_info_field = gfc_advance_chain (TYPE_FIELDS (descriptor_type),
+					    GFC_DTYPE_TYPE);
+  return build_int_cst (TREE_TYPE (type_info_field), n);
+}
+
+
 tree
 scalar_value::get_elt_type () const
 {
@@ -1287,21 +1317,6 @@ scalar_value::get_elt_type () const
   return etype;
 }
 
-bt
-scalar_value::get_type_type (const gfc_typespec & type_info) const
-{
-  bt n;
-  if (use_tree_type ())
-    {
-      tree etype = get_elt_type ();
-      gfc_get_type_info (etype, &n, nullptr);
-    }
-  else
-    n = get_type_info (type_info.type);
-
-  return n;
-}
-
 static tree
 get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
 		 int rank, const symbol_attribute & ATTRIBUTE_UNUSED)
@@ -1311,18 +1326,6 @@ get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
     return NULL_TREE;
 
   vec<constructor_elt, va_gc> *v = nullptr;
-
-  const init_info *init_info = nullptr;
-  if (change_info.type == INITIALISATION)
-    init_info = change_info.u.initialization_info;
-  else if (change_info.type == NULL_INITIALISATION)
-    init_info = change_info.u.null_init.info;
-  else if (change_info.type == DEFAULT_INITIALISATION)
-    init_info = change_info.u.default_init.info;
-  else if (change_info.type == SCALAR_VALUE)
-    init_info = change_info.u.scalar_value.info;
-  else
-    gcc_unreachable ();
 
   tree type = get_dtype_type_node ();
 
@@ -1369,10 +1372,12 @@ get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
       CONSTRUCTOR_APPEND_ELT (v, rank_field, rank_val);
     }
 
-  tree type_info_field = gfc_advance_chain (fields, GFC_DTYPE_TYPE);
-  bt n = init_info->get_type_type (*type_info);
-  tree type_info_val = build_int_cst (TREE_TYPE (type_info_field), n);
-  CONSTRUCTOR_APPEND_ELT (v, type_info_field, type_info_val);
+  tree type_val = get_descr_type (change_info, type_info);
+  if (type_val != NULL_TREE)
+    {
+      tree type_info_field = gfc_advance_chain (fields, GFC_DTYPE_TYPE);
+      CONSTRUCTOR_APPEND_ELT (v, type_info_field, type_val);
+    }
 
   return build_constructor (type, v);
 }
