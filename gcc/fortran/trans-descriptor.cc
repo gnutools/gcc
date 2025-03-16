@@ -1003,7 +1003,6 @@ public:
   virtual bool use_tree_type () const { return false; }
   virtual bool is_initialization () const { return false; }
   virtual bt get_type_type (const gfc_typespec &) const { return BT_UNKNOWN; }
-  virtual tree get_length (gfc_typespec *ts) const { return get_size_info (*ts); }
 };
 
 class nullification : public modify_info
@@ -1054,7 +1053,6 @@ public:
     : value(arg_value), use_tree_type_ (arg_use_tree_type) { }
   virtual bool use_tree_type () const { return use_tree_type_; }
   virtual bt get_type_type (const gfc_typespec &) const;
-  virtual tree get_length (gfc_typespec *ts) const;
 };
 
 
@@ -1217,6 +1215,61 @@ get_descr_caf_token (const descr_change_info &info)
 }
 
 
+static tree
+get_elt_type (tree value)
+{
+  tree tmp = value;
+
+  if (POINTER_TYPE_P (TREE_TYPE (tmp)))
+    tmp = TREE_TYPE (tmp);
+
+  tree etype = TREE_TYPE (tmp);
+
+  /* For arrays, which are not scalar coarrays.  */
+  if (TREE_CODE (etype) == ARRAY_TYPE && !TYPE_STRING_FLAG (etype))
+    etype = TREE_TYPE (etype);
+
+  return etype;
+}
+
+
+static tree
+get_descr_element_length (const descr_change_info &change_info,
+			  gfc_typespec *ts)
+{
+  if (change_info.type == UNKNOWN_CHANGE
+      || change_info.type == EXPLICIT_NULLIFICATION
+      || !ts
+      || ts->type == BT_CLASS
+      || (ts->type == BT_CHARACTER && ts->deferred))
+    return NULL_TREE;
+
+  if (change_info.type == SCALAR_VALUE)
+    {
+      scalar_value *scalar_value_info = change_info.u.scalar_value.info;
+      tree value = change_info.u.scalar_value.value;
+      if (scalar_value_info->use_tree_type ())
+	{
+	  if (TREE_CODE (value) == COMPONENT_REF)
+	    {
+	      tree parent_obj = TREE_OPERAND (value, 0);
+	      tree len;
+	      if (GFC_CLASS_TYPE_P (TREE_TYPE (parent_obj))
+		  && gfc_class_len_get (parent_obj, &len))
+		return len;
+	    }
+
+	  tree size;
+	  tree etype = get_elt_type (value);
+	  gfc_get_type_info (etype, nullptr, &size);
+	  return size;
+	}
+    }
+
+  return get_size_info (*ts);
+}
+
+
 tree
 scalar_value::get_elt_type () const
 {
@@ -1248,32 +1301,6 @@ scalar_value::get_type_type (const gfc_typespec & type_info) const
 
   return n;
 }
-
-tree
-scalar_value::get_length (gfc_typespec * type_info) const
-{
-  bt n;
-  tree size;
-  if (use_tree_type ())
-    {
-      if (TREE_CODE (value) == COMPONENT_REF)
-	{
-	  tree parent_obj = TREE_OPERAND (value, 0);
-	  tree len;
-	  if (GFC_CLASS_TYPE_P (TREE_TYPE (parent_obj))
-	      && gfc_class_len_get (parent_obj, &len))
-	    return len;
-	}
-
-      tree etype = get_elt_type ();
-      gfc_get_type_info (etype, &n, &size);
-    }
-  else
-    size = modify_info::get_length (type_info);
-
-  return size;
-}
-
 
 static tree
 get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
@@ -1323,15 +1350,11 @@ get_descr_dtype (const descr_change_info &change_info, gfc_typespec *ts,
   if (type_info == nullptr)
     type_info = ts;
 
-  if (!(init_info->is_initialization ()
-	&& type_info
-	&& (type_info->type == BT_CLASS
-	    || (type_info->type == BT_CHARACTER
-		&& type_info->deferred))))
+  tree elem_len_val = get_descr_element_length (change_info, type_info);
+  if (elem_len_val != NULL_TREE)
     {
       tree elem_len_field = gfc_advance_chain (fields, GFC_DTYPE_ELEM_LEN);
-      tree elem_len_val = fold_convert (TREE_TYPE (elem_len_field),
-					init_info->get_length (type_info));
+      elem_len_val = fold_convert (TREE_TYPE (elem_len_field), elem_len_val);
       CONSTRUCTOR_APPEND_ELT (v, elem_len_field, elem_len_val);
     }
 
