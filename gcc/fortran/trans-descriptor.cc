@@ -1294,7 +1294,10 @@ get_descr_type (const struct descr_change_info &change_info,
     }
 
   tree descriptor_type = change_info.descriptor_type;
-  tree type_info_field = gfc_advance_chain (TYPE_FIELDS (descriptor_type),
+  tree dtype_field = gfc_advance_chain (TYPE_FIELDS (descriptor_type),
+					DTYPE_FIELD);
+  tree dtype_type = TREE_TYPE (dtype_field);
+  tree type_info_field = gfc_advance_chain (TYPE_FIELDS (dtype_type),
 					    GFC_DTYPE_TYPE);
   return build_int_cst (TREE_TYPE (type_info_field), n);
 }
