@@ -10241,76 +10241,6 @@ gfc_check_pdt_dummy (gfc_symbol * der_type, tree decl, int rank,
 }
 
 
-/* Returns the value of LBOUND for an expression.  This could be broken out
-   from gfc_conv_intrinsic_bound but this seemed to be simpler.  This is
-   called by gfc_alloc_allocatable_for_assignment.  */
-static tree
-get_std_lbound (gfc_expr *expr, tree desc, int dim, bool assumed_size)
-{
-  tree lbound;
-  tree ubound;
-  tree stride;
-  tree cond, cond1, cond3, cond4;
-  tree tmp;
-  gfc_ref *ref;
-
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
-    {
-      tmp = gfc_rank_cst[dim];
-      lbound = gfc_conv_descriptor_lbound_get (desc, tmp);
-      ubound = gfc_conv_descriptor_ubound_get (desc, tmp);
-      stride = gfc_conv_descriptor_stride_get (desc, tmp);
-      cond1 = fold_build2_loc (input_location, GE_EXPR, logical_type_node,
-			       ubound, lbound);
-      cond3 = fold_build2_loc (input_location, GE_EXPR, logical_type_node,
-			       stride, gfc_index_zero_node);
-      cond3 = fold_build2_loc (input_location, TRUTH_AND_EXPR,
-			       logical_type_node, cond3, cond1);
-      cond4 = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
-			       stride, gfc_index_zero_node);
-      if (assumed_size)
-	cond = fold_build2_loc (input_location, EQ_EXPR, logical_type_node,
-				tmp, build_int_cst (gfc_array_index_type,
-						    expr->rank - 1));
-      else
-	cond = logical_false_node;
-
-      cond1 = fold_build2_loc (input_location, TRUTH_OR_EXPR,
-			       logical_type_node, cond3, cond4);
-      cond = fold_build2_loc (input_location, TRUTH_OR_EXPR,
-			      logical_type_node, cond, cond1);
-
-      return fold_build3_loc (input_location, COND_EXPR,
-			      gfc_array_index_type, cond,
-			      lbound, gfc_index_one_node);
-    }
-
-  if (expr->expr_type == EXPR_FUNCTION)
-    {
-      /* A conversion function, so use the argument.  */
-      gcc_assert (expr->value.function.isym
-		  && expr->value.function.isym->conversion);
-      expr = expr->value.function.actual->expr;
-    }
-
-  if (expr->expr_type == EXPR_VARIABLE)
-    {
-      tmp = TREE_TYPE (expr->symtree->n.sym->backend_decl);
-      for (ref = expr->ref; ref; ref = ref->next)
-	{
-	  if (ref->type == REF_COMPONENT
-		&& ref->u.c.component->as
-		&& ref->next
-		&& ref->next->u.ar.type == AR_FULL)
-	    tmp = TREE_TYPE (ref->u.c.component->backend_decl);
-	}
-      return GFC_TYPE_ARRAY_LBOUND(tmp, dim);
-    }
-
-  return gfc_index_one_node;
-}
-
-
 /* Returns true if an expression represents an lhs that can be reallocated
    on assignment.  */
 
@@ -10514,7 +10444,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   gfc_array_info *linfo;
   tree realloc_expr;
   tree alloc_expr;
-  tree size1;
   tree size2;
   tree elemsize1;
   tree elemsize2;
@@ -10522,19 +10451,15 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   tree cond_null;
   tree cond;
   tree tmp;
-  tree tmp2;
   tree lbound;
   tree ubound;
   tree desc;
-  tree old_desc;
   tree desc2;
-  tree offset;
+  tree old_desc;
   tree jump_label1;
   tree jump_label2;
-  tree lbd;
   tree class_expr2 = NULL_TREE;
   int n;
-  gfc_array_spec * as;
   bool coarray = (flag_coarray == GFC_FCOARRAY_LIB
 		  && gfc_caf_attr (expr1, true).codimension);
   tree token;
@@ -10760,20 +10685,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 		  build_empty_stmt (input_location));
   gfc_add_expr_to_block (&fblock, tmp);
 
-  /* Get arrayspec if expr is a full array.  */
-  if (expr2 && expr2->expr_type == EXPR_FUNCTION
-	&& expr2->value.function.isym
-	&& expr2->value.function.isym->conversion)
-    {
-      /* For conversion functions, take the arg.  */
-      gfc_expr *arg = expr2->value.function.actual->expr;
-      as = gfc_get_full_arrayspec_from_expr (arg);
-    }
-  else if (expr2)
-    as = gfc_get_full_arrayspec_from_expr (expr2);
-  else
-    as = NULL;
-
   /* If the lhs shape is not the same as the rhs jump to setting the
      bounds and doing the reallocation.......  */
   for (n = 0; n < expr1->rank; n++)
@@ -10839,66 +10750,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   else
     old_desc = NULL_TREE;
 
-  /* Now modify the lhs descriptor and the associated scalarizer
-     variables. F2003 7.4.1.3: "If variable is or becomes an
-     unallocated allocatable variable, then it is allocated with each
-     deferred type parameter equal to the corresponding type parameters
-     of expr , with the shape of expr , and with each lower bound equal
-     to the corresponding element of LBOUND(expr)."
-     Reuse size1 to keep a dimension-by-dimension track of the
-     stride of the new array.  */
-  size1 = gfc_index_one_node;
-  offset = gfc_index_zero_node;
-
-  for (n = 0; n < expr2->rank; n++)
-    {
-      tmp = gfc_conv_array_extent_dim (loop->from[n], loop->to[n], NULL);
-
-      lbound = gfc_index_one_node;
-      ubound = tmp;
-
-      if (as)
-	{
-	  lbd = get_std_lbound (expr2, desc2, n,
-				as->type == AS_ASSUMED_SIZE);
-	  ubound = fold_build2_loc (input_location,
-				    MINUS_EXPR,
-				    gfc_array_index_type,
-				    ubound, lbound);
-	  ubound = fold_build2_loc (input_location,
-				    PLUS_EXPR,
-				    gfc_array_index_type,
-				    ubound, lbd);
-	  lbound = lbd;
-	}
-
-      gfc_conv_descriptor_lbound_set (&fblock, desc,
-				      gfc_rank_cst[n],
-				      lbound);
-      gfc_conv_descriptor_ubound_set (&fblock, desc,
-				      gfc_rank_cst[n],
-				      ubound);
-      gfc_conv_descriptor_stride_set (&fblock, desc,
-				      gfc_rank_cst[n],
-				      size1);
-      lbound = gfc_conv_descriptor_lbound_get (desc,
-					       gfc_rank_cst[n]);
-      tmp2 = fold_build2_loc (input_location, MULT_EXPR,
-			      gfc_array_index_type,
-			      lbound, size1);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type,
-				offset, tmp2);
-      size1 = fold_build2_loc (input_location, MULT_EXPR,
-			       gfc_array_index_type,
-			       tmp, size1);
-    }
-
-  /* Set the lhs descriptor and scalarizer offsets.  For rank > 1,
-     the array offset is saved and the info.offset is used for a
-     running offset.  Use the saved_offset instead.  */
-  gfc_conv_descriptor_offset_set (&fblock, desc, offset);
-
   /* Take into account _len of unlimited polymorphic entities, so that span
      for array descriptors and allocation sizes are computed correctly.  */
   if (UNLIMITED_POLY (expr2))
@@ -10912,9 +10763,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 				   fold_convert (gfc_array_index_type, len));
     }
 
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
-    gfc_conv_descriptor_span_set (&fblock, desc, elemsize2);
-
   size2 = fold_build2_loc (input_location, MULT_EXPR,
 			   gfc_array_index_type,
 			   elemsize2, size2);
@@ -10923,69 +10771,8 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 			   size2, size_one_node);
   size2 = gfc_evaluate_now (size2, &fblock);
 
-  /* For deferred character length, the 'size' field of the dtype might
-     have changed so set the dtype.  */
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc))
-      && expr1->ts.type == BT_CHARACTER && expr1->ts.deferred)
-    {
-      tree type;
-      if (expr2->ts.u.cl->backend_decl)
-	type = gfc_typenode_for_spec (&expr2->ts);
-      else
-	type = gfc_typenode_for_spec (&expr1->ts);
-
-      tree dtype_value = gfc_get_dtype_rank_type (expr1->rank, type);
-      gfc_conv_descriptor_dtype_set (&fblock, desc, dtype_value);
-    }
-  else if (expr1->ts.type == BT_CLASS)
-    {
-      tree type;
-      if (expr2->ts.type != BT_CLASS)
-	type = gfc_typenode_for_spec (&expr2->ts);
-      else
-	type = gfc_get_character_type_len (1, elemsize2);
-
-      tree dtype_value = gfc_get_dtype_rank_type (expr2->rank, type);
-      gfc_conv_descriptor_dtype_set (&fblock, desc, dtype_value);
-
-      /* Set the _len field as well...  */
-      if (UNLIMITED_POLY (expr1))
-	{
-	  tmp = gfc_class_len_get (TREE_OPERAND (desc, 0));
-	  if (expr2->ts.type == BT_CHARACTER)
-	    gfc_add_modify (&fblock, tmp,
-			    fold_convert (TREE_TYPE (tmp),
-					  TYPE_SIZE_UNIT (type)));
-	  else if (UNLIMITED_POLY (expr2))
-	    gfc_add_modify (&fblock, tmp,
-			    gfc_class_len_get (TREE_OPERAND (desc2, 0)));
-	  else
-	    gfc_add_modify (&fblock, tmp,
-			    build_int_cst (TREE_TYPE (tmp), 0));
-	}
-      /* ...and the vptr.  */
-      tmp = gfc_class_vptr_get (TREE_OPERAND (desc, 0));
-      if (expr2->ts.type == BT_CLASS && !VAR_P (desc2)
-	  && TREE_CODE (desc2) == COMPONENT_REF)
-	{
-	  tmp2 = gfc_get_class_from_expr (desc2);
-	  tmp2 = gfc_class_vptr_get (tmp2);
-	}
-      else if (expr2->ts.type == BT_CLASS && class_expr2 != NULL_TREE)
-	tmp2 = gfc_class_vptr_get (class_expr2);
-      else
-	{
-	  tmp2 = gfc_get_symbol_decl (gfc_find_vtab (&expr2->ts));
-	  tmp2 = gfc_build_addr_expr (TREE_TYPE (tmp), tmp2);
-	}
-
-      gfc_add_modify (&fblock, tmp, fold_convert (TREE_TYPE (tmp), tmp2));
-    }
-  else if (coarray && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
-    {
-      gfc_conv_descriptor_dtype_set (&fblock, desc,
-				     gfc_get_dtype (TREE_TYPE (desc)));
-    }
+  gfc_set_descriptor_for_assign_realloc (&fblock, loop, expr1, expr2, desc,
+					 desc2, elemsize2, class_expr2);
 
   /* Realloc expression.  Note that the scalarizer uses desc.data
      in the array reference - (*desc.data)[<element>].  */

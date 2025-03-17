@@ -112,4 +112,8 @@ gfc_class_array_data_assign (stmtblock_t *, tree, tree, bool);
 void
 gfc_copy_descriptor (stmtblock_t *, tree, tree, int);
 
+void
+gfc_set_descriptor_for_assign_realloc (stmtblock_t *, gfc_loopinfo *,
+				       gfc_expr *, gfc_expr *, tree, tree,
+				       tree, tree);
 

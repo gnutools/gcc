@@ -3289,6 +3289,7 @@ data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
   enum value_type orig_type = classify (dest_offset, value_width);
   wide_int dest_mask = wi::shifted_mask (dest_offset, value_width, false,
 					 bit_width);
+  // TODO: invalidate existing address if any
   gcc_assert (orig_type != VAL_ADDRESS);
   if (orig_type != VAL_CONSTANT)
     {
