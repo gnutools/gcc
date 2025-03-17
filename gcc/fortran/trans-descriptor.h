@@ -59,7 +59,6 @@ tree gfc_conv_descriptor_token_get (tree);
 tree gfc_conv_descriptor_token_field (tree);
 
 void gfc_conv_descriptor_data_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_offset_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_token_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_dtype_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_dimensions_set (stmtblock_t *, tree, tree);
