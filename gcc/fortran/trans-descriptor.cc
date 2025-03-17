@@ -997,39 +997,6 @@ get_size_info (gfc_typespec &ts)
 }
 
 
-class modify_info
-{
-};
-
-class nullification : public modify_info
-{
-};
-
-class init_info : public modify_info
-{
-};
-
-class default_init : public init_info
-{
-};
-
-class null_init : public init_info
-{
-};
-
-
-class scalar_value : public init_info
-{
-private:
-  bool use_tree_type_;
-
-public:
-  scalar_value(bool arg_use_tree_type)
-    : use_tree_type_ (arg_use_tree_type) { }
-  virtual bool use_tree_type () const { return use_tree_type_; }
-};
-
-
 enum descr_change_type {
   UNKNOWN_CHANGE,
   EXPLICIT_NULLIFICATION,
@@ -1045,28 +1012,23 @@ struct descr_change_info {
   tree descriptor_type;
   union
     {
-      class modify_info *unknown_info;
-      class nullification *nullification_info;
-      class init_info *initialization_info;
       struct
 	{
-	  class null_init *info;
 	  gfc_typespec *ts;
 	}
       null_init;
       struct
 	{
-	  class default_init *info;
 	  const symbol_attribute *attr; 
 	}
       default_init;
       struct
 	{
-	  class scalar_value *info;
 	  gfc_typespec *ts;
 	  tree value;
 	  tree caf_token;
 	  bool clear_token;
+	  bool use_declared_type;
 	}
       scalar_value;
     }
@@ -1220,9 +1182,8 @@ get_descr_element_length (const descr_change_info &change_info,
 
   if (change_info.type == SCALAR_VALUE)
     {
-      scalar_value *scalar_value_info = change_info.u.scalar_value.info;
       tree value = change_info.u.scalar_value.value;
-      if (scalar_value_info->use_tree_type ())
+      if (!change_info.u.scalar_value.use_declared_type)
 	{
 	  if (TREE_CODE (value) == COMPONENT_REF)
 	    {
@@ -1264,14 +1225,13 @@ get_descr_type (const struct descr_change_info &change_info,
 
     case SCALAR_VALUE:
       {
-	scalar_value *scalar_value_info = change_info.u.scalar_value.info;
-	if (scalar_value_info->use_tree_type ())
+	if (change_info.u.scalar_value.use_declared_type)
+	  n = get_type_info (type_info->type);
+	else
 	  {
 	    tree etype = get_elt_type (change_info.u.scalar_value.value);
 	    gfc_get_type_info (etype, &n, nullptr);
 	  }
-	else
-	  n = get_type_info (type_info->type);
       }
       break;
 
@@ -1423,11 +1383,9 @@ get_default_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
   gcc_assert (DATA_FIELD == 0);
 
-  default_init di;
   struct descr_change_info info;
   info.type = DEFAULT_INITIALISATION;
   info.descriptor_type = type;
-  info.u.initialization_info = &di;
 
   return get_descriptor_init (type, &ts, rank, &attr, info);
 }
@@ -1437,11 +1395,9 @@ vec<constructor_elt, va_gc> *
 get_null_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
 				const symbol_attribute &attr)
 {
-  null_init ni;
   struct descr_change_info info;
   info.type = NULL_INITIALISATION;
   info.descriptor_type = type;
-  info.u.null_init.info = &ni;
   info.u.null_init.ts = &ts;
 
   return get_descriptor_init (type, &ts, rank, &attr, info);
@@ -1451,11 +1407,9 @@ get_null_array_descriptor_init (tree type, gfc_typespec &ts, int rank,
 vec<constructor_elt, va_gc> *
 get_null_array_descriptor (tree type, const symbol_attribute &attr)
 {
-  nullification n;
   struct descr_change_info info;
   info.type = EXPLICIT_NULLIFICATION;
   info.descriptor_type = type;
-  info.u.nullification_info = &n;
 
   return get_descriptor_init (type, nullptr, 0, &attr, info);
 }
@@ -1467,11 +1421,9 @@ gfc_build_default_array_descriptor (tree type, gfc_typespec &ts, int rank,
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
-  default_init di;
   struct descr_change_info info;
   info.type = DEFAULT_INITIALISATION;
   info.descriptor_type = type;
-  info.u.initialization_info = &di;
 
   return build_constructor (type,
 			    get_descriptor_init (type, &ts, rank, &attr, info));
@@ -1921,15 +1873,14 @@ gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor,
 
   attr = gfc_symbol_attr (sym);
 
-  scalar_value sv (false);
   struct descr_change_info info;
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (descriptor);
-  info.u.scalar_value.info = &sv;
   info.u.scalar_value.ts = &expr->ts;
   info.u.scalar_value.value = value;
   info.u.scalar_value.caf_token = value;
   info.u.scalar_value.clear_token = true;
+  info.u.scalar_value.use_declared_type = true;
 
   init_struct (block, descriptor,
 	       get_descriptor_init (TREE_TYPE (descriptor), &sym->ts, 0,
@@ -1941,15 +1892,14 @@ void
 gfc_set_descriptor_from_scalar (stmtblock_t *block, tree desc, tree scalar,
 				symbol_attribute *attr, tree caf_token)
 {
-  scalar_value sv (true);
   struct descr_change_info info;
   info.type = SCALAR_VALUE;
   info.descriptor_type = TREE_TYPE (desc);
-  info.u.scalar_value.info = &sv;
   info.u.scalar_value.ts = nullptr;
   info.u.scalar_value.value = scalar;
   info.u.scalar_value.caf_token = caf_token;
   info.u.scalar_value.clear_token = false;
+  info.u.scalar_value.use_declared_type = false;
 
   init_struct (block, desc,
 	       get_descriptor_init (TREE_TYPE (desc), nullptr, 0, attr, info));
