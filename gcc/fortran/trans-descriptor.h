@@ -120,3 +120,6 @@ tree
 gfc_set_pdt_array_descriptor (stmtblock_t *, tree, gfc_array_spec *,
 			      gfc_actual_arglist *);
 
+void
+gfc_grow_array (stmtblock_t * pblock, tree desc, tree extra);
+
