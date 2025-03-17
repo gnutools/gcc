@@ -61,13 +61,10 @@ tree gfc_conv_descriptor_token_field (tree);
 void gfc_conv_descriptor_data_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_token_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_dtype_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_dimensions_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_version_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, int);
 void gfc_conv_descriptor_span_set (stmtblock_t *, tree, tree);
-void gfc_conv_descriptor_stride_set (stmtblock_t *, tree, tree, tree);
-void gfc_conv_descriptor_lbound_set (stmtblock_t *, tree, tree, tree);
 void gfc_conv_descriptor_ubound_set (stmtblock_t *, tree, tree, tree);
 
 /* CFI descriptor.  */
