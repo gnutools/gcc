@@ -106,4 +106,6 @@ gfc_copy_descriptor_info (stmtblock_t *, tree, tree, int, gfc_ss *);
 void
 gfc_set_contiguous_array (stmtblock_t *block, tree desc, tree size,
 			  tree data_ptr);
+void
+gfc_class_array_data_assign (stmtblock_t *, tree, tree, bool);
 

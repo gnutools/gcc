@@ -825,49 +825,6 @@ gfc_get_vptr_from_expr (tree expr)
 }
 
 
-void
-gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
-			     bool)
-{
-  tree tmp, tmp2, type;
-
-  gfc_conv_descriptor_data_set (block, lhs_desc,
-				gfc_conv_descriptor_data_get (rhs_desc));
-  gfc_conv_descriptor_offset_set (block, lhs_desc,
-				  gfc_conv_descriptor_offset_get (rhs_desc));
-
-  gfc_conv_descriptor_dtype_set (block, lhs_desc,
-				 gfc_conv_descriptor_dtype_get (rhs_desc));
-
-  /* Assign the dimension as range-ref.  */
-  tmp = gfc_conv_descriptor_dimensions_get (lhs_desc);
-  tmp2 = gfc_conv_descriptor_dimensions_get (rhs_desc);
-
-  int rank = gfc_descriptor_rank (lhs_desc);
-  int rank2 = gfc_descriptor_rank (rhs_desc);
-  if (rank == GFC_MAX_DIMENSIONS && rank2 != GFC_MAX_DIMENSIONS)
-    type = TREE_TYPE (tmp2);
-  else if (rank2 == GFC_MAX_DIMENSIONS && rank != GFC_MAX_DIMENSIONS)
-    type = TREE_TYPE (tmp);
-  else
-    {
-      int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (lhs_desc));
-      int corank2 = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (rhs_desc));
-      if (corank > 0 && corank2 == 0)
-	type = TREE_TYPE (tmp2);
-      else if (corank2 > 0 && corank == 0)
-	type = TREE_TYPE (tmp);
-      else
-	{
-	  gcc_assert (TREE_TYPE (tmp) == TREE_TYPE (tmp2));
-	  type = TREE_TYPE (tmp);
-	}
-    }
-
-  tmp = gfc_conv_descriptor_dimensions_get (rhs_desc, type);
-  gfc_conv_descriptor_dimensions_set (block, lhs_desc, tmp);
-}
-
 /* Takes a derived type expression and returns the address of a temporary
    class object of the 'declared' type.  If opt_vptr_src is not NULL, this is
    used for the temporary class object.
