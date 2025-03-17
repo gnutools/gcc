@@ -103,7 +103,7 @@ gfc_conv_scalar_null_to_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr,
   if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
     scalar = gfc_build_addr_expr (NULL_TREE, scalar);
 
-  gfc_set_scalar_descriptor (&se->pre, desc, sym, expr, scalar);
+  gfc_set_scalar_null_descriptor (&se->pre, desc, sym, expr, scalar);
 
   /* Copy pointer address back - but only if it could have changed and
      if the actual argument is a pointer and not, e.g., NULL().  */

@@ -1866,8 +1866,8 @@ gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym,
 
 
 void
-gfc_set_scalar_descriptor (stmtblock_t *block, tree descriptor, 
-			   gfc_symbol *sym, gfc_expr *expr, tree value)
+gfc_set_scalar_null_descriptor (stmtblock_t *block, tree descriptor,
+				gfc_symbol *sym, gfc_expr *expr, tree value)
 {
   symbol_attribute attr;
 
