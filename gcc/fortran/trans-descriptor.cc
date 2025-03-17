@@ -3742,8 +3742,8 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       offset = fold_build2_loc (input_location, MINUS_EXPR,
 				gfc_array_index_type,
 				offset, tmp2);
-      tree size1 = fold_build2_loc (input_location, MULT_EXPR,
-				    gfc_array_index_type, tmp, size1);
+      size1 = fold_build2_loc (input_location, MULT_EXPR,
+			       gfc_array_index_type, tmp, size1);
     }
 
   /* Set the lhs descriptor and scalarizer offsets.  For rank > 1,
