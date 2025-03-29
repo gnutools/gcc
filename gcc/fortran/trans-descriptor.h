@@ -64,7 +64,6 @@ void gfc_conv_descriptor_dtype_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_version_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, int);
-void gfc_conv_descriptor_span_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_ubound_set (stmtblock_t *, tree, tree, tree);
 
 /* CFI descriptor.  */

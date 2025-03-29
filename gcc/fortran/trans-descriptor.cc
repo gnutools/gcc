@@ -708,7 +708,7 @@ gfc_conv_descriptor_span_get (tree desc)
   return gfc_descriptor::conv_span_get (desc);
 }
 
-void
+static void
 gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 {
   return gfc_descriptor::conv_span_set (block, desc, value);
