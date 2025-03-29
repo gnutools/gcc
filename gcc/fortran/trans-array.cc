@@ -6642,8 +6642,7 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
   tree stmtInit, stmtCleanup;
   tree lbound;
   tree ubound;
-  tree dubound;
-  tree dlbound;
+  tree dextent;
   tree dumdesc;
   tree tmp;
   tree stride, stride2;
@@ -6777,16 +6776,10 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
   for (n = 0; n < as->rank; n++)
     {
       if (checkparm || !as->upper[n])
-	{
-	  /* Get the bounds of the actual parameter.  */
-	  dubound = gfc_conv_descriptor_ubound_get (dumdesc, gfc_rank_cst[n]);
-	  dlbound = gfc_conv_descriptor_lbound_get (dumdesc, gfc_rank_cst[n]);
-	}
+	/* Get the bounds of the actual parameter.  */
+	dextent = gfc_conv_descriptor_extent_get (dumdesc, gfc_rank_cst[n]);
       else
-	{
-	  dubound = NULL_TREE;
-	  dlbound = NULL_TREE;
-	}
+	dextent = NULL_TREE;
 
       lbound = GFC_TYPE_ARRAY_LBOUND (type, n);
       if (!INTEGER_CST_P (lbound))
@@ -6826,12 +6819,7 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 	      temp = fold_build2_loc (input_location, PLUS_EXPR,
 				      gfc_array_index_type,
 				      gfc_index_one_node, temp);
-	      stride2 = fold_build2_loc (input_location, MINUS_EXPR,
-					 gfc_array_index_type, dubound,
-					 dlbound);
-	      stride2 = fold_build2_loc (input_location, PLUS_EXPR,
-					 gfc_array_index_type,
-					 gfc_index_one_node, stride2);
+	      stride2 = dextent;
 	      tmp = fold_build2_loc (input_location, NE_EXPR,
 				     gfc_array_index_type, temp, stride2);
 	      msg = xasprintf ("Dimension %d of array '%s' has extent "
@@ -6849,7 +6837,8 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 	  /* For assumed shape arrays move the upper bound by the same amount
 	     as the lower bound.  */
 	  tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				 gfc_array_index_type, dubound, dlbound);
+				 gfc_array_index_type, dextent,
+				 gfc_index_one_node);
 	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, tmp, lbound);
 	  gfc_add_modify (&init, ubound, tmp);
@@ -7913,13 +7902,7 @@ gfc_tree_array_size (stmtblock_t *block, tree desc, gfc_expr *expr, tree dim)
     {
       if (!dim)
 	dim = gfc_index_zero_node;
-      tree ubound = gfc_conv_descriptor_ubound_get (desc, dim);
-      tree lbound = gfc_conv_descriptor_lbound_get (desc, dim);
-
-      size = fold_build2_loc (input_location, MINUS_EXPR,
-			      gfc_array_index_type, ubound, lbound);
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (desc, dim);
       /* if (!allocatable && !pointer && assumed rank)
 	   size = (idx == rank && ubound[rank-1] == -1 ? -1 : size;
 	 else
@@ -7980,11 +7963,7 @@ gfc_tree_array_size (stmtblock_t *block, tree desc, gfc_expr *expr, tree dim)
       cond = fold_build2_loc (input_location, TRUTH_AND_EXPR, boolean_type_node,
 			      cond, tmp);
     }
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 gfc_conv_descriptor_ubound_get (desc, idx),
-			 gfc_conv_descriptor_lbound_get (desc, idx));
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			 tmp, gfc_index_one_node);
+  tmp = gfc_conv_descriptor_extent_get (desc, idx);
   gfc_add_modify (&cond_block, extent, tmp);
   tmp = fold_build2_loc (input_location, LT_EXPR, boolean_type_node,
 			 extent, gfc_index_zero_node);
@@ -10366,8 +10345,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   tree cond_null;
   tree cond;
   tree tmp;
-  tree lbound;
-  tree ubound;
   tree desc;
   tree desc2;
   tree old_desc;
@@ -10605,17 +10582,16 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   for (n = 0; n < expr1->rank; n++)
     {
       /* Check the shape.  */
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[n]);
-      ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[n]);
+      tree extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[n]);
       tmp = fold_build2_loc (input_location, MINUS_EXPR,
 			     gfc_array_index_type,
 			     loop->to[n], loop->from[n]);
       tmp = fold_build2_loc (input_location, PLUS_EXPR,
 			     gfc_array_index_type,
-			     tmp, lbound);
+			     tmp, gfc_index_one_node);
       tmp = fold_build2_loc (input_location, MINUS_EXPR,
 			     gfc_array_index_type,
-			     tmp, ubound);
+			     tmp, extent);
       cond = fold_build2_loc (input_location, NE_EXPR,
 			      logical_type_node,
 			      tmp, gfc_index_zero_node);
