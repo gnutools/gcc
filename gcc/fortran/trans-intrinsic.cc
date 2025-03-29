@@ -2360,11 +2360,7 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
 	{
 	  tmp = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[i]);
 	  extent = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[i]);
-	  extent = fold_build2_loc (input_location, MINUS_EXPR,
-				    gfc_array_index_type, extent, tmp);
-	  extent = fold_build2_loc (input_location, PLUS_EXPR,
-				    gfc_array_index_type, extent,
-				    gfc_index_one_node);
+	  extent = gfc_conv_array_extent_dim (tmp, extent, nullptr);
 	  tmp = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[i]);
 	  tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
 				 tmp, extent);
@@ -2484,10 +2480,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
 
   ubound = gfc_conv_descriptor_ubound_get (desc, bound);
   lbound = gfc_conv_descriptor_lbound_get (desc, bound);
-  size = fold_build2_loc (input_location, MINUS_EXPR,
-			  gfc_array_index_type, ubound, lbound);
-  size = fold_build2_loc (input_location, PLUS_EXPR,
-			  gfc_array_index_type, size, gfc_index_one_node);
+  size = gfc_conv_array_extent_dim (lbound, ubound, nullptr);
 
   /* 13.14.53: Result value for LBOUND
 
