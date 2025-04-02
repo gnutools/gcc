@@ -62,11 +62,11 @@ any_l1 (gfc_array_l1 * const restrict retarray,
   if (len < 0)
     len = 0;
 
-  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+  delta = GFC_DESCRIPTOR_SPACING(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
+      sstride[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -74,7 +74,7 @@ any_l1 (gfc_array_l1 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n + 1);
+      sstride[n] = GFC_DESCRIPTOR_SPACING(array,n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n + 1);
 
       if (extent[n] < 0)

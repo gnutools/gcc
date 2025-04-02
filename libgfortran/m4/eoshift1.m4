@@ -126,10 +126,10 @@ eoshift1 (gfc_array_char * const restrict ret,
     {
       if (dim == which)
         {
-          roffset = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+          roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
           if (roffset == 0)
             roffset = size;
-          soffset = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+          soffset = GFC_DESCRIPTOR_SPACING(array,dim);
           if (soffset == 0)
             soffset = size;
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
@@ -138,8 +138,8 @@ eoshift1 (gfc_array_char * const restrict ret,
         {
           count[n] = 0;
           extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-          rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
-          sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+          rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+          sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 
           hstride[n] = GFC_DESCRIPTOR_STRIDE(h,n);
           n++;

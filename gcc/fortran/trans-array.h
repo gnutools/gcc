@@ -159,10 +159,12 @@ void gfc_conv_array_parameter (gfc_se *, gfc_expr *, bool, const gfc_symbol *,
 /* These work with both descriptors and descriptorless arrays.  */
 tree gfc_conv_array_data (tree);
 tree gfc_conv_array_offset (tree);
+tree gfc_conv_array_align (tree);
 /* Return either an INT_CST or an expression for that part of the descriptor.  */
-tree gfc_conv_array_stride (tree, int);
+tree gfc_conv_array_spacing (tree, int);
 tree gfc_conv_array_lbound (tree, int);
 tree gfc_conv_array_ubound (tree, int);
+tree gfc_conv_array_extent (tree, int);
 
 /* Set (co)bounds of an array.  */
 tree gfc_trans_array_bounds (tree, gfc_symbol *, tree *, stmtblock_t *);

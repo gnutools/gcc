@@ -1491,7 +1491,7 @@ gfc_get_element_type (tree type)
 
     struct descriptor_dimension
     {
-      index stride;
+      index sm;
       index lbound;
       index ubound;
     }
@@ -1664,9 +1664,9 @@ gfc_get_desc_dim_type (void)
   TYPE_NAME (type) = get_identifier ("descriptor_dimension");
   TYPE_PACKED (type) = 1;
 
-  /* Consists of the stride, lbound and ubound members.  */
+  /* Consists of the sm, lbound and ubound members.  */
   decl = gfc_add_field_to_struct_1 (type,
-				    get_identifier ("stride"),
+				    get_identifier ("spacing"),
 				    gfc_array_index_type, &chain);
   suppress_warning (decl);
 
@@ -1854,15 +1854,27 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   tree type;
   tree tmp;
   int n;
-  int known_stride;
   int known_offset;
   mpz_t offset;
   mpz_t stride;
+  mpz_t spacing;
   mpz_t delta;
   gfc_expr *expr;
 
   mpz_init_set_ui (offset, 0);
   mpz_init_set_ui (stride, 1);
+  mpz_init (spacing);
+  wide_int align = wi::uhwi (TYPE_ALIGN_UNIT (etype),
+			     TYPE_PRECISION (gfc_array_index_type));
+
+  bool known_spacing = INTEGER_CST_P (TYPE_SIZE_UNIT (etype));
+  if (known_spacing)
+    {
+      wide_int elem_len = wi::to_wide (TYPE_SIZE_UNIT (etype));
+      wide_int len_align = wi::udiv_trunc (elem_len, align);
+      gcc_assert (wi::fits_uhwi_p (len_align));
+      mpz_set_ui (spacing, len_align.to_uhwi ());
+    }
   mpz_init (delta);
 
   /* We don't use build_array_type because this does not include
@@ -1876,16 +1888,16 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   GFC_ARRAY_TYPE_P (type) = 1;
   TYPE_LANG_SPECIFIC (type) = ggc_cleared_alloc<struct lang_type> ();
 
-  known_stride = (packed != PACKED_NO);
+  bool known_stride = (packed != PACKED_NO);
   known_offset = 1;
   for (n = 0; n < as->rank; n++)
     {
-      /* Fill in the stride and bound components of the type.  */
-      if (known_stride)
-	tmp = gfc_conv_mpz_to_tree (stride, gfc_index_integer_kind);
+      /* Fill in the spacing and bound components of the type.  */
+      if (known_spacing)
+	tmp = gfc_conv_mpz_to_tree (spacing, gfc_index_integer_kind);
       else
         tmp = NULL_TREE;
-      GFC_TYPE_ARRAY_STRIDE (type, n) = tmp;
+      GFC_TYPE_ARRAY_SPACING (type, n) = tmp;
 
       expr = as->lower[n];
       if (expr && expr->expr_type == EXPR_CONSTANT)
@@ -1895,15 +1907,16 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
         }
       else
         {
-          known_stride = 0;
+          known_stride = false;
+	  known_spacing = false;
           tmp = NULL_TREE;
         }
       GFC_TYPE_ARRAY_LBOUND (type, n) = tmp;
 
-      if (known_stride)
+      if (known_spacing)
 	{
           /* Calculate the offset.  */
-          mpz_mul (delta, stride, as->lower[n]->value.integer);
+          mpz_mul (delta, spacing, as->lower[n]->value.integer);
           mpz_sub (offset, offset, delta);
 	}
       else
@@ -1918,22 +1931,29 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
       else
         {
           tmp = NULL_TREE;
-          known_stride = 0;
+          known_stride = false;
+	  known_spacing = false;
         }
       GFC_TYPE_ARRAY_UBOUND (type, n) = tmp;
 
-      if (known_stride)
+      if (known_spacing || known_stride)
         {
           /* Calculate the stride.  */
           mpz_sub (delta, as->upper[n]->value.integer,
 	           as->lower[n]->value.integer);
           mpz_add_ui (delta, delta, 1);
-          mpz_mul (stride, stride, delta);
+	  if (known_stride)
+	    mpz_mul (stride, stride, delta);
+	  if (known_spacing)
+	    mpz_mul (spacing, spacing, delta);
         }
 
       /* Only the first stride is known for partial packed arrays.  */
       if (packed == PACKED_NO || packed == PACKED_PARTIAL)
-        known_stride = 0;
+	{
+	  known_stride = 0;
+	  known_spacing = 0;
+	}
     }
   for (n = as->rank; n < as->rank + as->corank; n++)
     {
@@ -1971,6 +1991,11 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   else
     GFC_TYPE_ARRAY_SIZE (type) = NULL_TREE;
 
+  if (packed != PACKED_NO)
+    GFC_TYPE_ARRAY_ELEM_LEN (type) = TYPE_SIZE_UNIT (etype);
+
+  wide_int index_one = wi::one (TYPE_PRECISION (gfc_array_index_type));
+  GFC_TYPE_ARRAY_ALIGN (type) = wide_int_to_tree (gfc_array_index_type, align);
   GFC_TYPE_ARRAY_RANK (type) = as->rank;
   GFC_TYPE_ARRAY_CORANK (type) = as->corank;
   GFC_TYPE_ARRAY_DTYPE (type) = NULL_TREE;
@@ -2050,6 +2075,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
 array_type_done:
   mpz_clear (offset);
   mpz_clear (stride);
+  mpz_clear (spacing);
   mpz_clear (delta);
 
   return type;
@@ -2110,6 +2136,12 @@ gfc_get_array_descriptor_base (int dimen, int codimen, bool restricted)
   /* Add the span component.  */
   decl = gfc_add_field_to_struct_1 (fat_type,
 				    get_identifier ("span"),
+				    gfc_array_index_type, &chain);
+  suppress_warning (decl);
+
+  /* Add the span component.  */
+  decl = gfc_add_field_to_struct_1 (fat_type,
+				    get_identifier ("align"),
 				    gfc_array_index_type, &chain);
   suppress_warning (decl);
 
@@ -2199,20 +2231,37 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
   GFC_DESCRIPTOR_TYPE_P (fat_type) = 1;
   TYPE_LANG_SPECIFIC (fat_type) = ggc_cleared_alloc<struct lang_type> ();
 
+  int index_precision = TYPE_PRECISION (gfc_array_index_type);
+  wide_int align = wi::uhwi (TYPE_ALIGN_UNIT (etype), index_precision);
+  wide_int index_one = wi::one (index_precision);
+  GFC_TYPE_ARRAY_ALIGN (fat_type) = wide_int_to_tree (gfc_array_index_type,
+						      align);
   GFC_TYPE_ARRAY_RANK (fat_type) = dimen;
   GFC_TYPE_ARRAY_CORANK (fat_type) = codimen;
   GFC_TYPE_ARRAY_DTYPE (fat_type) = NULL_TREE;
   GFC_TYPE_ARRAY_AKIND (fat_type) = akind;
 
   /* Build an array descriptor record type.  */
-  if (packed != 0)
-    stride = gfc_index_one_node;
+  tree spacing;
+  if (packed == 0)
+    {
+      stride = gfc_index_one_node;
+      spacing = TYPE_SIZE_UNIT (etype);
+      if (spacing != NULL_TREE)
+	spacing = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+				   gfc_array_index_type, spacing,
+				   build_int_cst (gfc_array_index_type,
+						  TYPE_ALIGN_UNIT (etype)));
+    }
   else
-    stride = NULL_TREE;
+    {
+      stride = NULL_TREE;
+      spacing = NULL_TREE;
+    }
   for (n = 0; n < dimen + codimen; n++)
     {
       if (n < dimen)
-	GFC_TYPE_ARRAY_STRIDE (fat_type, n) = stride;
+	GFC_TYPE_ARRAY_SPACING (fat_type, n) = spacing;
 
       if (lbound)
 	lower = lbound[n];
@@ -2242,20 +2291,26 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
       if (n >= dimen)
 	continue;
 
-      if (upper != NULL_TREE && lower != NULL_TREE && stride != NULL_TREE)
+      if (upper != NULL_TREE && lower != NULL_TREE
+	  && (stride != NULL_TREE || spacing != NULL_TREE))
 	{
-	  tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				 gfc_array_index_type, upper, lower);
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type, tmp,
-				 gfc_index_one_node);
-	  stride = fold_build2_loc (input_location, MULT_EXPR,
-				    gfc_array_index_type, tmp, stride);
-	  /* Check the folding worked.  */
-	  gcc_assert (INTEGER_CST_P (stride));
+	  tmp = gfc_conv_array_extent_dim (lower, upper, nullptr);
+	  if (stride != NULL_TREE)
+	    {
+	      stride = fold_build2_loc (input_location, MULT_EXPR,
+					gfc_array_index_type, tmp, stride);
+	      /* Check the folding worked.  */
+	      gcc_assert (INTEGER_CST_P (stride));
+	    }
+	  if (spacing != NULL_TREE)
+	    spacing = fold_build2_loc (input_location, MULT_EXPR,
+				       gfc_array_index_type, tmp, spacing);
 	}
       else
-	stride = NULL_TREE;
+	{
+	  stride = NULL_TREE;
+	  spacing = NULL_TREE;
+	}
     }
   GFC_TYPE_ARRAY_SIZE (fat_type) = stride;
 
@@ -3833,8 +3888,8 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
   int rank, dim;
   bool indirect = false;
   tree etype, ptype, t, base_decl;
-  tree data_off, span_off, dim_off, dtype_off, dim_size, elem_size;
-  tree lower_suboff, upper_suboff, stride_suboff;
+  tree data_off, span_off, dim_off, dtype_off, dim_size;
+  tree lower_suboff, upper_suboff, spacing_suboff;
   tree dtype, field, rank_off;
 
   if (! GFC_DESCRIPTOR_TYPE_P (type))
@@ -3889,11 +3944,8 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
     base_decl = build1 (INDIRECT_REF, ptype, base_decl);
 
   gfc_get_descriptor_offsets_for_info (type, &data_off, &dtype_off, &span_off,
-				       &dim_off, &dim_size, &stride_suboff,
+				       &dim_off, &dim_size, &spacing_suboff,
 				       &lower_suboff, &upper_suboff);
-
-  t = fold_build_pointer_plus (base_decl, span_off);
-  elem_size = build1 (INDIRECT_REF, gfc_array_index_type, t);
 
   t = base_decl;
   if (!integer_zerop (data_off))
@@ -3964,9 +4016,10 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
 	}
       t = fold_build_pointer_plus (base_decl,
 				   size_binop (PLUS_EXPR,
-					       dim_off, stride_suboff));
+					       dim_off, spacing_suboff));
       t = build1 (INDIRECT_REF, gfc_array_index_type, t);
-      t = build2 (MULT_EXPR, gfc_array_index_type, t, elem_size);
+      t = build2 (MULT_EXPR, gfc_array_index_type, t,
+		  GFC_TYPE_ARRAY_ALIGN (type));
       info->dimen[dim].stride = t;
       if (dim + 1 < rank)
 	dim_off = size_binop (PLUS_EXPR, dim_off, dim_size);

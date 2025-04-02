@@ -367,7 +367,7 @@ typedef GFC_UINTEGER_4 gfc_char4_t;
 
 typedef struct descriptor_dimension
 {
-  index_type _stride;
+  index_type spacing;
   index_type lower_bound;
   index_type _ubound;
 }
@@ -389,6 +389,7 @@ struct {\
   size_t offset;\
   dtype_type dtype;\
   index_type span;\
+  index_type align; \
   descriptor_dimension dim[];\
 }
 
@@ -452,6 +453,7 @@ struct {\
   size_t offset;\
   dtype_type dtype;\
   index_type span;\
+  index_type align;\
   descriptor_dimension dim[r];\
 }
 
@@ -463,30 +465,24 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_DATA(desc) ((desc)->base_addr)
 #define GFC_DESCRIPTOR_DTYPE(desc) ((desc)->dtype)
 #define GFC_DESCRIPTOR_SPAN(desc) ((desc)->span)
+#define GFC_DESCRIPTOR_ALIGN(desc) ((desc)->align)
 
-#define GFC_DIMENSION_LBOUND(dim) ((dim).lower_bound)
-#define GFC_DIMENSION_UBOUND(dim) ((dim)._ubound)
-#define GFC_DIMENSION_STRIDE(dim) ((dim)._stride)
-#define GFC_DIMENSION_EXTENT(dim) ((dim)._ubound + 1 - (dim).lower_bound)
-#define GFC_DIMENSION_SET(dim,lb,ub,str) \
+#define GFC_DIMENSION_SET(dim,lb,ub,sp) \
   do \
     { \
       (dim).lower_bound = lb;			\
       (dim)._ubound = ub;			\
-      (dim)._stride = str;			\
+      (dim).spacing = sp;			\
     } while (0)
 	    
 
 #define GFC_DESCRIPTOR_LBOUND(desc,i) ((desc)->dim[i].lower_bound)
 #define GFC_DESCRIPTOR_UBOUND(desc,i) ((desc)->dim[i]._ubound)
-#define GFC_DESCRIPTOR_EXTENT(desc,i) ((desc)->dim[i]._ubound + 1 \
-				      - (desc)->dim[i].lower_bound)
-#define GFC_DESCRIPTOR_EXTENT_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_EXTENT(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
+#define GFC_DESCRIPTOR_SPACING(desc,i) ((desc)->dim[i].spacing)
+#define GFC_DESCRIPTOR_SM(desc,i) (GFC_DESCRIPTOR_SPACING(desc,i) * GFC_DESCRIPTOR_ALIGN(desc))
+#define GFC_DESCRIPTOR_EXTENT(desc,i) (GFC_DESCRIPTOR_UBOUND(desc,i) + (GFC_DESCRIPTOR_LBOUND(desc,i) - 1))
 
-#define GFC_DESCRIPTOR_STRIDE(desc,i) ((desc)->dim[i]._stride)
-#define GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_STRIDE(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
+#define GFC_DESCRIPTOR_STRIDE(desc,i) (GFC_DESCRIPTOR_SM(desc,i) / GFC_DESCRIPTOR_SIZE(desc))
 
 /* Macros to get both the size and the type with a single masking operation  */
 

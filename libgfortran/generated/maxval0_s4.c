@@ -181,7 +181,7 @@ mmaxval0_s4 (GFC_UINTEGER_4 * const restrict ret,
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)

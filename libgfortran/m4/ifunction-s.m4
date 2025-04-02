@@ -256,12 +256,12 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     runtime_error ("Funny sized logical array");
 
   delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
-  mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
+  mdelta = GFC_DESCRIPTOR_SPACING(mask,dim);
 
   for (n = 0; n < dim; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -271,7 +271,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   for (n = dim; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n + 1) * string_len;
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)

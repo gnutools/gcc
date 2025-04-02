@@ -464,8 +464,9 @@ _gfortran_caf_failed_images (gfc_descriptor_t *array,
       indicate an empty array.  */
   array->dim[0].lower_bound = 0;
   array->dim[0]._ubound = -1;
-  array->dim[0]._stride = 1;
+  array->dim[0].spacing = 1;
   array->offset = 0;
+  array->align = local_kind;
 }
 
 
@@ -486,8 +487,9 @@ _gfortran_caf_stopped_images (gfc_descriptor_t *array,
      indicate an empty array.  */
   array->dim[0].lower_bound = 0;
   array->dim[0]._ubound = -1;
-  array->dim[0]._stride = 1;
+  array->dim[0].spacing = 1;
   array->offset = 0;
+  array->align = local_kind;
 }
 
 

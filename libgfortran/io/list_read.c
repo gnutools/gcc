@@ -2804,10 +2804,10 @@ nml_parse_qualifier (st_parameter_dt *dtp, descriptor_dimension *ad,
 	}
 
       /* Check the values of the triplet indices.  */
-      if ((ls[dim].start > GFC_DIMENSION_UBOUND(ad[dim]))
-	   || (ls[dim].start < GFC_DIMENSION_LBOUND(ad[dim]))
-	   || (ls[dim].end > GFC_DIMENSION_UBOUND(ad[dim]))
-	   || (ls[dim].end < GFC_DIMENSION_LBOUND(ad[dim])))
+      if ((ls[dim].start > ad[dim]._ubound)
+	   || (ls[dim].start < ad[dim].lower_bound)
+	   || (ls[dim].end > ad[dim]._ubound)
+	   || (ls[dim].end < ad[dim].lower_bound))
 	{
 	  if (is_char)
 	    snprintf (parse_err_msg, parse_err_msg_size,
@@ -3130,7 +3130,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    list_obj.data = list_obj.data + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_STRIDE(nl,dim) * nl->size;
+	      * GFC_DESCRIPTOR_SPACING(nl,dim) * nl->size;
 	}
       else
 	{
@@ -3138,7 +3138,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    pdata = (void*)(pdata + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_STRIDE(nl,dim) * nl->size);
+	      * GFC_DESCRIPTOR_SPACING(nl,dim) * nl->size);
 	}
 
       /* If we are finished with the repeat count, try to read next value.  */

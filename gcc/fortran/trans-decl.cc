@@ -1130,10 +1130,10 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 	  suppress_warning (GFC_TYPE_ARRAY_UBOUND (type, dim));
 	}
 
-      if (GFC_TYPE_ARRAY_STRIDE (type, dim) == NULL_TREE)
+      if (GFC_TYPE_ARRAY_SPACING (type, dim) == NULL_TREE)
 	{
-	  GFC_TYPE_ARRAY_STRIDE (type, dim) = create_index_var ("stride", nest);
-	  suppress_warning (GFC_TYPE_ARRAY_STRIDE (type, dim));
+	  GFC_TYPE_ARRAY_SPACING (type, dim) = create_index_var ("spacing", nest);
+	  suppress_warning (GFC_TYPE_ARRAY_SPACING (type, dim));
 	}
     }
   for (dim = GFC_TYPE_ARRAY_RANK (type);
@@ -7607,7 +7607,9 @@ done:
   tmp = gfc_conv_descriptor_extent_get (gfc_desc, idx);
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
   /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
-  tmp = gfc_conv_descriptor_sm_get (gfc_desc, idx);
+  tmp = gfc_conv_descriptor_spacing_get (gfc_desc, idx);
+  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			 tmp, gfc_conv_descriptor_align_get (gfc_desc));
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
   /* Generate loop.  */

@@ -3179,14 +3179,6 @@ add_functions (void)
 
   make_generic ("size", GFC_ISYM_SIZE, GFC_STD_F95);
 
-  /* Obtain the stride for a given dimensions; to be used only internally.
-     "make_from_module" makes it inaccessible for external users.  */
-  add_sym_2 (GFC_PREFIX ("stride"), GFC_ISYM_STRIDE, CLASS_INQUIRY, ACTUAL_NO,
-	     BT_INTEGER, gfc_index_integer_kind, GFC_STD_GNU,
-	     NULL, NULL, gfc_resolve_stride,
-	     ar, BT_REAL, dr, REQUIRED, dm, BT_INTEGER, ii, OPTIONAL);
-  make_from_module();
-
   add_sym_1 ("sizeof", GFC_ISYM_SIZEOF, CLASS_INQUIRY, ACTUAL_NO,
 	     BT_INTEGER, ii, GFC_STD_GNU,
 	     gfc_check_sizeof, gfc_simplify_sizeof, NULL,

@@ -115,7 +115,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
+  mstride = GFC_DESCRIPTOR_SPACING(mask,0);
 
   /* Search for the first occurrence of a true element in mask. */
   for (j=0; j<extent; j++)

@@ -2805,7 +2805,7 @@ transfer_array_inner (st_parameter_dt *dtp, gfc_array_char *desc, int kind,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(desc,n);
+      stride[n] = GFC_DESCRIPTOR_SPACING(desc,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(desc,n);
 
       /* If the extent of even one dimension is zero, then the entire
@@ -4929,7 +4929,7 @@ export_proto(st_set_nml_var_dim);
 
 void
 st_set_nml_var_dim (st_parameter_dt *dtp, GFC_INTEGER_4 n_dim,
-		    index_type stride, index_type lbound,
+		    index_type spacing, index_type lbound,
 		    index_type ubound)
 {
   namelist_info *nml;
@@ -4939,7 +4939,7 @@ st_set_nml_var_dim (st_parameter_dt *dtp, GFC_INTEGER_4 n_dim,
 
   for (nml = dtp->u.p.ionml; nml->next; nml = nml->next);
 
-  GFC_DIMENSION_SET(nml->dim[n],lbound,ubound,stride);
+  GFC_DIMENSION_SET(nml->dim[n],lbound,ubound,spacing);
 }
 
 

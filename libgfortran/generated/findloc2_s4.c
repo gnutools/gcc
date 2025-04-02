@@ -106,7 +106,7 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
     internal_error (NULL, "Funny sized logical array");
 
   sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len_array;
-  mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
+  mstride = GFC_DESCRIPTOR_SPACING(mask,0);
 
   if (back)
     {

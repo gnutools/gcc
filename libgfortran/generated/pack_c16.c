@@ -127,7 +127,7 @@ pack_c16 (gfc_array_c16 *ret, const gfc_array_c16 *array,
       if (extent[n] <= 0)
        zero_sized = 1;
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
     }
   if (sstride[0] == 0)
     sstride[0] = 1;

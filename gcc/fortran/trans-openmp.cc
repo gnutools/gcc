@@ -644,13 +644,17 @@ gfc_walk_alloc_comps (tree decl, tree dest, tree var,
       gfc_init_block (&tmpblock);
       tem = gfc_conv_array_data (decl);
       tree declvar = build_fold_indirect_ref_loc (input_location, tem);
-      tree declvref = gfc_build_array_ref (declvar, index, NULL);
+      tree declvref = gfc_build_array_ref (declvar, index, false,
+					   GFC_TYPE_ARRAY_SPACING (declvar, 0),
+					   GFC_TYPE_ARRAY_ALIGN (declvar));
       tree destvar, destvref = NULL_TREE;
       if (dest)
 	{
 	  tem = gfc_conv_array_data (dest);
 	  destvar = build_fold_indirect_ref_loc (input_location, tem);
-	  destvref = gfc_build_array_ref (destvar, index, NULL);
+	  destvref = gfc_build_array_ref (destvar, index, false,
+					  GFC_TYPE_ARRAY_SPACING (declvar, 0),
+					  GFC_TYPE_ARRAY_ALIGN (declvar));
 	}
       gfc_add_expr_to_block (&tmpblock,
 			     gfc_walk_alloc_comps (declvref, destvref,
@@ -830,17 +834,18 @@ gfc_omp_clause_default_ctor (tree clause, tree decl, tree outer)
       gfc_add_modify (&cond_block, decl, outer);
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
       size = gfc_conv_descriptor_extent_get (decl, rank);
+      tree spacing;
       if (GFC_TYPE_ARRAY_RANK (type) >= 1)
-	size = fold_build2_loc (input_location, MULT_EXPR,
-				gfc_array_index_type, size,
-				gfc_conv_descriptor_sm_get (decl, rank));
+	spacing = gfc_conv_descriptor_spacing_get (decl, rank);
       else
 	{
 	  tree esize = gfc_conv_descriptor_span_get (decl);
-	  esize = fold_convert_loc (input_location, gfc_array_index_type, esize);
-	  size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-				  size, esize);
+	  spacing = fold_convert_loc (input_location, gfc_array_index_type, esize);
 	}
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, spacing);
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, gfc_conv_descriptor_align_get (decl));
       size = unshare_expr (size);
       size = gfc_evaluate_now (fold_convert (size_type_node, size),
 			       &cond_block);
@@ -1019,17 +1024,16 @@ gfc_omp_clause_copy_ctor (tree clause, tree dest, tree src)
     {
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
       size = gfc_conv_descriptor_extent_get (dest, rank);
+      tree spacing;
       if (GFC_TYPE_ARRAY_RANK (type) >= 1)
-	size = fold_build2_loc (input_location, MULT_EXPR,
-				gfc_array_index_type, size,
-				gfc_conv_descriptor_sm_get (dest, rank));
+	spacing = gfc_conv_descriptor_spacing_get (dest, rank);
       else
 	{
 	  tree esize = gfc_conv_descriptor_span_get (dest);
-	  esize = fold_convert_loc (input_location, gfc_array_index_type, esize);
-	  size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-				  size, esize);
+	  spacing = fold_convert_loc (input_location, gfc_array_index_type, esize);
 	}
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, spacing);
       size = unshare_expr (size);
       size = gfc_evaluate_now (fold_convert (size_type_node, size),
 			       &cond_block);
@@ -1140,17 +1144,21 @@ gfc_omp_clause_assign_op (tree clause, tree dest, tree src)
     {
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
       size = gfc_conv_descriptor_extent_get (src, rank);
+      tree spacing;
       if (GFC_TYPE_ARRAY_RANK (type) >= 1)
-	size = fold_build2_loc (input_location, MULT_EXPR,
-				gfc_array_index_type, size,
-				gfc_conv_descriptor_sm_get (src, rank));
+	{
+	  spacing = gfc_conv_descriptor_spacing_get (src, rank);
+	  spacing = fold_build2_loc (input_location, MULT_EXPR,
+				     gfc_array_index_type, spacing,
+				     gfc_conv_descriptor_align_get (src));
+	}
       else
 	{
 	  tree esize = gfc_conv_descriptor_span_get (src);
-	  esize = fold_convert_loc (input_location, gfc_array_index_type, esize);
-	  size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-				  size, esize);
+	  spacing = fold_convert_loc (input_location, gfc_array_index_type, esize);
 	}
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, spacing);
       size = unshare_expr (size);
       size = gfc_evaluate_now (fold_convert (size_type_node, size),
 			       &cond_block);
@@ -1279,8 +1287,12 @@ gfc_omp_linear_clause_add_loop (stmtblock_t *block, tree dest, tree src,
   gfc_init_block (&tmpblock);
   if (TREE_CODE (TREE_TYPE (dest)) == ARRAY_TYPE)
     {
-      desta = gfc_build_array_ref (dest, index, NULL);
-      srca = gfc_build_array_ref (src, index, NULL);
+      desta = gfc_build_array_ref (dest, index, false,
+				   GFC_TYPE_ARRAY_SPACING (dest, 0),
+				   GFC_TYPE_ARRAY_ALIGN (dest));
+      srca = gfc_build_array_ref (src, index, false,
+				  GFC_TYPE_ARRAY_SPACING (src, 0),
+				  GFC_TYPE_ARRAY_ALIGN (src));
     }
   else
     {
@@ -2676,7 +2688,7 @@ gfc_omp_firstprivatize_type_sizes (struct gimplify_omp_ctx *ctx, tree type)
 	{
 	  omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_LBOUND (type, r));
 	  omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_UBOUND (type, r));
-	  omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_STRIDE (type, r));
+	  omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_SPACING (type, r));
 	}
       omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_SIZE (type));
       omp_firstprivatize_variable (ctx, GFC_TYPE_ARRAY_OFFSET (type));

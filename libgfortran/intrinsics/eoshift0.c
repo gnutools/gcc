@@ -67,19 +67,21 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
+      ret->align = array->align;
+
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
-	  index_type ub, str;
+	  index_type ub, sp;
 
           ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-	    str = 1;
+	    sp = GFC_DESCRIPTOR_SIZE(ret) / GFC_DESCRIPTOR_ALIGN(ret);
           else
-            str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
-	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);
+            sp = GFC_DESCRIPTOR_EXTENT(ret,i-1)
+	      * GFC_DESCRIPTOR_SPACING(ret,i-1);
 
-	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, str);
+	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, sp);
 
         }
 
@@ -106,20 +108,20 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
     {
       /* Test if both ret and array are contiguous.  */
       index_type r_ex, a_ex;
-      r_ex = 1;
-      a_ex = 1;
+      r_ex = GFC_DESCRIPTOR_SIZE (ret);
+      a_ex = GFC_DESCRIPTOR_SIZE (array);
       do_blocked = true;
       dim = GFC_DESCRIPTOR_RANK (array);
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_SM (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_SM (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -156,8 +158,8 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	{
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
-	  sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+	  rstride[n] = GFC_DESCRIPTOR_SM(ret,dim);
+	  sstride[n] = GFC_DESCRIPTOR_SM(array,dim);
 	  n++;
 	}
       count[n] = 0;
@@ -169,10 +171,10 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	{
 	  if (dim == which)
 	    {
-	      roffset = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+	      roffset = GFC_DESCRIPTOR_SM(ret,dim);
 	      if (roffset == 0)
 		roffset = size;
-	      soffset = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+	      soffset = GFC_DESCRIPTOR_SM(array,dim);
 	      if (soffset == 0)
 		soffset = size;
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
@@ -181,8 +183,8 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	    {
 	      count[n] = 0;
 	      extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	      rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
-	      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+	      rstride[n] = GFC_DESCRIPTOR_SM(ret,dim);
+	      sstride[n] = GFC_DESCRIPTOR_SM(array,dim);
 	      n++;
 	    }
 	}

@@ -57,6 +57,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
   index_type rdim;
   index_type rsize;
   index_type rs;
+  index_type spacing;
   index_type rex;
   'rtype_name` *rptr;
   /* s.* indicates the source array.  */
@@ -104,15 +105,18 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       index_type alloc_size;
 
       rs = 1;
+      spacing = GFC_DESCRIPTOR_SIZE(source) / source->align;
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
 
-	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, rs);
+	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, spacing);
 
 	  rs *= rex;
+	  spacing *= rex;
 	}
       ret->offset = 0;
+      ret->align = source->align;
 
       if (unlikely (rs < 1))
         alloc_size = 0;

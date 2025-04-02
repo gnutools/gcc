@@ -194,18 +194,29 @@ typedef struct gfc_array_info
   tree data;
   /* To move some of the array index calculation out of the innermost loop.  */
   tree offset;
+  /* Original offset.  */
   tree saved_offset;
-  tree stride0;
+  tree align;
   /* Holds the SS for a subscript.  Indexed by actual dimension.  */
   struct gfc_ss *subscript[GFC_MAX_DIMENSIONS];
 
-  /* stride and delta are used to access this inside a scalarization loop.
+  /* stride, spacing and delta are used to access this inside a scalarization loop.
      start is used in the calculation of these.  Indexed by scalarizer
      dimension.  */
   tree start[GFC_MAX_DIMENSIONS];
   tree end[GFC_MAX_DIMENSIONS];
+  /* The spacing of indexes, that may be specified by the strides of array
+     references.  */
   tree stride[GFC_MAX_DIMENSIONS];
+  /* The spacing in memory of elements of consecutive indexes, for each
+     dimension. This is the intrinsic spacing of the array.  In alignment-sized
+     units.  */
+  tree spacing[GFC_MAX_DIMENSIONS];
   tree delta[GFC_MAX_DIMENSIONS];
+
+  /* False: access with pointer arithmetics.
+     True: access with array reference.  */
+  bool array_access;
 }
 gfc_array_info;
 
@@ -632,9 +643,8 @@ tree gfc_get_extern_function_decl (gfc_symbol *,
 tree gfc_build_addr_expr (tree, tree);
 
 /* Build an ARRAY_REF.  */
-tree gfc_build_array_ref (tree, tree, tree,
-			  bool non_negative_offset = false,
-			  tree vptr = NULL_TREE);
+tree gfc_build_array_ref (tree, tree, bool non_negative_offset = false,
+			  tree spacing = NULL_TREE, tree align = NULL_TREE);
 
 /* Build an array ref using pointer arithmetic.  */
 tree gfc_build_spanned_array_ref (tree base, tree offset, tree span);
@@ -1030,7 +1040,9 @@ struct GTY(())	lang_type	 {
   enum gfc_array_kind akind;
   tree lbound[GFC_MAX_DIMENSIONS];
   tree ubound[GFC_MAX_DIMENSIONS];
-  tree stride[GFC_MAX_DIMENSIONS];
+  tree spacing[GFC_MAX_DIMENSIONS];
+  tree elem_len;
+  tree align;
   tree size;
   tree offset;
   tree dtype;
@@ -1102,10 +1114,25 @@ struct GTY(()) lang_decl {
   (TYPE_LANG_SPECIFIC(node)->lbound[dim])
 #define GFC_TYPE_ARRAY_UBOUND(node, dim) \
   (TYPE_LANG_SPECIFIC(node)->ubound[dim])
+#define GFC_TYPE_ARRAY_SPACING(node, dim) \
+  (TYPE_LANG_SPECIFIC(node)->spacing[dim])
+#define GFC_TYPE_ARRAY_EXTENT(node, dim) \
+  (fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type, \
+		    fold_build2_loc (input_location, MINUS_EXPR, \
+				     gfc_array_index_type, \
+				     GFC_TYPE_ARRAY_UBOUND((node), (dim)), \
+				     GFC_TYPE_ARRAY_LBOUND((node), (dim))), \
+		    gfc_index_one_node))
+#if 0
 #define GFC_TYPE_ARRAY_STRIDE(node, dim) \
-  (TYPE_LANG_SPECIFIC(node)->stride[dim])
+  (fold_build2_loc (input_location, EXACT_DIV_EXPR, gfc_array_index_type, \
+		    GFC_TYPE_ARRAY_SPACING((node), (dim)), \
+		    GFC_TYPE_ARRAY_ALIGN((node))))
+#endif
+#define GFC_TYPE_ARRAY_ELEM_LEN(node) (TYPE_LANG_SPECIFIC(node)->elem_len)
 #define GFC_TYPE_ARRAY_RANK(node) (TYPE_LANG_SPECIFIC(node)->rank)
 #define GFC_TYPE_ARRAY_CORANK(node) (TYPE_LANG_SPECIFIC(node)->corank)
+#define GFC_TYPE_ARRAY_ALIGN(node) (TYPE_LANG_SPECIFIC(node)->align)
 #define GFC_TYPE_ARRAY_CAF_TOKEN(node) (TYPE_LANG_SPECIFIC(node)->caf_token)
 #define GFC_TYPE_ARRAY_CAF_OFFSET(node) (TYPE_LANG_SPECIFIC(node)->caf_offset)
 #define GFC_TYPE_ARRAY_SIZE(node) (TYPE_LANG_SPECIFIC(node)->size)

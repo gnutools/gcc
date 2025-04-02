@@ -1649,7 +1649,9 @@ gfc_copy_class_to_class (tree from, tree to, tree nelems, bool unlimited)
 	  tmp = gfc_conv_array_data (to);
 	  tmp = build_fold_indirect_ref_loc (input_location, tmp);
 	  to_ref = gfc_build_addr_expr (NULL_TREE,
-					gfc_build_array_ref (tmp, index, to));
+					gfc_build_array_ref (tmp, index, false,
+							     GFC_TYPE_ARRAY_SPACING (to, 0),
+							     GFC_TYPE_ARRAY_ALIGN (to)));
 	}
       vec_safe_push (args, to_ref);
 
@@ -2805,7 +2807,7 @@ gfc_conv_substring (gfc_se * se, gfc_ref * ref, int kind,
       /* For BIND(C), a BT_CHARACTER is not an ARRAY_TYPE.  */
       if (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE)
 	{
-	  tmp = gfc_build_array_ref (tmp, start.expr, NULL_TREE, true);
+	  tmp = gfc_build_array_ref (tmp, start.expr, true);
 	  se->expr = gfc_build_addr_expr (type, tmp);
 	}
       else if (POINTER_TYPE_P (TREE_TYPE (tmp)))
@@ -4837,7 +4839,7 @@ gfc_set_interface_mapping_bounds (stmtblock_t * block, tree type, tree desc)
   for (n = 0; n < GFC_TYPE_ARRAY_RANK (type); n++)
     {
       dim = gfc_rank_cst[n];
-      GFC_TYPE_ARRAY_STRIDE (type, n) = gfc_conv_array_stride (desc, n);
+      GFC_TYPE_ARRAY_SPACING (type, n) = gfc_conv_array_spacing (desc, n);
       if (GFC_TYPE_ARRAY_LBOUND (type, n) == NULL_TREE)
 	{
 	  GFC_TYPE_ARRAY_LBOUND (type, n)
@@ -4859,7 +4861,7 @@ gfc_set_interface_mapping_bounds (stmtblock_t * block, tree type, tree desc)
 	}
       tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			     GFC_TYPE_ARRAY_LBOUND (type, n),
-			     GFC_TYPE_ARRAY_STRIDE (type, n));
+			     GFC_TYPE_ARRAY_SPACING (type, n));
       offset = fold_build2_loc (input_location, MINUS_EXPR,
 				gfc_array_index_type, offset, tmp);
     }
@@ -5376,8 +5378,6 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
   gfc_loopinfo loop;
   gfc_loopinfo loop2;
   gfc_array_info *info;
-  tree offset;
-  tree tmp_index;
   tree tmp;
   tree base_type;
   stmtblock_t body;
@@ -5532,55 +5532,9 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
   gfc_mark_ss_chain_used (lss, 1);
   gfc_mark_ss_chain_used (loop.temp_ss, 1);
 
-  /* Declare the variable to hold the temporary offset and start the
-     scalarized loop body.  */
-  offset = gfc_create_var (gfc_array_index_type, NULL);
   gfc_start_scalarized_body (&loop2, &body);
 
-  /* Build the offsets for the temporary from the loop variables.  The
-     temporary array has lbounds of zero and strides of one in all
-     dimensions, so this is very simple.  The offset is only computed
-     outside the innermost loop, so the overall transfer could be
-     optimized further.  */
-  info = &rse.ss->info->data.array;
-
-  tmp_index = gfc_index_zero_node;
-  for (n = dimen - 1; n > 0; n--)
-    {
-      tree tmp_str;
-      tmp = rse.loop->loopvar[n];
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     tmp, rse.loop->from[n]);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     tmp, tmp_index);
-
-      tmp_str = fold_build2_loc (input_location, MINUS_EXPR,
-				 gfc_array_index_type,
-				 rse.loop->to[n-1], rse.loop->from[n-1]);
-      tmp_str = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type,
-				 tmp_str, gfc_index_one_node);
-
-      tmp_index = fold_build2_loc (input_location, MULT_EXPR,
-				   gfc_array_index_type, tmp, tmp_str);
-    }
-
-  tmp_index = fold_build2_loc (input_location, MINUS_EXPR,
-			       gfc_array_index_type,
-			       tmp_index, rse.loop->from[0]);
-  gfc_add_modify (&rse.loop->code[0], offset, tmp_index);
-
-  tmp_index = fold_build2_loc (input_location, PLUS_EXPR,
-			       gfc_array_index_type,
-			       rse.loop->loopvar[0], offset);
-
-  /* Now use the offset for the reference.  */
-  tmp = build_fold_indirect_ref_loc (input_location,
-				 info->data);
-  rse.expr = gfc_build_array_ref (tmp, tmp_index, NULL);
-
-  if (expr->ts.type == BT_CHARACTER)
-    rse.string_length = expr->ts.u.cl->backend_decl;
+  gfc_conv_tmp_array_ref (&rse);
 
   gfc_conv_expr (&lse, expr);
 
@@ -6284,7 +6238,9 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       tmp = gfc_conv_descriptor_extent_get (gfc, idx);
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
       /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
-      tmp = gfc_conv_descriptor_sm_get (gfc, idx);
+      tmp = gfc_conv_descriptor_spacing_get (gfc, idx);
+      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     tmp, gfc_conv_descriptor_align_get (gfc));
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
       /* Generate loop.  */

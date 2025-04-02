@@ -174,7 +174,7 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
      one.  */
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
-      astride = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
+      astride = GFC_DESCRIPTOR_SPACING(a,0);
       count = GFC_DESCRIPTOR_EXTENT(a,0);
       xstride = 0;
       rxstride = 0;
@@ -182,14 +182,14 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
     }
   else
     {
-      astride = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
+      astride = GFC_DESCRIPTOR_SPACING(a,1);
       count = GFC_DESCRIPTOR_EXTENT(a,1);
-      xstride = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
+      xstride = GFC_DESCRIPTOR_SPACING(a,0);
       xcount = GFC_DESCRIPTOR_EXTENT(a,0);
     }
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
-      bstride = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
+      bstride = GFC_DESCRIPTOR_SPACING(b,0);
       assert(count == GFC_DESCRIPTOR_EXTENT(b,0));
       ystride = 0;
       rystride = 0;
@@ -197,9 +197,9 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
     }
   else
     {
-      bstride = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
+      bstride = GFC_DESCRIPTOR_SPACING(b,0);
       assert(count == GFC_DESCRIPTOR_EXTENT(b,0));
-      ystride = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
+      ystride = GFC_DESCRIPTOR_SPACING(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
 

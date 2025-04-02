@@ -387,81 +387,6 @@ gfc_build_addr_expr (tree type, tree t)
 }
 
 
-static tree
-get_array_span (tree type, tree decl)
-{
-  tree span;
-
-  /* Component references are guaranteed to have a reliable value for
-     'span'. Likewise indirect references since they emerge from the
-     conversion of a CFI descriptor or the hidden dummy descriptor.  */
-  if (TREE_CODE (decl) == COMPONENT_REF
-      && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (decl)))
-    return gfc_conv_descriptor_span_get (decl);
-  else if (INDIRECT_REF_P (decl)
-	   && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (decl)))
-    return gfc_conv_descriptor_span_get (decl);
-
-  /* Return the span for deferred character length array references.  */
-  if (type
-      && (TREE_CODE (type) == ARRAY_TYPE || TREE_CODE (type) == INTEGER_TYPE)
-      && TYPE_STRING_FLAG (type))
-    {
-      if (TREE_CODE (decl) == PARM_DECL)
-	decl = build_fold_indirect_ref_loc (input_location, decl);
-      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (decl)))
-	span = gfc_conv_descriptor_span_get (decl);
-      else
-	span = gfc_get_character_len_in_bytes (type);
-      span = (span && !integer_zerop (span))
-	? (fold_convert (gfc_array_index_type, span)) : (NULL_TREE);
-    }
-  /* Likewise for class array or pointer array references.  */
-  else if (TREE_CODE (decl) == FIELD_DECL
-	   || VAR_OR_FUNCTION_DECL_P (decl)
-	   || TREE_CODE (decl) == PARM_DECL)
-    {
-      if (GFC_DECL_CLASS (decl))
-	{
-	  /* When a temporary is in place for the class array, then the
-	     original class' declaration is stored in the saved
-	     descriptor.  */
-	  if (DECL_LANG_SPECIFIC (decl) && GFC_DECL_SAVED_DESCRIPTOR (decl))
-	    decl = GFC_DECL_SAVED_DESCRIPTOR (decl);
-	  else
-	    {
-	      /* Allow for dummy arguments and other good things.  */
-	      if (POINTER_TYPE_P (TREE_TYPE (decl)))
-		decl = build_fold_indirect_ref_loc (input_location, decl);
-
-	      /* Check if '_data' is an array descriptor.  If it is not,
-		 the array must be one of the components of the class
-		 object, so return a null span.  */
-	      if (!GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (
-					  gfc_class_data_get (decl))))
-		return NULL_TREE;
-	    }
-	  span = gfc_class_vtab_size_get (decl);
-	  /* For unlimited polymorphic entities then _len component needs
-	     to be multiplied with the size.  */
-	  span = gfc_resize_class_size_with_len (NULL, decl, span);
-	}
-      else if (GFC_DECL_PTR_ARRAY_P (decl))
-	{
-	  if (TREE_CODE (decl) == PARM_DECL)
-	    decl = build_fold_indirect_ref_loc (input_location, decl);
-	  span = gfc_conv_descriptor_span_get (decl);
-	}
-      else
-	span = NULL_TREE;
-    }
-  else
-    span = NULL_TREE;
-
-  return span;
-}
-
-
 tree
 gfc_build_spanned_array_ref (tree base, tree offset, tree span)
 {
@@ -487,11 +412,10 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
    have to play it safe and use pointer arithmetic.  */
 
 tree
-gfc_build_array_ref (tree base, tree offset, tree decl,
-		     bool non_negative_offset, tree vptr)
+gfc_build_array_ref (tree base, tree offset, bool non_negative_offset,
+		     tree spacing, tree align)
 {
   tree type = TREE_TYPE (base);
-  tree span = NULL_TREE;
 
   if (GFC_ARRAY_TYPE_P (type) && GFC_TYPE_ARRAY_RANK (type) == 0)
     {
@@ -503,7 +427,6 @@ gfc_build_array_ref (tree base, tree offset, tree decl,
   /* Scalar coarray, there is nothing to do.  */
   if (TREE_CODE (type) != ARRAY_TYPE)
     {
-      gcc_assert (decl == NULL_TREE);
       gcc_assert (integer_zerop (offset));
       return base;
     }
@@ -516,28 +439,9 @@ gfc_build_array_ref (tree base, tree offset, tree decl,
   /* Strip NON_LVALUE_EXPR nodes.  */
   STRIP_TYPE_NOPS (offset);
 
-  /* If decl or vptr are non-null, pointer arithmetic for the array reference
-     is likely. Generate the 'span' for the array reference.  */
-  if (vptr)
-    {
-      span = gfc_vptr_size_get (vptr);
-
-      /* Check if this is an unlimited polymorphic object carrying a character
-	 payload. In this case, the 'len' field is non-zero.  */
-      if (decl && GFC_CLASS_TYPE_P (TREE_TYPE (decl)))
-	span = gfc_resize_class_size_with_len (NULL, decl, span);
-    }
-  else if (decl)
-    span = get_array_span (type, decl);
-
-  /* If a non-null span has been generated reference the element with
-     pointer arithmetic.  */
-  if (span != NULL_TREE)
-    return gfc_build_spanned_array_ref (base, offset, span);
-  /* Else use a straightforward array reference if possible.  */
-  else if (non_negative_offset)
+  if (non_negative_offset)
     return build4_loc (input_location, ARRAY_REF, type, base, offset,
-		       NULL_TREE, NULL_TREE);
+		       NULL_TREE, spacing);
   /* Otherwise use pointer arithmetic.  */
   else
     {
@@ -554,12 +458,13 @@ gfc_build_array_ref (tree base, tree offset, tree decl,
 				    fold_convert (gfc_array_index_type, min))
 		 : fold_convert (gfc_array_index_type, offset);
 
-      tree elt_size = fold_convert (gfc_array_index_type,
-				    TYPE_SIZE_UNIT (type));
+      tree offset_align = fold_build2_loc (input_location, MULT_EXPR,
+					   gfc_array_index_type,
+					   zero_based_index, spacing);
 
       tree offset_bytes = fold_build2_loc (input_location, MULT_EXPR,
 					   gfc_array_index_type,
-					   zero_based_index, elt_size);
+					   offset_align, align);
 
       tree base_addr = gfc_build_addr_expr (pvoid_type_node, base);
 

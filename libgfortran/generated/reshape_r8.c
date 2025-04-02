@@ -53,6 +53,7 @@ reshape_r8 (gfc_array_r8 * const restrict ret,
   index_type rdim;
   index_type rsize;
   index_type rs;
+  index_type spacing;
   index_type rex;
   GFC_REAL_8 *rptr;
   /* s.* indicates the source array.  */
@@ -100,15 +101,18 @@ reshape_r8 (gfc_array_r8 * const restrict ret,
       index_type alloc_size;
 
       rs = 1;
+      spacing = GFC_DESCRIPTOR_SIZE(source) / source->align;
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
 
-	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, rs);
+	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, spacing);
 
 	  rs *= rex;
+	  spacing *= rex;
 	}
       ret->offset = 0;
+      ret->align = source->align;
 
       if (unlikely (rs < 1))
         alloc_size = 0;

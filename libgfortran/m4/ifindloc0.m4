@@ -216,7 +216,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       sz *= extent[n];
       if (extent[n] <= 0)

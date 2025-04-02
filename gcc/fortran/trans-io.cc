@@ -751,7 +751,7 @@ gfc_convert_array_to_string (gfc_se * se, gfc_expr * e)
 
   if (e->rank == 0)
     {
-      tree type, array, tmp;
+      tree type, array;
       gfc_symbol *sym;
       int rank;
 
@@ -765,40 +765,40 @@ gfc_convert_array_to_string (gfc_se * se, gfc_expr * e)
       array = sym->backend_decl;
       type = TREE_TYPE (array);
 
-      tree elts_count;
+      tree elts_count = NULL_TREE;
+      tree full_size = NULL_TREE;
       if (GFC_ARRAY_TYPE_P (type))
 	elts_count = GFC_TYPE_ARRAY_SIZE (type);
       else
 	{
 	  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
-	  tree stride = gfc_conv_array_stride (array, rank);
-	  tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				 gfc_array_index_type,
-				 gfc_conv_array_ubound (array, rank),
-				 gfc_conv_array_lbound (array, rank));
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type, tmp,
-				 gfc_index_one_node);
-	  elts_count = fold_build2_loc (input_location, MULT_EXPR,
-					gfc_array_index_type, tmp, stride);
+	  tree spacing = gfc_conv_array_spacing (array, rank);
+	  tree tmp = gfc_conv_array_extent (array, rank);
+	  full_size = fold_build2_loc (input_location, MULT_EXPR,
+				       gfc_array_index_type, tmp, spacing);
+	  full_size = fold_build2_loc (input_location, MULT_EXPR,
+				       gfc_array_index_type, full_size,
+				       GFC_TYPE_ARRAY_ALIGN (type));
 	}
-      gcc_assert (elts_count);
+      gcc_assert (elts_count || full_size);
 
       tree elt_size = TYPE_SIZE_UNIT (gfc_get_element_type (type));
       elt_size = fold_convert (gfc_array_index_type, elt_size);
 
-      tree size;
+      if (full_size == NULL_TREE)
+	full_size = fold_build2_loc (input_location, MULT_EXPR,
+				     gfc_array_index_type, elts_count,
+				     elt_size);
+
+      tree offset;
       if (TREE_CODE (se->expr) == ARRAY_REF)
 	{
 	  tree index = TREE_OPERAND (se->expr, 1);
 	  index = fold_convert (gfc_array_index_type, index);
 
-	  elts_count = fold_build2_loc (input_location, MINUS_EXPR,
-					gfc_array_index_type,
-					elts_count, index);
-
-	  size = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, elts_count, elt_size);
+	  offset = fold_build2_loc (input_location, MULT_EXPR,
+				    gfc_array_index_type, index,
+				    elt_size);
 	}
       else
 	{
@@ -806,15 +806,13 @@ gfc_convert_array_to_string (gfc_se * se, gfc_expr * e)
 	  tree ptr = TREE_OPERAND (se->expr, 0);
 
 	  gcc_assert (TREE_CODE (ptr) == POINTER_PLUS_EXPR);
-	  tree offset = fold_convert_loc (input_location, gfc_array_index_type,
-					  TREE_OPERAND (ptr, 1));
-
-	  size = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, elts_count, elt_size);
-	  size = fold_build2_loc (input_location, MINUS_EXPR,
-				  gfc_array_index_type, size, offset);
+	  offset = fold_convert_loc (input_location, gfc_array_index_type,
+				     TREE_OPERAND (ptr, 1));
 	}
-      gcc_assert (size);
+
+      gcc_assert (offset);
+      tree size = fold_build2_loc (input_location, MINUS_EXPR,
+				   gfc_array_index_type, full_size, offset);
 
       se->expr = gfc_build_addr_expr (NULL_TREE, se->expr);
       se->string_length = fold_convert (gfc_charlen_type_node, size);
@@ -1657,7 +1655,9 @@ nml_get_addr_expr (gfc_symbol * sym, gfc_component * c,
 	tmp = gfc_build_addr_expr (NULL_TREE, tmp);
 
       if (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE)
-         tmp = gfc_build_array_ref (tmp, gfc_index_zero_node, NULL);
+         tmp = gfc_build_array_ref (tmp, gfc_index_zero_node, false,
+				    GFC_TYPE_ARRAY_SPACING (tmp, 0),
+				    GFC_TYPE_ARRAY_ALIGN (tmp));
 
       if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location,
@@ -1823,7 +1823,7 @@ transfer_namelist_element (stmtblock_t * block, const char * var_name,
 			     iocall[IOCALL_SET_NML_VAL_DIM], 5,
 			     dt_parm_addr,
 			     build_int_cst (gfc_int4_type_node, n_dim),
-			     gfc_conv_array_stride (decl, n_dim),
+			     gfc_conv_array_spacing (decl, n_dim),
 			     gfc_conv_array_lbound (decl, n_dim),
 			     gfc_conv_array_ubound (decl, n_dim));
       gfc_add_expr_to_block (block, tmp);

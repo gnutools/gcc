@@ -95,7 +95,7 @@ unpack0_i8 (gfc_array_i8 *ret, const gfc_array_i8 *vector,
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	  rs *= extent[n];
 	}
       ret->offset = 0;
@@ -110,7 +110,7 @@ unpack0_i8 (gfc_array_i8 *ret, const gfc_array_i8 *vector,
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
       if (rstride[0] == 0)
 	rstride[0] = 1;
@@ -242,7 +242,7 @@ unpack1_i8 (gfc_array_i8 *ret, const gfc_array_i8 *vector,
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
 	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	  rs *= extent[n];
 	}
       ret->offset = 0;
@@ -258,7 +258,7 @@ unpack1_i8 (gfc_array_i8 *ret, const gfc_array_i8 *vector,
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
 	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
       if (rstride[0] == 0)
 	rstride[0] = 1;

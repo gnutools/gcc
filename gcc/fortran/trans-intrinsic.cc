@@ -1826,7 +1826,7 @@ trans_this_image (gfc_se * se, gfc_expr *expr)
 {
   stmtblock_t loop;
   tree type, desc, dim_arg, cond, tmp, m, loop_var, exit_label, min_var,
-       lbound, ubound, extent, ml, team;
+       lbound, extent, ml, team;
   gfc_se argse;
   int rank, corank;
 
@@ -2162,7 +2162,9 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
      thus we need explicitly check this - and return 0 if they are exceeded.  */
 
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
-  tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1], NULL);
+  tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1], false,
+			     GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
+			     GFC_TYPE_ARRAY_ALIGN (subse.expr));
   invalid_bound = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 				 fold_convert (gfc_array_index_type, tmp),
 				 lbound);
@@ -2171,7 +2173,9 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
     {
       lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[codim]);
       ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[codim]);
-      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], NULL);
+      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], false,
+				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
+				 GFC_TYPE_ARRAY_ALIGN (subse.expr));
       cond = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 			      fold_convert (gfc_array_index_type, tmp),
 			      lbound);
@@ -2191,7 +2195,9 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
   /* coindex = sub(corank) - lcobound(n).  */
   coindex = fold_convert (gfc_array_index_type,
 			  gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1],
-					       NULL));
+					       false,
+					       GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
+					       GFC_TYPE_ARRAY_ALIGN (subse.expr)));
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
   coindex = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			     fold_convert (gfc_array_index_type, coindex),
@@ -2209,7 +2215,9 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 				 gfc_array_index_type, coindex, extent);
 
       /* coindex += sub(codim).  */
-      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], NULL);
+      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], false,
+				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
+				 GFC_TYPE_ARRAY_ALIGN (subse.expr));
       coindex = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, coindex,
 				 fold_convert (gfc_array_index_type, tmp));
@@ -2310,7 +2318,7 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
 {
   gfc_ss *ss;
   gfc_se argse;
-  tree desc, tmp, stride, extent, cond;
+  tree desc, tmp, extent, cond;
   int i;
   tree fncall0;
   gfc_array_spec *as;
@@ -2348,19 +2356,21 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
       gfc_add_block_to_block (&se->post, &argse.post);
       desc = gfc_evaluate_now (argse.expr, &se->pre);
 
-      stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[0]);
+      tree spacing = gfc_conv_descriptor_spacing_get (desc, gfc_rank_cst[0]);
+      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     spacing, gfc_conv_descriptor_align_get (desc));
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-			      stride, build_int_cst (TREE_TYPE (stride), 1));
+			      tmp, gfc_conv_descriptor_span_get (desc));
 
       for (i = 0; i < arg->rank - 1; i++)
 	{
 	  extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[i]);
-	  tmp = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[i]);
+	  tmp = gfc_conv_descriptor_spacing_get (desc, gfc_rank_cst[i]);
 	  tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
 				 tmp, extent);
-	  stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[i+1]);
+	  spacing = gfc_conv_descriptor_spacing_get (desc, gfc_rank_cst[i+1]);
 	  tmp = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-				 stride, tmp);
+				 spacing, tmp);
 	  cond = fold_build2_loc (input_location, TRUTH_AND_EXPR,
 				  boolean_type_node, cond, tmp);
 	}
@@ -2736,34 +2746,6 @@ conv_intrinsic_cobound (gfc_se * se, gfc_expr * expr)
   se->expr = convert (type, se->expr);
 }
 
-
-static void
-conv_intrinsic_stride (gfc_se * se, gfc_expr * expr)
-{
-  gfc_actual_arglist *array_arg;
-  gfc_actual_arglist *dim_arg;
-  gfc_se argse;
-  tree desc, tmp;
-
-  array_arg = expr->value.function.actual;
-  dim_arg = array_arg->next;
-
-  gcc_assert (array_arg->expr->expr_type == EXPR_VARIABLE);
-
-  gfc_init_se (&argse, NULL);
-  gfc_conv_expr_descriptor (&argse, array_arg->expr);
-  gfc_add_block_to_block (&se->pre, &argse.pre);
-  gfc_add_block_to_block (&se->post, &argse.post);
-  desc = argse.expr;
-
-  gcc_assert (dim_arg->expr);
-  gfc_init_se (&argse, NULL);
-  gfc_conv_expr_type (&argse, dim_arg->expr, gfc_array_index_type);
-  gfc_add_block_to_block (&se->pre, &argse.pre);
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 argse.expr, gfc_index_one_node);
-  se->expr = gfc_conv_descriptor_stride_get (desc, tmp);
-}
 
 static void
 gfc_conv_intrinsic_abs (gfc_se * se, gfc_expr * expr)
@@ -5614,8 +5596,7 @@ gfc_conv_intrinsic_minmaxloc (gfc_se * se, gfc_expr * expr, enum tree_code op)
       for (int i = 0; i < arrayexpr->rank; i++)
 	{
 	  tree res_idx = build_int_cst (gfc_array_index_type, i);
-	  tree res_arr_ref = gfc_build_array_ref (result_var, res_idx,
-						  NULL_TREE, true);
+	  tree res_arr_ref = gfc_build_array_ref (result_var, res_idx, true);
 
 	  tree value = convert (type, pos[i]);
 	  gfc_add_modify (&se->pre, res_arr_ref, value);
@@ -9084,7 +9065,7 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
 	    }
 	  else
 	    tmp = gfc_rank_cst[arg1->expr->rank - 1];
-	  tmp = gfc_conv_descriptor_stride_get (arg1se.expr, tmp);
+	  tmp = gfc_conv_descriptor_spacing_get (arg1se.expr, tmp);
 	  if (arg2->expr->rank != 0)
 	    nonzero_arraylen = fold_build2_loc (input_location, NE_EXPR,
 						logical_type_node, tmp,
@@ -11348,10 +11329,6 @@ gfc_conv_intrinsic_function (gfc_se * se, gfc_expr * expr)
 
     case GFC_ISYM_SPACING:
       gfc_conv_intrinsic_spacing (se, expr);
-      break;
-
-    case GFC_ISYM_STRIDE:
-      conv_intrinsic_stride (se, expr);
       break;
 
     case GFC_ISYM_SUM:

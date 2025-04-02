@@ -88,7 +88,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     internal_error (NULL, "Funny sized logical array");
 
   sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`'`;
-  mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
+  mstride = GFC_DESCRIPTOR_SPACING(mask,0);
 
   if (back)
     {
