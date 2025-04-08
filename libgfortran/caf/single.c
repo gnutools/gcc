@@ -466,7 +466,6 @@ _gfortran_caf_failed_images (gfc_descriptor_t *array,
   array->dim[0]._ubound = -1;
   array->dim[0].spacing = 1;
   array->offset = 0;
-  array->align = local_kind;
 }
 
 
@@ -489,7 +488,6 @@ _gfortran_caf_stopped_images (gfc_descriptor_t *array,
   array->dim[0]._ubound = -1;
   array->dim[0].spacing = 1;
   array->offset = 0;
-  array->align = local_kind;
 }
 
 

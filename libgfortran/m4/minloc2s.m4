@@ -49,7 +49,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
 				gfc_charlen_type len)
 {
   index_type ret;
-  index_type sstride;
+  index_type sspacing;
   index_type extent;
   const 'atype_name` *src;
   const 'atype_name` *minval;
@@ -59,7 +59,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len;
 
   ret = 1;
   src = array->base_addr;
@@ -72,7 +72,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
 	 ret = i;
 	 minval = src;
       }
-      src += sstride;
+      src = ('atype_name`*) (((char*) src) + sspacing);
     }
   return ret;
 }
@@ -88,20 +88,20 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
 				 gfc_charlen_type len)
 {
   index_type ret;
-  index_type sstride;
+  index_type sspacing;
   index_type extent;
   const 'atype_name` *src;
   const 'atype_name` *maxval;
   index_type i, j;
   GFC_LOGICAL_1 *mbase;
   int mask_kind;
-  index_type mstride;
+  index_type mspacing;
 
   extent = GFC_DESCRIPTOR_EXTENT(array,0);
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len;
 
   mask_kind = GFC_DESCRIPTOR_SIZE (mask);
   mbase = mask->base_addr;
@@ -115,21 +115,21 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  mstride = GFC_DESCRIPTOR_SPACING(mask,0);
+  mspacing = GFC_DESCRIPTOR_SPACING(mask,0);
 
   /* Search for the first occurrence of a true element in mask. */
   for (j=0; j<extent; j++)
     {
       if (*mbase)
         break;
-      mbase += mstride;
+      mbase += mspacing;
     }
 
   if (j == extent)
     return 0;
 
   ret = j + 1;
-  src = array->base_addr + j * sstride;
+  src = ('atype_name`*) (((char*) array->base_addr) + j * sspacing);
   maxval = src;
 
   for (i=j+1; i<=extent; i++)
@@ -141,8 +141,8 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src += sstride;
-      mbase += mstride;
+      src = ('atype_name`*) (((char*) src) + sspacing);
+      mbase += mspacing;
     }
   return ret;
 }

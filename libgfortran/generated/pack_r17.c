@@ -74,15 +74,15 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
 	       const gfc_array_l1 *mask, const gfc_array_r17 *vector)
 {
   /* r.* indicates the return array.  */
-  index_type rstride0;
+  index_type rspacing0;
   GFC_REAL_17 * restrict rptr;
   /* s.* indicates the source array.  */
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   const GFC_REAL_17 *sptr;
   /* m.* indicates the mask array.  */
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type mstride0;
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing0;
   const GFC_LOGICAL_1 *mptr;
 
   index_type count[GFC_MAX_DIMENSIONS];
@@ -96,8 +96,8 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
 
   dim = GFC_DESCRIPTOR_RANK (array);
 
-  sstride[0] = 0; /* Avoid warnings if not initialized.  */
-  mstride[0] = 0;
+  sspacing[0] = 0; /* Avoid warnings if not initialized.  */
+  mspacing[0] = 0;
 
   mptr = mask->base_addr;
 
@@ -126,13 +126,13 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       if (extent[n] <= 0)
        zero_sized = 1;
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
-      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
     }
-  if (sstride[0] == 0)
-    sstride[0] = 1;
-  if (mstride[0] == 0)
-    mstride[0] = mask_kind;
+  if (sspacing[0] == 0)
+    sspacing[0] = sizeof (GFC_REAL_17);
+  if (mspacing[0] == 0)
+    mspacing[0] = mask_kind;
 
   if (zero_sized)
     sptr = NULL;
@@ -164,7 +164,7 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
       if (ret->base_addr == NULL)
 	{
 	  /* Setup the array descriptor.  */
-	  GFC_DIMENSION_SET(ret->dim[0], 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
 
 	  ret->offset = 0;
 
@@ -187,11 +187,11 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
 	}
     }
 
-  rstride0 = GFC_DESCRIPTOR_STRIDE(ret,0);
-  if (rstride0 == 0)
-    rstride0 = 1;
-  sstride0 = sstride[0];
-  mstride0 = mstride[0];
+  rspacing0 = GFC_DESCRIPTOR_SPACING(ret,0);
+  if (rspacing0 == 0)
+    rspacing0 = 1;
+  sspacing0 = sspacing[0];
+  mspacing0 = mspacing[0];
   rptr = ret->base_addr;
 
   while (sptr && mptr)
@@ -201,11 +201,11 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
         {
           /* Add it.  */
 	  *rptr = *sptr;
-          rptr += rstride0;
+          rptr += rspacing0;
         }
       /* Advance to the next element.  */
-      sptr += sstride0;
-      mptr += mstride0;
+      sptr = (GFC_REAL_17*) (((char*) sptr) + sspacing0);
+      mptr += mspacing0;
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -215,8 +215,8 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr -= sstride[n] * extent[n];
-          mptr -= mstride[n] * extent[n];
+          sptr = (GFC_REAL_17*) (((char*) sptr) - sspacing[n] * extent[n]);
+          mptr -= mspacing[n] * extent[n];
           n++;
           if (n >= dim)
             {
@@ -227,8 +227,8 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
           else
             {
               count[n]++;
-              sptr += sstride[n];
-              mptr += mstride[n];
+              sptr = (GFC_REAL_17*) (((char*) sptr) + sspacing[n]);
+              mptr += mspacing[n];
             }
         }
     }
@@ -237,20 +237,20 @@ pack_r17 (gfc_array_r17 *ret, const gfc_array_r17 *array,
   if (vector)
     {
       n = GFC_DESCRIPTOR_EXTENT(vector,0);
-      nelem = ((rptr - ret->base_addr) / rstride0);
+      nelem = ((rptr - ret->base_addr) / rspacing0);
       if (n > nelem)
         {
-          sstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
-          if (sstride0 == 0)
-            sstride0 = 1;
+          sspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
+          if (sspacing0 == 0)
+            sspacing0 = 1;
 
-          sptr = vector->base_addr + sstride0 * nelem;
+          sptr = vector->base_addr + sspacing0 * nelem;
           n -= nelem;
           while (n--)
             {
 	      *rptr = *sptr;
-              rptr += rstride0;
-              sptr += sstride0;
+              rptr += rspacing0;
+              sptr = (GFC_REAL_17*) (((char*) sptr) + sspacing0);
             }
         }
     }

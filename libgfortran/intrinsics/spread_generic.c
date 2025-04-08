@@ -31,16 +31,16 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 		 const index_type *along, const index_type *pncopies)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type rdelta = 0;
   index_type rrank;
   index_type rs;
   char *rptr;
   char *dest;
   /* s.* indicates the source array.  */
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   index_type srank;
   const char *sptr;
 
@@ -55,7 +55,7 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 
   srank = GFC_DESCRIPTOR_RANK(source);
 
-  sstride[0] = 0; /* Avoid warnings if not initialized.  */
+  sspacing[0] = 0; /* Avoid warnings if not initialized.  */
 
   rrank = srank + 1;
   if (rrank > GFC_MAX_DIMENSIONS)
@@ -77,8 +77,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
       ret->dtype.rank = rrank;
 
       dim = 0;
-      rs = 1;
-      spacing = size / source->align;
+      rs = size;
+      spacing = size;
       for (n = 0; n < rrank; n++)
 	{
 	  if (n == *along - 1)
@@ -92,8 +92,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 	    {
 	      count[dim] = 0;
 	      extent[dim] = GFC_DESCRIPTOR_EXTENT(source,dim);
-	      sstride[dim] = GFC_DESCRIPTOR_SPACING(source,dim);
-	      rstride[dim] = rs * size;
+	      sspacing[dim] = GFC_DESCRIPTOR_SPACING(source,dim);
+	      rspacing[dim] = rs * size;
 
 	      ub = extent[dim]-1;
 	      rs *= extent[dim];
@@ -101,10 +101,9 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 	      dim++;
 	    }
 
-	  GFC_DIMENSION_SET(ret->dim[n], 0, ub, spacing);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, ub, spacing);
 	}
       ret->offset = 0;
-      ret->align = source->align;
       ret->base_addr = xmallocarray (rs, size);
 
       if (rs <= 0)
@@ -129,7 +128,7 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 	      ret_extent = GFC_DESCRIPTOR_EXTENT(ret,n);
 	      if (n == *along - 1)
 		{
-		  rdelta = GFC_DESCRIPTOR_SM(ret,n);
+		  rdelta = GFC_DESCRIPTOR_SPACING(ret,n);
 
 		  if (ret_extent != ncopies)
 		    runtime_error("Incorrect extent in return value of SPREAD"
@@ -150,8 +149,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 		    
 		  if (extent[dim] <= 0)
 		    zero_sized = 1;
-		  sstride[dim] = GFC_DESCRIPTOR_SM(source,dim);
-		  rstride[dim] = GFC_DESCRIPTOR_SM(ret,n);
+		  sspacing[dim] = GFC_DESCRIPTOR_SPACING(source,dim);
+		  rspacing[dim] = GFC_DESCRIPTOR_SPACING(ret,n);
 		  dim++;
 		}
 	    }
@@ -162,7 +161,7 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 	    {
 	      if (n == *along - 1)
 		{
-		  rdelta = GFC_DESCRIPTOR_SM(ret,n);
+		  rdelta = GFC_DESCRIPTOR_SPACING(ret,n);
 		}
 	      else
 		{
@@ -170,8 +169,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 		  extent[dim] = GFC_DESCRIPTOR_EXTENT(source,dim);
 		  if (extent[dim] <= 0)
 		    zero_sized = 1;
-		  sstride[dim] = GFC_DESCRIPTOR_SM(source,dim);
-		  rstride[dim] = GFC_DESCRIPTOR_SM(ret,n);
+		  sspacing[dim] = GFC_DESCRIPTOR_SPACING(source,dim);
+		  rspacing[dim] = GFC_DESCRIPTOR_SPACING(ret,n);
 		  dim++;
 		}
 	    }
@@ -180,11 +179,11 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
       if (zero_sized)
 	return;
 
-      if (sstride[0] == 0)
-	sstride[0] = size;
+      if (sspacing[0] == 0)
+	sspacing[0] = size;
     }
-  sstride0 = sstride[0];
-  rstride0 = rstride[0];
+  sspacing0 = sspacing[0];
+  rspacing0 = rspacing[0];
   rptr = ret->base_addr;
   sptr = source->base_addr;
 
@@ -198,8 +197,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
           dest += rdelta;
         }
       /* Advance to the next element.  */
-      sptr += sstride0;
-      rptr += rstride0;
+      sptr += sspacing0;
+      rptr += rspacing0;
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -209,8 +208,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr -= sstride[n] * extent[n];
-          rptr -= rstride[n] * extent[n];
+          sptr -= sspacing[n] * extent[n];
+          rptr -= rspacing[n] * extent[n];
           n++;
           if (n >= srank)
             {
@@ -221,8 +220,8 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
           else
             {
               count[n]++;
-              sptr += sstride[n];
-              rptr += rstride[n];
+              sptr += sspacing[n];
+              rptr += rspacing[n];
             }
         }
     }
@@ -252,20 +251,18 @@ spread_internal_scalar (gfc_array_char *ret, const char *source,
     {
       ret->base_addr = xmallocarray (ncopies, size);
       ret->offset = 0;
-      ret->align = size;
-      GFC_DIMENSION_SET(ret->dim[0], 0, ncopies - 1,
-			size / ret->align);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, size);
     }
   else
     {
       if (ncopies - 1 > (GFC_DESCRIPTOR_EXTENT(ret,0)  - 1)
-			   / GFC_DESCRIPTOR_STRIDE(ret,0))
+			   / GFC_DESCRIPTOR_SPACING(ret,0))
 	runtime_error ("dim too large in spread()");
     }
 
   for (n = 0; n < ncopies; n++)
     {
-      dest = (char*)(ret->base_addr + n * GFC_DESCRIPTOR_SPACING(ret,0));
+      dest = ((char*)ret->base_addr) + n * GFC_DESCRIPTOR_SPACING(ret,0);
       memcpy (dest , source, size);
     }
 }

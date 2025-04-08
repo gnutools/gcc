@@ -41,14 +41,13 @@ void gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
 tree gfc_conv_descriptor_data_get (tree);
 tree gfc_conv_descriptor_offset_get (tree);
 tree gfc_conv_descriptor_span_get (tree);
-tree gfc_conv_descriptor_align_get (tree);
 tree gfc_conv_descriptor_dtype_get (tree);
 tree gfc_conv_descriptor_rank_get (tree);
 tree gfc_conv_descriptor_elem_len_get (tree);
 tree gfc_conv_descriptor_version_get (tree);
 tree gfc_conv_descriptor_attribute_get (tree);
 tree gfc_conv_descriptor_type_get (tree);
-tree gfc_conv_descriptor_dimension_get (tree);
+tree gfc_conv_descriptor_dimension_get (tree, tree);
 tree gfc_conv_descriptor_dimensions_get (tree);
 tree gfc_conv_descriptor_dimensions_get (tree, tree);
 tree gfc_conv_descriptor_stride_get (tree, tree);
@@ -82,13 +81,14 @@ tree gfc_get_cfi_dim_extent (tree, tree);
 tree gfc_get_cfi_dim_sm (tree, tree);
 
 /* Shift lower bound of descriptor, updating ubound and offset.  */
+tree gfc_build_desc_array_type (tree, tree, int, tree *, tree *);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, const gfc_array_ref &);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, int);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, tree, int, tree);
 void gfc_conv_shift_descriptor_subarray (stmtblock_t*, tree, gfc_expr *, gfc_expr *);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, int, tree *, tree *);
 
-void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree, tree,
+void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
 				   tree[GFC_MAX_DIMENSIONS], tree[GFC_MAX_DIMENSIONS],
 				   tree[GFC_MAX_DIMENSIONS], int, bool, bool, bool);
 

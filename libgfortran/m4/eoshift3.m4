@@ -39,24 +39,24 @@ eoshift3 (gfc_array_char * const restrict ret,
 	const char * filler, index_type filler_len)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type roffset;
   char *rptr;
   char * restrict dest;
   /* s.* indicates the source array.  */
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   index_type soffset;
   const char *sptr;
   const char *src;
   /* h.* indicates the shift array.  */
-  index_type hstride[GFC_MAX_DIMENSIONS];
-  index_type hstride0;
+  index_type hspacing[GFC_MAX_DIMENSIONS];
+  index_type hspacing0;
   const 'atype_name` *hptr;
   /* b.* indicates the bound array.  */
-  index_type bstride[GFC_MAX_DIMENSIONS];
-  index_type bstride0;
+  index_type bspacing[GFC_MAX_DIMENSIONS];
+  index_type bspacing0;
   const char *bptr;
 
   index_type count[GFC_MAX_DIMENSIONS];
@@ -96,12 +96,12 @@ eoshift3 (gfc_array_char * const restrict ret,
 	  ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-            str = 1;
+            str = sizeof ('rtype_name`);
           else
             str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
-	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);
+	      * GFC_DESCRIPTOR_SPACING(ret,i-1);
 
-	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, str);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, str);
 
         }
       /* xmallocarray allocates a single byte for zero size.  */
@@ -142,31 +142,31 @@ eoshift3 (gfc_array_char * const restrict ret,
         {
           count[n] = 0;
           extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-          rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
-          sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
+          rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+          sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 
-          hstride[n] = GFC_DESCRIPTOR_STRIDE(h,n);
+          hspacing[n] = GFC_DESCRIPTOR_SPACING(h,n);
           if (bound)
-            bstride[n] = GFC_DESCRIPTOR_SPACING(bound,n);
+            bspacing[n] = GFC_DESCRIPTOR_SPACING(bound,n);
           else
-            bstride[n] = 0;
+            bspacing[n] = 0;
           n++;
         }
     }
-  if (sstride[0] == 0)
-    sstride[0] = size;
-  if (rstride[0] == 0)
-    rstride[0] = size;
-  if (hstride[0] == 0)
-    hstride[0] = 1;
-  if (bound && bstride[0] == 0)
-    bstride[0] = size;
+  if (sspacing[0] == 0)
+    sspacing[0] = size;
+  if (rspacing[0] == 0)
+    rspacing[0] = size;
+  if (hspacing[0] == 0)
+    hspacing[0] = 1;
+  if (bound && bspacing[0] == 0)
+    bspacing[0] = size;
 
   dim = GFC_DESCRIPTOR_RANK (array);
-  rstride0 = rstride[0];
-  sstride0 = sstride[0];
-  hstride0 = hstride[0];
-  bstride0 = bstride[0];
+  rspacing0 = rspacing[0];
+  sspacing0 = sspacing[0];
+  hspacing0 = hspacing[0];
+  bspacing0 = bspacing[0];
   rptr = ret->base_addr;
   sptr = array->base_addr;
   hptr = h->base_addr;
@@ -189,13 +189,13 @@ eoshift3 (gfc_array_char * const restrict ret,
 
       if (sh > 0)
         {
-          src = &sptr[delta * soffset];
+          src += delta * soffset;
           dest = rptr;
         }
       else
         {
           src = sptr;
-          dest = &rptr[delta * roffset];
+          dest += delta * roffset;
         }
 
       /* If the elements are contiguous, perform a single block move.  */
@@ -240,10 +240,10 @@ eoshift3 (gfc_array_char * const restrict ret,
 	  }
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
-      hptr += hstride0;
-      bptr += bstride0;
+      rptr += rspacing0;
+      sptr += sspacing0;
+      hptr += hspacing0;
+      bptr += bspacing0;
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -253,10 +253,10 @@ eoshift3 (gfc_array_char * const restrict ret,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          sptr -= sstride[n] * extent[n];
-	  hptr -= hstride[n] * extent[n];
-          bptr -= bstride[n] * extent[n];
+          rptr -= rspacing[n] * extent[n];
+          sptr -= sspacing[n] * extent[n];
+	  hptr -= hspacing[n] * extent[n];
+          bptr -= bspacing[n] * extent[n];
           n++;
           if (n >= dim - 1)
             {
@@ -267,10 +267,10 @@ eoshift3 (gfc_array_char * const restrict ret,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
-	      hptr += hstride[n];
-              bptr += bstride[n];
+              rptr += rspacing[n];
+              sptr += sspacing[n];
+	      hptr += hspacing[n];
+              bptr += bspacing[n];
             }
         }
     }

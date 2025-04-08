@@ -37,7 +37,7 @@ findloc2_s1 (gfc_array_s1 * const restrict array, const GFC_UINTEGER_1 * restric
 		      gfc_charlen_type len_array, gfc_charlen_type len_value)
 {
   index_type i;
-  index_type sstride;
+  index_type sspacing;
   index_type extent;
   const GFC_UINTEGER_1 * restrict src;
 
@@ -45,15 +45,15 @@ findloc2_s1 (gfc_array_s1 * const restrict array, const GFC_UINTEGER_1 * restric
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len_array;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len_array;
   if (back)
     {
-      src = array->base_addr + (extent - 1) * sstride;
+      src = (GFC_UINTEGER_1*) (((char*) array->base_addr) + (extent - 1) * sspacing);
       for (i = extent; i > 0; i--)
 	{
 	  if (compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 	    return i;
-	  src -= sstride;
+	  src = (GFC_UINTEGER_1*) (((char*) src) - sspacing);
 	}
     }
   else
@@ -63,7 +63,7 @@ findloc2_s1 (gfc_array_s1 * const restrict array, const GFC_UINTEGER_1 * restric
 	{
 	  if (compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 	    return i;
-	  src += sstride;
+	  src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
 	}
     }
   return 0;
@@ -82,12 +82,12 @@ mfindloc2_s1 (gfc_array_s1 * const restrict array,
 			   gfc_charlen_type len_value)
 {
   index_type i;
-  index_type sstride;
+  index_type sspacing;
   index_type extent;
   const GFC_UINTEGER_1 * restrict src;
   const GFC_LOGICAL_1 * restrict mbase;
   int mask_kind;
-  index_type mstride;
+  index_type mspacing;
 
   extent = GFC_DESCRIPTOR_EXTENT(array,0);
   if (extent <= 0)
@@ -105,19 +105,19 @@ mfindloc2_s1 (gfc_array_s1 * const restrict array,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len_array;
-  mstride = GFC_DESCRIPTOR_SPACING(mask,0);
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len_array;
+  mspacing = GFC_DESCRIPTOR_SPACING(mask,0);
 
   if (back)
     {
-      src = array->base_addr + (extent - 1) * sstride;
-      mbase += (extent - 1) * mstride;
+      src = (GFC_UINTEGER_1*) (((char*) array->base_addr) + (extent - 1) * sspacing);
+      mbase += (extent - 1) * mspacing;
       for (i = extent; i > 0; i--)
 	{
 	  if (*mbase && (compare_string (len_array, (char *) src, len_value, (char *) value) == 0))
 	    return i;
-	  src -= sstride;
-	  mbase -= mstride;
+	  src = (GFC_UINTEGER_1*) (((char*) src) - sspacing);
+	  mbase -= mspacing;
 	}
     }
   else
@@ -127,8 +127,8 @@ mfindloc2_s1 (gfc_array_s1 * const restrict array,
 	{
 	  if (*mbase && (compare_string (len_array, (char *) src, len_value, (char *) value) == 0))
 	    return i;
-	  src += sstride;
-	  mbase += mstride;
+	  src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
+	  mbase += mspacing;
 	}
     }
   return 0;

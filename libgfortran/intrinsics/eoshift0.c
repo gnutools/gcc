@@ -67,7 +67,6 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
-      ret->align = array->align;
 
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
@@ -76,12 +75,12 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
           ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-	    sp = GFC_DESCRIPTOR_SIZE(ret) / GFC_DESCRIPTOR_ALIGN(ret);
+	    sp = GFC_DESCRIPTOR_SIZE(ret);
           else
             sp = GFC_DESCRIPTOR_EXTENT(ret,i-1)
 	      * GFC_DESCRIPTOR_SPACING(ret,i-1);
 
-	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, sp);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, sp);
 
         }
 
@@ -115,13 +114,13 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_SM (ret, n);
+	  rs = GFC_DESCRIPTOR_SPACING (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_SM (array, n);
+	  as = GFC_DESCRIPTOR_SPACING (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -149,17 +148,17 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	 bn = eoshift(a,sh*n1*n2,1)
 
 	 so a block move can be used for dim>1.  */
-      len = GFC_DESCRIPTOR_STRIDE(array, which)
+      len = GFC_DESCRIPTOR_SPACING(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);
-      shift *= GFC_DESCRIPTOR_STRIDE(array, which);
+      shift *= GFC_DESCRIPTOR_SPACING(array, which);
       roffset = size;
       soffset = size;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	  rstride[n] = GFC_DESCRIPTOR_SM(ret,dim);
-	  sstride[n] = GFC_DESCRIPTOR_SM(array,dim);
+	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	  sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	  n++;
 	}
       count[n] = 0;
@@ -171,10 +170,10 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	{
 	  if (dim == which)
 	    {
-	      roffset = GFC_DESCRIPTOR_SM(ret,dim);
+	      roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
 	      if (roffset == 0)
 		roffset = size;
-	      soffset = GFC_DESCRIPTOR_SM(array,dim);
+	      soffset = GFC_DESCRIPTOR_SPACING(array,dim);
 	      if (soffset == 0)
 		soffset = size;
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
@@ -183,8 +182,8 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	    {
 	      count[n] = 0;
 	      extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	      rstride[n] = GFC_DESCRIPTOR_SM(ret,dim);
-	      sstride[n] = GFC_DESCRIPTOR_SM(array,dim);
+	      rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	      sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	      n++;
 	    }
 	}

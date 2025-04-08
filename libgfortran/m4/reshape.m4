@@ -52,8 +52,8 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
   /* r.* indicates the return array.  */
   index_type rcount[GFC_MAX_DIMENSIONS];
   index_type rextent[GFC_MAX_DIMENSIONS];
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type rdim;
   index_type rsize;
   index_type rs;
@@ -63,15 +63,15 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
   /* s.* indicates the source array.  */
   index_type scount[GFC_MAX_DIMENSIONS];
   index_type sextent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   index_type sdim;
   index_type ssize;
   const 'rtype_name` *sptr;
   /* p.* indicates the pad array.  */
   index_type pcount[GFC_MAX_DIMENSIONS];
   index_type pextent[GFC_MAX_DIMENSIONS];
-  index_type pstride[GFC_MAX_DIMENSIONS];
+  index_type pspacing[GFC_MAX_DIMENSIONS];
   index_type pdim;
   index_type psize;
   const 'rtype_name` *pptr;
@@ -92,7 +92,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
   for (index_type n = 0; n < rdim; n++)
     {
-      shape_data[n] = shape->base_addr[n * GFC_DESCRIPTOR_STRIDE(shape,0)];
+      shape_data[n] = *(('index_type`*) (((char*) shape->base_addr) + n * GFC_DESCRIPTOR_SPACING(shape,0)));
       if (shape_data[n] <= 0)
       {
         shape_data[n] = 0;
@@ -104,26 +104,25 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = 1;
-      spacing = GFC_DESCRIPTOR_SIZE(source) / source->align;
+      rs = sizeof ('rtype_name`);
+      spacing = GFC_DESCRIPTOR_SIZE(source);
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
 
-	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, spacing);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, rex - 1, spacing);
 
 	  rs *= rex;
 	  spacing *= rex;
 	}
       ret->offset = 0;
-      ret->align = source->align;
 
       if (unlikely (rs < 1))
         alloc_size = 0;
       else
         alloc_size = rs;
 
-      ret->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
+      ret->base_addr = xmalloc (alloc_size);
       ret->dtype.rank = rdim;
     }
 
@@ -138,7 +137,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       for (index_type n = 0; n < pdim; n++)
         {
           pcount[n] = 0;
-          pstride[n] = GFC_DESCRIPTOR_STRIDE(pad,n);
+          pspacing[n] = GFC_DESCRIPTOR_SPACING(pad,n);
           pextent[n] = GFC_DESCRIPTOR_EXTENT(pad,n);
           if (pextent[n] <= 0)
 	    {
@@ -146,7 +145,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 	      pextent[n] = 0;
 	    }
 
-          if (psize == pstride[n])
+          if (psize == pspacing[n])
             psize *= pextent[n];
           else
             psize = 0;
@@ -165,7 +164,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type ret_extent, source_extent;
 
-      rs = 1;
+      rs = sizeof ('rtype_name`);
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rs *= shape_data[n];
@@ -201,7 +200,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
 	  for (index_type n = 0; n < rdim; n++)
 	    {
-	      v = order->base_addr[n * GFC_DESCRIPTOR_STRIDE(order,0)] - 1;
+	      v = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
 
 	      if (v < 0 || v >= rdim)
 		runtime_error("Value %ld out of range in ORDER argument"
@@ -216,17 +215,17 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 	}
     }
 
-  rsize = 1;
+  rsize = sizeof ('rtype_name`);
   for (index_type n = 0; n < rdim; n++)
     {
       index_type dim;
       if (order)
-        dim = order->base_addr[n * GFC_DESCRIPTOR_STRIDE(order,0)] - 1;
+        dim = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
       else
         dim = n;
 
       rcount[n] = 0;
-      rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
+      rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
       rextent[n] = GFC_DESCRIPTOR_EXTENT(ret,dim);
       if (rextent[n] < 0)
         rextent[n] = 0;
@@ -234,7 +233,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       if (rextent[n] != shape_data[dim])
         runtime_error ("shape and target do not conform");
 
-      if (rsize == rstride[n])
+      if (rsize == rspacing[n])
         rsize *= rextent[n];
       else
         rsize = 0;
@@ -248,12 +247,12 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
    avoids a warning.  */
   GFC_ASSERT(sdim>0);
 
-  ssize = 1;
+  ssize = sizeof ('atype_name`);
   sempty = 0;
   for (index_type n = 0; n < sdim; n++)
     {
       scount[n] = 0;
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(source,n);
       sextent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (sextent[n] <= 0)
 	{
@@ -261,7 +260,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 	  sextent[n] = 0;
 	}
 
-      if (ssize == sstride[n])
+      if (ssize == sspacing[n])
         ssize *= sextent[n];
       else
         ssize = 0;
@@ -269,17 +268,14 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
   if (rsize != 0 && ssize != 0 && psize != 0)
     {
-      rsize *= sizeof ('rtype_name`);
-      ssize *= sizeof ('rtype_name`);
-      psize *= sizeof ('rtype_name`);
       reshape_packed ((char *)ret->base_addr, rsize, (char *)source->base_addr,
 		      ssize, pad ? (char *)pad->base_addr : NULL, psize);
       return;
     }
   rptr = ret->base_addr;
   src = sptr = source->base_addr;
-  rstride0 = rstride[0];
-  sstride0 = sstride[0];
+  rspacing0 = rspacing[0];
+  sspacing0 = sspacing[0];
 
   if (sempty && pempty)
     abort ();
@@ -294,8 +290,8 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 	{
 	  scount[dim] = pcount[dim];
 	  sextent[dim] = pextent[dim];
-	  sstride[dim] = pstride[dim];
-	  sstride0 = pstride[0];
+	  sspacing[dim] = pspacing[dim];
+	  sspacing0 = pspacing[0];
 	}
     }
 
@@ -304,8 +300,8 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       /* Select between the source and pad arrays.  */
       *rptr = *src;
       /* Advance to the next element.  */
-      rptr += rstride0;
-      src += sstride0;
+      rptr = ('rtype_name`*) (((char*) rptr) + rspacing0);
+      src = ('atype_name`*) (((char*) src) + sspacing0);
       rcount[0]++;
       scount[0]++;
 
@@ -318,7 +314,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           rcount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * rextent[n];
+          rptr = ('rtype_name`*) (((char*) rptr) - rspacing[n] * rextent[n]);
           n++;
           if (n == rdim)
             {
@@ -329,7 +325,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           else
             {
               rcount[n]++;
-              rptr += rstride[n];
+              rptr = ('rtype_name`*) (((char*) rptr) + rspacing[n]);
             }
         }
       /* Advance to the next source element.  */
@@ -341,7 +337,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           scount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= sstride[n] * sextent[n];
+          src = ('atype_name`*) (((char*) src) - sspacing[n] * sextent[n]);
           n++;
           if (n == sdim)
             {
@@ -354,8 +350,8 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
                     {
                       scount[dim] = pcount[dim];
                       sextent[dim] = pextent[dim];
-                      sstride[dim] = pstride[dim];
-                      sstride0 = sstride[0];
+                      sspacing[dim] = pspacing[dim];
+                      sspacing0 = sspacing[0];
                     }
                 }
               /* We now start again from the beginning of the pad array.  */
@@ -365,7 +361,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           else
             {
               scount[n]++;
-              src += sstride[n];
+              src = ('atype_name`*) (((char*) src) + sspacing[n]);
             }
         }
     }

@@ -412,8 +412,63 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
    have to play it safe and use pointer arithmetic.  */
 
 tree
-gfc_build_array_ref (tree base, tree offset, bool non_negative_offset,
-		     tree spacing, tree align)
+gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
+		     tree offset, tree spacing)
+{
+  if (DECL_P (base))
+    TREE_ADDRESSABLE (base) = 1;
+
+  /* Strip NON_LVALUE_EXPR nodes.  */
+  STRIP_TYPE_NOPS (index);
+
+  if (non_negative_offset)
+    {
+      tree align = build_int_cst (gfc_array_index_type,
+				  TYPE_ALIGN_UNIT (type));
+      tree elt_unit_cnt = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+					   gfc_array_index_type, spacing,
+					   align);
+      tree min_val = fold_build1_loc (input_location, NEGATE_EXPR,
+				      gfc_array_index_type, offset);
+      return build4_loc (input_location, ARRAY_REF, type, base, index,
+			 min_val, elt_unit_cnt);
+    }
+  /* Otherwise use pointer arithmetic.  */
+  else
+    {
+      gcc_assert (TREE_CODE (TREE_TYPE (base)) == ARRAY_TYPE);
+      tree min = NULL_TREE;
+      if (offset != NULL_TREE)
+	min = fold_build1_loc (input_location, NEGATE_EXPR,
+			       gfc_array_index_type, offset);
+      else if (TYPE_DOMAIN (TREE_TYPE (base)))
+	min = TYPE_MIN_VALUE (TYPE_DOMAIN (TREE_TYPE (base)));
+
+      tree zero_based_index
+	   = min && !integer_zerop (min)
+	     ? fold_build2_loc (input_location, MINUS_EXPR,
+	            	    gfc_array_index_type,
+	            	    fold_convert (gfc_array_index_type, index),
+	            	    fold_convert (gfc_array_index_type, min))
+	     : fold_convert (gfc_array_index_type, index);
+
+      tree offset_bytes = fold_build2_loc (input_location, MULT_EXPR,
+					   gfc_array_index_type,
+					   zero_based_index, spacing);
+
+      tree base_addr = gfc_build_addr_expr (pvoid_type_node, base);
+
+      tree ptr = fold_build_pointer_plus_loc (input_location, base_addr,
+					      offset_bytes);
+      return build1_loc (input_location, INDIRECT_REF, type,
+			 fold_convert (build_pointer_type (type), ptr));
+    }
+}
+
+
+tree
+gfc_build_array_ref (tree base, tree index, bool non_negative_offset,
+		     tree offset, tree spacing)
 {
   tree type = TREE_TYPE (base);
 
@@ -427,52 +482,12 @@ gfc_build_array_ref (tree base, tree offset, bool non_negative_offset,
   /* Scalar coarray, there is nothing to do.  */
   if (TREE_CODE (type) != ARRAY_TYPE)
     {
-      gcc_assert (integer_zerop (offset));
+      gcc_assert (integer_zerop (index));
       return base;
     }
 
-  type = TREE_TYPE (type);
-
-  if (DECL_P (base))
-    TREE_ADDRESSABLE (base) = 1;
-
-  /* Strip NON_LVALUE_EXPR nodes.  */
-  STRIP_TYPE_NOPS (offset);
-
-  if (non_negative_offset)
-    return build4_loc (input_location, ARRAY_REF, type, base, offset,
-		       NULL_TREE, spacing);
-  /* Otherwise use pointer arithmetic.  */
-  else
-    {
-      gcc_assert (TREE_CODE (TREE_TYPE (base)) == ARRAY_TYPE);
-      tree min = NULL_TREE;
-      if (TYPE_DOMAIN (TREE_TYPE (base))
-	  && !integer_zerop (TYPE_MIN_VALUE (TYPE_DOMAIN (TREE_TYPE (base)))))
-	min = TYPE_MIN_VALUE (TYPE_DOMAIN (TREE_TYPE (base)));
-
-      tree zero_based_index
-	   = min ? fold_build2_loc (input_location, MINUS_EXPR,
-				    gfc_array_index_type,
-				    fold_convert (gfc_array_index_type, offset),
-				    fold_convert (gfc_array_index_type, min))
-		 : fold_convert (gfc_array_index_type, offset);
-
-      tree offset_align = fold_build2_loc (input_location, MULT_EXPR,
-					   gfc_array_index_type,
-					   zero_based_index, spacing);
-
-      tree offset_bytes = fold_build2_loc (input_location, MULT_EXPR,
-					   gfc_array_index_type,
-					   offset_align, align);
-
-      tree base_addr = gfc_build_addr_expr (pvoid_type_node, base);
-
-      tree ptr = fold_build_pointer_plus_loc (input_location, base_addr,
-					      offset_bytes);
-      return build1_loc (input_location, INDIRECT_REF, type,
-			 fold_convert (build_pointer_type (type), ptr));
-    }
+  return gfc_build_array_ref (TREE_TYPE (type), index, non_negative_offset,
+			      offset, spacing);
 }
 
 

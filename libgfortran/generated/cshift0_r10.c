@@ -34,14 +34,14 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 		     int which)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type roffset;
   GFC_REAL_10 *rptr;
 
   /* s.* indicates the source array.  */
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   index_type soffset;
   const GFC_REAL_10 *sptr;
 
@@ -55,8 +55,8 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
   index_type r_ex, a_ex;
 
   which = which - 1;
-  sstride[0] = 0;
-  rstride[0] = 0;
+  sspacing[0] = 0;
+  rspacing[0] = 0;
 
   extent[0] = 1;
   count[0] = 0;
@@ -66,8 +66,8 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
   soffset = 1;
   len = 0;
 
-  r_ex = 1;
-  a_ex = 1;
+  r_ex = sizeof (GFC_REAL_10);
+  a_ex = sizeof (GFC_REAL_10);
 
   if (which > 0)
     {
@@ -77,13 +77,13 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_SPACING (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_SPACING (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -111,19 +111,19 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 	 bn = cshift(a,sh*n1*n2,1)
 
 	 we can used a more blocked algorithm for dim>1.  */
-      sstride[0] = 1;
-      rstride[0] = 1;
+      sspacing[0] = 1;
+      rspacing[0] = 1;
       roffset = 1;
       soffset = 1;
-      len = GFC_DESCRIPTOR_STRIDE(array, which)
+      len = GFC_DESCRIPTOR_SPACING(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_STRIDE(array, which);
+      shift *= GFC_DESCRIPTOR_SPACING(array, which);
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	  sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	  sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	  n++;
 	}
       dim = GFC_DESCRIPTOR_RANK (array) - which;
@@ -134,10 +134,10 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 	{
 	  if (dim == which)
 	    {
-	      roffset = GFC_DESCRIPTOR_STRIDE(ret,dim);
+	      roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
 	      if (roffset == 0)
 		roffset = 1;
-	      soffset = GFC_DESCRIPTOR_STRIDE(array,dim);
+	      soffset = GFC_DESCRIPTOR_SPACING(array,dim);
 	      if (soffset == 0)
 		soffset = 1;
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
@@ -146,21 +146,21 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 	    {
 	      count[n] = 0;
 	      extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	      rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	      rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	      n++;
 	    }
 	}
-      if (sstride[0] == 0)
-	sstride[0] = 1;
-      if (rstride[0] == 0)
-	rstride[0] = 1;
+      if (sspacing[0] == 0)
+	sspacing[0] = 1;
+      if (rspacing[0] == 0)
+	rspacing[0] = 1;
 
       dim = GFC_DESCRIPTOR_RANK (array);
     }
 
-  rstride0 = rstride[0];
-  sstride0 = sstride[0];
+  rspacing0 = rspacing[0];
+  sspacing0 = sspacing[0];
   rptr = ret->base_addr;
   sptr = array->base_addr;
 
@@ -178,7 +178,7 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 
       /* If elements are contiguous, perform the operation
 	 in two block moves.  */
-      if (soffset == 1 && roffset == 1)
+      if (soffset == sizeof(GFC_REAL_10) && roffset == sizeof(GFC_REAL_10))
 	{
 	  size_t len1 = shift * sizeof (GFC_REAL_10);
 	  size_t len2 = (len - shift) * sizeof (GFC_REAL_10);
@@ -190,25 +190,25 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  GFC_REAL_10 *dest = rptr;
-	  const GFC_REAL_10 *src = &sptr[shift * soffset];
+	  const GFC_REAL_10 *src = (const GFC_REAL_10 *) (((char*) sptr) + shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest = (GFC_REAL_10*) (((char*) dest) + roffset);
+	      src = (GFC_REAL_10*) (((char*) src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest = (GFC_REAL_10*) (((char*) dest) + roffset);
+	      src = (const GFC_REAL_10*) (((char*) src) + soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
+      rptr = (GFC_REAL_10*) (((char*) rptr) + rspacing0);
+      sptr = (const GFC_REAL_10 *) (((char*) sptr) + sspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -218,8 +218,8 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          sptr -= sstride[n] * extent[n];
+          rptr = (GFC_REAL_10*) (((char*) rptr) - rspacing[n] * extent[n]);
+          sptr = (const GFC_REAL_10 *) (((char*) sptr) - sspacing[n] * extent[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -230,8 +230,8 @@ cshift0_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array, ptrdiff_t shift,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
+              rptr = (GFC_REAL_10*) (((char*) rptr) + rspacing[n]);
+              sptr = (const GFC_REAL_10*) (((char*) sptr) + sspacing[n]);
             }
         }
     }

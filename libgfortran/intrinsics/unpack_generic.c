@@ -112,17 +112,17 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
       rs = 1;
-      spacing = size / vector->align;
+      spacing = size;
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
 			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, spacing);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_SM(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_SM(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_SM(mask, n);
+	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
+	  fstride[n] = GFC_DESCRIPTOR_SPACING(field, n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
 	  rs *= extent[n];
 	  spacing *= extent[n];
 	}
@@ -137,9 +137,9 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_SM(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_SM(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_SM(mask, n);
+	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
+	  fstride[n] = GFC_DESCRIPTOR_SPACING(field, n);
+	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
 	}
     }
 
@@ -149,7 +149,7 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
   /* This assert makes sure GCC knows we can access *stride[0] later.  */
   assert (dim > 0);
 
-  vstride0 = GFC_DESCRIPTOR_SM(vector,0);
+  vstride0 = GFC_DESCRIPTOR_SPACING(vector,0);
   rstride0 = rstride[0];
   fstride0 = fstride[0];
   mstride0 = mstride[0];

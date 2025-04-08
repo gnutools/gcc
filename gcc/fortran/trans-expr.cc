@@ -1648,10 +1648,11 @@ gfc_copy_class_to_class (tree from, tree to, tree nelems, bool unlimited)
 	{
 	  tmp = gfc_conv_array_data (to);
 	  tmp = build_fold_indirect_ref_loc (input_location, tmp);
+	  tree ptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (to_data));
+	  tree len = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (ptr_type)));
 	  to_ref = gfc_build_addr_expr (NULL_TREE,
-					gfc_build_array_ref (tmp, index, false,
-							     GFC_TYPE_ARRAY_SPACING (to, 0),
-							     GFC_TYPE_ARRAY_ALIGN (to)));
+					gfc_build_array_ref (tmp, index, true,
+							     NULL_TREE, len));
 	}
       vec_safe_push (args, to_ref);
 
@@ -6239,8 +6240,6 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
       /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
       tmp = gfc_conv_descriptor_spacing_get (gfc, idx);
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     tmp, gfc_conv_descriptor_align_get (gfc));
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
       /* Generate loop.  */

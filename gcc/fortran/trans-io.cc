@@ -776,9 +776,6 @@ gfc_convert_array_to_string (gfc_se * se, gfc_expr * e)
 	  tree tmp = gfc_conv_array_extent (array, rank);
 	  full_size = fold_build2_loc (input_location, MULT_EXPR,
 				       gfc_array_index_type, tmp, spacing);
-	  full_size = fold_build2_loc (input_location, MULT_EXPR,
-				       gfc_array_index_type, full_size,
-				       GFC_TYPE_ARRAY_ALIGN (type));
 	}
       gcc_assert (elts_count || full_size);
 
@@ -1655,9 +1652,8 @@ nml_get_addr_expr (gfc_symbol * sym, gfc_component * c,
 	tmp = gfc_build_addr_expr (NULL_TREE, tmp);
 
       if (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE)
-         tmp = gfc_build_array_ref (tmp, gfc_index_zero_node, false,
-				    GFC_TYPE_ARRAY_SPACING (tmp, 0),
-				    GFC_TYPE_ARRAY_ALIGN (tmp));
+        tmp = gfc_build_array_ref (tmp, gfc_index_zero_node, false,
+				   NULL_TREE, GFC_TYPE_ARRAY_SPACING (tmp, 0));
 
       if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location,

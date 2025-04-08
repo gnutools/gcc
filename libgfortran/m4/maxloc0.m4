@@ -52,10 +52,10 @@ FOREACH_FUNCTION(
 		  fast = 1;
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		  break;
 		}
-	      base += sstride[0];
+	      base = ('atype_name`*) (((char*) base) + sspacing[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -70,9 +70,9 @@ FOREACH_FUNCTION(
 	       {
 	         maxval = *base;
 	      	 for (n = 0; n < rank; n++)
-		   dest[n * dstride] = count[n] + 1;
+		   *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	       }
-	     base += sstride[0];
+	     base = ('atype_name`*) (((char*) base) + sspacing[0]);
 	   }
          while (++count[0] != extent[0]);
        else
@@ -82,7 +82,7 @@ FOREACH_FUNCTION(
 	       {
 	         maxval = *base;
 		 for (n = 0; n < rank; n++)
-		   dest[n * dstride] = count[n] + 1;
+		   *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	       }')
 MASKED_FOREACH_FUNCTION(
 `  atype_name maxval;
@@ -102,18 +102,18 @@ MASKED_FOREACH_FUNCTION(
 #if defined('atype_nan`)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      dest[n * dstride] = count[n] + 1;
+		      *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		  if (*base >= maxval)
 #endif
 		    {
 		      fast = 1;
 		      maxval = *base;
 		      for (n = 0; n < rank; n++)
-			dest[n * dstride] = count[n] + 1;
+			*(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		      break;
 		    }
 		}
-	      base += sstride[0];
+	      base = ('atype_name`*) (((char*) base) + sspacing[0]);
 	      mbase += mstride[0];
 	    }
 	  while (++count[0] != extent[0]);
@@ -128,9 +128,9 @@ MASKED_FOREACH_FUNCTION(
 	        {
 	          maxval = *base;
 	          for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		}
-	      base += sstride[0];
+	      base = ('atype_name`*) (((char*) base) + sspacing[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	else
@@ -140,7 +140,7 @@ MASKED_FOREACH_FUNCTION(
 	        {
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	        }')
 
 SCALAR_FOREACH_FUNCTION(`0')

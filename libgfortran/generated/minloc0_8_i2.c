@@ -40,8 +40,8 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   const GFC_INTEGER_2 *base;
   GFC_INTEGER_8 * restrict dest;
   index_type rank;
@@ -53,7 +53,7 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_8));
@@ -65,18 +65,18 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 				"MINLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    *((GFC_INTEGER_8*) (((char*)dest) + n * dspacing)) = 0;
 	  return;
 	}
     }
@@ -85,7 +85,7 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 1;
+    *((GFC_INTEGER_8*) (((char*)dest) + n * dspacing)) = 1;
   {
 
     GFC_INTEGER_2 minval;
@@ -112,10 +112,10 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 		  fast = 1;
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		  break;
 		}
-	      base += sstride[0];
+	      base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -130,9 +130,9 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	      }
-	    base += sstride[0];
+	    base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	  }
 	while (++count[0] != extent[0]);
       else
@@ -142,11 +142,11 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	      }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -157,7 +157,7 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  base = (GFC_INTEGER_2*) (((char*) base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -168,7 +168,7 @@ minloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      base = (GFC_INTEGER_2*) (((char*) base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -188,9 +188,9 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
+  index_type sspacing[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type dspacing;
   GFC_INTEGER_8 *dest;
   const GFC_INTEGER_2 *base;
   GFC_LOGICAL_1 *mbase;
@@ -211,7 +211,7 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_8));
@@ -241,11 +241,11 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
@@ -253,7 +253,7 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0;
 	  return;
 	}
     }
@@ -262,7 +262,7 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0;
   {
 
   GFC_INTEGER_2 minval;
@@ -286,18 +286,18 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 #if defined(GFC_INTEGER_2_QUIET_NAN)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      dest[n * dstride] = count[n] + 1;
+		      *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		  if (*base <= minval)
 #endif
 		    {
 		      fast = 1;
 		      minval = *base;
 		      for (n = 0; n < rank; n++)
-			dest[n * dstride] = count[n] + 1;
+			*((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		      break;
 		    }
 		}
-	      base += sstride[0];
+	      base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	      mbase += mstride[0];
 	    }
 	  while (++count[0] != extent[0]);
@@ -312,9 +312,9 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	        {
 	      	  minval = *base;
 	      	  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 	    	}
-		base += sstride[0];
+		base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	    }
 	    while (++count[0] != extent[0]);
 	else
@@ -324,11 +324,11 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 		{
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 		}
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  base = (GFC_INTEGER_2*) (((char*) base) + sspacing[0]);
 	  mbase += mstride[0];
 	}
       while (++count[0] != extent[0]);
@@ -340,7 +340,7 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  base = (GFC_INTEGER_2*) (((char*) base) - sspacing[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -352,7 +352,7 @@ mminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      base = (GFC_INTEGER_2*) (((char*) base) + sspacing[n]);
 	      mbase += mstride[n];
 	    }
 	}
@@ -371,7 +371,7 @@ sminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  index_type dstride;
+  index_type dspacing;
   index_type n;
   GFC_INTEGER_8 *dest;
 
@@ -388,7 +388,7 @@ sminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_8));
@@ -399,9 +399,9 @@ sminloc0_8_i2 (gfc_array_i8 * const restrict retarray,
 			       "MINLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0 ;
 }
 #endif

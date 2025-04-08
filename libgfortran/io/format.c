@@ -1080,7 +1080,7 @@ parse_format_list (st_parameter_dt *dtp, bool *seen_dd)
       tail->u.udf.vlist= xmalloc (sizeof(gfc_array_i4)
 				  + sizeof (descriptor_dimension));
       GFC_DESCRIPTOR_DATA(tail->u.udf.vlist) = NULL;
-      GFC_DIMENSION_SET(tail->u.udf.vlist->dim[0],1, 0, 0);
+      GFC_DESCRIPTOR_DIMENSION_SET(tail->u.udf.vlist, 0, 1, 0, 0);
 
       if (t == FMT_STRING)
         {
@@ -1112,7 +1112,7 @@ parse_format_list (st_parameter_dt *dtp, bool *seen_dd)
 	         array descriptor and save it in the format node.  */
 	      gfc_full_array_i4 *vp = tail->u.udf.vlist;
 	      GFC_DESCRIPTOR_DATA(vp) = xmalloc (i * sizeof(GFC_INTEGER_4));
-	      GFC_DIMENSION_SET(vp->dim[0],1, i, 1);
+	      GFC_DESCRIPTOR_DIMENSION_SET(vp, 0, 1, i, 1);
 	      memcpy (GFC_DESCRIPTOR_DATA(vp), temp, i * sizeof(GFC_INTEGER_4));
 	      break;
 	    }

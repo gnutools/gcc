@@ -29,6 +29,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimplify.h"
 #include "trans-descriptor.h"
 #include "trans-array.h"
+#include "stor-layout.h"
 
 
 tree
@@ -294,27 +295,6 @@ void
 conv_span_set (stmtblock_t *block, tree desc, tree value)
 {
   tree t = get_span (desc);
-  gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
-}
-
-tree
-get_align (tree desc)
-{
-  tree field = get_component (desc, ALIGN_FIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
-}
-
-tree
-conv_align_get (tree desc)
-{
-  return non_lvalue_loc (input_location, get_align (desc));
-}
-
-void
-conv_align_set (stmtblock_t *block, tree desc, tree value)
-{
-  tree t = get_align (desc);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
@@ -607,9 +587,7 @@ conv_spacing_get (tree desc, tree dim)
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT))
-    return fold_build2_loc (input_location, EXACT_DIV_EXPR,
-			    gfc_array_index_type, conv_span_get (desc),
-			    GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
+    return conv_span_get (desc);
 
   return non_lvalue_loc (input_location, get_spacing (desc, dim));
 }
@@ -638,13 +616,9 @@ conv_stride_get (tree desc, tree dim)
     return gfc_index_one_node;
 
   tree spacing = conv_spacing_get (desc, dim);
-  tree align = conv_align_get (desc);
   tree len = conv_elem_len_get (desc);
   return fold_build2_loc (input_location, EXACT_DIV_EXPR, gfc_array_index_type,
-			  fold_build2_loc (input_location, MULT_EXPR,
-					   gfc_array_index_type, spacing,
-					   align),
-			  len);
+			  spacing, len);
 }
 
 tree
@@ -760,26 +734,6 @@ static void
 gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 {
   return gfc_descriptor::conv_span_set (block, desc, value);
-}
-
-tree
-gfc_conv_descriptor_align_get (tree desc)
-{
-  return gfc_descriptor::conv_align_get (desc);
-}
-
-static void
-gfc_conv_descriptor_align_set (stmtblock_t *block, tree desc, tree value)
-{
-  return gfc_descriptor::conv_align_set (block, desc, value);
-}
-
-static void
-gfc_conv_descriptor_align_set (stmtblock_t *block, tree desc, int value)
-{
-  return gfc_conv_descriptor_align_set (block, desc,
-					build_int_cst (gfc_array_index_type,
-						       value));
 }
 
 tree
@@ -987,6 +941,40 @@ tree
 gfc_conv_descriptor_stride_get (tree desc, tree dim)
 {
   return gfc_descriptor::conv_stride_get (desc, dim);
+}
+
+
+tree
+gfc_build_desc_array_type (tree desc_type, tree etype, int dimen, tree * lbound,
+			   tree * ubound)
+{
+  tree type = etype;
+
+  for (int i = 0; i < dimen; i++)
+    {
+      tree lower = lbound[i];
+      if (!INTEGER_CST_P (lower))
+	{
+	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
+	  tree dim = build_int_cst (integer_type_node, i);
+	  lower = gfc_descriptor::get_lbound (root, dim);
+	}
+
+      tree upper = ubound[i];
+      if (!INTEGER_CST_P (lower))
+	{
+	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
+	  tree dim = build_int_cst (integer_type_node, i);
+	  upper = gfc_descriptor::get_ubound (root, dim);
+	}
+
+      tree idx_type = build_range_type (gfc_array_index_type, lower, upper);
+
+      type = build_array_type (type, idx_type);
+      layout_type (type);
+    }
+
+  return type;
 }
 
 
@@ -2425,9 +2413,6 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
     }
   gfc_conv_descriptor_span_set (block, dest, span);
 
-  gfc_conv_descriptor_align_set (block, dest,
-				 gfc_conv_descriptor_align_get (dest));
-
   /* Copy offset but adjust it such that it would correspond
      to a lbound of zero.  */
   tree offset;
@@ -2526,9 +2511,6 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
   else
     tmp2 = gfc_get_array_span (src, src_expr);
   gfc_conv_descriptor_span_set (block, dest, tmp2);
-  
-  gfc_conv_descriptor_align_set (block, dest,
-				 gfc_conv_descriptor_align_get (src));
 }
 
 
@@ -2541,8 +2523,6 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
   tree elem_len = TYPE_SIZE_UNIT (elem_type);
   elem_len = fold_convert (gfc_array_index_type, elem_len);
   gfc_conv_descriptor_span_set (block, desc, elem_len);
-
-  gfc_conv_descriptor_align_set (block, desc, TYPE_ALIGN_UNIT (elem_type));
 
   /* Set data value, dtype, and offset.  */
   tree tmp = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc));
@@ -2584,11 +2564,7 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
 
   tree spacing = gfc_create_var (gfc_array_index_type, "spacing");
   tree offset = gfc_create_var (gfc_array_index_type, "offset");
-  tmp = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-			 gfc_array_index_type, elem_len,
-			 build_int_cst (gfc_array_index_type,
-					TYPE_ALIGN_UNIT (elem_type)));
-  gfc_add_modify (block, spacing, tmp);
+  gfc_add_modify (block, spacing, elem_len);
   gfc_add_modify (block, offset, gfc_index_zero_node);
 
   /* Loop body.  */
@@ -2706,8 +2682,6 @@ gfc_copy_sequence_descriptor (stmtblock_t &block, tree lhs_desc, tree rhs_desc,
 				     gfc_conv_descriptor_dtype_get (rhs_desc));
       tree rank_value = build_int_cst (signed_char_type_node, lhs_rank);
       gfc_conv_descriptor_rank_set (&block, arr, rank_value);
-      gfc_conv_descriptor_align_set (&block, arr,
-				     gfc_conv_descriptor_align_get (rhs_desc));
       gfc_conv_descriptor_offset_set (&block, arr, gfc_index_zero_node);
       desc = arr;
     }
@@ -2724,8 +2698,6 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
 {
   tree tmp = gfc_get_cfi_desc_base_addr (cfi);
   gfc_conv_descriptor_data_set (unconditional_block, gfc, tmp);
-  gfc_conv_descriptor_align_set (unconditional_block, gfc,
-				 GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (gfc)));
 
   if (init_static)
     {
@@ -2864,9 +2836,6 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
     }
   gfc_conv_descriptor_span_set (conditional_block, gfc, tmp);
 
-  gfc_conv_descriptor_align_set (conditional_block, gfc,
-				 TYPE_ALIGN (gfc_get_element_type (TREE_TYPE (gfc))));
-
   /* Calculate offset + set lbound, ubound and stride.  */
   gfc_conv_descriptor_offset_set (conditional_block, gfc, gfc_index_zero_node);
   if (gfc_sym
@@ -2925,20 +2894,13 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
       tmp = gfc_conv_descriptor_spacing_get (gfc, tmp);
       tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp2),
 			     tmp2, tmp);
-      tmp2 = fold_build2_loc (input_location, EXACT_DIV_EXPR, gfc_array_index_type,
-			      gfc_get_cfi_desc_elem_len (cfi),
-			      fold_convert_loc (input_location, gfc_array_index_type,
-						GFC_TYPE_ARRAY_ALIGN (gfc)));
       tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
-			tmp2, tmp);
+			gfc_get_cfi_desc_elem_len (cfi), tmp);
     }
   else
     {
-      /* gfc->dim[i].spacing = cfi->dim[i].sm / gfc->align */
-      tmp = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-			     gfc_array_index_type,
-			     gfc_get_cfi_dim_sm (cfi, idx),
-			     GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (gfc)));
+      /* gfc->dim[i].spacing = cfi->dim[i].sm */
+      tmp = gfc_get_cfi_dim_sm (cfi, idx);
     }
   gfc_conv_descriptor_spacing_set (&loop_body, gfc, idx, tmp);
 
@@ -3003,7 +2965,7 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 
 void
 gfc_set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
-			      tree elemsize, tree elem_align, tree data_ptr,
+			      tree elemsize, tree data_ptr,
 			      tree lbound[GFC_MAX_DIMENSIONS],
 			      tree ubound[GFC_MAX_DIMENSIONS],
 			      tree spacing[GFC_MAX_DIMENSIONS], int rank,
@@ -3047,8 +3009,6 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
     }
 
   gfc_conv_descriptor_span_set (block, desc, elemsize);
-
-  gfc_conv_descriptor_align_set (block, desc, elem_align);
 
   gfc_conv_descriptor_data_set (block, desc, data_ptr);
 
@@ -3126,9 +3086,6 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     tmp = gfc_get_array_span (src, src_expr);
   if (tmp)
     gfc_conv_descriptor_span_set (block, dest, tmp);
-
-  tree eltype = gfc_get_element_type (TREE_TYPE (dest));
-  gfc_conv_descriptor_align_set (block, dest, TYPE_ALIGN_UNIT (eltype));
 
   /* The following can be somewhat confusing.  We have two
      descriptors, a new one and the original array.
@@ -3329,9 +3286,6 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
   stride = gfc_index_one_node;
   offset = gfc_index_zero_node;
 
-  gfc_conv_descriptor_align_set (descriptor_block, descriptor,
-				 GFC_TYPE_ARRAY_ALIGN (type));
-
   /* Set the dtype before the alloc, because registration of coarrays needs
      it initialized.  */
   if (expr->ts.type == BT_CHARACTER
@@ -3379,9 +3333,6 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
   tree empty_cond = logical_false_node;
   spacing = gfc_conv_descriptor_elem_len_get (descriptor);
   spacing = fold_convert_loc (input_location, gfc_array_index_type, spacing);
-  spacing = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-			     gfc_array_index_type, spacing,
-			     GFC_TYPE_ARRAY_ALIGN (type));
 
   for (n = 0; n < rank; n++)
     {
@@ -3562,9 +3513,6 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
   tmp = fold_convert (gfc_array_index_type, element_size);
   gfc_conv_descriptor_span_set (descriptor_block, descriptor, tmp);
 
-  gfc_conv_descriptor_align_set (descriptor_block, descriptor,
-				 TYPE_ALIGN_UNIT(gfc_get_element_type (TREE_TYPE (descriptor))));
-
   return gfc_evaluate_now (stride, pblock);
 }
 
@@ -3603,17 +3551,12 @@ gfc_set_contiguous_array (stmtblock_t *block, tree desc, tree size,
 			  tree data_ptr)
 {
   tree dtype_value = gfc_get_dtype_rank_type (1, TREE_TYPE (desc));
-  gfc_conv_descriptor_align_set (block, desc,
-				 GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
   gfc_conv_descriptor_dtype_set (block, desc, dtype_value);
   gfc_conv_descriptor_lbound_set (block, desc,
 				  gfc_index_zero_node,
 				  gfc_index_one_node);
   tree span = gfc_conv_descriptor_span_get (desc);
-  tree spacing = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-				  gfc_array_index_type, span,
-				  GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
-  gfc_conv_descriptor_spacing_set (block, desc, gfc_index_zero_node, spacing);
+  gfc_conv_descriptor_spacing_set (block, desc, gfc_index_zero_node, span);
   gfc_conv_descriptor_ubound_set (block, desc, gfc_index_zero_node, size);
   gfc_conv_descriptor_data_set (block, desc, data_ptr);
 }
@@ -3807,9 +3750,7 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
      to the corresponding element of LBOUND(expr)."
      Reuse size1 to keep a dimension-by-dimension track of the
      stride of the new array.  */
-  tree size1 = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-				gfc_array_index_type, elemsize2,
-				GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
+  tree size1 = elemsize2;
   tree offset = gfc_index_zero_node;
 
   for (int n = 0; n < expr2->rank; n++)
@@ -3854,11 +3795,7 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
   gfc_conv_descriptor_offset_set (block, desc, offset);
 
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
-    {
-      gfc_conv_descriptor_span_set (block, desc, elemsize2);
-      gfc_conv_descriptor_align_set (block, desc,
-				     GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
-    }
+    gfc_conv_descriptor_span_set (block, desc, elemsize2);
 
   /* For deferred character length, the 'size' field of the dtype might
      have changed so set the dtype.  */
@@ -3938,13 +3875,9 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree desc,
      fields can then be filled from the values so obtained.  */
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)));
 
-  gfc_conv_descriptor_align_set (block, desc,
-				 GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
   gfc_conv_descriptor_dtype_set (block, desc,
 				 gfc_get_dtype (TREE_TYPE (desc)));
   tree size = gfc_conv_descriptor_elem_len_get (desc);
-  size = fold_build2_loc (input_location, EXACT_DIV_EXPR, gfc_array_index_type,
-			  desc, GFC_TYPE_ARRAY_ALIGN (TREE_TYPE (desc)));
   tree offset = gfc_index_zero_node;
   for (int i = 0; i < as->rank; i++)
     {

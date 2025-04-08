@@ -40,8 +40,8 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   const GFC_INTEGER_4 *base;
   index_type * restrict dest;
   index_type rank;
@@ -54,7 +54,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (index_type));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -66,17 +66,17 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 				"FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    *((index_type*) (((char*) dest) + n * dspacing)) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       sz *= extent[n];
       if (extent[n] <= 0)
@@ -88,7 +88,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 1;
+      base = (GFC_INTEGER_4*) (((char*) array->base_addr) + (sz - 1) * 1 * dspacing);
 
       while (1)
         {
@@ -97,11 +97,11 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    *((index_type*) (((char*) dest) + n * dspacing)) = extent[n] - count[n];
 
 		  return;
 		}
-	      base -= sstride[0] * 1;
+	      base = (GFC_INTEGER_4*) (((char*) base) - sspacing[0] * 1);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -112,14 +112,14 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 1;
+	      base = (GFC_INTEGER_4*) (((char*) base) + sspacing[n] * extent[n] * 1);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 1;
+		  base = (GFC_INTEGER_4*) (((char*) base) + sspacing[n] * 1);
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -134,11 +134,11 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *((index_type*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 
 		  return;
 		}
-	      base += sstride[0] * 1;
+	      base = (GFC_INTEGER_4*) (((char*) base) + sspacing[0] * 1);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -149,14 +149,14 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 1;
+	      base = (GFC_INTEGER_4*) (((char*) base) - sspacing[n] * extent[n] * 1);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n] * 1;
+		  base = (GFC_INTEGER_4*) (((char*) base) + sspacing[n] * 1);
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -176,9 +176,9 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   const GFC_INTEGER_4 *base;
   index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
@@ -193,7 +193,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (index_type));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -222,18 +222,18 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    *((index_type*) (((char*) dest) + n * dspacing)) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
-      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       sz *= extent[n];
       if (extent[n] <= 0)
@@ -245,7 +245,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 1;
+      base = (GFC_INTEGER_4*) (((char*) array->base_addr) + (sz - 1) * 1 * sspacing[0]);
       mbase = mbase + (sz - 1) * mask_kind;
       while (1)
         {
@@ -254,12 +254,12 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && *base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    *((index_type*) (((char*) dest) + n * dspacing)) = extent[n] - count[n];
 
 		  return;
 		}
-	      base -= sstride[0] * 1;
-	      mbase -= mstride[0];
+	      base = (GFC_INTEGER_4*) (((char*) base) - sspacing[0] * 1);
+	      mbase -= mspacing[0];
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -270,16 +270,16 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 1;
-	      mbase -= mstride[n] * extent[n];
+	      base = (GFC_INTEGER_4*) (((char*) base) - sspacing[n] * extent[n] * 1);
+	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
 		return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 1;
-		  mbase += mstride[n];
+		  base = (GFC_INTEGER_4*) (((char*) base) - sspacing[n] * 1);
+		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -294,12 +294,12 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && *base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    *((index_type*) (((char*) dest) + n * dspacing)) = count[n] + 1;
 
 		  return;
 		}
-	      base += sstride[0] * 1;
-	      mbase += mstride[0];
+	      base = (GFC_INTEGER_4*) (((char*) base) + sspacing[0] * 1);
+	      mbase += mspacing[0];
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -310,16 +310,16 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 1;
-	      mbase -= mstride[n] * extent[n];
+	      base = (GFC_INTEGER_4*) (((char*) base) + sspacing[n] * extent[n] * 1);
+	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
 		return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n]* 1;
-		  mbase += mstride[n];
+		  base = (GFC_INTEGER_4*) (((char*) base) + sspacing[n]* 1);
+		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -338,7 +338,7 @@ sfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	    GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  index_type dstride;
+  index_type dspacing;
   index_type * restrict dest;
   index_type n;
 
@@ -355,7 +355,7 @@ sfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (index_type));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -366,10 +366,10 @@ sfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 			       "FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    *((index_type*) (((char*) dest) + n * dspacing)) = 0 ;
 }
 
 #endif

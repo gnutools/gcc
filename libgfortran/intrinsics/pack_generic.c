@@ -159,10 +159,9 @@ pack_internal (gfc_array_char *ret, const gfc_array_char *array,
       if (ret->base_addr == NULL)
 	{
 	  /* Setup the array descriptor.  */
-	  GFC_DIMENSION_SET(ret->dim[0], 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
 
 	  ret->offset = 0;
-	  ret->align = array->align;
 	  /* xmallocarray allocates a single byte for zero size.  */
 	  ret->base_addr = xmallocarray (total, size);
 
@@ -536,10 +535,9 @@ pack_s_internal (gfc_array_char *ret, const gfc_array_char *array,
 	}
 
       /* Setup the array descriptor.  */
-      GFC_DIMENSION_SET(ret->dim[0],0,total-1,1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret,0,0,total-1,1);
 
       ret->offset = 0;
-      ret->align = array->align;
 
       ret->base_addr = xmallocarray (total, size);
 

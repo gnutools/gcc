@@ -43,12 +43,12 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
   const GFC_LOGICAL_1 * restrict abase;
   const GFC_LOGICAL_1 * restrict bbase;
   GFC_LOGICAL_8 * restrict dest;
-  index_type rxstride;
-  index_type rystride;
+  index_type rxspacing;
+  index_type ryspacing;
   index_type xcount;
   index_type ycount;
-  index_type xstride;
-  index_type ystride;
+  index_type xspacing;
+  index_type yspacing;
   index_type x;
   index_type y;
   int a_kind;
@@ -56,8 +56,8 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
 
   const GFC_LOGICAL_1 * restrict pa;
   const GFC_LOGICAL_1 * restrict pb;
-  index_type astride;
-  index_type bstride;
+  index_type aspacing;
+  index_type bspacing;
   index_type count;
   index_type n;
 
@@ -68,22 +68,22 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
     {
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
-	  GFC_DIMENSION_SET(retarray->dim[0], 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
+	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_LOGICAL_8));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
-	  GFC_DIMENSION_SET(retarray->dim[0], 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
+	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_LOGICAL_8));
         }
       else
         {
-	  GFC_DIMENSION_SET(retarray->dim[0], 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
+	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_LOGICAL_8));
 
-          GFC_DIMENSION_SET(retarray->dim[1], 0,
+          GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
 	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0));
+			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_LOGICAL_8));
         }
           
       retarray->base_addr
@@ -161,45 +161,45 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
 
   if (GFC_DESCRIPTOR_RANK (retarray) == 1)
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride = rxstride;
+      rxspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
+      ryspacing = rxspacing;
     }
   else
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
+      ryspacing = GFC_DESCRIPTOR_SPACING(retarray,1);
     }
 
-  /* If we have rank 1 parameters, zero the absent stride, and set the size to
+  /* If we have rank 1 parameters, zero the absent spacing, and set the size to
      one.  */
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
-      astride = GFC_DESCRIPTOR_SPACING(a,0);
+      aspacing = GFC_DESCRIPTOR_SPACING(a,0);
       count = GFC_DESCRIPTOR_EXTENT(a,0);
-      xstride = 0;
-      rxstride = 0;
+      xspacing = 0;
+      rxspacing = 0;
       xcount = 1;
     }
   else
     {
-      astride = GFC_DESCRIPTOR_SPACING(a,1);
+      aspacing = GFC_DESCRIPTOR_SPACING(a,1);
       count = GFC_DESCRIPTOR_EXTENT(a,1);
-      xstride = GFC_DESCRIPTOR_SPACING(a,0);
+      xspacing = GFC_DESCRIPTOR_SPACING(a,0);
       xcount = GFC_DESCRIPTOR_EXTENT(a,0);
     }
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
-      bstride = GFC_DESCRIPTOR_SPACING(b,0);
+      bspacing = GFC_DESCRIPTOR_SPACING(b,0);
       assert(count == GFC_DESCRIPTOR_EXTENT(b,0));
-      ystride = 0;
-      rystride = 0;
+      yspacing = 0;
+      ryspacing = 0;
       ycount = 1;
     }
   else
     {
-      bstride = GFC_DESCRIPTOR_SPACING(b,0);
+      bspacing = GFC_DESCRIPTOR_SPACING(b,0);
       assert(count == GFC_DESCRIPTOR_EXTENT(b,0));
-      ystride = GFC_DESCRIPTOR_SPACING(b,1);
+      yspacing = GFC_DESCRIPTOR_SPACING(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
 
@@ -221,16 +221,16 @@ matmul_l8 (gfc_array_l8 * const restrict retarray,
                   *dest = 1;
                   break;
                 }
-              pa += astride;
-              pb += bstride;
+              pa += aspacing;
+              pb += bspacing;
             }
 
-          dest += rxstride;
-          abase += xstride;
+          dest = (GFC_LOGICAL_8*) (((char*) dest) + rxspacing);
+          abase += xspacing;
         }
-      abase -= xstride * xcount;
-      bbase += ystride;
-      dest += rystride - (rxstride * xcount);
+      abase -= xspacing * xcount;
+      bbase += yspacing;
+      dest = (GFC_LOGICAL_8*) (((char*) dest) + ryspacing - (rxspacing * xcount));
     }
 }
 

@@ -1030,6 +1030,79 @@ create_index_var (const char * pfx, int nest)
 }
 
 
+static tree
+update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
+		    tree ubound[GFC_MAX_DIMENSIONS],
+		    tree spacing[GFC_MAX_DIMENSIONS], tree root_type, int dim)
+{
+  tree elt_type;
+  if (dim == 0)
+    elt_type = TREE_TYPE (type);
+  else
+    elt_type = update_type_bounds (TREE_TYPE (type), lbound, ubound, spacing,
+				   root_type, dim - 1);
+
+  tree current_lbound = lbound[dim];
+  tree current_ubound = ubound[dim];
+  if (current_lbound != NULL_TREE
+      || current_ubound != NULL_TREE
+      || elt_type != TREE_TYPE (type))
+    {
+      tree new_type = build_variant_type_copy (type);
+      TREE_TYPE (new_type) = elt_type;
+      TYPE_DOMAIN (new_type) = build_variant_type_copy (TYPE_DOMAIN (type));
+      TYPE_MIN_VALUE (TYPE_DOMAIN (new_type)) = current_lbound;
+      TYPE_MAX_VALUE (TYPE_DOMAIN (new_type)) = current_ubound;
+      type = new_type;
+    }
+
+  if (current_lbound != NULL_TREE)
+    {
+      GFC_TYPE_ARRAY_LBOUND (root_type, dim) = current_lbound;
+      if (current_lbound
+	  && VAR_P (current_lbound)
+	  && DECL_ARTIFICIAL (current_lbound)
+	  && DECL_IGNORED_P (current_lbound))
+	{
+	  if (DECL_NAME (current_lbound)
+	      && strstr (IDENTIFIER_POINTER (DECL_NAME (current_lbound)),
+			 "lbound") != 0)
+	    DECL_NAMELESS (current_lbound) = 1;
+	}
+    }
+  if (current_ubound != NULL_TREE)
+    {
+      GFC_TYPE_ARRAY_UBOUND (type, dim) = current_ubound;
+      if (current_ubound
+	  && VAR_P (current_ubound)
+	  && DECL_ARTIFICIAL (current_ubound)
+	  && DECL_IGNORED_P (current_ubound))
+	{
+	  if (DECL_NAME (current_ubound)
+	      && strstr (IDENTIFIER_POINTER (DECL_NAME (current_ubound)),
+			 "ubound") != 0)
+	    DECL_NAMELESS (current_ubound) = 1;
+	}
+    }
+  tree current_spacing = spacing[dim];
+  if (current_spacing != NULL_TREE)
+    {
+      GFC_TYPE_ARRAY_SPACING (type, dim) = current_spacing;
+      if (current_spacing
+	  && VAR_P (current_spacing)
+	  && DECL_ARTIFICIAL (current_spacing)
+	  && DECL_IGNORED_P (current_spacing))
+	{
+	  if (DECL_NAME (current_spacing)
+	      && strstr (IDENTIFIER_POINTER (DECL_NAME (current_spacing)),
+			 "spacing") != 0)
+	    DECL_NAMELESS (current_spacing) = 1;
+	}
+    }
+
+  return type;
+}
+
 /* Create variables to hold all the non-constant bits of info for a
    descriptorless array.  Remember these in the lang-specific part of the
    type.  */
@@ -1037,6 +1110,9 @@ create_index_var (const char * pfx, int nest)
 static void
 gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 {
+  tree lbound[GFC_MAX_DIMENSIONS];
+  tree ubound[GFC_MAX_DIMENSIONS];
+  tree spacing[GFC_MAX_DIMENSIONS];
   tree type;
   int dim;
   int nest;
@@ -1118,24 +1194,48 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
     {
       if (GFC_TYPE_ARRAY_LBOUND (type, dim) == NULL_TREE)
 	{
-	  GFC_TYPE_ARRAY_LBOUND (type, dim) = create_index_var ("lbound", nest);
-	  suppress_warning (GFC_TYPE_ARRAY_LBOUND (type, dim));
+	  lbound[dim] = create_index_var ("lbound", nest);
+	  suppress_warning (lbound[dim]);
 	}
+      else
+	lbound[dim] = NULL_TREE;
+
       /* Don't try to use the unknown bound for assumed shape arrays.  */
       if (GFC_TYPE_ARRAY_UBOUND (type, dim) == NULL_TREE
 	  && (as->type != AS_ASSUMED_SIZE
 	      || dim < GFC_TYPE_ARRAY_RANK (type) - 1))
 	{
-	  GFC_TYPE_ARRAY_UBOUND (type, dim) = create_index_var ("ubound", nest);
-	  suppress_warning (GFC_TYPE_ARRAY_UBOUND (type, dim));
+	  ubound[dim] = create_index_var ("ubound", nest);
+	  suppress_warning (ubound[dim]);
 	}
+      else
+	ubound[dim] = NULL_TREE;
 
       if (GFC_TYPE_ARRAY_SPACING (type, dim) == NULL_TREE)
 	{
-	  GFC_TYPE_ARRAY_SPACING (type, dim) = create_index_var ("spacing", nest);
-	  suppress_warning (GFC_TYPE_ARRAY_SPACING (type, dim));
+	  spacing[dim] = create_index_var ("spacing", nest);
+	  suppress_warning (spacing[dim]);
 	}
+      else
+	spacing[dim] = NULL_TREE;
     }
+
+  if (POINTER_TYPE_P (type))
+    {
+      gcc_assert (GFC_ARRAY_TYPE_P (TREE_TYPE (type))
+		  && TYPE_LANG_SPECIFIC (TREE_TYPE (type))
+		     == TYPE_LANG_SPECIFIC (type));
+      type = TREE_TYPE (type);
+    }
+
+  tree new_type = update_type_bounds (type, lbound, ubound, spacing, type,
+				      as->rank - 1);
+  if (POINTER_TYPE_P (TREE_TYPE (decl)))
+    TREE_TYPE (TREE_TYPE (decl)) = new_type;
+  else
+    TREE_TYPE (decl) = new_type;
+  type = new_type;
+
   for (dim = GFC_TYPE_ARRAY_RANK (type);
        dim < GFC_TYPE_ARRAY_RANK (type) + GFC_TYPE_ARRAY_CORANK (type); dim++)
     {
@@ -1169,86 +1269,6 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
     {
       GFC_TYPE_ARRAY_SIZE (type) = create_index_var ("size", nest);
       suppress_warning (GFC_TYPE_ARRAY_SIZE (type));
-    }
-
-  if (POINTER_TYPE_P (type))
-    {
-      gcc_assert (GFC_ARRAY_TYPE_P (TREE_TYPE (type)));
-      gcc_assert (TYPE_LANG_SPECIFIC (type)
-		  == TYPE_LANG_SPECIFIC (TREE_TYPE (type)));
-      type = TREE_TYPE (type);
-    }
-
-  if (! COMPLETE_TYPE_P (type) && GFC_TYPE_ARRAY_SIZE (type))
-    {
-      tree size, range;
-
-      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			      GFC_TYPE_ARRAY_SIZE (type), gfc_index_one_node);
-      range = build_range_type (gfc_array_index_type, gfc_index_zero_node,
-				size);
-      TYPE_DOMAIN (type) = range;
-      layout_type (type);
-    }
-
-  if (TYPE_NAME (type) != NULL_TREE && as->rank > 0
-      && GFC_TYPE_ARRAY_UBOUND (type, as->rank - 1) != NULL_TREE
-      && VAR_P (GFC_TYPE_ARRAY_UBOUND (type, as->rank - 1)))
-    {
-      tree gtype = DECL_ORIGINAL_TYPE (TYPE_NAME (type));
-
-      for (dim = 0; dim < as->rank - 1; dim++)
-	{
-	  gcc_assert (TREE_CODE (gtype) == ARRAY_TYPE);
-	  gtype = TREE_TYPE (gtype);
-	}
-      gcc_assert (TREE_CODE (gtype) == ARRAY_TYPE);
-      if (TYPE_MAX_VALUE (TYPE_DOMAIN (gtype)) == NULL)
-	TYPE_NAME (type) = NULL_TREE;
-    }
-
-  if (TYPE_NAME (type) == NULL_TREE)
-    {
-      tree gtype = TREE_TYPE (type), rtype, type_decl;
-
-      for (dim = as->rank - 1; dim >= 0; dim--)
-	{
-	  tree lbound, ubound;
-	  lbound = GFC_TYPE_ARRAY_LBOUND (type, dim);
-	  ubound = GFC_TYPE_ARRAY_UBOUND (type, dim);
-	  rtype = build_range_type (gfc_array_index_type, lbound, ubound);
-	  gtype = build_array_type (gtype, rtype);
-	  /* Ensure the bound variables aren't optimized out at -O0.
-	     For -O1 and above they often will be optimized out, but
-	     can be tracked by VTA.  Also set DECL_NAMELESS, so that
-	     the artificial lbound.N or ubound.N DECL_NAME doesn't
-	     end up in debug info.  */
-	  if (lbound
-	      && VAR_P (lbound)
-	      && DECL_ARTIFICIAL (lbound)
-	      && DECL_IGNORED_P (lbound))
-	    {
-	      if (DECL_NAME (lbound)
-		  && strstr (IDENTIFIER_POINTER (DECL_NAME (lbound)),
-			     "lbound") != 0)
-		DECL_NAMELESS (lbound) = 1;
-	      DECL_IGNORED_P (lbound) = 0;
-	    }
-	  if (ubound
-	      && VAR_P (ubound)
-	      && DECL_ARTIFICIAL (ubound)
-	      && DECL_IGNORED_P (ubound))
-	    {
-	      if (DECL_NAME (ubound)
-		  && strstr (IDENTIFIER_POINTER (DECL_NAME (ubound)),
-			     "ubound") != 0)
-		DECL_NAMELESS (ubound) = 1;
-	      DECL_IGNORED_P (ubound) = 0;
-	    }
-	}
-      TYPE_NAME (type) = type_decl = build_decl (input_location,
-						 TYPE_DECL, NULL, gtype);
-      DECL_ORIGINAL_TYPE (type_decl) = gtype;
     }
 }
 
@@ -7606,10 +7626,8 @@ done:
   /* cfi->dim[i].extent = gfc->dim[i].ubound - gfc->dim[i].lbound + 1.  */
   tmp = gfc_conv_descriptor_extent_get (gfc_desc, idx);
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
-  /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
+  /* d->dim[n].sm = gfc->dim[i].spacing */
   tmp = gfc_conv_descriptor_spacing_get (gfc_desc, idx);
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			 tmp, gfc_conv_descriptor_align_get (gfc_desc));
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
   /* Generate loop.  */

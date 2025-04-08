@@ -204,9 +204,9 @@ date_and_time (char *__date, char *__time, char *__zone,
 
       elt_size = GFC_DESCRIPTOR_SIZE (__values);
       len = GFC_DESCRIPTOR_EXTENT(__values,0);
-      delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+      delta = GFC_DESCRIPTOR_SPACING(__values,0);
       if (delta == 0)
-	delta = 1;
+	delta = sizeof (GFC_INTEGER_4);
       
       if (unlikely (len < VALUES_SIZE))
 	  runtime_error ("Incorrect extent in VALUES argument to"
@@ -218,14 +218,14 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_4 *vptr4 = __values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr4 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++, vptr4 = (GFC_INTEGER_4*) (((char*) vptr4) + delta))
 	    *vptr4 = values[i];
 	}
       else if (elt_size == 8)
 	{
 	  GFC_INTEGER_8 *vptr8 = (GFC_INTEGER_8 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr8 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++, vptr8 = (GFC_INTEGER_8*) (((char*) vptr8) + delta))
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr8 = - GFC_INTEGER_8_HUGE;
@@ -237,7 +237,7 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_2 *vptr2 = (GFC_INTEGER_2 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr2 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++, vptr2 = (GFC_INTEGER_2*) (((char*) vptr2) + delta))
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr2 = - GFC_INTEGER_2_HUGE;
@@ -250,7 +250,7 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_16 *vptr16 = (GFC_INTEGER_16 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr16 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++, vptr16 = (GFC_INTEGER_16*) (((char*) vptr16) + delta))
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr16 = - GFC_INTEGER_16_HUGE;
@@ -311,7 +311,7 @@ secnds (GFC_REAL_4 *x)
   GFC_DESCRIPTOR_DTYPE (avalues).type = BT_REAL;
   GFC_DESCRIPTOR_DTYPE (avalues).elem_len = 4;
   GFC_DESCRIPTOR_DTYPE (avalues).rank = 1;
-  GFC_DIMENSION_SET(avalues->dim[0], 0, 7, 1);
+  GFC_DESCRIPTOR_DIMENSION_SET(avalues, 0, 0, 7, 1);
 
   date_and_time (NULL, NULL, NULL, avalues, 0, 0, 0);
 
@@ -367,12 +367,12 @@ itime_i4 (gfc_array_i4 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_SPACING(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_4);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
+  for (i = 0; i < 3; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -393,12 +393,12 @@ itime_i8 (gfc_array_i8 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_SPACING(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_8);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
+  for (i = 0; i < 3; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -445,12 +445,12 @@ idate_i4 (gfc_array_i4 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_SPACING(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_4);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
+  for (i = 0; i < 3; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -471,12 +471,12 @@ idate_i8 (gfc_array_i8 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_SPACING(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_8);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
+  for (i = 0; i < 3; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -535,12 +535,12 @@ gmtime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_SPACING(tarray,0);
   if (delta == 0)
     delta = 1;
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
+  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -562,12 +562,12 @@ gmtime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_SPACING(tarray,0);
   if (delta == 0)
     delta = 1;
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
+  for (i = 0; i < 9; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -627,12 +627,12 @@ ltime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_SPACING(tarray,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_4);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
+  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 
@@ -654,12 +654,12 @@ ltime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_SPACING(tarray,0);
   if (delta == 0)
-    delta = 1;
+    delta = sizeof (GFC_INTEGER_8);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
+  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_8*) (((char*) vptr) + delta))
     *vptr = x[i];
 }
 

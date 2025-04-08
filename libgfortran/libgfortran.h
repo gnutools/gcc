@@ -389,7 +389,6 @@ struct {\
   size_t offset;\
   dtype_type dtype;\
   index_type span;\
-  index_type align; \
   descriptor_dimension dim[];\
 }
 
@@ -465,21 +464,19 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_DATA(desc) ((desc)->base_addr)
 #define GFC_DESCRIPTOR_DTYPE(desc) ((desc)->dtype)
 #define GFC_DESCRIPTOR_SPAN(desc) ((desc)->span)
-#define GFC_DESCRIPTOR_ALIGN(desc) ((desc)->align)
 
-#define GFC_DIMENSION_SET(dim,lb,ub,sp) \
+#define GFC_DESCRIPTOR_DIMENSION_SET(desc,i,lb,ub,sp) \
   do \
     { \
-      (dim).lower_bound = lb;			\
-      (dim)._ubound = ub;			\
-      (dim).spacing = sp;			\
+      (desc)->dim[i].lower_bound = lb;			\
+      (desc)->dim[i]._ubound = ub;			\
+      (desc)->dim[i].spacing = sp;			\
     } while (0)
 	    
 
 #define GFC_DESCRIPTOR_LBOUND(desc,i) ((desc)->dim[i].lower_bound)
 #define GFC_DESCRIPTOR_UBOUND(desc,i) ((desc)->dim[i]._ubound)
 #define GFC_DESCRIPTOR_SPACING(desc,i) ((desc)->dim[i].spacing)
-#define GFC_DESCRIPTOR_SM(desc,i) (GFC_DESCRIPTOR_SPACING(desc,i) * GFC_DESCRIPTOR_ALIGN(desc))
 #define GFC_DESCRIPTOR_EXTENT(desc,i) (GFC_DESCRIPTOR_UBOUND(desc,i) + (GFC_DESCRIPTOR_LBOUND(desc,i) - 1))
 
 #define GFC_DESCRIPTOR_STRIDE(desc,i) (GFC_DESCRIPTOR_SM(desc,i) / GFC_DESCRIPTOR_SIZE(desc))

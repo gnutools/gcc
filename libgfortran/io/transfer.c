@@ -3752,21 +3752,21 @@ init_loop_spec (gfc_array_char *desc, array_loop_spec *ls,
       ls[i].idx = GFC_DESCRIPTOR_LBOUND(desc,i);
       ls[i].start = GFC_DESCRIPTOR_LBOUND(desc,i);
       ls[i].end = GFC_DESCRIPTOR_UBOUND(desc,i);
-      ls[i].step = GFC_DESCRIPTOR_STRIDE(desc,i);
+      ls[i].step = GFC_DESCRIPTOR_SPACING(desc,i);
       empty = empty || (GFC_DESCRIPTOR_UBOUND(desc,i)
 			< GFC_DESCRIPTOR_LBOUND(desc,i));
 
-      if (GFC_DESCRIPTOR_STRIDE(desc,i) > 0)
+      if (GFC_DESCRIPTOR_SPACING(desc,i) > 0)
 	{
 	  index += (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_SPACING(desc,i);
 	}
       else
 	{
 	  index -= (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_SPACING(desc,i);
 	  *start_record -= (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_SPACING(desc,i);
 	}
     }
 
@@ -4939,7 +4939,7 @@ st_set_nml_var_dim (st_parameter_dt *dtp, GFC_INTEGER_4 n_dim,
 
   for (nml = dtp->u.p.ionml; nml->next; nml = nml->next);
 
-  GFC_DIMENSION_SET(nml->dim[n],lbound,ubound,spacing);
+  GFC_DESCRIPTOR_DIMENSION_SET(nml,n,lbound,ubound,spacing);
 }
 
 

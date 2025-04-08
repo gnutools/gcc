@@ -42,7 +42,7 @@ ARRAY_FUNCTION(0,
 #endif
 	result = 1;',
 `#if defined ('atype_nan`)
-     	     for (n = 0; n < len; n++, src += delta)
+     	     for (n = 0; n < len; n++, src = ('atype_name`*) (((char*) src) + delta))
 	       {
 		if (*src >= maxval)
 		  {
@@ -54,7 +54,7 @@ ARRAY_FUNCTION(0,
 #else
 	    n = 0;
 #endif
-	    for (; n < len; n++, src += delta)
+	    for (; n < len; n++, src = ('atype_name`*) (((char*) src) + delta))
 	      {
 		if (back ? *src >= maxval : *src > maxval)
 		  {
@@ -93,7 +93,7 @@ MASKED_ARRAY_FUNCTION(0,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta))
 	      	{
 		  if (*msrc && unlikely (*src >= maxval))
 		    {
@@ -102,7 +102,7 @@ MASKED_ARRAY_FUNCTION(0,
 		    }
 		}
 	    else
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta))
 	        {
 		  if (*msrc && unlikely (*src > maxval))
 		    {

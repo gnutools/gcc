@@ -2163,8 +2163,7 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
   tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1], false,
-			     GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
-			     GFC_TYPE_ARRAY_ALIGN (subse.expr));
+			     NULL_TREE, GFC_TYPE_ARRAY_SPACING (subse.expr, 0));
   invalid_bound = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 				 fold_convert (gfc_array_index_type, tmp),
 				 lbound);
@@ -2174,8 +2173,8 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
       lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[codim]);
       ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[codim]);
       tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], false,
-				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
-				 GFC_TYPE_ARRAY_ALIGN (subse.expr));
+				 NULL_TREE,
+				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0));
       cond = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 			      fold_convert (gfc_array_index_type, tmp),
 			      lbound);
@@ -2195,9 +2194,8 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
   /* coindex = sub(corank) - lcobound(n).  */
   coindex = fold_convert (gfc_array_index_type,
 			  gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1],
-					       false,
-					       GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
-					       GFC_TYPE_ARRAY_ALIGN (subse.expr)));
+					       false, NULL_TREE,
+					       GFC_TYPE_ARRAY_SPACING (subse.expr, 0)));
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
   coindex = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			     fold_convert (gfc_array_index_type, coindex),
@@ -2216,8 +2214,8 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 
       /* coindex += sub(codim).  */
       tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], false,
-				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0),
-				 GFC_TYPE_ARRAY_ALIGN (subse.expr));
+				 NULL_TREE,
+				 GFC_TYPE_ARRAY_SPACING (subse.expr, 0));
       coindex = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, coindex,
 				 fold_convert (gfc_array_index_type, tmp));
@@ -2357,10 +2355,8 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
       desc = gfc_evaluate_now (argse.expr, &se->pre);
 
       tree spacing = gfc_conv_descriptor_spacing_get (desc, gfc_rank_cst[0]);
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     spacing, gfc_conv_descriptor_align_get (desc));
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-			      tmp, gfc_conv_descriptor_span_get (desc));
+			      spacing, gfc_conv_descriptor_span_get (desc));
 
       for (i = 0; i < arg->rank - 1; i++)
 	{
