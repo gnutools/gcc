@@ -79,21 +79,25 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_COMPLEX_17));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_COMPLEX_17));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_COMPLEX_17));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_COMPLEX_17));
         }
 
       retarray->base_addr
@@ -189,8 +193,8 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_COMPLEX_17);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -210,7 +214,8 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_COMPLEX_17)
+  if (try_blas
+      && rxspacing == sizeof (GFC_COMPLEX_17)
       && (axspacing == sizeof (GFC_COMPLEX_17) || ayspacing == sizeof (GFC_COMPLEX_17))
       && (bxspacing == sizeof (GFC_COMPLEX_17) || byspacing == sizeof (GFC_COMPLEX_17))
       && (((float) xcount) * ((float) ycount) * ((float) count)
@@ -534,11 +539,11 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_17) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -553,11 +558,11 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -568,26 +573,27 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_COMPLEX_17, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_COMPLEX_17)0;
+	  GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest, x*rxspacing + y*ryspacing) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_COMPLEX_17, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_COMPLEX_17, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -598,15 +604,16 @@ matmul_c17_avx128_fma3 (gfc_array_c17 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_17, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_COMPLEX_17, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest_y, x*rxspacing) = s;
 	    }
 	}
     }
@@ -654,21 +661,25 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_COMPLEX_17));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_COMPLEX_17));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_COMPLEX_17));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_COMPLEX_17));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_COMPLEX_17));
         }
 
       retarray->base_addr
@@ -764,8 +775,8 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_COMPLEX_17);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -785,7 +796,8 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_COMPLEX_17)
+  if (try_blas
+      && rxspacing == sizeof (GFC_COMPLEX_17)
       && (axspacing == sizeof (GFC_COMPLEX_17) || ayspacing == sizeof (GFC_COMPLEX_17))
       && (bxspacing == sizeof (GFC_COMPLEX_17) || byspacing == sizeof (GFC_COMPLEX_17))
       && (((float) xcount) * ((float) ycount) * ((float) count)
@@ -1109,11 +1121,11 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_17) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1128,11 +1140,11 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -1143,26 +1155,27 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_COMPLEX_17, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_COMPLEX_17)0;
+	  GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest, x*rxspacing + y*ryspacing) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_COMPLEX_17, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_COMPLEX_17, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -1173,15 +1186,16 @@ matmul_c17_avx128_fma4 (gfc_array_c17 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_17 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_17 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_17, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_COMPLEX_17, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_COMPLEX_17, dest_y, x*rxspacing) = s;
 	    }
 	}
     }

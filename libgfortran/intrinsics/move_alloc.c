@@ -38,10 +38,10 @@ move_alloc (gfc_array_char * from, gfc_array_char * to)
 
   for (i = 0; i < GFC_DESCRIPTOR_RANK (from); i++)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(to,i,GFC_DESCRIPTOR_LBOUND(from,i),
+      GFC_DESCRIPTOR_DIMENSION_SET(to, i, GFC_DESCRIPTOR_LBOUND(from,i),
 				   GFC_DESCRIPTOR_UBOUND(from,i),
 				   GFC_DESCRIPTOR_SPACING(from,i));
-      GFC_DESCRIPTOR_DIMENSION_SET(from,i,GFC_DESCRIPTOR_LBOUND(from,i),
+      GFC_DESCRIPTOR_DIMENSION_SET(from, i,GFC_DESCRIPTOR_LBOUND(from,i),
 				   GFC_DESCRIPTOR_LBOUND(from,i), 0);
     }
 

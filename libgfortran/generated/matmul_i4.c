@@ -114,21 +114,25 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_UINTEGER_4));
         }
 
       retarray->base_addr
@@ -194,7 +198,7 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
     {
       /* Treat it as a a row matrix A[1,count]. */
       axspacing = GFC_DESCRIPTOR_SPACING(a,0);
-      ayspacing = sizeof (GFC_INTEGER_4);
+      ayspacing = sizeof (GFC_UINTEGER_4);
 
       xcount = 1;
       count = GFC_DESCRIPTOR_EXTENT(a,0);
@@ -224,8 +228,8 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_UINTEGER_4);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -245,16 +249,17 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_UINTEGER_4)
-      && (axspacing == sizeof (GFC_INTEGER_4) || ayspacing == sizeof (GFC_INTEGER_4))
-      && (bxspacing == sizeof (GFC_INTEGER_4) || byspacing == sizeof (GFC_INTEGER_4))
+  if (try_blas
+      && rxspacing == sizeof (GFC_UINTEGER_4)
+      && (axspacing == sizeof (GFC_UINTEGER_4) || ayspacing == sizeof (GFC_UINTEGER_4))
+      && (bxspacing == sizeof (GFC_UINTEGER_4) || byspacing == sizeof (GFC_UINTEGER_4))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = ryspacing;
       const GFC_UINTEGER_4 one = 1, zero = 0;
-      const int lda = (axspacing == sizeof (GFC_INTEGER_4)) ? ayspacing : axspacing,
-		ldb = (bxspacing == sizeof (GFC_INTEGER_4)) ? byspacing : bxspacing;
+      const int lda = (axspacing == sizeof (GFC_UINTEGER_4)) ? ayspacing : axspacing,
+		ldb = (bxspacing == sizeof (GFC_UINTEGER_4)) ? byspacing : bxspacing;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -263,12 +268,12 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transa = axspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transb = bxspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -278,8 +283,8 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
     }
 
   if (rxspacing == sizeof (GFC_UINTEGER_4)
-      && axspacing == sizeof (GFC_INTEGER_4)
-      && bxspacing == sizeof (GFC_INTEGER_4)
+      && axspacing == sizeof (GFC_UINTEGER_4)
+      && bxspacing == sizeof (GFC_UINTEGER_4)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -333,7 +338,7 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (ayspacing == sizeof (GFC_INTEGER_4))
+      if (ayspacing == sizeof (GFC_UINTEGER_4))
         a_sz = ryspacing;
       else
         a_sz = a_dim1;
@@ -557,8 +562,8 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
       return;
     }
   else if (rxspacing == sizeof (GFC_UINTEGER_4)
-	   && ayspacing == sizeof (GFC_INTEGER_4)
-	   && bxspacing == sizeof (GFC_INTEGER_4))
+	   && ayspacing == sizeof (GFC_UINTEGER_4)
+	   && bxspacing == sizeof (GFC_UINTEGER_4))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -569,11 +574,11 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 		  s = (GFC_UINTEGER_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -588,11 +593,11 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -603,26 +608,27 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	  s = (GFC_UINTEGER_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_UINTEGER_4)0;
+	  GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing) = (GFC_UINTEGER_4)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_UINTEGER_4, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_UINTEGER_4, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -633,15 +639,16 @@ matmul_i4_avx (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_UINTEGER_4, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest_y, x*rxspacing) = s;
 	    }
 	}
     }
@@ -688,21 +695,25 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_UINTEGER_4));
         }
 
       retarray->base_addr
@@ -768,7 +779,7 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
     {
       /* Treat it as a a row matrix A[1,count]. */
       axspacing = GFC_DESCRIPTOR_SPACING(a,0);
-      ayspacing = sizeof (GFC_INTEGER_4);
+      ayspacing = sizeof (GFC_UINTEGER_4);
 
       xcount = 1;
       count = GFC_DESCRIPTOR_EXTENT(a,0);
@@ -798,8 +809,8 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_UINTEGER_4);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -819,16 +830,17 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_UINTEGER_4)
-      && (axspacing == sizeof (GFC_INTEGER_4) || ayspacing == sizeof (GFC_INTEGER_4))
-      && (bxspacing == sizeof (GFC_INTEGER_4) || byspacing == sizeof (GFC_INTEGER_4))
+  if (try_blas
+      && rxspacing == sizeof (GFC_UINTEGER_4)
+      && (axspacing == sizeof (GFC_UINTEGER_4) || ayspacing == sizeof (GFC_UINTEGER_4))
+      && (bxspacing == sizeof (GFC_UINTEGER_4) || byspacing == sizeof (GFC_UINTEGER_4))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = ryspacing;
       const GFC_UINTEGER_4 one = 1, zero = 0;
-      const int lda = (axspacing == sizeof (GFC_INTEGER_4)) ? ayspacing : axspacing,
-		ldb = (bxspacing == sizeof (GFC_INTEGER_4)) ? byspacing : bxspacing;
+      const int lda = (axspacing == sizeof (GFC_UINTEGER_4)) ? ayspacing : axspacing,
+		ldb = (bxspacing == sizeof (GFC_UINTEGER_4)) ? byspacing : bxspacing;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -837,12 +849,12 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transa = axspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transb = bxspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -852,8 +864,8 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
     }
 
   if (rxspacing == sizeof (GFC_UINTEGER_4)
-      && axspacing == sizeof (GFC_INTEGER_4)
-      && bxspacing == sizeof (GFC_INTEGER_4)
+      && axspacing == sizeof (GFC_UINTEGER_4)
+      && bxspacing == sizeof (GFC_UINTEGER_4)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -907,7 +919,7 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (ayspacing == sizeof (GFC_INTEGER_4))
+      if (ayspacing == sizeof (GFC_UINTEGER_4))
         a_sz = ryspacing;
       else
         a_sz = a_dim1;
@@ -1131,8 +1143,8 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
       return;
     }
   else if (rxspacing == sizeof (GFC_UINTEGER_4)
-	   && ayspacing == sizeof (GFC_INTEGER_4)
-	   && bxspacing == sizeof (GFC_INTEGER_4))
+	   && ayspacing == sizeof (GFC_UINTEGER_4)
+	   && bxspacing == sizeof (GFC_UINTEGER_4))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -1143,11 +1155,11 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 		  s = (GFC_UINTEGER_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1162,11 +1174,11 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -1177,26 +1189,27 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	  s = (GFC_UINTEGER_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_UINTEGER_4)0;
+	  GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing) = (GFC_UINTEGER_4)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_UINTEGER_4, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_UINTEGER_4, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -1207,15 +1220,16 @@ matmul_i4_avx2 (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_UINTEGER_4, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest_y, x*rxspacing) = s;
 	    }
 	}
     }
@@ -1262,21 +1276,25 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_UINTEGER_4));
         }
 
       retarray->base_addr
@@ -1342,7 +1360,7 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
     {
       /* Treat it as a a row matrix A[1,count]. */
       axspacing = GFC_DESCRIPTOR_SPACING(a,0);
-      ayspacing = sizeof (GFC_INTEGER_4);
+      ayspacing = sizeof (GFC_UINTEGER_4);
 
       xcount = 1;
       count = GFC_DESCRIPTOR_EXTENT(a,0);
@@ -1372,8 +1390,8 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_UINTEGER_4);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -1393,16 +1411,17 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_UINTEGER_4)
-      && (axspacing == sizeof (GFC_INTEGER_4) || ayspacing == sizeof (GFC_INTEGER_4))
-      && (bxspacing == sizeof (GFC_INTEGER_4) || byspacing == sizeof (GFC_INTEGER_4))
+  if (try_blas
+      && rxspacing == sizeof (GFC_UINTEGER_4)
+      && (axspacing == sizeof (GFC_UINTEGER_4) || ayspacing == sizeof (GFC_UINTEGER_4))
+      && (bxspacing == sizeof (GFC_UINTEGER_4) || byspacing == sizeof (GFC_UINTEGER_4))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = ryspacing;
       const GFC_UINTEGER_4 one = 1, zero = 0;
-      const int lda = (axspacing == sizeof (GFC_INTEGER_4)) ? ayspacing : axspacing,
-		ldb = (bxspacing == sizeof (GFC_INTEGER_4)) ? byspacing : bxspacing;
+      const int lda = (axspacing == sizeof (GFC_UINTEGER_4)) ? ayspacing : axspacing,
+		ldb = (bxspacing == sizeof (GFC_UINTEGER_4)) ? byspacing : bxspacing;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -1411,12 +1430,12 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transa = axspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transb = bxspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -1426,8 +1445,8 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
     }
 
   if (rxspacing == sizeof (GFC_UINTEGER_4)
-      && axspacing == sizeof (GFC_INTEGER_4)
-      && bxspacing == sizeof (GFC_INTEGER_4)
+      && axspacing == sizeof (GFC_UINTEGER_4)
+      && bxspacing == sizeof (GFC_UINTEGER_4)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -1481,7 +1500,7 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (ayspacing == sizeof (GFC_INTEGER_4))
+      if (ayspacing == sizeof (GFC_UINTEGER_4))
         a_sz = ryspacing;
       else
         a_sz = a_dim1;
@@ -1705,8 +1724,8 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
       return;
     }
   else if (rxspacing == sizeof (GFC_UINTEGER_4)
-	   && ayspacing == sizeof (GFC_INTEGER_4)
-	   && bxspacing == sizeof (GFC_INTEGER_4))
+	   && ayspacing == sizeof (GFC_UINTEGER_4)
+	   && bxspacing == sizeof (GFC_UINTEGER_4))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -1717,11 +1736,11 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 		  s = (GFC_UINTEGER_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1736,11 +1755,11 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -1751,26 +1770,27 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	  s = (GFC_UINTEGER_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_UINTEGER_4)0;
+	  GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing) = (GFC_UINTEGER_4)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_UINTEGER_4, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_UINTEGER_4, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -1781,15 +1801,16 @@ matmul_i4_avx512f (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_UINTEGER_4, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest_y, x*rxspacing) = s;
 	    }
 	}
     }
@@ -1850,21 +1871,25 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_UINTEGER_4));
         }
 
       retarray->base_addr
@@ -1930,7 +1955,7 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
     {
       /* Treat it as a a row matrix A[1,count]. */
       axspacing = GFC_DESCRIPTOR_SPACING(a,0);
-      ayspacing = sizeof (GFC_INTEGER_4);
+      ayspacing = sizeof (GFC_UINTEGER_4);
 
       xcount = 1;
       count = GFC_DESCRIPTOR_EXTENT(a,0);
@@ -1960,8 +1985,8 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_UINTEGER_4);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -1981,16 +2006,17 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_UINTEGER_4)
-      && (axspacing == sizeof (GFC_INTEGER_4) || ayspacing == sizeof (GFC_INTEGER_4))
-      && (bxspacing == sizeof (GFC_INTEGER_4) || byspacing == sizeof (GFC_INTEGER_4))
+  if (try_blas
+      && rxspacing == sizeof (GFC_UINTEGER_4)
+      && (axspacing == sizeof (GFC_UINTEGER_4) || ayspacing == sizeof (GFC_UINTEGER_4))
+      && (bxspacing == sizeof (GFC_UINTEGER_4) || byspacing == sizeof (GFC_UINTEGER_4))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = ryspacing;
       const GFC_UINTEGER_4 one = 1, zero = 0;
-      const int lda = (axspacing == sizeof (GFC_INTEGER_4)) ? ayspacing : axspacing,
-		ldb = (bxspacing == sizeof (GFC_INTEGER_4)) ? byspacing : bxspacing;
+      const int lda = (axspacing == sizeof (GFC_UINTEGER_4)) ? ayspacing : axspacing,
+		ldb = (bxspacing == sizeof (GFC_UINTEGER_4)) ? byspacing : bxspacing;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -1999,12 +2025,12 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transa = axspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transb = bxspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -2014,8 +2040,8 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
     }
 
   if (rxspacing == sizeof (GFC_UINTEGER_4)
-      && axspacing == sizeof (GFC_INTEGER_4)
-      && bxspacing == sizeof (GFC_INTEGER_4)
+      && axspacing == sizeof (GFC_UINTEGER_4)
+      && bxspacing == sizeof (GFC_UINTEGER_4)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -2069,7 +2095,7 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (ayspacing == sizeof (GFC_INTEGER_4))
+      if (ayspacing == sizeof (GFC_UINTEGER_4))
         a_sz = ryspacing;
       else
         a_sz = a_dim1;
@@ -2293,8 +2319,8 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
       return;
     }
   else if (rxspacing == sizeof (GFC_UINTEGER_4)
-	   && ayspacing == sizeof (GFC_INTEGER_4)
-	   && bxspacing == sizeof (GFC_INTEGER_4))
+	   && ayspacing == sizeof (GFC_UINTEGER_4)
+	   && bxspacing == sizeof (GFC_UINTEGER_4))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -2305,11 +2331,11 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 		  s = (GFC_UINTEGER_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -2324,11 +2350,11 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -2339,26 +2365,27 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	  s = (GFC_UINTEGER_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_UINTEGER_4)0;
+	  GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing) = (GFC_UINTEGER_4)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_UINTEGER_4, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_UINTEGER_4, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -2369,15 +2396,16 @@ matmul_i4_vanilla (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_UINTEGER_4, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest_y, x*rxspacing) = s;
 	    }
 	}
     }
@@ -2497,21 +2525,25 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof (GFC_UINTEGER_4));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof (GFC_UINTEGER_4));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof (GFC_UINTEGER_4));
         }
 
       retarray->base_addr
@@ -2577,7 +2609,7 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
     {
       /* Treat it as a a row matrix A[1,count]. */
       axspacing = GFC_DESCRIPTOR_SPACING(a,0);
-      ayspacing = sizeof (GFC_INTEGER_4);
+      ayspacing = sizeof (GFC_UINTEGER_4);
 
       xcount = 1;
       count = GFC_DESCRIPTOR_EXTENT(a,0);
@@ -2607,8 +2639,8 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
       /* byspacing should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
-      byspacing = 256;
-      ycount = sizeof (GFC_UINTEGER_4);
+      byspacing = -1;
+      ycount = 1;
     }
   else
     {
@@ -2628,16 +2660,17 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxspacing == sizeof (GFC_UINTEGER_4)
-      && (axspacing == sizeof (GFC_INTEGER_4) || ayspacing == sizeof (GFC_INTEGER_4))
-      && (bxspacing == sizeof (GFC_INTEGER_4) || byspacing == sizeof (GFC_INTEGER_4))
+  if (try_blas
+      && rxspacing == sizeof (GFC_UINTEGER_4)
+      && (axspacing == sizeof (GFC_UINTEGER_4) || ayspacing == sizeof (GFC_UINTEGER_4))
+      && (bxspacing == sizeof (GFC_UINTEGER_4) || byspacing == sizeof (GFC_UINTEGER_4))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = ryspacing;
       const GFC_UINTEGER_4 one = 1, zero = 0;
-      const int lda = (axspacing == sizeof (GFC_INTEGER_4)) ? ayspacing : axspacing,
-		ldb = (bxspacing == sizeof (GFC_INTEGER_4)) ? byspacing : bxspacing;
+      const int lda = (axspacing == sizeof (GFC_UINTEGER_4)) ? ayspacing : axspacing,
+		ldb = (bxspacing == sizeof (GFC_UINTEGER_4)) ? byspacing : bxspacing;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -2646,12 +2679,12 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transa = axspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxspacing == sizeof (GFC_INTEGER_4) ? "N" : "T";
+	    transb = bxspacing == sizeof (GFC_UINTEGER_4) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -2661,8 +2694,8 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
     }
 
   if (rxspacing == sizeof (GFC_UINTEGER_4)
-      && axspacing == sizeof (GFC_INTEGER_4)
-      && bxspacing == sizeof (GFC_INTEGER_4)
+      && axspacing == sizeof (GFC_UINTEGER_4)
+      && bxspacing == sizeof (GFC_UINTEGER_4)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -2716,7 +2749,7 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (ayspacing == sizeof (GFC_INTEGER_4))
+      if (ayspacing == sizeof (GFC_UINTEGER_4))
         a_sz = ryspacing;
       else
         a_sz = a_dim1;
@@ -2940,8 +2973,8 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
       return;
     }
   else if (rxspacing == sizeof (GFC_UINTEGER_4)
-	   && ayspacing == sizeof (GFC_INTEGER_4)
-	   && bxspacing == sizeof (GFC_INTEGER_4))
+	   && ayspacing == sizeof (GFC_UINTEGER_4)
+	   && bxspacing == sizeof (GFC_UINTEGER_4))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -2952,11 +2985,11 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
-	      dest_y = &dest[y*ryspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axspacing];
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 		  s = (GFC_UINTEGER_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -2971,11 +3004,11 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*byspacing];
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axspacing] * bbase_y[n];
-	      dest[y*ryspacing] = s;
+		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n) * bbase_y[n];
+	      GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	    }
 	}
     }
@@ -2986,26 +3019,27 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
 	  s = (GFC_UINTEGER_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axspacing] * bbase_y[n*bxspacing];
-	  dest[y*rxspacing] = s;
+	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4, a, 0, n)
+		 * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n * bxspacing);
+	  GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4, retarray, 0, y) = s;
 	}
     }
   else if (axspacing < ayspacing)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxspacing + y*ryspacing] = (GFC_UINTEGER_4)0;
+	  GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing) = (GFC_UINTEGER_4)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxspacing + y*ryspacing] +=
-					abase[x*axspacing + n*ayspacing] *
-					bbase[n*bxspacing + y*byspacing];
+	    GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest, x*rxspacing + y*ryspacing)
+		+= GFC_ARRAY_ELEM (GFC_UINTEGER_4, abase, x*axspacing + n*ayspacing)
+		   * GFC_ARRAY_ELEM (GFC_UINTEGER_4, bbase, n*bxspacing + y*byspacing);
     }
   else
     {
@@ -3016,15 +3050,16 @@ matmul_i4 (gfc_array_m4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*byspacing];
-	  dest_y = &dest[y*ryspacing];
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_UINTEGER_4 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axspacing];
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_UINTEGER_4 * restrict, a, 0, x);
 	      s = (GFC_UINTEGER_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*ayspacing] * bbase_y[n*bxspacing];
-	      dest_y[x*rxspacing] = s;
+		s += GFC_ARRAY_ELEM (const GFC_UINTEGER_4, abase_x, n*ayspacing)
+		     * GFC_ARRAY_ELEM (const GFC_UINTEGER_4, bbase_y, n*bxspacing);
+	      GFC_ARRAY_ELEM (GFC_UINTEGER_4, dest_y, x*rxspacing) = s;
 	    }
 	}
     }

@@ -29,6 +29,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 typedef GFC_FULL_ARRAY_DESCRIPTOR(1, index_type) shape_type;
 typedef GFC_FULL_ARRAY_DESCRIPTOR(GFC_MAX_DIMENSIONS, char) parray;
 
+#define ARRAY_ELEM_IDX(array, idx) GFC_DESCRIPTOR1_ELEM(index_type, array, idx)
+
 static void
 reshape_internal (parray *ret, parray *source, shape_type *shape,
 		  parray *pad, shape_type *order, index_type size)
@@ -78,7 +80,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 
   for (n = 0; n < rdim; n++)
     {
-      shape_data[n] = *((index_type*) (((char*) shape->base_addr) + n * GFC_DESCRIPTOR_SPACING(shape,0)));
+      shape_data[n] = ARRAY_ELEM_IDX (shape, n);
       if (shape_data[n] <= 0)
 	{
 	  shape_data[n] = 0;
@@ -90,7 +92,6 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
     {
       index_type alloc_size;
 
-      rs = GFC_DESCRIPTOR_SIZE (source);
       spacing = GFC_DESCRIPTOR_SIZE(source);
 
       for (n = 0; n < rdim; n++)
@@ -99,15 +100,14 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret,n,0,rex - 1,spacing);
 
-	  rs *= rex;
 	  spacing *= rex;
 	}
       ret->offset = 0;
 
-      if (unlikely (rs < 1))
+      if (unlikely (spacing < 1))
 	alloc_size = 0; /* xmalloc will allocate 1 byte.  */
       else
-	alloc_size = rs;
+	alloc_size = spacing;
 
       ret->base_addr = xmalloc (alloc_size);
       ret->dtype.rank = rdim;
@@ -119,7 +119,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
   if (pad)
     {
       pdim = GFC_DESCRIPTOR_RANK (pad);
-      psize = 1;
+      psize = GFC_DESCRIPTOR_SIZE (pad);
       pempty = 0;
       for (n = 0; n < pdim; n++)
         {
@@ -191,7 +191,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 
 	  for (n = 0; n < rdim; n++)
 	    {
-	      v = *((index_type*) (((char*) order->base_addr) + n * GFC_DESCRIPTOR_SPACING(order,0))) - 1;
+	      v = ARRAY_ELEM_IDX (order, n) - 1;
 
 	      if (v < 0 || v >= rdim)
 		runtime_error("Value %ld out of range in ORDER argument"
@@ -206,11 +206,11 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 	}
     }
 
-  rsize = 1;
+  rsize = GFC_DESCRIPTOR_SIZE (ret);
   for (n = 0; n < rdim; n++)
     {
       if (order)
-        dim = *((index_type*) (((char*) order->base_addr) + n * GFC_DESCRIPTOR_SPACING(order,0))) - 1;
+        dim = ARRAY_ELEM_IDX (order, n) - 1;
       else
         dim = n;
 
@@ -234,7 +234,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
      avoids a warning.  */
   GFC_ASSERT(sdim>0);
 
-  ssize = GFC_DESCRIPTOR_SIZE(source);
+  ssize = GFC_DESCRIPTOR_SIZE (source);
   sempty = 0;
   for (n = 0; n < sdim; n++)
     {
@@ -278,7 +278,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 	  scount[dim] = pcount[dim];
 	  sextent[dim] = pextent[dim];
 	  sspacing[dim] = pspacing[dim];
-	  sspacing0 = pspacing[0] * size;
+	  sspacing0 = pspacing[0];
 	}
     }
 

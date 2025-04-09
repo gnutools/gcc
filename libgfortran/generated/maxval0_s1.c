@@ -72,7 +72,7 @@ maxval0_s1 (GFC_UINTEGER_1 * restrict ret,
 
   for (n = 0; n < rank; n++)
     {
-      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -98,7 +98,7 @@ maxval0_s1 (GFC_UINTEGER_1 * restrict ret,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0]);
+	  base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -109,7 +109,7 @@ maxval0_s1 (GFC_UINTEGER_1 * restrict ret,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -120,7 +120,7 @@ maxval0_s1 (GFC_UINTEGER_1 * restrict ret,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_1 *) (((char*) base) + sspacing[n]);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -180,7 +180,7 @@ mmaxval0_s1 (GFC_UINTEGER_1 * const restrict ret,
 
   for (n = 0; n < rank; n++)
     {
-      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
@@ -207,7 +207,7 @@ mmaxval0_s1 (GFC_UINTEGER_1 * const restrict ret,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0]);
+	  base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
 	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
@@ -219,7 +219,7 @@ mmaxval0_s1 (GFC_UINTEGER_1 * const restrict ret,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -231,7 +231,7 @@ mmaxval0_s1 (GFC_UINTEGER_1 * const restrict ret,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n]);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
 	      mbase += mspacing[n];
 	    }
 	}

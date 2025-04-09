@@ -37,7 +37,6 @@ void
 shape_'rtype_kind` ('rtype` * const restrict ret, 
 	const array_t * const restrict array)
 {
-  index_type spacing;
   index_type extent;
 
   int rank = GFC_DESCRIPTOR_RANK (array);
@@ -49,15 +48,13 @@ shape_'rtype_kind` ('rtype` * const restrict ret,
       ret->base_addr = xmalloc (rank);
     }
 
-  spacing = GFC_DESCRIPTOR_SPACING(ret,0);
-
   if (GFC_DESCRIPTOR_EXTENT(ret,0) < 1)
     return;
 
   for (index_type n = 0; n < rank; n++)
     {
       extent = GFC_DESCRIPTOR_EXTENT(array,n);
-      *(('rtype_name`*) (((char*) ret->base_addr) + n * spacing)) = extent > 0 ? extent : 0 ;
+      GFC_DESCRIPTOR1_ELEM('rtype_name`,ret, n) = extent > 0 ? extent : 0 ;
     }
 }
 

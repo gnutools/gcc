@@ -262,7 +262,7 @@ spread_internal_scalar (gfc_array_char *ret, const char *source,
 
   for (n = 0; n < ncopies; n++)
     {
-      dest = ((char*)ret->base_addr) + n * GFC_DESCRIPTOR_SPACING(ret,0);
+      dest = (char*)(ret->base_addr + n * GFC_DESCRIPTOR_SPACING(ret,0));
       memcpy (dest , source, size);
     }
 }

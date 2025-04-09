@@ -27,7 +27,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof ('rtype_name`));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
@@ -50,7 +50,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *(('rtype_name`*) (((char*)dest) + n * dspacing)) = 0;
+	    GFC_DESCRIPTOR1_ELEM ('rtype_name`, retarray, n) = 0;
 	  return;
 	}
     }
@@ -59,7 +59,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *(('rtype_name`*) (((char*)dest) + n * dspacing)) = 1;
+    GFC_DESCRIPTOR1_ELEM ('rtype_name`, retarray, n) = 1;
   {
 ')dnl
 define(START_FOREACH_BLOCK,
@@ -113,9 +113,9 @@ void
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  'index_type` sspacing[GFC_MAX_DIMENSIONS];
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  'index_type` dspacing;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   rtype_name *dest;
   const atype_name *base;
   GFC_LOGICAL_1 *mbase;
@@ -136,7 +136,7 @@ void
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, sizeof ('rtype_name`));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
@@ -171,14 +171,14 @@ void
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
-      mstride[n] = GFC_DESCRIPTOR_SPACING(mask,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 0;
+	    GFC_DESCRIPTOR1_ELEM ('rtype_name`, retarray, n) = 0;
 	  return;
 	}
     }
@@ -187,7 +187,7 @@ void
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 0;
+    GFC_DESCRIPTOR1_ELEM ('rtype_name`, retarray, n) = 0;
   {
 ')dnl
 define(START_MASKED_FOREACH_BLOCK, `START_FOREACH_BLOCK')dnl
@@ -195,7 +195,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 `	  /* Implementation end.  */
 	  /* Advance to the next element.  */
 	  base = ('atype_name`*) (((char*) base) + sspacing[0]);
-	  mbase += mstride[0];
+	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -207,7 +207,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
 	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n]);
-	  mbase -= mstride[n] * extent[n];
+	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -219,7 +219,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	    {
 	      count[n]++;
 	      base = ('atype_name`*) (((char*) base) + sspacing[n]);
-	      mbase += mstride[n];
+	      mbase += mspacing[n];
 	    }
 	}
       while (count[n] == extent[n]);
@@ -250,9 +250,7 @@ void
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  'index_type` dspacing;
   index_type n;
-  rtype_name *dest;
 
   if (mask == NULL || *mask)
     {
@@ -267,7 +265,7 @@ void
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof ('rtype_name`));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
@@ -278,8 +276,6 @@ void
 			       "u_name");
     }
 
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = $1 ;
+    GFC_DESCRIPTOR1_ELEM ('rtype_name`, retarray, n) = $1 ;
 }')dnl

@@ -45,15 +45,15 @@ findloc2_s4 (gfc_array_s4 * const restrict array, const GFC_UINTEGER_4 * restric
   if (extent <= 0)
     return 0;
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len_array;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
   if (back)
     {
-      src = (GFC_UINTEGER_4*) (((char*) array->base_addr) + (extent - 1) * sspacing);
+      src = (const GFC_UINTEGER_4*) (((const char*) array->base_addr) + (extent - 1) * sspacing);
       for (i = extent; i > 0; i--)
 	{
 	  if (compare_string_char4 (len_array, src, len_value, value) == 0)
 	    return i;
-	  src = (GFC_UINTEGER_4*) (((char*) src) - sspacing);
+	  src = (const GFC_UINTEGER_4*) (((char*)src) - sspacing);
 	}
     }
   else
@@ -63,7 +63,7 @@ findloc2_s4 (gfc_array_s4 * const restrict array, const GFC_UINTEGER_4 * restric
 	{
 	  if (compare_string_char4 (len_array, src, len_value, value) == 0)
 	    return i;
-	  src = (GFC_UINTEGER_4*) (((char*) src) + sspacing);
+	  src = (const GFC_UINTEGER_4*) (((char*)src) + sspacing);
 	}
     }
   return 0;
@@ -105,18 +105,18 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len_array;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
   mspacing = GFC_DESCRIPTOR_SPACING(mask,0);
 
   if (back)
     {
-      src = (GFC_UINTEGER_4*) (((char*) array->base_addr) + (extent - 1) * sspacing);
+      src = (const GFC_UINTEGER_4*) (((char*) array->base_addr) + (extent - 1) * sspacing);
       mbase += (extent - 1) * mspacing;
       for (i = extent; i > 0; i--)
 	{
 	  if (*mbase && (compare_string_char4 (len_array, src, len_value, value) == 0))
 	    return i;
-	  src = (GFC_UINTEGER_4*) (((char*) src) - sspacing);
+	  src = (const GFC_UINTEGER_4*) (((char*)src) - sspacing);
 	  mbase -= mspacing;
 	}
     }
@@ -127,7 +127,7 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
 	{
 	  if (*mbase && (compare_string_char4 (len_array, src, len_value, value) == 0))
 	    return i;
-	  src = (GFC_UINTEGER_4*) (((char*) src) + sspacing);
+	  src = (const GFC_UINTEGER_4*) (((char*)src) + sspacing);
 	  mbase += mspacing;
 	}
     }

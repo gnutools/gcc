@@ -94,7 +94,7 @@ void
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof ('rtype_name`) * string_len;
+	    str = string_len * sizeof ('rtype_name`);
 	  else
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -158,8 +158,8 @@ define(FINISH_ARRAY_FUNCTION,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base = ('atype_name`*) (((char*) base) + sspacing[0]);
-      dest = ('rtype_name`*) (((char*) dest) + dspacing[0]);
+      base = (const 'atype_name`*) (((const char*)base) + sspacing[0]);
+      dest = ('rtype_name`*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -168,8 +168,8 @@ define(FINISH_ARRAY_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n]);
-	  dest = ('rtype_name`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  base = (const 'atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
+	  dest = ('rtype_name`*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -180,8 +180,8 @@ define(FINISH_ARRAY_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n]);
-	      dest = ('rtype_name`*) (((char*) dest) + dspacing[n]);
+	      base = (const 'atype_name`*) (((char*)base) + sspacing[n]);
+	      dest = ('rtype_name`*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -284,7 +284,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof ('rtype_name`) * string_len;
+	    str = string_len * sizeof ('rtype_name`);
 	  else
 	    str= GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -344,9 +344,9 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base = ('atype_name`*) (((char*) base) + sspacing[0]);
+      base = (const 'atype_name`*) (((char*)base) + sspacing[0]);
       mbase += mspacing[0];
-      dest = ('rtype_name`*) (((char*) dest) + dspacing[0]);
+      dest = ('rtype_name`*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -355,9 +355,9 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (const 'atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
-	  dest = ('rtype_name`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = ('rtype_name`*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -368,9 +368,9 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n]);
+	      base = (const 'atype_name`*) (((char*)base) + sspacing[n]);
 	      mbase += mspacing[n];
-	      dest = ('rtype_name`*) (((char*) dest) + dspacing[n]);
+	      dest = ('rtype_name`*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -440,7 +440,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof ('rtype_name`) * string_len;
+	    str = string_len * sizeof ('rtype_name`);
 	  else
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -492,7 +492,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     {
       *dest = '$1`;
       count[0]++;
-      dest = ('rtype_name`*) (((char*) dest) + dspacing[0]);
+      dest = ('rtype_name`*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -501,14 +501,14 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = ('rtype_name`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = ('rtype_name`*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    return;
 	  else
 	    {
 	      count[n]++;
-	      dest = ('rtype_name`*) (((char*) dest) + dspacing[n]);
+	      dest = ('rtype_name`*) (((char*)dest) + dspacing[n]);
 	    }
       	}
     }

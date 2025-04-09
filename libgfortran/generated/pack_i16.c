@@ -129,10 +129,6 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
     }
-  if (sspacing[0] == 0)
-    sspacing[0] = sizeof (GFC_INTEGER_16);
-  if (mspacing[0] == 0)
-    mspacing[0] = mask_kind;
 
   if (zero_sized)
     sptr = NULL;
@@ -164,7 +160,7 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
       if (ret->base_addr == NULL)
 	{
 	  /* Setup the array descriptor.  */
-	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, sizeof(GFC_INTEGER_16));
 
 	  ret->offset = 0;
 
@@ -188,8 +184,6 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
     }
 
   rspacing0 = GFC_DESCRIPTOR_SPACING(ret,0);
-  if (rspacing0 == 0)
-    rspacing0 = 1;
   sspacing0 = sspacing[0];
   mspacing0 = mspacing[0];
   rptr = ret->base_addr;
@@ -201,10 +195,10 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
         {
           /* Add it.  */
 	  *rptr = *sptr;
-          rptr += rspacing0;
+          rptr = (GFC_INTEGER_16*) (((char*)rptr) + rspacing0);
         }
       /* Advance to the next element.  */
-      sptr = (GFC_INTEGER_16*) (((char*) sptr) + sspacing0);
+      sptr = (GFC_INTEGER_16*) (((char*)sptr) + sspacing0);
       mptr += mspacing0;
       count[0]++;
       n = 0;
@@ -215,7 +209,7 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr = (GFC_INTEGER_16*) (((char*) sptr) - sspacing[n] * extent[n]);
+          sptr = (GFC_INTEGER_16*) (((char*)sptr) - sspacing[n] * extent[n]);
           mptr -= mspacing[n] * extent[n];
           n++;
           if (n >= dim)
@@ -227,7 +221,7 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
           else
             {
               count[n]++;
-              sptr = (GFC_INTEGER_16*) (((char*) sptr) + sspacing[n]);
+              sptr = (GFC_INTEGER_16*) (((char*)sptr) + sspacing[n]);
               mptr += mspacing[n];
             }
         }
@@ -237,20 +231,18 @@ pack_i16 (gfc_array_i16 *ret, const gfc_array_i16 *array,
   if (vector)
     {
       n = GFC_DESCRIPTOR_EXTENT(vector,0);
-      nelem = ((rptr - ret->base_addr) / rspacing0);
+      nelem = ((char*) rptr - (char*)ret->base_addr) / rspacing0;
       if (n > nelem)
         {
           sspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
-          if (sspacing0 == 0)
-            sspacing0 = 1;
 
-          sptr = vector->base_addr + sspacing0 * nelem;
+          sptr = (GFC_INTEGER_16*) (((char*)vector->base_addr) + sspacing0 * nelem);
           n -= nelem;
           while (n--)
             {
 	      *rptr = *sptr;
-              rptr += rspacing0;
-              sptr = (GFC_INTEGER_16*) (((char*) sptr) + sspacing0);
+              rptr = (GFC_INTEGER_16*) (((char*)rptr) + rspacing0);
+              sptr = (GFC_INTEGER_16*) (((char*)sptr) + sspacing0);
             }
         }
     }

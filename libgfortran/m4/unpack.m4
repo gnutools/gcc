@@ -92,7 +92,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	{
 	  count[n] = 0;
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
@@ -113,19 +113,12 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
 	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
-      if (rspacing[0] == 0)
-	rspacing[0] = sizeof ('rtype_name`);
     }
 
   if (empty)
     return;
 
-  if (mspacing[0] == 0)
-    mspacing[0] = 1;
-
   vspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
-  if (vspacing0 == 0)
-    vspacing0 = sizeof ('rtype_name`);
   rspacing0 = rspacing[0];
   mspacing0 = mspacing[0];
   rptr = ret->base_addr;
@@ -137,7 +130,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
         {
 	  /* From vector.  */
 	  *rptr = *vptr;
-	  vptr = ('rtype_name`*) (((char*) vptr) + vspacing0);
+	  vptr = ('rtype_name`*) (((char*)vptr) + vspacing0);
         }
       else
         {
@@ -145,7 +138,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  *rptr = fval;
         }
       /* Advance to the next element.  */
-      rptr = ('rtype_name`*) (((char*) rptr) + rspacing0);
+      rptr = ('rtype_name`*) (((char*)rptr) + rspacing0);
       mptr += mspacing0;
       count[0]++;
       n = 0;
@@ -156,7 +149,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr = ('rtype_name`*) (((char*) rptr) - rspacing[n] * extent[n]);
+          rptr = ('rtype_name`*) (((char*)rptr) - rspacing[n] * extent[n]);
           mptr -= mspacing[n] * extent[n];
           n++;
           if (n >= dim)
@@ -168,7 +161,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           else
             {
               count[n]++;
-              rptr = ('rtype_name`*) (((char*) rptr) + rspacing[n]);
+              rptr = ('rtype_name`*) (((char*)rptr) + rspacing[n]);
               mptr += mspacing[n];
             }
         }
@@ -238,7 +231,7 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	{
 	  count[n] = 0;
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
@@ -261,21 +254,12 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  fspacing[n] = GFC_DESCRIPTOR_SPACING(field,n);
 	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
-      if (rspacing[0] == 0)
-	rspacing[0] = sizeof ('rtype_name`);
     }
 
   if (empty)
     return;
 
-  if (fspacing[0] == 0)
-    fspacing[0] = sizeof ('rtype_name`);
-  if (mspacing[0] == 0)
-    mspacing[0] = 1;
-
   vspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
-  if (vspacing0 == 0)
-    vspacing0 = sizeof ('rtype_name`);
   rspacing0 = rspacing[0];
   fspacing0 = fspacing[0];
   mspacing0 = mspacing[0];
@@ -289,7 +273,7 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
         {
           /* From vector.  */
 	  *rptr = *vptr;
-          vptr = ('rtype_name`*) (((char*) vptr) + vspacing0);
+          vptr = ('rtype_name`*) (((char*)vptr) + vspacing0);
         }
       else
         {
@@ -297,8 +281,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  *rptr = *fptr;
         }
       /* Advance to the next element.  */
-      rptr = ('rtype_name`*) (((char*) rptr) + rspacing0);
-      fptr = ('rtype_name`*) (((char*) rptr) + fspacing0);
+      rptr = ('rtype_name`*) (((char*)rptr) + rspacing0);
+      fptr = ('rtype_name`*) (((char*)fptr) + fspacing0);
       mptr += mspacing0;
       count[0]++;
       n = 0;
@@ -309,8 +293,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr = ('rtype_name`*) (((char*) rptr) - rspacing[n] * extent[n]);
-          fptr = ('rtype_name`*) (((char*) fptr) - fspacing[n] * extent[n]);
+          rptr = ('rtype_name`*) (((char*)rptr) - rspacing[n] * extent[n]);
+          fptr = ('rtype_name`*) (((char*)fptr) - fspacing[n] * extent[n]);
           mptr -= mspacing[n] * extent[n];
           n++;
           if (n >= dim)
@@ -322,8 +306,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           else
             {
               count[n]++;
-              rptr = ('rtype_name`*) (((char*) rptr) + rspacing[n]);
-              fptr = ('rtype_name`*) (((char*) fptr) + fspacing[n]);
+              rptr = ('rtype_name`*) (((char*)rptr) + rspacing[n]);
+              fptr = ('rtype_name`*) (((char*)fptr) + fspacing[n]);
               mptr += mspacing[n];
             }
         }

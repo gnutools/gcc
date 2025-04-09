@@ -70,21 +70,25 @@ matmul_'rtype_code` ('rtype` * const restrict retarray,
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1, sizeof ('rtype_name`));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       sizeof ('rtype_name`));
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof ('rtype_name`));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof ('rtype_name`));
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-	                    GFC_DESCRIPTOR_EXTENT(a,0) - 1, sizeof ('rtype_name`));
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1,
+				       sizeof ('rtype_name`));
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
-	                    GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-			    GFC_DESCRIPTOR_EXTENT(retarray,0) * sizeof ('rtype_name`));
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * sizeof ('rtype_name`));
         }
           
       retarray->base_addr

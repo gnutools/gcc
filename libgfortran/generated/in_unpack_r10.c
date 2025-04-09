@@ -73,7 +73,7 @@ internal_unpack_r10 (gfc_array_r10 * d, const GFC_REAL_10 * src)
       /* Copy the data.  */
       *dest = *(src++);
       /* Advance to the next element.  */
-      dest = (GFC_REAL_10*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_10*) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -84,7 +84,7 @@ internal_unpack_r10 (gfc_array_r10 * d, const GFC_REAL_10 * src)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_10*) (((char*) dest) - spacing[n] * extent[n]);
+          dest = (GFC_REAL_10*) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -94,7 +94,7 @@ internal_unpack_r10 (gfc_array_r10 * d, const GFC_REAL_10 * src)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_10*) (((char*) dest) + spacing[n]);
+              dest = (GFC_REAL_10*) (((char*)dest) + spacing[n]);
             }
         }
     }

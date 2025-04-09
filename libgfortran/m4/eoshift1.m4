@@ -94,7 +94,7 @@ eoshift1 (gfc_array_char * const restrict ret,
 	  ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-            str = sizeof ('rtype_name`);
+            str = size;
           else
             str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
 	      * GFC_DESCRIPTOR_SPACING(ret,i-1);
@@ -125,11 +125,7 @@ eoshift1 (gfc_array_char * const restrict ret,
       if (dim == which)
         {
           roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
-          if (roffset == 0)
-            roffset = size;
           soffset = GFC_DESCRIPTOR_SPACING(array,dim);
-          if (soffset == 0)
-            soffset = size;
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
         }
       else
@@ -143,12 +139,6 @@ eoshift1 (gfc_array_char * const restrict ret,
           n++;
         }
     }
-  if (sspacing[0] == 0)
-    sspacing[0] = size;
-  if (rspacing[0] == 0)
-    rspacing[0] = size;
-  if (hspacing[0] == 0)
-    hspacing[0] = 1;
 
   dim = GFC_DESCRIPTOR_RANK (array);
   rspacing0 = rspacing[0];
@@ -172,13 +162,13 @@ eoshift1 (gfc_array_char * const restrict ret,
 
       if (sh > 0)
         {
-          src += delta * soffset;
+          src = &sptr[delta * soffset];
           dest = rptr;
         }
       else
         {
           src = sptr;
-          dest += delta * roffset;
+          dest = &rptr[delta * roffset];
         }
 
       /* If the elements are contiguous, perform a single block move.  */
@@ -224,7 +214,7 @@ eoshift1 (gfc_array_char * const restrict ret,
       /* Advance to the next section.  */
       rptr += rspacing0;
       sptr += sspacing0;
-      hptr += hspacing0;
+      hptr = (const 'atype_name`*) (((char*)hptr) + hspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -236,7 +226,7 @@ eoshift1 (gfc_array_char * const restrict ret,
              frequently used path so probably not worth it.  */
           rptr -= rspacing[n] * extent[n];
           sptr -= sspacing[n] * extent[n];
-	  hptr -= hspacing[n] * extent[n];
+	  hptr = (const 'atype_name`*) (((char*)hptr) - hspacing[n] * extent[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -249,7 +239,7 @@ eoshift1 (gfc_array_char * const restrict ret,
               count[n]++;
               rptr += rspacing[n];
               sptr += sspacing[n];
-	      hptr += hspacing[n];
+	      hptr = (const 'atype_name`*) (((char*)hptr) + hspacing[n]);
             }
         }
     }

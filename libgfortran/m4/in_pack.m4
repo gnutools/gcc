@@ -52,7 +52,7 @@ internal_pack_'rtype_ccode` ('rtype` * source)
      since the spacing=0 thing has been removed from the frontend.  */
 
   dim = GFC_DESCRIPTOR_RANK (source);
-  ssize = sizeof ('atype_name`);
+  ssize = sizeof ('rtype_name`);
   packed = 1;
   for (index_type n = 0; n < dim; n++)
     {
@@ -87,7 +87,7 @@ internal_pack_'rtype_ccode` ('rtype` * source)
       /* Copy the data.  */
       *(dest++) = *src;
       /* Advance to the next element.  */
-      src = ('atype_name`*) (((char*) src) + spacing0);
+      src = (const 'rtype_name`*) (((char*)src) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -98,7 +98,7 @@ internal_pack_'rtype_ccode` ('rtype` * source)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src = ('atype_name`*) (((char*) src) - spacing[n] * extent[n]);
+          src = (const 'rtype_name`*) (((char*)src) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -108,7 +108,7 @@ internal_pack_'rtype_ccode` ('rtype` * source)
           else
             {
               count[n]++;
-              src = ('atype_name`*) (((char*) src) + spacing[n]);
+              src = (const 'rtype_name`*) (((char*)src) + spacing[n]);
             }
         }
     }

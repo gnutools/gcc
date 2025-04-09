@@ -94,7 +94,7 @@ norm2_r8 (gfc_array_r8 * const restrict retarray,
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof(GFC_REAL_8);
+	    str = sizeof (GFC_REAL_8);
 	  else
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -177,8 +177,8 @@ norm2_r8 (gfc_array_r8 * const restrict retarray,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base = (GFC_REAL_8*) (((char*) base) + sspacing[0]);
-      dest = (GFC_REAL_8*) (((char*) dest) + dspacing[0]);
+      base = (GFC_REAL_8*) (((char*)base) + sspacing[0]);
+      dest = (GFC_REAL_8*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -187,8 +187,8 @@ norm2_r8 (gfc_array_r8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = (GFC_REAL_8*) (((char*) base) - sspacing[n] * extent[n]);
-	  dest = (GFC_REAL_8*) (((char*) dest) - dspacing[n] * extent[n]);
+	  base = (GFC_REAL_8*) (((char*)base) - sspacing[n] * extent[n]);
+	  dest = (GFC_REAL_8*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -199,8 +199,8 @@ norm2_r8 (gfc_array_r8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_REAL_8*) (((char*) base) + sspacing[n]);
-	      dest = (GFC_REAL_8*) (((char*) dest) + dspacing[n]);
+	      base = (GFC_REAL_8*) (((char*)base) + sspacing[n]);
+	      dest = (GFC_REAL_8*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }

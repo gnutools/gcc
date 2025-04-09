@@ -650,7 +650,7 @@ arandom_r4 (gfc_array_r4 *x)
       rnumber_4 (dest, high);
 
       /* Advance to the next element.  */
-      dest = (GFC_REAL_4*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_4 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -661,7 +661,7 @@ arandom_r4 (gfc_array_r4 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_4*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_REAL_4 *) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -671,7 +671,7 @@ arandom_r4 (gfc_array_r4 *x)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_4*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_REAL_4 *) (((char*)dest) + spacing[n]);
             }
         }
     }
@@ -716,7 +716,7 @@ arandom_r8 (gfc_array_r8 *x)
       rnumber_8 (dest, r);
 
       /* Advance to the next element.  */
-      dest = (GFC_REAL_8*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_8 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -727,7 +727,7 @@ arandom_r8 (gfc_array_r8 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_8*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_REAL_8 *) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -737,7 +737,7 @@ arandom_r8 (gfc_array_r8 *x)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_8*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_REAL_8 *) (((char*)dest) + spacing[n]);
             }
         }
     }
@@ -784,7 +784,7 @@ arandom_r10 (gfc_array_r10 *x)
       rnumber_10 (dest, r);
 
       /* Advance to the next element.  */
-      dest = (GFC_REAL_10*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_10 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -795,7 +795,7 @@ arandom_r10 (gfc_array_r10 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_10*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_REAL_10 *) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -805,7 +805,7 @@ arandom_r10 (gfc_array_r10 *x)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_10*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_REAL_10 *) (((char*)dest) + spacing[n]);
             }
         }
     }
@@ -855,7 +855,7 @@ arandom_r16 (gfc_array_r16 *x)
       rnumber_16 (dest, r1, r2);
 
       /* Advance to the next element.  */
-      dest = (GFC_REAL_16*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_16 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -866,7 +866,7 @@ arandom_r16 (gfc_array_r16 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_16*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_REAL_16 *) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -876,7 +876,7 @@ arandom_r16 (gfc_array_r16 *x)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_16*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_REAL_16 *) (((char*)dest) + spacing[n]);
             }
         }
     }
@@ -926,7 +926,7 @@ arandom_r17 (gfc_array_r17 *x)
       rnumber_17 (dest, r1, r2);
 
       /* Advance to the next element.  */
-      dest = (GFC_REAL_17*) (((char*) dest) + spacing0);
+      dest = (GFC_REAL_17 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -937,7 +937,7 @@ arandom_r17 (gfc_array_r17 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = (GFC_REAL_17*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_REAL_17 *) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -947,7 +947,7 @@ arandom_r17 (gfc_array_r17 *x)
           else
             {
               count[n]++;
-              dest = (GFC_REAL_17*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_REAL_17 *) (((char*)dest) + spacing[n]);
             }
         }
     }
@@ -993,7 +993,7 @@ arandom_m1 (gfc_array_m1 *x)
       *dest = r >> 56;
 
       /* Advance to the next element.  */
-      dest = (GFC_UINTEGER_1*) (((char*) dest) + spacing0);
+      dest = (GFC_UINTEGER_1 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1004,7 +1004,7 @@ arandom_m1 (gfc_array_m1 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = (GFC_UINTEGER_1*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_UINTEGER_1 *) (((char*)dest) - spacing[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1014,7 +1014,7 @@ arandom_m1 (gfc_array_m1 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest = (GFC_UINTEGER_1*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_UINTEGER_1 *) (((char*)dest) + spacing[n]);
 	    }
 	}
     }
@@ -1058,7 +1058,7 @@ arandom_m2 (gfc_array_m2 *x)
       *dest = r >> 48;
 
       /* Advance to the next element.  */
-      dest = (GFC_UINTEGER_2*) (((char*) dest) + spacing0);
+      dest = (GFC_UINTEGER_2 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1069,7 +1069,7 @@ arandom_m2 (gfc_array_m2 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = (GFC_UINTEGER_2*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_UINTEGER_2 *) (((char*)dest) - spacing[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1079,7 +1079,7 @@ arandom_m2 (gfc_array_m2 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest = (GFC_UINTEGER_2*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_UINTEGER_2 *) (((char*)dest) + spacing[n]);
 	    }
 	}
     }
@@ -1123,7 +1123,7 @@ arandom_m4 (gfc_array_m4 *x)
       *dest = r >> 32;
 
       /* Advance to the next element.  */
-      dest = (GFC_UINTEGER_4*) (((char*) dest) + spacing0);
+      dest = (GFC_UINTEGER_4 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1134,7 +1134,7 @@ arandom_m4 (gfc_array_m4 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = (GFC_UINTEGER_4*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_UINTEGER_4 *) (((char*)dest) - spacing[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1144,7 +1144,7 @@ arandom_m4 (gfc_array_m4 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest = (GFC_UINTEGER_4*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_UINTEGER_4 *) (((char*)dest) + spacing[n]);
 	    }
 	}
     }
@@ -1188,7 +1188,7 @@ arandom_m8 (gfc_array_m8 *x)
       *dest = r;
 
       /* Advance to the next element.  */
-      dest = (GFC_UINTEGER_8*) (((char*) dest) + spacing0);
+      dest = (GFC_UINTEGER_8 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1199,7 +1199,7 @@ arandom_m8 (gfc_array_m8 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = (GFC_UINTEGER_8*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_UINTEGER_8 *) (((char*)dest) - spacing[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1209,7 +1209,7 @@ arandom_m8 (gfc_array_m8 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest = (GFC_UINTEGER_8*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_UINTEGER_8 *) (((char*)dest) + spacing[n]);
 	    }
 	}
     }
@@ -1255,7 +1255,7 @@ arandom_m16 (gfc_array_m16 *x)
       *dest = (((GFC_UINTEGER_16) r1) << 64) | (GFC_UINTEGER_16) r2;
 
       /* Advance to the next element.  */
-      dest = (GFC_UINTEGER_16*) (((char*) dest) + spacing0);
+      dest = (GFC_UINTEGER_16 *) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1266,7 +1266,7 @@ arandom_m16 (gfc_array_m16 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest = (GFC_UINTEGER_16*) (((char*) dest) - spacing[n] * extent[n]);
+	  dest = (GFC_UINTEGER_16 *) (((char*)dest) - spacing[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1276,7 +1276,7 @@ arandom_m16 (gfc_array_m16 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest = (GFC_UINTEGER_16*) (((char*) dest) + spacing[n]);
+	      dest = (GFC_UINTEGER_16 *) (((char*)dest) + spacing[n]);
 	    }
 	}
     }
@@ -1347,8 +1347,8 @@ random_seed_i4 (GFC_INTEGER_4 *size, gfc_array_i4 *put, gfc_array_i4 *get)
 
       /*  Then copy it back to the user variable.  */
       for (size_t i = 0; i < SZ_IN_INT_4 ; i++)
-	memcpy (((char*) get->base_addr) + (SZ_IN_INT_4 - 1 - i) *
-				 GFC_DESCRIPTOR_SPACING(get,0),
+	memcpy ((unsigned char *) get->base_addr
+		+(SZ_IN_INT_4 - 1 - i) * GFC_DESCRIPTOR_SPACING(get,0),
 		(unsigned char*) seed + i * sizeof(GFC_UINTEGER_4),
                sizeof(GFC_UINTEGER_4));
     }
@@ -1378,8 +1378,8 @@ random_seed_i4 (GFC_INTEGER_4 *size, gfc_array_i4 *put, gfc_array_i4 *get)
       /*  We copy the seed given by the user.  */
       for (size_t i = 0; i < SZ_IN_INT_4; i++)
 	memcpy ((unsigned char*) seed + i * sizeof(GFC_UINTEGER_4),
-		((char*) put->base_addr) + (SZ_IN_INT_4 - 1 - i) *
-				 GFC_DESCRIPTOR_SPACING(put,0),
+		(unsigned char*) put->base_addr
+		+ (SZ_IN_INT_4 - 1 - i) * GFC_DESCRIPTOR_SPACING(put,0),
 		sizeof(GFC_UINTEGER_4));
 
       /* We put it after scrambling the bytes, to paper around users who
@@ -1426,10 +1426,11 @@ random_seed_i8 (GFC_INTEGER_8 *size, gfc_array_i8 *put, gfc_array_i8 *get)
       /* Unscramble the seed.  */
       scramble_seed (seed, rs->s);
 
-      /*  This code now should do correct spacings.  */
+      /*  This code now should do correct spacing.  */
       for (size_t i = 0; i < SZ_IN_INT_8; i++)
-	memcpy (((char*) get->base_addr) + i * GFC_DESCRIPTOR_SPACING(get,0), &seed[i],
-		sizeof (GFC_UINTEGER_8));
+	memcpy ((unsigned char *) get->base_addr
+		+ i * GFC_DESCRIPTOR_SPACING(get,0),
+		&seed[i], sizeof (GFC_UINTEGER_8));
     }
 
   else
@@ -1454,9 +1455,10 @@ random_seed_i8 (GFC_INTEGER_8 *size, gfc_array_i8 *put, gfc_array_i8 *get)
       if (GFC_DESCRIPTOR_EXTENT(put,0) < (index_type) SZ_IN_INT_8)
         runtime_error ("Array size of PUT is too small.");
 
-      /*  This code now should do correct spacings.  */
+      /*  This code now should do correct spacing.  */
       for (size_t i = 0; i < SZ_IN_INT_8; i++)
-	memcpy (&seed[i], ((char*) put->base_addr) + i * GFC_DESCRIPTOR_SPACING(put,0),
+	memcpy (&seed[i], (unsigned char *) put->base_addr
+			  + i * GFC_DESCRIPTOR_SPACING(put,0),
 		sizeof (GFC_UINTEGER_8));
 
       scramble_seed (master_state.s, seed);

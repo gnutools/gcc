@@ -30,7 +30,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
+  index_type sspacing[GFC_MAX_DIMENSIONS];
   index_type dspacing[GFC_MAX_DIMENSIONS];
   const GFC_LOGICAL_1 * restrict base;
   rtype_name * restrict dest;
@@ -56,7 +56,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -64,7 +64,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_SPACING(array,n + 1);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n + 1);
 
       if (extent[n] < 0)
@@ -78,7 +78,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
       for (n = 0; n < rank; n++)
         {
           if (n == 0)
-            str = GFC_DESCRIPTOR_SIZE(array);
+            str = sizeof ('rtype_name`);
           else
             str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -90,7 +90,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (rtype_name));
+      retarray->base_addr = xmalloc (alloc_size);
       if (alloc_size == 0)
 	return;
     }
@@ -165,8 +165,8 @@ define(FINISH_ARRAY_FUNCTION,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest = ('rtype_name` *) (((char*) dest) + dspacing[0]);
+      base += sspacing[0];
+      dest = ('rtype_name`*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
         {
@@ -175,8 +175,8 @@ define(FINISH_ARRAY_FUNCTION,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          base -= sstride[n] * extent[n];
-	  dest = ('rtype_name` *) (((char*) dest) - dspacing[n] * extent[n]);
+          base -=  sspacing[n] * extent[n];
+          dest = ('rtype_name`*) (((char*)dest) - dspacing[n] * extent[n]);
           n++;
           if (n >= rank)
             {
@@ -187,8 +187,8 @@ define(FINISH_ARRAY_FUNCTION,
           else
             {
               count[n]++;
-              base += sstride[n];
-	      dest = ('rtype_name` *) (((char*) dest) + dspacing[n]);
+              base += sspacing[n];
+              dest = ('rtype_name`*) (((char*)dest) + dspacing[n]);
             }
         }
     }

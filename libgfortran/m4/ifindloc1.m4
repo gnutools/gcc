@@ -87,7 +87,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
-
 	}
 
       retarray->offset = 0;
@@ -132,39 +131,41 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = ('atype_name`*) (((char*) base) + (len - 1) * delta * 'base_mult`);
-	  for (n = len; n > 0; n--, src = ('atype_name`*) (((char*) src) - delta * 'base_mult`))
+	  src = (const 'atype_name`*) (((const char*)base) + (len - 1) * delta);
+	  for (n = len; n > 0; n--)
 	    {
 	      if ('comparison`'`)
 		{
 		  result = n;
 		  break;
 		}
+	      src = (const 'atype_name`*) (((const char*)src) - delta);
 	    }
 	}
       else
 	{
 	  src = base;
-	  for (n = 1; n <= len; n++, src = ('atype_name`*) (((char*) src) + delta * 'base_mult`))
+	  for (n = 1; n <= len; n++)
 	    {
 	      if ('comparison`'`)
 		{
 		  result = n;
 		  break;
 		}
+	      src = (const 'atype_name`*) (((const char*)src) + delta);
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base = ('atype_name`*) (((char*) base) + sspacing[0] * 'base_mult`);
-      dest = ('index_type`*) (((char*) dest) + dspacing[0]);
+      base = ('atype_name`*) (((char*)base) + sspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n] * 'base_mult`);
-	  dest = ('index_type`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  base = ('atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -174,8 +175,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n] * 'base_mult`);
-	      dest = ('index_type`*) (((char*) dest) + dspacing[n]);
+	      base = ('atype_name`*) (((char*)base) + sspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -256,12 +257,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof ('index_type`);
+	    str = sizeof (index_type);
 	  else
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
-
 	}
 
       retarray->offset = 0;
@@ -307,43 +307,49 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = ('atype_name`*) (((char*) base) + (len - 1) * delta * 'base_mult`);
+	  src = (const 'atype_name`*) (((const char*)base) + (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
-	  for (n = len; n > 0; n--, msrc -= mdelta, src = ('atype_name`*) (((char*) src) - delta * 'base_mult`))
+	  for (n = len; n > 0; n--)
 	    {
 	      if (*msrc && 'comparison`'`)
 		{
 		  result = n;
 		  break;
 		}
+
+	      src = (const 'atype_name`*) (((const char*)src) - delta);
+	      msrc -= mdelta;
 	    }
 	}
       else
 	{
 	  src = base;
 	  msrc = mbase;
-	  for (n = 1; n <= len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta * 'base_mult`))
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (*msrc && 'comparison`'`)
 		{
 		  result = n;
 		  break;
 		}
+
+	      src = (const 'atype_name`*) (((const char*)src) + delta);
+	      msrc += mdelta;
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base = ('atype_name`*) (((char*) base) + sspacing[0] * 'base_mult`);
+      base = ('atype_name`*) (((char*)base) + sspacing[0]);
       mbase += mspacing[0];
-      dest = ('index_type`*) (((char*) dest) + dspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base = ('atype_name`*) (((char*) base) + sspacing[n] * extent[n] * 'base_mult`);
+	  base = ('atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
-	  dest = ('index_type`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -353,8 +359,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n] * 'base_mult`);
-	      dest = ('index_type`*) (((char*) dest) + dspacing[n]);
+	      base = ('atype_name`*) (((char*)base) + sspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -416,7 +422,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       for (n = 0; n < rank; n++)
 	{
 	  if (n == 0)
-	    str = sizeof ('index_type`);
+	    str = sizeof (index_type);
 	  else
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
@@ -460,12 +466,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       *dest = 0;
 
       count[0]++;
-      dest = ('index_type`*) (((char*) dest) + dspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  dest = ('index_type`*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -475,7 +481,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      dest = ('index_type`*) (((char*) dest) + dspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }

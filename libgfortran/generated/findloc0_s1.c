@@ -72,9 +72,9 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    *((index_type*) (((char*) dest) + n * dspacing)) = 0;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = 1;
+  sz = sizeof (GFC_UINTEGER_1);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
@@ -84,12 +84,12 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	return;
     }
 
-    for (n = 0; n < rank; n++)
-      count[n] = 0;
+  for (n = 0; n < rank; n++)
+    count[n] = 0;
 
   if (back)
     {
-      base = (GFC_UINTEGER_1*) (((char*) array->base_addr) + (sz - 1) * len_array * dspacing);
+      base = (GFC_UINTEGER_1*) (((char*)array->base_addr) + (sz - 1));
 
       while (1)
         {
@@ -98,11 +98,11 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(compare_string (len_array, (char *) base, len_value, (char *) value) == 0))
 	        {
 		  for (n = 0; n < rank; n++)
-		    *((index_type*) (((char*) dest) + n * dspacing)) = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
-	      base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[0] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -113,14 +113,14 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * extent[n] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * len_array);
+		  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n]);
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -135,11 +135,11 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(compare_string (len_array, (char *) base, len_value, (char *) value) == 0))
 	        {
 		  for (n = 0; n < rank; n++)
-		    *((index_type*) (((char*) dest) + n * dspacing)) = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = count[n] + 1;
 
 		  return;
 		}
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -150,14 +150,14 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * extent[n] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * len_array);
+		  base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -230,9 +230,9 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    *((index_type*) (((char*) dest) + n * dspacing)) = 0;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = 1;
+  sz = sizeof (GFC_UINTEGER_1);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
@@ -243,12 +243,12 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	return;
     }
 
-    for (n = 0; n < rank; n++)
-      count[n] = 0;
+  for (n = 0; n < rank; n++)
+    count[n] = 0;
 
   if (back)
     {
-      base = (GFC_UINTEGER_1*) (((char*) array->base_addr) + (sz - 1) * len_array * sspacing[0]);
+      base = (GFC_UINTEGER_1*) (((char*)array->base_addr) + (sz - 1));
       mbase = mbase + (sz - 1) * mask_kind;
       while (1)
         {
@@ -257,11 +257,11 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && compare_string (len_array, (char *) base, len_value, (char *) value) == 0))
 	        {
 		  for (n = 0; n < rank; n++)
-		    *((index_type*) (((char*) dest) + n * dspacing)) = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
-	      base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[0] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[0]);
 	      mbase -= mspacing[0];
 	    } while(++count[0] != extent[0]);
 
@@ -273,7 +273,7 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * extent[n] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n] * extent[n]);
 	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -281,7 +281,7 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      else
 		{
 		  count[n]++;
-		  base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * len_array);
+		  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n]);
 		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);      
@@ -297,11 +297,11 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && compare_string (len_array, (char *) base, len_value, (char *) value) == 0))
 	        {
 		  for (n = 0; n < rank; n++)
-		    *((index_type*) (((char*) dest) + n * dspacing)) = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = count[n] + 1;
 
 		  return;
 		}
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
 	      mbase += mspacing[0];
 	    } while(++count[0] != extent[0]);
 
@@ -313,7 +313,7 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * extent[n] * len_array);
+	      base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
 	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -321,7 +321,7 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
 	      else
 		{
 		  count[n]++;
-		  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n]* len_array);
+		  base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
 		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);
@@ -374,7 +374,7 @@ sfindloc0_s1 (gfc_array_index_type * const restrict retarray,
   dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    *((index_type*) (((char*) dest) + n * dspacing)) = 0 ;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0 ;
 }
 
 #endif

@@ -90,7 +90,7 @@ maxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0;
+	    GFC_ARRAY_ELEM (GFC_INTEGER_8, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -99,7 +99,7 @@ maxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 1;
+    GFC_ARRAY_ELEM (GFC_INTEGER_8, dest, n * dspacing) = 1;
   {
 
   const GFC_UINTEGER_4 *maxval;
@@ -116,11 +116,11 @@ maxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
+        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = (GFC_UINTEGER_4*) (((char*) base) + sspacing[0]);
+	  base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -131,7 +131,7 @@ maxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = (GFC_UINTEGER_4*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (const GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -142,7 +142,7 @@ maxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_4*) (((char*) base) + sspacing[n]);
+	      base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -232,7 +232,7 @@ mmaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0;
+	    GFC_ARRAY_ELEM (GFC_INTEGER_8, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -241,7 +241,7 @@ mmaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0;
+    GFC_ARRAY_ELEM (GFC_INTEGER_8, dest, n * dspacing) = 0;
   {
 
   const GFC_UINTEGER_4 *maxval;
@@ -260,11 +260,11 @@ mmaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = count[n] + 1;
+        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = (GFC_UINTEGER_4*) (((char*) base) + sspacing[0]);
+	  base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
 	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
@@ -276,7 +276,7 @@ mmaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = (GFC_UINTEGER_4*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (const GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -288,7 +288,7 @@ mmaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_4*) (((char*) base) + sspacing[n]);
+	      base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
 	      mbase += mspacing[n];
 	    }
 	}
@@ -345,6 +345,6 @@ smaxloc0_8_s4 (gfc_array_i8 * const restrict retarray,
   dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    *((GFC_INTEGER_8*) (((char*) dest) + n * dspacing)) = 0 ;
+    GFC_ARRAY_ELEM (GFC_INTEGER_8, dest, n * dspacing) = 0 ;
 }
 #endif

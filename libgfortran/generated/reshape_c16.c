@@ -88,7 +88,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
 
   for (index_type n = 0; n < rdim; n++)
     {
-      shape_data[n] = *((index_type*) (((char*) shape->base_addr) + n * GFC_DESCRIPTOR_SPACING(shape,0)));
+      shape_data[n] = GFC_DESCRIPTOR1_ELEM (index_type, shape, n);
       if (shape_data[n] <= 0)
       {
         shape_data[n] = 0;
@@ -101,7 +101,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
       index_type alloc_size;
 
       rs = sizeof (GFC_COMPLEX_16);
-      spacing = GFC_DESCRIPTOR_SIZE(source);
+      spacing = sizeof(GFC_COMPLEX_16);
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -128,7 +128,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
   if (pad)
     {
       pdim = GFC_DESCRIPTOR_RANK (pad);
-      psize = 1;
+      psize = sizeof (GFC_COMPLEX_16);
       pempty = 0;
       for (index_type n = 0; n < pdim; n++)
         {
@@ -196,7 +196,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
 
 	  for (index_type n = 0; n < rdim; n++)
 	    {
-	      v = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
+	      v = GFC_DESCRIPTOR1_ELEM (index_type, order, n) - 1;
 
 	      if (v < 0 || v >= rdim)
 		runtime_error("Value %ld out of range in ORDER argument"
@@ -216,7 +216,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
     {
       index_type dim;
       if (order)
-        dim = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
+        dim = GFC_DESCRIPTOR1_ELEM (index_type, order, n) - 1;
       else
         dim = n;
 
@@ -296,8 +296,8 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
       /* Select between the source and pad arrays.  */
       *rptr = *src;
       /* Advance to the next element.  */
-      rptr = (GFC_COMPLEX_16*) (((char*) rptr) + rspacing0);
-      src = (GFC_COMPLEX_16*) (((char*) src) + sspacing0);
+      rptr = (GFC_COMPLEX_16*) (((char*)rptr) + rspacing0);
+      src = (GFC_COMPLEX_16*) (((char*)src) + sspacing0);
       rcount[0]++;
       scount[0]++;
 
@@ -310,7 +310,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
           rcount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr = (GFC_COMPLEX_16*) (((char*) rptr) - rspacing[n] * rextent[n]);
+          rptr = (GFC_COMPLEX_16*) (((char*)rptr) - rspacing[n] * rextent[n]);
           n++;
           if (n == rdim)
             {
@@ -321,7 +321,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
           else
             {
               rcount[n]++;
-              rptr = (GFC_COMPLEX_16*) (((char*) rptr) + rspacing[n]);
+              rptr = (GFC_COMPLEX_16*) (((char*)rptr) + rspacing[n]);
             }
         }
       /* Advance to the next source element.  */
@@ -333,7 +333,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
           scount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src = (GFC_COMPLEX_16*) (((char*) src) - sspacing[n] * sextent[n]);
+          src = (GFC_COMPLEX_16*) (((char*)src) - sspacing[n] * sextent[n]);
           n++;
           if (n == sdim)
             {
@@ -357,7 +357,7 @@ reshape_c16 (gfc_array_c16 * const restrict ret,
           else
             {
               scount[n]++;
-              src = (GFC_COMPLEX_16*) (((char*) src) + sspacing[n]);
+              src = (GFC_COMPLEX_16*) (((char*)src) + sspacing[n]);
             }
         }
     }

@@ -30,18 +30,18 @@ is_contiguous0 (const array_t * const restrict array)
 {
   index_type dim;
   index_type n;
-  index_type extent, spacing;
+  index_type size, spacing;
 
   dim = GFC_DESCRIPTOR_RANK (array);
 
-  extent = GFC_DESCRIPTOR_SIZE (array);
+  size = GFC_DESCRIPTOR_SIZE (array);
   for (n = 0; n < dim; n++)
     {
       spacing = GFC_DESCRIPTOR_SPACING (array, n);
-      if (spacing != extent)
+      if (spacing != size)
 	return 0;
 
-      extent *= GFC_DESCRIPTOR_EXTENT (array, n);
+      size *= GFC_DESCRIPTOR_EXTENT (array, n);
     }
 
   return 1;

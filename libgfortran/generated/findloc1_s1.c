@@ -97,7 +97,6 @@ findloc1_s1 (gfc_array_index_type * const restrict retarray,
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
-
 	}
 
       retarray->offset = 0;
@@ -142,39 +141,41 @@ findloc1_s1 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = (GFC_UINTEGER_1*) (((char*) base) + (len - 1) * delta * len_array);
-	  for (n = len; n > 0; n--, src = (GFC_UINTEGER_1*) (((char*) src) - delta * len_array))
+	  src = (const GFC_UINTEGER_1*) (((const char*)base) + (len - 1) * delta);
+	  for (n = len; n > 0; n--)
 	    {
 	      if (compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 		{
 		  result = n;
 		  break;
 		}
+	      src = (const GFC_UINTEGER_1*) (((const char*)src) - delta);
 	    }
 	}
       else
 	{
 	  src = base;
-	  for (n = 1; n <= len; n++, src = (GFC_UINTEGER_1*) (((char*) src) + delta * len_array))
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 		{
 		  result = n;
 		  break;
 		}
+	      src = (const GFC_UINTEGER_1*) (((const char*)src) + delta);
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0] * len_array);
-      dest = (index_type*) (((char*) dest) + dspacing[0]);
+      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base = (GFC_UINTEGER_1*) (((char*) base) - sspacing[n] * extent[n] * len_array);
-	  dest = (index_type*) (((char*) dest) - dspacing[n] * extent[n]);
+	  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -184,8 +185,8 @@ findloc1_s1 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * len_array);
-	      dest = (index_type*) (((char*) dest) + dspacing[n]);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -281,7 +282,6 @@ mfindloc1_s1 (gfc_array_index_type * const restrict retarray,
 	    str = GFC_DESCRIPTOR_SPACING(retarray,n-1) * extent[n-1];
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
-
 	}
 
       retarray->offset = 0;
@@ -327,43 +327,49 @@ mfindloc1_s1 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = (GFC_UINTEGER_1*) (((char*) base) + (len - 1) * delta * len_array);
+	  src = (const GFC_UINTEGER_1*) (((const char*)base) + (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
-	  for (n = len; n > 0; n--, msrc -= mdelta, src = (GFC_UINTEGER_1*) (((char*) src) - delta * len_array))
+	  for (n = len; n > 0; n--)
 	    {
 	      if (*msrc && compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 		{
 		  result = n;
 		  break;
 		}
+
+	      src = (const GFC_UINTEGER_1*) (((const char*)src) - delta);
+	      msrc -= mdelta;
 	    }
 	}
       else
 	{
 	  src = base;
 	  msrc = mbase;
-	  for (n = 1; n <= len; n++, msrc += mdelta, src = (GFC_UINTEGER_1*) (((char*) src) + delta * len_array))
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (*msrc && compare_string (len_array, (char *) src, len_value, (char *) value) == 0)
 		{
 		  result = n;
 		  break;
 		}
+
+	      src = (const GFC_UINTEGER_1*) (((const char*)src) + delta);
+	      msrc += mdelta;
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[0] * len_array);
+      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[0]);
       mbase += mspacing[0];
-      dest = (index_type*) (((char*) dest) + dspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * extent[n] * len_array);
+	  base = (GFC_UINTEGER_1*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
-	  dest = (index_type*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -373,8 +379,8 @@ mfindloc1_s1 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base = (GFC_UINTEGER_1*) (((char*) base) + sspacing[n] * len_array);
-	      dest = (index_type*) (((char*) dest) + dspacing[n]);
+	      base = (GFC_UINTEGER_1*) (((char*)base) + sspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }
@@ -490,12 +496,12 @@ sfindloc1_s1 (gfc_array_index_type * const restrict retarray,
       *dest = 0;
 
       count[0]++;
-      dest = (index_type*) (((char*) dest) + dspacing[0]);
+      dest = (index_type*) (((char*)dest) + dspacing[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  dest = (index_type*) (((char*) dest) - dspacing[n] * extent[n]);
+	  dest = (index_type*) (((char*)dest) - dspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -505,7 +511,7 @@ sfindloc1_s1 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      dest = (index_type*) (((char*) dest) + dspacing[n]);
+	      dest = (index_type*) (((char*)dest) + dspacing[n]);
 	    }
 	}
     }

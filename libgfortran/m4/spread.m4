@@ -176,9 +176,6 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
 
       if (zero_sized)
 	return;
-
-      if (sspacing[0] == 0)
-	sspacing[0] = 1;
     }
   sspacing0 = sspacing[0];
   rspacing0 = rspacing[0];
@@ -195,8 +192,8 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
           dest = ('rtype_name`*) (((char*) dest) + rdelta);
         }
       /* Advance to the next element.  */
-      sptr = ('atype_name`*) (((char*) sptr) + sspacing0);
-      rptr = ('rtype_name`*) (((char*) rptr) + rspacing0);
+      sptr = ('rtype_name`*) (((char*)sptr) + sspacing0);
+      rptr = ('rtype_name`*) (((char*)rptr) + rspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -206,8 +203,8 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr = ('atype_name`*) (((char*) sptr) - sspacing[n] * extent[n]);
-          rptr = ('rtype_name`*) (((char*) rptr) - rspacing[n] * extent[n]);
+          sptr = ('rtype_name`*) (((char*)sptr) - sspacing[n] * extent[n]);
+          rptr = ('rtype_name`*) (((char*)rptr) - rspacing[n] * extent[n]);
           n++;
           if (n >= srank)
             {
@@ -218,8 +215,8 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
           else
             {
               count[n]++;
-              sptr = ('atype_name`*) (((char*) sptr) + sspacing[n]);
-              rptr = ('rtype_name`*) (((char*) rptr) + rspacing[n]);
+              sptr = ('rtype_name`*) (((char*)sptr) + sspacing[n]);
+              rptr = ('rtype_name`*) (((char*)rptr) + rspacing[n]);
             }
         }
     }
@@ -245,7 +242,8 @@ spread_scalar_'rtype_code` ('rtype` *ret, const 'rtype_name` *source,
     {
       ret->base_addr = xmallocarray (ncopies, sizeof ('rtype_name`));
       ret->offset = 0;
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, sizeof ('rtype_name`));
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1,
+				   sizeof ('rtype_name`));
     }
   else
     {
@@ -260,7 +258,7 @@ spread_scalar_'rtype_code` ('rtype` *ret, const 'rtype_name` *source,
   for (index_type n = 0; n < ncopies; n++)
     {
       *dest = *source;
-      dest = ('rtype_name`*) (((char*) dest) + spacing);
+      dest = ('rtype_name`*) (((char*)dest) + spacing);
     }
 }
 

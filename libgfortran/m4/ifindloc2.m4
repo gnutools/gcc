@@ -37,15 +37,15 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   if (extent <= 0)
     return 0;
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * 'base_mult`'`;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
   if (back)
     {
-      src = ('atype_name`*) (((char*) array->base_addr) + (extent - 1) * sspacing);
+      src = (const 'atype_name`*) (((const char*) array->base_addr) + (extent - 1) * sspacing);
       for (i = extent; i > 0; i--)
 	{
 	  if ('comparison`'`)
 	    return i;
-	  src = ('atype_name`*) (((char*) src) - sspacing);
+	  src = (const 'atype_name`*) (((char*)src) - sspacing);
 	}
     }
   else
@@ -55,7 +55,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if ('comparison`'`)
 	    return i;
-	  src = ('atype_name`*) (((char*) src) + sspacing);
+	  src = (const 'atype_name`*) (((char*)src) + sspacing);
 	}
     }
   return 0;
@@ -87,18 +87,18 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * 'base_mult`'`;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
   mspacing = GFC_DESCRIPTOR_SPACING(mask,0);
 
   if (back)
     {
-      src = ('atype_name`*) (((char*) array->base_addr) + (extent - 1) * sspacing);
+      src = (const 'atype_name`*) (((char*) array->base_addr) + (extent - 1) * sspacing);
       mbase += (extent - 1) * mspacing;
       for (i = extent; i > 0; i--)
 	{
 	  if (*mbase && ('comparison`'`))
 	    return i;
-	  src = ('atype_name`*) (((char*) src) - sspacing);
+	  src = (const 'atype_name`*) (((char*)src) - sspacing);
 	  mbase -= mspacing;
 	}
     }
@@ -109,7 +109,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if (*mbase && ('comparison`'`))
 	    return i;
-	  src = ('atype_name`*) (((char*) src) + sspacing);
+	  src = (const 'atype_name`*) (((char*)src) + sspacing);
 	  mbase += mspacing;
 	}
     }

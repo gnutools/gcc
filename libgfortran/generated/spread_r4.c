@@ -175,9 +175,6 @@ spread_r4 (gfc_array_r4 *ret, const gfc_array_r4 *source,
 
       if (zero_sized)
 	return;
-
-      if (sspacing[0] == 0)
-	sspacing[0] = 1;
     }
   sspacing0 = sspacing[0];
   rspacing0 = rspacing[0];
@@ -194,8 +191,8 @@ spread_r4 (gfc_array_r4 *ret, const gfc_array_r4 *source,
           dest = (GFC_REAL_4*) (((char*) dest) + rdelta);
         }
       /* Advance to the next element.  */
-      sptr = (GFC_REAL_4*) (((char*) sptr) + sspacing0);
-      rptr = (GFC_REAL_4*) (((char*) rptr) + rspacing0);
+      sptr = (GFC_REAL_4*) (((char*)sptr) + sspacing0);
+      rptr = (GFC_REAL_4*) (((char*)rptr) + rspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -205,8 +202,8 @@ spread_r4 (gfc_array_r4 *ret, const gfc_array_r4 *source,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr = (GFC_REAL_4*) (((char*) sptr) - sspacing[n] * extent[n]);
-          rptr = (GFC_REAL_4*) (((char*) rptr) - rspacing[n] * extent[n]);
+          sptr = (GFC_REAL_4*) (((char*)sptr) - sspacing[n] * extent[n]);
+          rptr = (GFC_REAL_4*) (((char*)rptr) - rspacing[n] * extent[n]);
           n++;
           if (n >= srank)
             {
@@ -217,8 +214,8 @@ spread_r4 (gfc_array_r4 *ret, const gfc_array_r4 *source,
           else
             {
               count[n]++;
-              sptr = (GFC_REAL_4*) (((char*) sptr) + sspacing[n]);
-              rptr = (GFC_REAL_4*) (((char*) rptr) + rspacing[n]);
+              sptr = (GFC_REAL_4*) (((char*)sptr) + sspacing[n]);
+              rptr = (GFC_REAL_4*) (((char*)rptr) + rspacing[n]);
             }
         }
     }
@@ -244,7 +241,8 @@ spread_scalar_r4 (gfc_array_r4 *ret, const GFC_REAL_4 *source,
     {
       ret->base_addr = xmallocarray (ncopies, sizeof (GFC_REAL_4));
       ret->offset = 0;
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, sizeof (GFC_REAL_4));
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1,
+				   sizeof (GFC_REAL_4));
     }
   else
     {
@@ -259,7 +257,7 @@ spread_scalar_r4 (gfc_array_r4 *ret, const GFC_REAL_4 *source,
   for (index_type n = 0; n < ncopies; n++)
     {
       *dest = *source;
-      dest = (GFC_REAL_4*) (((char*) dest) + spacing);
+      dest = (GFC_REAL_4*) (((char*)dest) + spacing);
     }
 }
 

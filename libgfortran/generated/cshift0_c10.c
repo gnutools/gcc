@@ -111,10 +111,10 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 	 bn = cshift(a,sh*n1*n2,1)
 
 	 we can used a more blocked algorithm for dim>1.  */
-      sspacing[0] = 1;
-      rspacing[0] = 1;
-      roffset = 1;
-      soffset = 1;
+      sspacing[0] = sizeof (GFC_COMPLEX_10);
+      rspacing[0] = sizeof (GFC_COMPLEX_10);
+      roffset = sizeof (GFC_COMPLEX_10);
+      soffset = sizeof (GFC_COMPLEX_10);
       len = GFC_DESCRIPTOR_SPACING(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);      
       shift *= GFC_DESCRIPTOR_SPACING(array, which);
@@ -126,6 +126,7 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 	  sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	  n++;
 	}
+
       dim = GFC_DESCRIPTOR_RANK (array) - which;
     }
   else
@@ -135,11 +136,7 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 	  if (dim == which)
 	    {
 	      roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
-	      if (roffset == 0)
-		roffset = 1;
 	      soffset = GFC_DESCRIPTOR_SPACING(array,dim);
-	      if (soffset == 0)
-		soffset = 1;
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
 	    }
 	  else
@@ -151,10 +148,6 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 	      n++;
 	    }
 	}
-      if (sspacing[0] == 0)
-	sspacing[0] = 1;
-      if (rspacing[0] == 0)
-	rspacing[0] = 1;
 
       dim = GFC_DESCRIPTOR_RANK (array);
     }
@@ -178,7 +171,7 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 
       /* If elements are contiguous, perform the operation
 	 in two block moves.  */
-      if (soffset == sizeof(GFC_COMPLEX_10) && roffset == sizeof(GFC_COMPLEX_10))
+      if (soffset == sizeof (GFC_COMPLEX_10) && roffset == sizeof (GFC_COMPLEX_10))
 	{
 	  size_t len1 = shift * sizeof (GFC_COMPLEX_10);
 	  size_t len2 = (len - shift) * sizeof (GFC_COMPLEX_10);
@@ -190,19 +183,19 @@ cshift0_c10 (gfc_array_c10 *ret, const gfc_array_c10 *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  GFC_COMPLEX_10 *dest = rptr;
-	  const GFC_COMPLEX_10 *src = (const GFC_COMPLEX_10 *) (((char*) sptr) + shift * soffset);
+	  const GFC_COMPLEX_10 *src = (const GFC_COMPLEX_10*) (((char*)sptr) + shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {
 	      *dest = *src;
-	      dest = (GFC_COMPLEX_10*) (((char*) dest) + roffset);
-	      src = (GFC_COMPLEX_10*) (((char*) src) + soffset);
+	      dest  =  (GFC_COMPLEX_10*) (((char*)dest)  + roffset);
+	      src = (const GFC_COMPLEX_10*) (((char*)src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < shift; n++)
 	    {
 	      *dest = *src;
-	      dest = (GFC_COMPLEX_10*) (((char*) dest) + roffset);
-	      src = (const GFC_COMPLEX_10*) (((char*) src) + soffset);
+	      dest = (GFC_COMPLEX_10*) (((char*)dest) + roffset);
+	      src = (const GFC_COMPLEX_10*) (((char*)src) + soffset);
 	    }
 	}
 

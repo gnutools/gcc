@@ -251,7 +251,6 @@ next_char_internal (st_parameter_dt *dtp)
 	      goto done;
 	    }
 
-	  record *= dtp->u.p.current_unit->recl;
 	  if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 	    return EOF;
 
@@ -3130,7 +3129,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    list_obj.data = list_obj.data + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_SPACING(nl,dim) * nl->size;
+	      * GFC_DESCRIPTOR_SPACING(nl,dim);
 	}
       else
 	{
@@ -3138,7 +3137,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    pdata = (void*)(pdata + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_SPACING(nl,dim) * nl->size);
+	      * GFC_DESCRIPTOR_SPACING(nl,dim));
 	}
 
       /* If we are finished with the repeat count, try to read next value.  */

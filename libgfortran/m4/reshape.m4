@@ -92,7 +92,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
   for (index_type n = 0; n < rdim; n++)
     {
-      shape_data[n] = *(('index_type`*) (((char*) shape->base_addr) + n * GFC_DESCRIPTOR_SPACING(shape,0)));
+      shape_data[n] = GFC_DESCRIPTOR1_ELEM (index_type, shape, n);
       if (shape_data[n] <= 0)
       {
         shape_data[n] = 0;
@@ -105,7 +105,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       index_type alloc_size;
 
       rs = sizeof ('rtype_name`);
-      spacing = GFC_DESCRIPTOR_SIZE(source);
+      spacing = sizeof('rtype_name`);
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -132,7 +132,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
   if (pad)
     {
       pdim = GFC_DESCRIPTOR_RANK (pad);
-      psize = 1;
+      psize = sizeof ('rtype_name`);
       pempty = 0;
       for (index_type n = 0; n < pdim; n++)
         {
@@ -200,7 +200,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
 	  for (index_type n = 0; n < rdim; n++)
 	    {
-	      v = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
+	      v = GFC_DESCRIPTOR1_ELEM (index_type, order, n) - 1;
 
 	      if (v < 0 || v >= rdim)
 		runtime_error("Value %ld out of range in ORDER argument"
@@ -220,7 +220,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type dim;
       if (order)
-        dim = order->base_addr[n * GFC_DESCRIPTOR_SPACING(order,0)] - 1;
+        dim = GFC_DESCRIPTOR1_ELEM (index_type, order, n) - 1;
       else
         dim = n;
 
@@ -247,7 +247,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
    avoids a warning.  */
   GFC_ASSERT(sdim>0);
 
-  ssize = sizeof ('atype_name`);
+  ssize = sizeof ('rtype_name`);
   sempty = 0;
   for (index_type n = 0; n < sdim; n++)
     {
@@ -300,8 +300,8 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       /* Select between the source and pad arrays.  */
       *rptr = *src;
       /* Advance to the next element.  */
-      rptr = ('rtype_name`*) (((char*) rptr) + rspacing0);
-      src = ('atype_name`*) (((char*) src) + sspacing0);
+      rptr = ('rtype_name`*) (((char*)rptr) + rspacing0);
+      src = ('rtype_name`*) (((char*)src) + sspacing0);
       rcount[0]++;
       scount[0]++;
 
@@ -314,7 +314,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           rcount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr = ('rtype_name`*) (((char*) rptr) - rspacing[n] * rextent[n]);
+          rptr = ('rtype_name`*) (((char*)rptr) - rspacing[n] * rextent[n]);
           n++;
           if (n == rdim)
             {
@@ -325,7 +325,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           else
             {
               rcount[n]++;
-              rptr = ('rtype_name`*) (((char*) rptr) + rspacing[n]);
+              rptr = ('rtype_name`*) (((char*)rptr) + rspacing[n]);
             }
         }
       /* Advance to the next source element.  */
@@ -337,7 +337,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           scount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src = ('atype_name`*) (((char*) src) - sspacing[n] * sextent[n]);
+          src = ('rtype_name`*) (((char*)src) - sspacing[n] * sextent[n]);
           n++;
           if (n == sdim)
             {
@@ -361,7 +361,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
           else
             {
               scount[n]++;
-              src = ('atype_name`*) (((char*) src) + sspacing[n]);
+              src = ('rtype_name`*) (((char*)src) + sspacing[n]);
             }
         }
     }

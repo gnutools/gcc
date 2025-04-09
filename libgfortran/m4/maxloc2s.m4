@@ -71,7 +71,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
 	 ret = i;
 	 maxval = src;
       }
-      src = ('atype_name`*) (((char*) src) + sspacing);
+      src = ('atype_name`*) (((char*)src) + sspacing);
     }
   return ret;
 }
@@ -139,7 +139,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src = ('atype_name`*) (((char*) src) + sspacing);
+      src = ('atype_name`*) (((char*)src) + sspacing);
       mbase += mspacing;
     }
   return ret;

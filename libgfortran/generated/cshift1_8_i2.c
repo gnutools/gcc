@@ -75,7 +75,7 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
   n = 0;
 
   /* Initialized for avoiding compiler warnings.  */
-  roffset = sizeof (GFC_INTEGER_8);
+  roffset = sizeof (GFC_INTEGER_2);
   soffset = sizeof (GFC_INTEGER_2);
   len = 0;
 
@@ -84,11 +84,7 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
       if (dim == which)
         {
           roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
-          if (roffset == 0)
-            roffset = sizeof (GFC_INTEGER_8);
           soffset = GFC_DESCRIPTOR_SPACING(array,dim);
-          if (soffset == 0)
-            soffset = sizeof (GFC_INTEGER_2);
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
         }
       else
@@ -104,12 +100,6 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
           n++;
         }
     }
-  if (sspacing[0] == 0)
-    sspacing[0] = sizeof (GFC_INTEGER_2);
-  if (rspacing[0] == 0)
-    rspacing[0] = sizeof (GFC_INTEGER_8);
-  if (hspacing[0] == 0)
-    hspacing[0] = sizeof (GFC_INTEGER_8);
 
   dim = GFC_DESCRIPTOR_RANK (array);
   rspacing0 = rspacing[0];
@@ -133,9 +123,9 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
 	  if (sh < 0)
             sh += len;
 	}
-      src = (GFC_INTEGER_2*) (((char*) sptr) + sh * soffset);
+      src = (const GFC_INTEGER_2*) (((char*)sptr) + sh * soffset);
       dest = rptr;
-      if (soffset == sizeof (GFC_INTEGER_2) && roffset == sizeof(GFC_INTEGER_2))
+      if (soffset == sizeof (GFC_INTEGER_2) && roffset == sizeof (GFC_INTEGER_2))
 	{
 	  size_t len1 = sh * sizeof (GFC_INTEGER_2);
 	  size_t len2 = (len - sh) * sizeof (GFC_INTEGER_2);
@@ -147,21 +137,21 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
 	  for (n = 0; n < len - sh; n++)
 	    {
 	      *dest = *src;
-	      dest = (GFC_INTEGER_2*) (((char*) dest) + roffset);
-	      src = (GFC_INTEGER_2*) (((char*) src) + soffset);
+	      dest = (GFC_INTEGER_2*) (((char*)dest) + roffset);
+	      src = (GFC_INTEGER_2*) (((char*)src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < sh; n++)
 	    {
 	      *dest = *src;
-	      dest = (GFC_INTEGER_2*) (((char*) dest) + roffset);
-	      src = (GFC_INTEGER_2*) (((char*) src) + soffset);
+	      dest = (GFC_INTEGER_2*) (((char*)dest) + roffset);
+	      src = (GFC_INTEGER_2*) (((char*)src) + soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr = (GFC_INTEGER_2*) (((char*) rptr) + rspacing0);
-      sptr = (GFC_INTEGER_2*) (((char*) sptr) + sspacing0);
-      hptr = (GFC_INTEGER_8*) (((char*) hptr) + hspacing0);
+      rptr = (GFC_INTEGER_2*) (((char*)rptr) + rspacing0);
+      sptr = (const GFC_INTEGER_2*) (((const char*)sptr) + sspacing0);
+      hptr = (const GFC_INTEGER_8*) (((const char*)hptr) + hspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -169,9 +159,9 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
           /* When we get to the end of a dimension, reset it and increment
              the next dimension.  */
           count[n] = 0;
-          rptr = (GFC_INTEGER_2*) (((char*) rptr) - rs_ex[n]);
-          sptr = (GFC_INTEGER_2*) (((char*) sptr) - ss_ex[n]);
-	  hptr = (GFC_INTEGER_8*) (((char*) hptr) - hs_ex[n]);
+          rptr = (GFC_INTEGER_2*) (((char*)rptr) - rs_ex[n]);
+          sptr = (const GFC_INTEGER_2*) (((const char*)sptr) - ss_ex[n]);
+	  hptr = (const GFC_INTEGER_8*) (((const char*)hptr) - hs_ex[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -182,9 +172,9 @@ cshift1_8_i2 (gfc_array_i2 * const restrict ret,
           else
             {
               count[n]++;
-              rptr = (GFC_INTEGER_2*) (((char*) rptr) + rspacing[n]);
-              sptr = (GFC_INTEGER_2*) (((char*) sptr) + sspacing[n]);
-	      hptr = (GFC_INTEGER_8*) (((char*) hptr) + hspacing[n]);
+              rptr = (GFC_INTEGER_2*) (((char*)rptr) + rspacing[n]);
+              sptr = (const GFC_INTEGER_2*) (((const char*)sptr) + sspacing[n]);
+	      hptr = (const GFC_INTEGER_8*) (((const char*)hptr) + hspacing[n]);
             }
         }
     }

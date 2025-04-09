@@ -205,8 +205,6 @@ date_and_time (char *__date, char *__time, char *__zone,
       elt_size = GFC_DESCRIPTOR_SIZE (__values);
       len = GFC_DESCRIPTOR_EXTENT(__values,0);
       delta = GFC_DESCRIPTOR_SPACING(__values,0);
-      if (delta == 0)
-	delta = sizeof (GFC_INTEGER_4);
       
       if (unlikely (len < VALUES_SIZE))
 	  runtime_error ("Incorrect extent in VALUES argument to"
@@ -225,24 +223,28 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_8 *vptr8 = (GFC_INTEGER_8 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr8 = (GFC_INTEGER_8*) (((char*) vptr8) + delta))
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr8 = - GFC_INTEGER_8_HUGE;
 	      else
 		*vptr8 = values[i];
+
+	      vptr8 = (GFC_INTEGER_8 *) (((char*)vptr8) + delta);
 	    }
 	}
       else if (elt_size == 2)
 	{
 	  GFC_INTEGER_2 *vptr2 = (GFC_INTEGER_2 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr2 = (GFC_INTEGER_2*) (((char*) vptr2) + delta))
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr2 = - GFC_INTEGER_2_HUGE;
 	      else
 		*vptr2 = (GFC_INTEGER_2) values[i];
+
+	      vptr2 = (GFC_INTEGER_2 *) (((char*)vptr2) + delta);
 	    }
 	}
 #if defined (HAVE_GFC_INTEGER_16)
@@ -250,12 +252,14 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_16 *vptr16 = (GFC_INTEGER_16 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr16 = (GFC_INTEGER_16*) (((char*) vptr16) + delta))
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr16 = - GFC_INTEGER_16_HUGE;
 	      else
 		*vptr16 = values[i];
+
+	      vptr16 = (GFC_INTEGER_16 *) (((char*)vptr16) + delta);
 	    }
 	}
 #endif
@@ -368,12 +372,14 @@ itime_i4 (gfc_array_i4 *__values)
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
   delta = GFC_DESCRIPTOR_SPACING(__values,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_4);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_4 *) (((char*)vptr) + delta);
+    }
 }
 
 
@@ -394,12 +400,14 @@ itime_i8 (gfc_array_i8 *__values)
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
   delta = GFC_DESCRIPTOR_SPACING(__values,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_8);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_8 *) (((char*)vptr) + delta);
+    }
 }
 
 
@@ -446,12 +454,14 @@ idate_i4 (gfc_array_i4 *__values)
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
   delta = GFC_DESCRIPTOR_SPACING(__values,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_4);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_4 *) (((char*)vptr) + delta);
+    }
 }
 
 
@@ -472,12 +482,14 @@ idate_i8 (gfc_array_i8 *__values)
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
   delta = GFC_DESCRIPTOR_SPACING(__values,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_8);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_8 *) (((char*)vptr) + delta);
+    }
 }
 
 
@@ -536,12 +548,14 @@ gmtime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
   delta = GFC_DESCRIPTOR_SPACING(tarray,0);
-  if (delta == 0)
-    delta = 1;
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_4 *) (((char*)vptr) + delta);
+    }
 }
 
 extern void gmtime_i8 (GFC_INTEGER_8 *, gfc_array_i8 *);
@@ -563,12 +577,14 @@ gmtime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
   delta = GFC_DESCRIPTOR_SPACING(tarray,0);
-  if (delta == 0)
-    delta = 1;
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += (GFC_INTEGER_8) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_8 *) (((char*)vptr) + delta);
+    }
 }
 
 
@@ -628,12 +644,14 @@ ltime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
   delta = GFC_DESCRIPTOR_SPACING(tarray,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_4);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_4*) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_4 *) (((char*)vptr) + delta);
+    }
 }
 
 extern void ltime_i8 (GFC_INTEGER_8 *, gfc_array_i8 *);
@@ -655,12 +673,14 @@ ltime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
   delta = GFC_DESCRIPTOR_SPACING(tarray,0);
-  if (delta == 0)
-    delta = sizeof (GFC_INTEGER_8);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr = (GFC_INTEGER_8*) (((char*) vptr) + delta))
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+
+      vptr = (GFC_INTEGER_8 *) (((char*)vptr) + delta);
+    }
 }
 
 

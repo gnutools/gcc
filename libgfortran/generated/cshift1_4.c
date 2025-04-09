@@ -215,11 +215,7 @@ cshift1 (gfc_array_char * const restrict ret,
       if (dim == which)
         {
           roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
-          if (roffset == 0)
-            roffset = size;
           soffset = GFC_DESCRIPTOR_SPACING(array,dim);
-          if (soffset == 0)
-            soffset = size;
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
         }
       else
@@ -233,12 +229,6 @@ cshift1 (gfc_array_char * const restrict ret,
           n++;
         }
     }
-  if (sspacing[0] == 0)
-    sspacing[0] = size;
-  if (rspacing[0] == 0)
-    rspacing[0] = size;
-  if (hspacing[0] == 0)
-    hspacing[0] = size;
 
   dim = GFC_DESCRIPTOR_RANK (array);
   rspacing0 = rspacing[0];
@@ -291,7 +281,7 @@ cshift1 (gfc_array_char * const restrict ret,
       /* Advance to the next section.  */
       rptr += rspacing0;
       sptr += sspacing0;
-      hptr += hspacing0;
+      hptr = (GFC_INTEGER_4*) (((char*)hptr) + hspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -303,7 +293,7 @@ cshift1 (gfc_array_char * const restrict ret,
              frequently used path so probably not worth it.  */
           rptr -= rspacing[n] * extent[n];
           sptr -= sspacing[n] * extent[n];
-	  hptr -= hspacing[n] * extent[n];
+	  hptr = (GFC_INTEGER_4*) (((char*)hptr) - hspacing[n] * extent[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -316,7 +306,7 @@ cshift1 (gfc_array_char * const restrict ret,
               count[n]++;
               rptr += rspacing[n];
               sptr += sspacing[n];
-	      hptr += hspacing[n];
+	      hptr = (GFC_INTEGER_4*) (((char*)hptr) + hspacing[n]);
             }
         }
     }

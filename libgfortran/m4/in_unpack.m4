@@ -76,7 +76,7 @@ internal_unpack_'rtype_ccode` ('rtype` * d, const 'rtype_name` * src)
       /* Copy the data.  */
       *dest = *(src++);
       /* Advance to the next element.  */
-      dest = ('rtype_name`*) (((char*) dest) + spacing0);
+      dest = ('rtype_name`*) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -87,7 +87,7 @@ internal_unpack_'rtype_ccode` ('rtype` * d, const 'rtype_name` * src)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest = ('rtype_name`*) (((char*) dest) - spacing[n] * extent[n]);
+          dest = ('rtype_name`*) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -97,7 +97,7 @@ internal_unpack_'rtype_ccode` ('rtype` * d, const 'rtype_name` * src)
           else
             {
               count[n]++;
-              dest = ('rtype_name`*) (((char*) dest) + spacing[n]);
+              dest = ('rtype_name`*) (((char*)dest) + spacing[n]);
             }
         }
     }

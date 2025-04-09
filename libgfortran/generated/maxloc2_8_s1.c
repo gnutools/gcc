@@ -70,7 +70,7 @@ maxloc2_8_s1 (gfc_array_s1 * const restrict array, GFC_LOGICAL_4 back, gfc_charl
 	 ret = i;
 	 maxval = src;
       }
-      src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
+      src = (GFC_UINTEGER_1*) (((char*)src) + sspacing);
     }
   return ret;
 }
@@ -138,7 +138,7 @@ mmaxloc2_8_s1 (gfc_array_s1 * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
+      src = (GFC_UINTEGER_1*) (((char*)src) + sspacing);
       mbase += mspacing;
     }
   return ret;

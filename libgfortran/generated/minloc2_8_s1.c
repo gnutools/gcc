@@ -71,7 +71,7 @@ minloc2_8_s1 (gfc_array_s1 * const restrict array, GFC_LOGICAL_4 back,
 	 ret = i;
 	 minval = src;
       }
-      src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
+      src = (GFC_UINTEGER_1*) (((char*)src) + sspacing);
     }
   return ret;
 }
@@ -140,7 +140,7 @@ mminloc2_8_s1 (gfc_array_s1 * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src = (GFC_UINTEGER_1*) (((char*) src) + sspacing);
+      src = (GFC_UINTEGER_1*) (((char*)src) + sspacing);
       mbase += mspacing;
     }
   return ret;

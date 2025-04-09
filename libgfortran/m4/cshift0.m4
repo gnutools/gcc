@@ -68,7 +68,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
   len = 0;
 
   r_ex = sizeof ('rtype_name`);
-  a_ex = sizeof ('atype_name`);
+  a_ex = sizeof ('rtype_name`);
 
   if (which > 0)
     {
@@ -112,10 +112,10 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	 bn = cshift(a,sh*n1*n2,1)
 
 	 we can used a more blocked algorithm for dim>1.  */
-      sspacing[0] = 1;
-      rspacing[0] = 1;
-      roffset = 1;
-      soffset = 1;
+      sspacing[0] = sizeof ('rtype_name`);
+      rspacing[0] = sizeof ('rtype_name`);
+      roffset = sizeof ('rtype_name`);
+      soffset = sizeof ('rtype_name`);
       len = GFC_DESCRIPTOR_SPACING(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);      
       shift *= GFC_DESCRIPTOR_SPACING(array, which);
@@ -127,6 +127,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	  sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	  n++;
 	}
+
       dim = GFC_DESCRIPTOR_RANK (array) - which;
     }
   else
@@ -136,11 +137,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	  if (dim == which)
 	    {
 	      roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
-	      if (roffset == 0)
-		roffset = 1;
 	      soffset = GFC_DESCRIPTOR_SPACING(array,dim);
-	      if (soffset == 0)
-		soffset = 1;
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
 	    }
 	  else
@@ -152,10 +149,6 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	      n++;
 	    }
 	}
-      if (sspacing[0] == 0)
-	sspacing[0] = 1;
-      if (rspacing[0] == 0)
-	rspacing[0] = 1;
 
       dim = GFC_DESCRIPTOR_RANK (array);
     }
@@ -179,7 +172,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 
       /* If elements are contiguous, perform the operation
 	 in two block moves.  */
-      if (soffset == sizeof('atype_name`) && roffset == sizeof('rtype_name`))
+      if (soffset == sizeof ('rtype_name`) && roffset == sizeof ('rtype_name`))
 	{
 	  size_t len1 = shift * sizeof ('rtype_name`);
 	  size_t len2 = (len - shift) * sizeof ('rtype_name`);
@@ -191,19 +184,19 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  'rtype_name` *dest = rptr;
-	  const 'rtype_name` *src = (const 'rtype_name` *) (((char*) sptr) + shift * soffset);
+	  const 'rtype_name` *src = (const 'rtype_name`*) (((char*)sptr) + shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {
 	      *dest = *src;
-	      dest = ('rtype_name`*) (((char*) dest) + roffset);
-	      src = ('atype_name`*) (((char*) src) + soffset);
+	      dest  =  ('rtype_name`*) (((char*)dest)  + roffset);
+	      src = (const 'rtype_name`*) (((char*)src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < shift; n++)
 	    {
 	      *dest = *src;
-	      dest = ('rtype_name`*) (((char*) dest) + roffset);
-	      src = (const 'rtype_name`*) (((char*) src) + soffset);
+	      dest = ('rtype_name`*) (((char*)dest) + roffset);
+	      src = (const 'rtype_name`*) (((char*)src) + soffset);
 	    }
 	}
 

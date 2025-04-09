@@ -59,7 +59,7 @@ name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 0;
+	    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -68,7 +68,7 @@ name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 1;
+    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = 1;
   {
 ')dnl
 define(START_FOREACH_BLOCK,
@@ -81,7 +81,7 @@ define(START_FOREACH_BLOCK,
 define(FINISH_FOREACH_FUNCTION,
 `	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = ('atype_name`*) (((char*) base) + sspacing[0]);
+	  base = (const 'atype_name`*) (((char*)base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -92,7 +92,7 @@ define(FINISH_FOREACH_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (const 'atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -103,7 +103,7 @@ define(FINISH_FOREACH_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n]);
+	      base = (const 'atype_name`*) (((char*)base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -193,7 +193,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 0;
+	    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -202,14 +202,14 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = 0;
+    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = 0;
   {
 ')dnl
 define(START_MASKED_FOREACH_BLOCK, `START_FOREACH_BLOCK')dnl
 define(FINISH_MASKED_FOREACH_FUNCTION,
 `	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base = ('atype_name`*) (((char*) base) + sspacing[0]);
+	  base = (const 'atype_name`*) (((char*)base) + sspacing[0]);
 	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
@@ -221,7 +221,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base = ('atype_name`*) (((char*) base) - sspacing[n] * extent[n]);
+	  base = (const 'atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
 	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -233,7 +233,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base = ('atype_name`*) (((char*) base) + sspacing[n]);
+	      base = (const 'atype_name`*) (((char*)base) + sspacing[n]);
 	      mbase += mspacing[n];
 	    }
 	}
@@ -302,5 +302,5 @@ void
   dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    *(('rtype_name`*) (((char*) dest) + n * dspacing)) = $1 ;
+    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = $1 ;
 }')dnl

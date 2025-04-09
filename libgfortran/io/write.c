@@ -2281,8 +2281,6 @@ namelist_write_newline (st_parameter_dt *dtp)
       else
 	{
 	  /* Now seek to this record */
-	  record = record * dtp->u.p.current_unit->recl;
-
 	  if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 	    {
 	      generate_error (&dtp->common, LIBERROR_INTERNAL_UNIT, NULL);
