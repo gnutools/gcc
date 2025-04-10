@@ -423,15 +423,11 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 
   if (non_negative_offset)
     {
-      tree align = build_int_cst (gfc_array_index_type,
-				  TYPE_ALIGN_UNIT (type));
-      tree elt_unit_cnt = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-					   gfc_array_index_type, spacing,
-					   align);
-      tree min_val = fold_build1_loc (input_location, NEGATE_EXPR,
-				      gfc_array_index_type, offset);
+      tree min_val = offset ? fold_build1_loc (input_location, NEGATE_EXPR,
+					       gfc_array_index_type, offset)
+			    : NULL_TREE;
       return build4_loc (input_location, ARRAY_REF, type, base, index,
-			 min_val, elt_unit_cnt);
+			 min_val, spacing);
     }
   /* Otherwise use pointer arithmetic.  */
   else
@@ -455,6 +451,8 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
       tree offset_bytes = fold_build2_loc (input_location, MULT_EXPR,
 					   gfc_array_index_type,
 					   zero_based_index, spacing);
+      offset_bytes = fold_convert_loc (input_location, sizetype,
+				       offset_bytes);
 
       tree base_addr = gfc_build_addr_expr (pvoid_type_node, base);
 
@@ -486,7 +484,7 @@ gfc_build_array_ref (tree base, tree index, bool non_negative_offset,
       return base;
     }
 
-  return gfc_build_array_ref (TREE_TYPE (type), index, non_negative_offset,
+  return gfc_build_array_ref (TREE_TYPE (type), base, index, non_negative_offset,
 			      offset, spacing);
 }
 

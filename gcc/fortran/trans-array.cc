@@ -2097,6 +2097,15 @@ gfc_constant_array_constructor_p (gfc_constructor_base base)
 }
 
 
+static void
+append_constructor (vec<constructor_elt, va_gc> *v, tree t)
+{
+  unsigned len = vec_safe_length (v);
+  tree idx = build_int_cst (gfc_array_index_type, len);
+  CONSTRUCTOR_APPEND_ELT (v, idx, t);
+}
+
+
 /* Given EXPR, the constant array constructor specified by an EXPR_ARRAY,
    and the tree type of it's elements, TYPE, return a static constant
    variable that is compile-time initialized.  */
@@ -2125,8 +2134,7 @@ gfc_build_constant_array_constructor (gfc_expr * expr, tree type)
       else if (POINTER_TYPE_P (type))
 	se.expr = gfc_build_addr_expr (gfc_get_pchar_type (c->expr->ts.kind),
 				       se.expr);
-      CONSTRUCTOR_APPEND_ELT (v, build_int_cst (gfc_array_index_type, nelem),
-                              se.expr);
+      append_constructor (v, se.expr);
       c = gfc_constructor_next (c);
       nelem++;
     }
@@ -2161,6 +2169,43 @@ gfc_build_constant_array_constructor (gfc_expr * expr, tree type)
     {
       gfc_free_expr (as.lower[i]);
       gfc_free_expr (as.upper[i]);
+    }
+
+  if (expr->shape && expr->rank > 1)
+    {
+      vec<constructor_elt, va_gc> *vsrc = v;
+
+      for (int r = 0; r < expr->rank - 1; r++)
+	{
+	  vec<constructor_elt, va_gc> *vdest = nullptr;
+	  unsigned sidx = 0;
+
+	  tree type = tmptype;
+	  for (int j = expr->rank - 1; j > r; j--)
+	    {
+	      gcc_assert (GFC_ARRAY_TYPE_P (type)); 
+	      type = TREE_TYPE (type);
+	    }
+
+	  int len = (int) mpz_get_si (expr->shape[r]);
+
+	  while (sidx != vec_safe_length (vsrc))
+	    {
+	      vec<constructor_elt, va_gc> *vtmp = nullptr;
+
+	      for (int i = 0; i < len; i++)
+		{
+		  append_constructor (vtmp, (*vsrc)[sidx].value);
+		  sidx++;
+		}
+
+	      append_constructor (vdest, build_constructor (type, vtmp));
+	    }
+
+	  vsrc = vdest;
+	}
+
+      v = vsrc;
     }
 
   init = build_constructor (tmptype, v);

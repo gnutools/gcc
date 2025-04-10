@@ -166,9 +166,8 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #define OFFSET_FIELD 1
 #define DTYPE_FIELD 2
 #define SPAN_FIELD 3
-#define ALIGN_FIELD 4
-#define DIMENSION_FIELD 5
-#define CAF_TOKEN_FIELD 6
+#define DIMENSION_FIELD 4
+#define CAF_TOKEN_FIELD 5
 
 #define SPACING_SUBFIELD 0
 #define LBOUND_SUBFIELD 1
