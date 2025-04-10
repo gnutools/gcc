@@ -952,7 +952,7 @@ gfc_build_desc_array_type (tree desc_type, tree etype, int dimen, tree * lbound,
   for (int i = 0; i < dimen; i++)
     {
       tree lower = lbound[i];
-      if (!INTEGER_CST_P (lower))
+      if (!lower)
 	{
 	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
 	  tree dim = build_int_cst (integer_type_node, i);
@@ -960,7 +960,7 @@ gfc_build_desc_array_type (tree desc_type, tree etype, int dimen, tree * lbound,
 	}
 
       tree upper = ubound[i];
-      if (!INTEGER_CST_P (lower))
+      if (!upper)
 	{
 	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
 	  tree dim = build_int_cst (integer_type_node, i);

@@ -3620,7 +3620,6 @@ conv_array_index (gfc_se * se, gfc_ss * ss, int dim, int i,
   tree index;
   tree descriptor;
   tree data;
-  tree offset;
 
   info = &ss->info->data.array;
 
@@ -3650,9 +3649,6 @@ conv_array_index (gfc_se * se, gfc_ss * ss, int dim, int i,
 	  gcc_assert (info->subscript[dim]
 		      && info->subscript[dim]->info->type == GFC_SS_VECTOR);
 
-	  offset = fold_build1_loc (input_location, NEGATE_EXPR,
-				    gfc_array_index_type, se->loop->from[i]);
-
 	  descriptor = info->subscript[dim]->info->data.array.descriptor; 
 	  index = fold_convert_loc (input_location, gfc_array_index_type,
 				    se->loop->loopvar[i]);
@@ -3660,7 +3656,8 @@ conv_array_index (gfc_se * se, gfc_ss * ss, int dim, int i,
 	  /* Read the vector to get an index into info->descriptor.  */
 	  data = build_fold_indirect_ref_loc (input_location, 
 					      gfc_conv_array_data (descriptor));
-	  index = gfc_build_array_ref (data, index, false, offset,
+	  index = gfc_build_array_ref (data, index, false,
+				       gfc_conv_array_lbound (descriptor, 0),
 				       gfc_conv_array_spacing (descriptor, 0));
 	  index = gfc_evaluate_now (index, &se->pre);
 	  index = fold_convert (gfc_array_index_type, index);
@@ -3731,7 +3728,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
   bool non_negative_stride = tmp_array
 			     || non_negative_strides_array_p (info->descriptor);
   se->expr = gfc_build_array_ref (base, index, non_negative_stride,
-				  info->offset, info->spacing[ss->dim[0]]);
+				  info->lbound[ss->dim[0]],
+				  info->spacing[ss->dim[0]]);
 }
 
 
@@ -3813,8 +3811,8 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
       && ar->as->type != AS_DEFERRED)
     decl = sym->backend_decl;
 
-  tree array = gfc_conv_array_data (decl);
-  array = build_fold_indirect_ref_loc (input_location, array);
+  tree ptr = gfc_conv_array_data (decl);
+  tree array = build_fold_indirect_ref_loc (input_location, ptr);
 
   /* Calculate the offsets from all the dimensions.  Make sure to associate
      the final offset so that we form a chain of loop invariant summands.  */
@@ -3885,7 +3883,6 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 
       tree spacing = gfc_conv_array_spacing (decl, n);
 
-      gcc_assert (GFC_ARRAY_TYPE_P (TREE_TYPE (array)));
       tmp = gfc_build_array_ref (array, indexse.expr,
 				 non_negative_strides_array_p (decl),
 				 lbound, spacing);
