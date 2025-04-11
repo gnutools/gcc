@@ -1048,11 +1048,23 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
       || current_ubound != NULL_TREE
       || elt_type != TREE_TYPE (type))
     {
-      tree new_type = build_variant_type_copy (type);
+      tree new_type = build_distinct_type_copy (type);
       TREE_TYPE (new_type) = elt_type;
-      TYPE_DOMAIN (new_type) = build_variant_type_copy (TYPE_DOMAIN (type));
-      TYPE_MIN_VALUE (TYPE_DOMAIN (new_type)) = current_lbound;
-      TYPE_MAX_VALUE (TYPE_DOMAIN (new_type)) = current_ubound;
+      TYPE_DOMAIN (new_type) = build_distinct_type_copy (TYPE_DOMAIN (type));
+
+      tree new_lbound = current_lbound;
+      if (new_lbound == NULL_TREE)
+	new_lbound = TYPE_MIN_VALUE (TYPE_DOMAIN (type));
+      TYPE_MIN_VALUE (TYPE_DOMAIN (new_type)) = new_lbound;
+
+      tree new_ubound = current_ubound;
+      if (new_ubound == NULL_TREE)
+	new_ubound = TYPE_MAX_VALUE (TYPE_DOMAIN (type));
+      TYPE_MAX_VALUE (TYPE_DOMAIN (new_type)) = new_ubound;
+
+      layout_type (TYPE_DOMAIN (new_type));
+      layout_type (new_type);
+
       type = new_type;
     }
 
