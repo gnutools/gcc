@@ -2183,7 +2183,7 @@ gfc_build_constant_array_constructor (gfc_expr * expr, tree type)
 	  tree type = tmptype;
 	  for (int j = expr->rank - 1; j > r; j--)
 	    {
-	      gcc_assert (GFC_ARRAY_TYPE_P (type)); 
+	      gcc_assert (TREE_CODE (type) == ARRAY_TYPE); 
 	      type = TREE_TYPE (type);
 	    }
 
