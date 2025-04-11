@@ -1072,7 +1072,7 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
     }
   if (current_ubound != NULL_TREE)
     {
-      GFC_TYPE_ARRAY_UBOUND (type, dim) = current_ubound;
+      GFC_TYPE_ARRAY_UBOUND (root_type, dim) = current_ubound;
       if (current_ubound
 	  && VAR_P (current_ubound)
 	  && DECL_ARTIFICIAL (current_ubound)
@@ -1087,7 +1087,7 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
   tree current_spacing = spacing[dim];
   if (current_spacing != NULL_TREE)
     {
-      GFC_TYPE_ARRAY_SPACING (type, dim) = current_spacing;
+      GFC_TYPE_ARRAY_SPACING (root_type, dim) = current_spacing;
       if (current_spacing
 	  && VAR_P (current_spacing)
 	  && DECL_ARTIFICIAL (current_spacing)
