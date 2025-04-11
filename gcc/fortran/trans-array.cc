@@ -6126,6 +6126,7 @@ gfc_conv_array_initializer (tree type, gfc_expr * expr)
 {
   gfc_constructor *c;
   tree tmp;
+  tree min_index = NULL_TREE;
   gfc_se se;
   tree index, range;
   vec<constructor_elt, va_gc> *v = NULL;
@@ -6162,6 +6163,9 @@ gfc_conv_array_initializer (tree type, gfc_expr * expr)
       break;
 
     case EXPR_ARRAY:
+      if (TYPE_DOMAIN (type))
+	min_index = TYPE_MIN_VALUE (TYPE_DOMAIN (type));
+
       /* Create a vector of all the elements.  */
       for (c = gfc_constructor_first (expr->value.constructor);
 	   c && c->expr; c = gfc_constructor_next (c))
@@ -6181,6 +6185,9 @@ gfc_conv_array_initializer (tree type, gfc_expr * expr)
             index = gfc_conv_mpz_to_tree (c->offset, gfc_index_integer_kind);
           else
             index = NULL_TREE;
+	  if (index && min_index)
+	    index = fold_build2_loc (input_location, PLUS_EXPR,
+				     TREE_TYPE (index), index, min_index);
 
 	  if (mpz_cmp_si (c->repeat, 1) > 0)
 	    {
