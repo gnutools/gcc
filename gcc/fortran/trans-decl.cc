@@ -4409,7 +4409,7 @@ gfc_trans_assign_aux_var (gfc_symbol * sym, gfc_wrapped_block * block)
 }
 
 static void
-gfc_trans_vla_one_sizepos (tree *tp, stmtblock_t *body)
+gfc_trans_vla_one_sizepos (tree *tp, tree root_decl, stmtblock_t *body)
 {
   tree t = *tp, var, val;
 
@@ -4417,6 +4417,9 @@ gfc_trans_vla_one_sizepos (tree *tp, stmtblock_t *body)
     return;
   if (TREE_CONSTANT (t) || DECL_P (t))
     return;
+
+  if (contains_placeholder_p (t))
+    t = substitute_placeholder_in_expr (t, root_decl);
 
   if (TREE_CODE (t) == SAVE_EXPR)
     {
@@ -4439,7 +4442,7 @@ gfc_trans_vla_one_sizepos (tree *tp, stmtblock_t *body)
 }
 
 static void
-gfc_trans_vla_type_sizes_1 (tree type, stmtblock_t *body)
+gfc_trans_vla_type_sizes_1 (tree type, tree root_decl, stmtblock_t *body)
 {
   tree t;
 
@@ -4450,8 +4453,8 @@ gfc_trans_vla_type_sizes_1 (tree type, stmtblock_t *body)
 
   if (TREE_CODE (type) == INTEGER_TYPE)
     {
-      gfc_trans_vla_one_sizepos (&TYPE_MIN_VALUE (type), body);
-      gfc_trans_vla_one_sizepos (&TYPE_MAX_VALUE (type), body);
+      gfc_trans_vla_one_sizepos (&TYPE_MIN_VALUE (type), root_decl, body);
+      gfc_trans_vla_one_sizepos (&TYPE_MAX_VALUE (type), root_decl, body);
 
       for (t = TYPE_NEXT_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
 	{
@@ -4461,10 +4464,10 @@ gfc_trans_vla_type_sizes_1 (tree type, stmtblock_t *body)
     }
   else if (TREE_CODE (type) == ARRAY_TYPE)
     {
-      gfc_trans_vla_type_sizes_1 (TREE_TYPE (type), body);
-      gfc_trans_vla_type_sizes_1 (TYPE_DOMAIN (type), body);
-      gfc_trans_vla_one_sizepos (&TYPE_SIZE (type), body);
-      gfc_trans_vla_one_sizepos (&TYPE_SIZE_UNIT (type), body);
+      gfc_trans_vla_type_sizes_1 (TREE_TYPE (type), root_decl, body);
+      gfc_trans_vla_type_sizes_1 (TYPE_DOMAIN (type), root_decl, body);
+      gfc_trans_vla_one_sizepos (&TYPE_SIZE (type), root_decl, body);
+      gfc_trans_vla_one_sizepos (&TYPE_SIZE_UNIT (type), root_decl, body);
 
       for (t = TYPE_NEXT_VARIANT (type); t; t = TYPE_NEXT_VARIANT (t))
 	{
@@ -4487,7 +4490,8 @@ gfc_trans_vla_type_sizes_1 (tree type, stmtblock_t *body)
 void
 gfc_trans_vla_type_sizes (gfc_symbol *sym, stmtblock_t *body)
 {
-  tree type = TREE_TYPE (sym->backend_decl);
+  tree root_decl = sym->backend_decl;
+  tree type = TREE_TYPE (root_decl);
 
   if (TREE_CODE (type) == FUNCTION_TYPE
       && (sym->attr.function || sym->attr.result || sym->attr.entry))
@@ -4508,10 +4512,10 @@ gfc_trans_vla_type_sizes (gfc_symbol *sym, stmtblock_t *body)
       while (POINTER_TYPE_P (etype))
 	etype = TREE_TYPE (etype);
 
-      gfc_trans_vla_type_sizes_1 (etype, body);
+      gfc_trans_vla_type_sizes_1 (etype, root_decl, body);
     }
 
-  gfc_trans_vla_type_sizes_1 (type, body);
+  gfc_trans_vla_type_sizes_1 (type, root_decl, body);
 }
 
 
