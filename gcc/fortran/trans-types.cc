@@ -1858,7 +1858,11 @@ build_nested_array_types (tree etype, tree lbound[GFC_MAX_DIMENSIONS],
 
   for (int i = 0; i < rank; i++)
     {
-      tree idx_type = build_range_type (gfc_array_index_type, lbound[i], ubound[i]);
+      tree idx_type;
+      if (lbound[i])
+	idx_type = build_range_type (gfc_array_index_type, lbound[i], ubound[i]);
+      else
+	idx_type = gfc_array_index_type;
       type = build_array_type (type, idx_type);
       layout_type (type);
     }
@@ -2200,14 +2204,14 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
   tree spacing;
   if (packed == 0)
     {
-      stride = gfc_index_one_node;
-      spacing = fold_convert_loc (input_location, gfc_array_index_type,
-				  TYPE_SIZE_UNIT (etype));
+      stride = NULL_TREE;
+      spacing = NULL_TREE;
     }
   else
     {
-      stride = NULL_TREE;
-      spacing = NULL_TREE;
+      stride = gfc_index_one_node;
+      spacing = fold_convert_loc (input_location, gfc_array_index_type,
+				  TYPE_SIZE_UNIT (etype));
     }
   for (n = 0; n < dimen + codimen; n++)
     {

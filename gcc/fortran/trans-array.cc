@@ -7008,7 +7008,7 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc,
     {
       array = build_array_ref (desc, array, gfc_index_zero_node,
 			       non_negative_strides, gfc_index_zero_node,
-			       NULL_TREE, nullptr);
+			       gfc_conv_array_spacing (desc, i), nullptr);
     }
   tmp = array;
 
