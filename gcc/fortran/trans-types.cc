@@ -1468,7 +1468,14 @@ gfc_get_element_type (tree type)
 
       /* For arrays, which are not scalar coarrays.  */
       if (TREE_CODE (element) == ARRAY_TYPE && !TYPE_STRING_FLAG (element))
-	element = TREE_TYPE (element);
+	{
+	  int rank = GFC_TYPE_ARRAY_RANK (type);
+	  for (int i = 0; i < rank; i++)
+	    {
+	      gcc_assert (TREE_CODE (element) == ARRAY_TYPE);
+	      element = TREE_TYPE (element);
+	    }
+	}
     }
 
   return element;
