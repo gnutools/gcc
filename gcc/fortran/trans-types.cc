@@ -1448,8 +1448,14 @@ gfc_get_element_type (tree type)
 	}
       else
 	{
-	  gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
-	  element = TREE_TYPE (type);
+	  int rank = GFC_TYPE_ARRAY_RANK (type);
+	  for (int i = 0; i < rank; i++)
+	    {
+	      gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
+	      type = TREE_TYPE (type);
+	    }
+
+	  element = type;
 	}
     }
   else
