@@ -1045,6 +1045,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	  info->start[dim] = gfc_index_zero_node;
 	  info->end[dim] = gfc_index_zero_node;
 	  info->stride[dim] = gfc_index_one_node;
+	  info->lbound[dim] = gfc_index_zero_node;
 	}
     }
 
@@ -1189,7 +1190,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
     {
       for (n = 0; n < total_dim; n++)
 	{
-	  spacing[n] = size;
+	  info->spacing[n] = spacing[n] = size;
 
 	  tree extent = to[n];
 	  if (!shift_bounds && !integer_zerop (from[n]))
@@ -3599,7 +3600,7 @@ non_negative_strides_array_p (tree expr)
 
 
 static tree
-build_array_ref (tree descriptor, tree array, tree index,
+build_array_ref (tree array, tree index,
 		 bool non_negative_stride, tree lbound, tree spacing,
 		 const vec<tree> * array_type_domains)
 {
@@ -3608,24 +3609,21 @@ build_array_ref (tree descriptor, tree array, tree index,
     elt_type = TREE_TYPE (TREE_TYPE (array));
   else
     {
-      tree desc_type = TREE_TYPE (descriptor);
-      tree core_type = TREE_TYPE (GFC_TYPE_ARRAY_DATAPTR_TYPE (desc_type));
+      tree core_type = TREE_TYPE (array);
 
       unsigned j;
       tree *dom_p;
       FOR_EACH_VEC_ELT (*array_type_domains, j, dom_p)
 	{
-	  gcc_assert (GFC_ARRAY_TYPE_P (core_type)
+	  gcc_assert (TREE_CODE (core_type) == ARRAY_TYPE
 		      && TYPE_DOMAIN (core_type) == *dom_p);
 	  core_type = TREE_TYPE (core_type);
 	}
 
-      core_type = TREE_TYPE (core_type);
-
-      tree elt_type = core_type;
+      elt_type = TREE_TYPE (core_type);
 
       FOR_EACH_VEC_ELT_REVERSE (*array_type_domains, j, dom_p)
-	elt_type = build_array_type (elt_type, *dom_p);
+	elt_type = gfc_build_incomplete_array_type (elt_type, *dom_p);
     }
 
   return gfc_build_array_ref (elt_type, array, index, non_negative_stride,
@@ -3946,7 +3944,7 @@ add_array_index (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 			     || ss_type == GFC_SS_CONSTRUCTOR
 			     || ss_type == GFC_SS_INTRINSIC
 			     || non_negative_strides_array_p (info->descriptor);
-  return build_array_ref (info->descriptor, array, index, non_negative_stride,
+  return build_array_ref (array, index, non_negative_stride,
 			  info->lbound[array_dim], info->spacing[array_dim],
 			  array_type_domains);
 }
@@ -4728,7 +4726,10 @@ done:
 	    for (n = 0; n < GFC_MAX_DIMENSIONS; n++)
 	      if (info->subscript[n]
 		  && info->subscript[n]->info->type == GFC_SS_SCALAR)
-		conv_evaluate_lbound (&outer_loop->pre, ss, n);
+		{
+		  conv_array_spacing (&outer_loop->pre, ss, n);
+		  conv_evaluate_lbound (&outer_loop->pre, ss, n);
+		}
 	  break;
 
 	case GFC_SS_INTRINSIC:
@@ -7006,7 +7007,7 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc,
 
   for (int i = GFC_TYPE_ARRAY_RANK (TREE_TYPE (desc)) - 1; i >= 0; i--)
     {
-      array = build_array_ref (desc, array, gfc_index_zero_node,
+      array = build_array_ref (array, gfc_index_zero_node,
 			       non_negative_strides, gfc_index_zero_node,
 			       gfc_conv_array_spacing (desc, i), nullptr);
     }

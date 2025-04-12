@@ -969,17 +969,7 @@ gfc_build_desc_array_type (tree desc_type, tree etype, int dimen, tree * lbound,
 
       tree index_type = build_range_type (gfc_array_index_type, lower, upper);
 
-      tree elt_type = type;
-      type = make_node (ARRAY_TYPE);
-      TREE_TYPE (type) = elt_type;
-      TYPE_DOMAIN (type) = index_type;
-      TYPE_ADDR_SPACE (type) = TYPE_ADDR_SPACE (elt_type);
-
-      /* Set TYPE_STRUCTURAL_EQUALITY_P.  */
-      if (TYPE_STRUCTURAL_EQUALITY_P (elt_type)
-	  || (index_type && TYPE_STRUCTURAL_EQUALITY_P (index_type))
-	  || in_lto_p)
-	SET_TYPE_STRUCTURAL_EQUALITY (type);
+      type = gfc_build_incomplete_array_type (type, index_type);
     }
 
   return type;

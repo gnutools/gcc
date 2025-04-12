@@ -123,4 +123,6 @@ tree gfc_get_dtype (tree, int *rank = NULL);
 tree gfc_get_caf_vector_type (int dim);
 tree gfc_get_caf_reference_type ();
 
+tree gfc_build_incomplete_array_type (tree, tree);
+
 #endif

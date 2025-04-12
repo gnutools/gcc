@@ -4275,4 +4275,25 @@ gfc_get_cfi_type (int dimen, bool restricted)
   return CFI_cdesc_t;
 }
 
+
+/* Variant of build_array_type that doesn't call layout_type.  */
+
+tree
+gfc_build_incomplete_array_type (tree elt_type, tree index_type)
+{
+  tree type = make_node (ARRAY_TYPE);
+  TREE_TYPE (type) = elt_type;
+  TYPE_DOMAIN (type) = index_type;
+  TYPE_ADDR_SPACE (type) = TYPE_ADDR_SPACE (elt_type);
+
+  /* Set TYPE_STRUCTURAL_EQUALITY_P.  */
+  if (TYPE_STRUCTURAL_EQUALITY_P (elt_type)
+      || (index_type && TYPE_STRUCTURAL_EQUALITY_P (index_type))
+      || in_lto_p)
+    SET_TYPE_STRUCTURAL_EQUALITY (type);
+
+  return type;
+}
+
+
 #include "gt-fortran-trans-types.h"
