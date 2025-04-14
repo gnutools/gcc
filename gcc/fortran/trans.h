@@ -642,9 +642,11 @@ tree gfc_build_addr_expr (tree, tree);
 
 /* Build an ARRAY_REF.  */
 tree gfc_build_array_ref (tree, tree, bool non_negative_offset = false,
-			  tree offset = NULL_TREE, tree spacing = NULL_TREE);
+			  tree min_idx = NULL_TREE, tree spacing = NULL_TREE,
+			  tree offset = NULL_TREE);
 tree gfc_build_array_ref (tree, tree, tree,  bool non_negative_offset = false,
-			  tree offset = NULL_TREE, tree spacing = NULL_TREE);
+			  tree min_idx = NULL_TREE, tree spacing = NULL_TREE,
+			  tree offset = NULL_TREE);
 
 /* Build an array ref using pointer arithmetic.  */
 tree gfc_build_spanned_array_ref (tree base, tree offset, tree span);

@@ -3606,7 +3606,8 @@ build_ptr_array_ref (tree data, tree offset)
 
 
 tree
-build_array_ref_dim (gfc_ss *ss, tree index, tree spacing, bool tmp_array = false)
+build_array_ref_dim (gfc_ss *ss, tree index, tree spacing,
+		     tree offset = NULL_TREE, bool tmp_array = false)
 {
   gfc_array_info *info = &ss->info->data.array;
 
@@ -3618,8 +3619,10 @@ build_array_ref_dim (gfc_ss *ss, tree index, tree spacing, bool tmp_array = fals
 			     || ss_type == GFC_SS_INTRINSIC
 			     || tmp_array
 			     || non_negative_strides_array_p (info->descriptor);
-  return gfc_build_array_ref (base, index, non_negative_stride,
-			      NULL_TREE, spacing);
+  return gfc_build_array_ref (base, index, 
+			      non_negative_stride
+			      && (!offset || integer_zerop (offset)),
+			      NULL_TREE, spacing, offset);
 }
 
 
@@ -3639,8 +3642,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar, bool tmp_array =
 
   tree index = conv_array_index (se, ss, ss->dim[n], n, ar);
 
-  se->expr = build_array_ref_dim (ss, index,
-				  ss->info->data.array.spacing0,
+  gfc_array_info *info = &ss->info->data.array;
+  se->expr = build_array_ref_dim (ss, index, info->spacing0, info->offset,
 				  tmp_array);
 }
 

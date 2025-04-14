@@ -407,13 +407,13 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
 
 
 /* Build an ARRAY_REF with its natural type.
-   NON_NEGATIVE_OFFSET indicates if it’s true that OFFSET can’t be negative,
+   NON_NEGATIVE_SPACING indicates if it’s true that SPACING can’t be negative,
    and thus that an ARRAY_REF can safely be generated.  If it’s false, we
    have to play it safe and use pointer arithmetic.  */
 
 tree
 gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
-		     tree min_val, tree spacing)
+		     tree min_idx, tree spacing, tree offset)
 {
   if (DECL_P (base))
     TREE_ADDRESSABLE (base) = 1;
@@ -423,12 +423,12 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 
   if (non_negative_offset)
     return build4_loc (input_location, ARRAY_REF, type, base, index,
-		       min_val, spacing);
+		       min_idx, spacing);
   /* Otherwise use pointer arithmetic.  */
   else
     {
       gcc_assert (TREE_CODE (TREE_TYPE (base)) == ARRAY_TYPE);
-      tree min = min_val;
+      tree min = min_idx;
       if (min == NULL_TREE
 	  && TYPE_DOMAIN (TREE_TYPE (base)))
 	min = TYPE_MIN_VALUE (TYPE_DOMAIN (TREE_TYPE (base)));
@@ -449,6 +449,11 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
       tree offset_bytes = fold_build2_loc (input_location, MULT_EXPR,
 					   gfc_array_index_type,
 					   zero_based_index, delta);
+      if (offset && !integer_zerop (offset))
+	offset_bytes = fold_build2_loc (input_location, PLUS_EXPR,
+					gfc_array_index_type,
+					offset_bytes, offset);
+
       offset_bytes = fold_convert_loc (input_location, sizetype,
 				       offset_bytes);
 
@@ -464,7 +469,7 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 
 tree
 gfc_build_array_ref (tree base, tree index, bool non_negative_offset,
-		     tree offset, tree spacing)
+		     tree min_idx, tree spacing, tree offset)
 {
   tree type = TREE_TYPE (base);
 
@@ -483,7 +488,7 @@ gfc_build_array_ref (tree base, tree index, bool non_negative_offset,
     }
 
   return gfc_build_array_ref (TREE_TYPE (type), base, index, non_negative_offset,
-			      offset, spacing);
+			      min_idx, spacing, offset);
 }
 
 
