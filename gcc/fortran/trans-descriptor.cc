@@ -943,39 +943,6 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 }
 
 
-tree
-gfc_build_desc_array_type (tree desc_type, tree etype, int dimen, tree * lbound,
-			   tree * ubound)
-{
-  tree type = etype;
-
-  for (int i = 0; i < dimen; i++)
-    {
-      tree lower = lbound[i];
-      if (!lower)
-	{
-	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
-	  tree dim = build_int_cst (integer_type_node, i);
-	  lower = gfc_descriptor::get_lbound (root, dim);
-	}
-
-      tree upper = ubound[i];
-      if (!upper)
-	{
-	  tree root = build0 (PLACEHOLDER_EXPR, desc_type);
-	  tree dim = build_int_cst (integer_type_node, i);
-	  upper = gfc_descriptor::get_ubound (root, dim);
-	}
-
-      tree index_type = build_range_type (gfc_array_index_type, lower, upper);
-
-      type = gfc_build_incomplete_array_type (type, index_type);
-    }
-
-  return type;
-}
-
-
 static bt
 get_type_info (const bt &type)
 {

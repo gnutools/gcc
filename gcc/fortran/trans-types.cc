@@ -1448,14 +1448,8 @@ gfc_get_element_type (tree type)
 	}
       else
 	{
-	  int rank = GFC_TYPE_ARRAY_RANK (type);
-	  for (int i = 0; i < rank; i++)
-	    {
-	      gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
-	      type = TREE_TYPE (type);
-	    }
-
-	  element = type;
+	  gcc_assert (TREE_CODE (type) == ARRAY_TYPE);
+	  element = TREE_TYPE (type);
 	}
     }
   else
@@ -1468,14 +1462,7 @@ gfc_get_element_type (tree type)
 
       /* For arrays, which are not scalar coarrays.  */
       if (TREE_CODE (element) == ARRAY_TYPE && !TYPE_STRING_FLAG (element))
-	{
-	  int rank = GFC_TYPE_ARRAY_RANK (type);
-	  for (int i = 0; i < rank; i++)
-	    {
-	      gcc_assert (TREE_CODE (element) == ARRAY_TYPE);
-	      element = TREE_TYPE (element);
-	    }
-	}
+	element = TREE_TYPE (element);
     }
 
   return element;
@@ -1857,27 +1844,6 @@ gfc_get_dtype (tree type, int * rank)
 }
 
 
-static tree
-build_nested_array_types (tree etype, tree lbound[GFC_MAX_DIMENSIONS],
-			  tree ubound[GFC_MAX_DIMENSIONS], int rank)
-{
-  tree type = etype;
-
-  for (int i = 0; i < rank; i++)
-    {
-      tree idx_type;
-      if (lbound[i])
-	idx_type = build_range_type (gfc_array_index_type, lbound[i], ubound[i]);
-      else
-	idx_type = gfc_array_index_type;
-      type = build_array_type (type, idx_type);
-      layout_type (type);
-    }
-
-  return build_variant_type_copy (type);
-}
-
-
 /* Build an array type for use without a descriptor, packed according
    to the value of PACKED.  */
 
@@ -1978,7 +1944,13 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
 	}
     }
 
-  type = build_nested_array_types (etype, lbound, ubound, as->rank);
+  /* We don't use build_array_type because this does not include
+     lang-specific information (i.e. the bounds of the array) when checking
+     for duplicates.  */
+  if (as->rank != 0)
+    type = make_node (ARRAY_TYPE);
+  else
+    type = build_variant_type_copy (etype);
 
   GFC_ARRAY_TYPE_P (type) = 1;
   TYPE_LANG_SPECIFIC (type) = ggc_cleared_alloc<struct lang_type> ();
@@ -2159,7 +2131,7 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
 			   enum gfc_array_kind akind, bool restricted)
 {
   char name[8 + 2*GFC_RANK_DIGITS + 1 + GFC_MAX_SYMBOL_LEN];
-  tree fat_type, base_type, arraytype, lower, upper, stride, tmp;
+  tree fat_type, base_type, arraytype, lower, upper, stride, tmp, rtype;
   const char *type_name;
   int n;
 
@@ -2289,7 +2261,15 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
       return fat_type;
     }
 
-  arraytype = gfc_build_desc_array_type (fat_type, etype, dimen, lbound, ubound);
+  /* We define data as an array with the correct size if possible.
+     Much better than doing pointer arithmetic.  */
+  if (stride)
+    rtype = build_range_type (gfc_array_index_type, gfc_index_zero_node,
+			      int_const_binop (MINUS_EXPR, stride,
+					       build_int_cst (TREE_TYPE (stride), 1)));
+  else
+    rtype = gfc_array_range_type;
+  arraytype = build_array_type (etype, rtype);
   arraytype = build_pointer_type (arraytype);
   if (restricted)
     arraytype = build_qualified_type (arraytype, TYPE_QUAL_RESTRICT);

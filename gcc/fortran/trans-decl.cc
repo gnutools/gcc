@@ -1035,39 +1035,7 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
 		    tree ubound[GFC_MAX_DIMENSIONS],
 		    tree spacing[GFC_MAX_DIMENSIONS], tree root_type, int dim)
 {
-  tree elt_type;
-  if (dim == 0)
-    elt_type = TREE_TYPE (type);
-  else
-    elt_type = update_type_bounds (TREE_TYPE (type), lbound, ubound, spacing,
-				   root_type, dim - 1);
-
   tree current_lbound = lbound[dim];
-  tree current_ubound = ubound[dim];
-  if (current_lbound != NULL_TREE
-      || current_ubound != NULL_TREE
-      || elt_type != TREE_TYPE (type))
-    {
-      tree new_type = build_distinct_type_copy (type);
-      TREE_TYPE (new_type) = elt_type;
-      TYPE_DOMAIN (new_type) = build_distinct_type_copy (TYPE_DOMAIN (type));
-
-      tree new_lbound = current_lbound;
-      if (new_lbound == NULL_TREE)
-	new_lbound = TYPE_MIN_VALUE (TYPE_DOMAIN (type));
-      TYPE_MIN_VALUE (TYPE_DOMAIN (new_type)) = new_lbound;
-
-      tree new_ubound = current_ubound;
-      if (new_ubound == NULL_TREE)
-	new_ubound = TYPE_MAX_VALUE (TYPE_DOMAIN (type));
-      TYPE_MAX_VALUE (TYPE_DOMAIN (new_type)) = new_ubound;
-
-      layout_type (TYPE_DOMAIN (new_type));
-      layout_type (new_type);
-
-      type = new_type;
-    }
-
   if (current_lbound != NULL_TREE)
     {
       GFC_TYPE_ARRAY_LBOUND (root_type, dim) = current_lbound;
@@ -1082,6 +1050,8 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
 	    DECL_NAMELESS (current_lbound) = 1;
 	}
     }
+
+  tree current_ubound = ubound[dim];
   if (current_ubound != NULL_TREE)
     {
       GFC_TYPE_ARRAY_UBOUND (root_type, dim) = current_ubound;
@@ -1096,6 +1066,7 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
 	    DECL_NAMELESS (current_ubound) = 1;
 	}
     }
+
   tree current_spacing = spacing[dim];
   if (current_spacing != NULL_TREE)
     {
