@@ -1997,6 +1997,26 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   else
     GFC_TYPE_ARRAY_SIZE (type) = NULL_TREE;
 
+  if (as->rank != 0)
+    {
+      tree max_idx;
+      if (known_stride)
+	{
+	  mpz_t size;
+	  mpz_init (size);
+	  mpz_sub_ui (size, stride, 1);
+	  max_idx = gfc_conv_mpz_to_tree (size, gfc_index_integer_kind);
+	}
+      else
+	max_idx = NULL_TREE;
+
+      TYPE_DOMAIN (type) = build_range_type (gfc_array_index_type,
+					     gfc_index_zero_node, max_idx);
+      TREE_TYPE (type) = etype;
+    }
+
+  layout_type (type);
+
   if (packed != PACKED_NO)
     GFC_TYPE_ARRAY_ELEM_LEN (type) = TYPE_SIZE_UNIT (etype);
 
