@@ -413,7 +413,7 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
 
 tree
 gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
-		     tree min_idx, tree spacing, tree offset)
+		     tree min_idx, tree spacing_bytes, tree offset)
 {
   if (DECL_P (base))
     TREE_ADDRESSABLE (base) = 1;
@@ -422,8 +422,22 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
   STRIP_TYPE_NOPS (index);
 
   if (non_negative_offset)
-    return build4_loc (input_location, ARRAY_REF, type, base, index,
-		       min_idx, spacing);
+    {
+      tree spacing;
+      if (spacing_bytes == NULL_TREE)
+	spacing = NULL_TREE;
+      else
+	{
+	  gcc_assert (TREE_CODE (TREE_TYPE (base)) == ARRAY_TYPE);
+	  int elt_align = TYPE_ALIGN_UNIT (TREE_TYPE (TREE_TYPE (base)));
+	  spacing = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+				     gfc_array_index_type, spacing_bytes,
+				     build_int_cst (gfc_array_index_type,
+						    elt_align));
+	}
+      return build4_loc (input_location, ARRAY_REF, type, base, index,
+			 min_idx, spacing);
+    }
   /* Otherwise use pointer arithmetic.  */
   else
     {
@@ -441,7 +455,7 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 	            	    fold_convert (gfc_array_index_type, min))
 	     : fold_convert (gfc_array_index_type, index);
 
-      tree delta = spacing;
+      tree delta = spacing_bytes;
       if (delta == NULL_TREE)
 	delta = fold_convert_loc (input_location, gfc_array_index_type,
 				  TYPE_SIZE_UNIT (type));
