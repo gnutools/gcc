@@ -2209,8 +2209,11 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
   else
     {
       stride = gfc_index_one_node;
-      spacing = fold_convert_loc (input_location, gfc_array_index_type,
-				  TYPE_SIZE_UNIT (etype));
+      if (dimen == 0)
+	spacing = NULL_TREE;
+      else
+	spacing = fold_convert_loc (input_location, gfc_array_index_type,
+				    TYPE_SIZE_UNIT (etype));
     }
   for (n = 0; n < dimen + codimen; n++)
     {
