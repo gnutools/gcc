@@ -2099,7 +2099,7 @@ gfc_constant_array_constructor_p (gfc_constructor_base base)
 
 
 static void
-append_constructor (vec<constructor_elt, va_gc> *v, tree t)
+append_constructor (vec<constructor_elt, va_gc> *&v, tree t)
 {
   unsigned len = vec_safe_length (v);
   tree idx = build_int_cst (gfc_array_index_type, len);
