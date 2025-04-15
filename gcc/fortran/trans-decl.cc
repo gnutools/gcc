@@ -1035,6 +1035,9 @@ update_type_bounds (tree type, tree lbound[GFC_MAX_DIMENSIONS],
 		    tree ubound[GFC_MAX_DIMENSIONS],
 		    tree spacing[GFC_MAX_DIMENSIONS], tree root_type, int dim)
 {
+  if (dim > 0)
+    update_type_bounds (type, lbound, ubound, spacing, root_type, dim - 1);
+
   tree current_lbound = lbound[dim];
   if (current_lbound != NULL_TREE)
     {
