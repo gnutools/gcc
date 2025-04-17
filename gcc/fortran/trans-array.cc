@@ -4698,7 +4698,6 @@ done:
 	    }
 
 	  /* FALLTHRU */
-	case GFC_SS_CONSTRUCTOR:
 	case GFC_SS_FUNCTION:
 	  for (n = 0; n < ss->dimen; n++)
 	    {
@@ -4709,6 +4708,30 @@ done:
 		info->end[dim]    = gfc_index_zero_node;
 	      info->stride[dim] = gfc_index_one_node;
 	    }
+	  break;
+
+	case GFC_SS_CONSTRUCTOR:
+	  {
+	    gcc_assert (info->shape != nullptr);
+	    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
+	    tree spacing = fold_convert_loc (input_location,
+					     gfc_array_index_type,
+					     TYPE_SIZE_UNIT (type));
+	    for (n = 0; n < ss->dimen; n++)
+	      {
+		int dim = ss->dim[n];
+
+		info->start[dim]  = gfc_index_zero_node;
+		info->end[dim]    = gfc_index_zero_node;
+		info->stride[dim] = gfc_index_one_node;
+		info->spacing[dim] = spacing;
+		tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
+						gfc_array_index_type);
+		spacing = fold_build2_loc (input_location, MULT_EXPR,
+					   gfc_array_index_type, spacing,
+					   extent);
+	      }
+	  }
 	  break;
 
 	default:
