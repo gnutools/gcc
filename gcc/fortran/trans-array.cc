@@ -3643,8 +3643,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar, bool tmp_array =
   tree index = conv_array_index (se, ss, ss->dim[n], n, ar);
 
   gfc_array_info *info = &ss->info->data.array;
-  se->expr = build_array_ref_dim (ss, index, info->spacing0, info->offset,
-				  tmp_array);
+  se->expr = build_array_ref_dim (ss, index, info->spacing[ss->dim[n]],
+				  info->offset, tmp_array);
 }
 
 
@@ -3921,12 +3921,6 @@ gfc_trans_preloop_setup (gfc_loopinfo * loop, int dim, int flag,
       if (dim == loop->dimen - 1 && loop->parent == NULL)
 	{
 	  gcc_assert (0 == ploop->order[0]);
-
-	  info->spacing0 = gfc_conv_array_spacing (info->descriptor, 0);
-	  /* Calculate the spacing of the innermost loop.  Hopefully this will
-	     allow the backend optimizers to do their stuff more effectively.
-	   */
-	  info->spacing0 = gfc_evaluate_now (info->spacing0, pblock);
 
 	  if (info->ref)
 	    {

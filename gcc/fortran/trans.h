@@ -197,8 +197,6 @@ typedef struct gfc_array_info
   /* To move some of the array index calculation out of the innermost loop.  */
   tree offset;
 
-  tree spacing0;
-
   /* Holds the SS for a subscript.  Indexed by actual dimension.  */
   struct gfc_ss *subscript[GFC_MAX_DIMENSIONS];
 
