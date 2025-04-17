@@ -2585,6 +2585,7 @@ public:
   void print_bb_jump (edge e);
   void print_bb_entry (basic_block bb);
   tree print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset, int * ignored_bits);
+  void print_ignored_stmt ();
   void print_value_update (exec_context & context, tree, const data_value &); 
   void end_stmt (gimple *);
   void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
@@ -3098,6 +3099,16 @@ context_printer::print_first_data_ref_part (exec_context & context, tree data_re
       return TREE_TYPE (ref);
     }
 }
+
+
+void
+context_printer::print_ignored_stmt ()
+{
+  pp_indent (&pp);
+  pp_string (&pp, "# ignored");
+  print_newline ();
+}
+
 
 void
 context_printer::print_value_update (exec_context & context, tree lhs, const data_value & value)
@@ -4244,16 +4255,23 @@ static bool
 is_ignored_function_call (gcall *g)
 {
   if (gimple_call_builtin_p (g, BUILT_IN_FREE))
+    /* TODO: Remove allocated storage.  */
     return true;
+  else if (gimple_call_builtin_p (g))
+    return false;
 
   tree fn = gimple_call_fn (g);
   if (TREE_CODE (fn) == ADDR_EXPR)
     fn = TREE_OPERAND (fn, 0);
   gcc_assert (TREE_CODE (fn) == FUNCTION_DECL);
-  const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fn));
-  if (strcmp (fn_name, "_gfortran_set_args") == 0
-      || strcmp (fn_name, "_gfortran_set_options") == 0)
-    return true;
+
+  if (DECL_STRUCT_FUNCTION (fn) == nullptr
+      && gimple_call_lhs (g) == NULL_TREE)
+    {
+      /* No known implementation: ignore the call and hope that it has no
+	 observable effect.  */
+      return true;
+    }
 
   return false;
 }
@@ -4264,7 +4282,10 @@ void
 exec_context::execute_call (gcall *g)
 {
   if (is_ignored_function_call (g))
-    return;
+    {
+      printer.print_ignored_stmt ();
+      return;
+    }
 
   tree lhs = gimple_call_lhs (g);
   optional <data_value> result;
@@ -4599,8 +4620,12 @@ execute (void)
   FOR_EACH_VEC_ELT (static_vars, i, varp)
     {
       tree var = *varp;
-      gassign *tmp_assign = gimple_build_assign (var, DECL_INITIAL (var));
-      root_context.execute (tmp_assign);
+      tree initial = DECL_INITIAL (var);
+      if (initial != NULL_TREE)
+	{
+	  gassign *tmp_assign = gimple_build_assign (var, initial);
+	  root_context.execute (tmp_assign);
+	}
     }
 
   struct function *main = find_main ();
