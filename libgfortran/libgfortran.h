@@ -477,7 +477,7 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_LBOUND(desc,i) ((desc)->dim[i].lower_bound)
 #define GFC_DESCRIPTOR_UBOUND(desc,i) ((desc)->dim[i]._ubound)
 #define GFC_DESCRIPTOR_SPACING(desc,i) ((desc)->dim[i].spacing)
-#define GFC_DESCRIPTOR_EXTENT(desc,i) (GFC_DESCRIPTOR_UBOUND(desc,i) + (GFC_DESCRIPTOR_LBOUND(desc,i) - 1))
+#define GFC_DESCRIPTOR_EXTENT(desc,i) (GFC_DESCRIPTOR_UBOUND(desc,i) - (GFC_DESCRIPTOR_LBOUND(desc,i) - 1))
 
 #define GFC_DESCRIPTOR_STRIDE(desc,i) (GFC_DESCRIPTOR_SPACING(desc,i) / GFC_DESCRIPTOR_SIZE(desc))
 
