@@ -1214,13 +1214,16 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
       type = TREE_TYPE (type);
     }
 
-  tree new_type = update_type_bounds (type, lbound, ubound, spacing, type,
-				      as->rank - 1);
-  if (POINTER_TYPE_P (TREE_TYPE (decl)))
-    TREE_TYPE (TREE_TYPE (decl)) = new_type;
-  else
-    TREE_TYPE (decl) = new_type;
-  type = new_type;
+  if (as->rank > 0)
+    {
+      tree new_type = update_type_bounds (type, lbound, ubound, spacing, type,
+					  as->rank - 1);
+      if (POINTER_TYPE_P (TREE_TYPE (decl)))
+	TREE_TYPE (TREE_TYPE (decl)) = new_type;
+      else
+	TREE_TYPE (decl) = new_type;
+      type = new_type;
+    }
 
   for (dim = GFC_TYPE_ARRAY_RANK (type);
        dim < GFC_TYPE_ARRAY_RANK (type) + GFC_TYPE_ARRAY_CORANK (type); dim++)
