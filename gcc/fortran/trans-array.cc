@@ -2839,6 +2839,33 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 	      gfc_add_block_to_block (&outer_loop->post, &se.post);
 	    }
 	  trans_array_constructor (ss, where);
+	  {
+	    gcc_assert (info->shape != nullptr || ss->dimen == 1);
+	    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
+	    if (ss_info->expr->ts.type == BT_CHARACTER
+		&& ss_info->expr->ts.u.cl->length
+		&& ss_info->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT)
+	      type = build_pointer_type (type);
+	    tree spacing = TYPE_SIZE_UNIT (type);
+	    if (spacing == NULL_TREE)
+	      spacing = ss_info->expr->ts.u.cl->backend_decl;
+	    spacing = fold_convert_loc (input_location, gfc_array_index_type,
+					spacing);
+	    for (n = 0; n < ss->dimen; n++)
+	      {
+		int dim = ss->dim[n];
+
+		info->spacing[dim] = spacing;
+		if (n < ss->dimen - 1)
+		  {
+		    tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
+						    gfc_array_index_type);
+		    spacing = fold_build2_loc (input_location, MULT_EXPR,
+					       gfc_array_index_type, spacing,
+					       extent);
+		  }
+	      }
+	  }
 	  break;
 
         case GFC_SS_TEMP:
@@ -4693,6 +4720,7 @@ done:
 
 	  /* FALLTHRU */
 	case GFC_SS_FUNCTION:
+	case GFC_SS_CONSTRUCTOR:
 	  for (n = 0; n < ss->dimen; n++)
 	    {
 	      int dim = ss->dim[n];
@@ -4702,37 +4730,6 @@ done:
 		info->end[dim]    = gfc_index_zero_node;
 	      info->stride[dim] = gfc_index_one_node;
 	    }
-	  break;
-
-	case GFC_SS_CONSTRUCTOR:
-	  {
-	    gcc_assert (info->shape != nullptr || ss->dimen == 1);
-	    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
-	    if (ss_info->expr->ts.type == BT_CHARACTER
-		&& ss_info->expr->ts.u.cl->length
-		&& ss_info->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT)
-	      type = build_pointer_type (type);
-	    tree spacing = fold_convert_loc (input_location,
-					     gfc_array_index_type,
-					     TYPE_SIZE_UNIT (type));
-	    for (n = 0; n < ss->dimen; n++)
-	      {
-		int dim = ss->dim[n];
-
-		info->start[dim]  = gfc_index_zero_node;
-		info->end[dim]    = gfc_index_zero_node;
-		info->stride[dim] = gfc_index_one_node;
-		info->spacing[dim] = spacing;
-		if (n < ss->dimen - 1)
-		  {
-		    tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
-						    gfc_array_index_type);
-		    spacing = fold_build2_loc (input_location, MULT_EXPR,
-					       gfc_array_index_type, spacing,
-					       extent);
-		  }
-	      }
-	  }
 	  break;
 
 	default:
