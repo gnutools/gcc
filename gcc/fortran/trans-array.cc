@@ -4708,6 +4708,10 @@ done:
 	  {
 	    gcc_assert (info->shape != nullptr || ss->dimen == 1);
 	    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
+	    if (ss_info->expr->ts.type == BT_CHARACTER
+		&& ss_info->expr->ts.u.cl->length
+		&& ss_info->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT)
+	      type = build_pointer_type (type);
 	    tree spacing = fold_convert_loc (input_location,
 					     gfc_array_index_type,
 					     TYPE_SIZE_UNIT (type));
