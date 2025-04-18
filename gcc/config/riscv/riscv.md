@@ -789,7 +789,7 @@
       rtx t5 = gen_reg_rtx (DImode);
       rtx t6 = gen_reg_rtx (DImode);
 
-      riscv_emit_binary (PLUS, operands[0], operands[1], operands[2]);
+      emit_insn (gen_addsi3_extended (t6, operands[1], operands[2]));
       if (GET_CODE (operands[1]) != CONST_INT)
 	emit_insn (gen_extend_insn (t4, operands[1], DImode, SImode, 0));
       else
@@ -799,7 +799,10 @@
       else
 	t5 = operands[2];
       emit_insn (gen_adddi3 (t3, t4, t5));
-      emit_insn (gen_extend_insn (t6, operands[0], DImode, SImode, 0));
+      rtx t7 = gen_lowpart (SImode, t6);
+      SUBREG_PROMOTED_VAR_P (t7) = 1;
+      SUBREG_PROMOTED_SET (t7, SRP_SIGNED);
+      emit_move_insn (operands[0], t7);
 
       riscv_expand_conditional_branch (operands[3], NE, t6, t3);
     }
@@ -835,8 +838,11 @@
 	emit_insn (gen_extend_insn (t3, operands[1], DImode, SImode, 0));
       else
 	t3 = operands[1];
-      riscv_emit_binary (PLUS, operands[0], operands[1], operands[2]);
-      emit_insn (gen_extend_insn (t4, operands[0], DImode, SImode, 0));
+      emit_insn (gen_addsi3_extended (t4, operands[1], operands[2]));
+      rtx t5 = gen_lowpart (SImode, t4);
+      SUBREG_PROMOTED_VAR_P (t5) = 1;
+      SUBREG_PROMOTED_SET (t5, SRP_SIGNED);
+      emit_move_insn (operands[0], t5);
 
       riscv_expand_conditional_branch (operands[3], LTU, t4, t3);
     }
@@ -974,7 +980,7 @@
       rtx t5 = gen_reg_rtx (DImode);
       rtx t6 = gen_reg_rtx (DImode);
 
-      riscv_emit_binary (MINUS, operands[0], operands[1], operands[2]);
+      emit_insn (gen_subsi3_extended (t6, operands[1], operands[2]));
       if (GET_CODE (operands[1]) != CONST_INT)
 	emit_insn (gen_extend_insn (t4, operands[1], DImode, SImode, 0));
       else
@@ -984,7 +990,10 @@
       else
 	t5 = operands[2];
       emit_insn (gen_subdi3 (t3, t4, t5));
-      emit_insn (gen_extend_insn (t6, operands[0], DImode, SImode, 0));
+      rtx t7 = gen_lowpart (SImode, t6);
+      SUBREG_PROMOTED_VAR_P (t7) = 1;
+      SUBREG_PROMOTED_SET (t7, SRP_SIGNED);
+      emit_move_insn (operands[0], t7);
 
       riscv_expand_conditional_branch (operands[3], NE, t6, t3);
     }
@@ -1023,8 +1032,11 @@
 	emit_insn (gen_extend_insn (t3, operands[1], DImode, SImode, 0));
       else
 	t3 = operands[1];
-      riscv_emit_binary (MINUS, operands[0], operands[1], operands[2]);
-      emit_insn (gen_extend_insn (t4, operands[0], DImode, SImode, 0));
+      emit_insn (gen_subsi3_extended (t4, operands[1], operands[2]));
+      rtx t5 = gen_lowpart (SImode, t4);
+      SUBREG_PROMOTED_VAR_P (t5) = 1;
+      SUBREG_PROMOTED_SET (t5, SRP_SIGNED);
+      emit_move_insn (operands[0], t5);
 
       riscv_expand_conditional_branch (operands[3], LTU, t3, t4);
     }
