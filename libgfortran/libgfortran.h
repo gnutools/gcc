@@ -560,12 +560,16 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
    | (sizeof(GFC_COMPLEX_17) << GFC_DTYPE_SIZE_SHIFT))
 #endif
 
+#define GFC_ARRAY_ELEM_ADDRESS(type, array_ptr, offset) \
+    ((type) (((char *)(array_ptr)) + (offset)))
 #define GFC_ARRAY_ELEM(type, array_ptr, offset) \
-    (*((type *) (((char *)(array_ptr)) + (offset))))
+    (*(GFC_ARRAY_ELEM_ADDRESS (type *, (array_ptr), (offset))))
+#define GFC_DESCRIPTOR_DIM_ELEM_ADDRESS(type, descr, dim, idx) \
+    GFC_ARRAY_ELEM_ADDRESS (type, (descr)->base_addr, (idx) * GFC_DESCRIPTOR_SPACING((descr), (dim)))
 #define GFC_DESCRIPTOR_DIM_ELEM(type, descr, dim, idx) \
-    GFC_ARRAY_ELEM (type, descr->base_addr, idx * GFC_DESCRIPTOR_SPACING(descr, dim))
+    (*(GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (type *, (descr), (dim), (idx))))
 #define GFC_DESCRIPTOR1_ELEM(type, descr, idx) \
-    GFC_DESCRIPTOR_DIM_ELEM (type, descr, 0, idx)
+    GFC_DESCRIPTOR_DIM_ELEM (type, (descr), 0, (idx))
 #define GFC_INCREMENT_PTR(type, ptr, incr) \
     ptr = (type*) (((char*)ptr) incr)
 

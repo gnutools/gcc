@@ -490,11 +490,11 @@ sinclude(`matmul_asm_'rtype_code`.m4')dnl
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM ('rtype_name` * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS ('rtype_name` * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, a, 0, x);
 		  s = ('rtype_name`) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -509,7 +509,7 @@ sinclude(`matmul_asm_'rtype_code`.m4')dnl
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, b, 1, y);
 	      s = ('rtype_name`) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name`, a, 0, n) * bbase_y[n];
@@ -524,7 +524,7 @@ sinclude(`matmul_asm_'rtype_code`.m4')dnl
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, b, 1, y);
 	  s = ('rtype_name`) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name`, a, 0, n)
@@ -555,11 +555,11 @@ sinclude(`matmul_asm_'rtype_code`.m4')dnl
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM ('rtype_name` * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS ('rtype_name` * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const 'rtype_name` * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const 'rtype_name` * restrict, a, 0, x);
 	      s = ('rtype_name`) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const 'rtype_name`, abase_x, n*ayspacing)

@@ -574,11 +574,11 @@ matmul_c16_avx (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_16) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -593,7 +593,7 @@ matmul_c16_avx (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n) * bbase_y[n];
@@ -608,7 +608,7 @@ matmul_c16_avx (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_16) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n)
@@ -639,11 +639,11 @@ matmul_c16_avx (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_16, abase_x, n*ayspacing)
@@ -1155,11 +1155,11 @@ matmul_c16_avx2 (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_16) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1174,7 +1174,7 @@ matmul_c16_avx2 (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n) * bbase_y[n];
@@ -1189,7 +1189,7 @@ matmul_c16_avx2 (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_16) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n)
@@ -1220,11 +1220,11 @@ matmul_c16_avx2 (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_16, abase_x, n*ayspacing)
@@ -1736,11 +1736,11 @@ matmul_c16_avx512f (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_16) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1755,7 +1755,7 @@ matmul_c16_avx512f (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n) * bbase_y[n];
@@ -1770,7 +1770,7 @@ matmul_c16_avx512f (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_16) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n)
@@ -1801,11 +1801,11 @@ matmul_c16_avx512f (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_16, abase_x, n*ayspacing)
@@ -2331,11 +2331,11 @@ matmul_c16_vanilla (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_16) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -2350,7 +2350,7 @@ matmul_c16_vanilla (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n) * bbase_y[n];
@@ -2365,7 +2365,7 @@ matmul_c16_vanilla (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_16) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n)
@@ -2396,11 +2396,11 @@ matmul_c16_vanilla (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_16, abase_x, n*ayspacing)
@@ -2985,11 +2985,11 @@ matmul_c16 (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	      dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+		  abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 		  s = (GFC_COMPLEX_16) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -3004,7 +3004,7 @@ matmul_c16 (gfc_array_c16 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	      bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n) * bbase_y[n];
@@ -3019,7 +3019,7 @@ matmul_c16 (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
 	  s = (GFC_COMPLEX_16) 0;
 	  for (n = 0; n < count; n++)
 	    s += GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16, a, 0, n)
@@ -3050,11 +3050,11 @@ matmul_c16 (gfc_array_c16 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, b, 1, y);
-	  dest_y = GFC_DESCRIPTOR_DIM_ELEM (GFC_COMPLEX_16 * restrict, retarray, 1, y);
+	  bbase_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, b, 1, y);
+	  dest_y = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (GFC_COMPLEX_16 * restrict, retarray, 1, y);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = GFC_DESCRIPTOR_DIM_ELEM (const GFC_COMPLEX_16 * restrict, a, 0, x);
+	      abase_x = GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (const GFC_COMPLEX_16 * restrict, a, 0, x);
 	      s = (GFC_COMPLEX_16) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_ARRAY_ELEM (const GFC_COMPLEX_16, abase_x, n*ayspacing)
