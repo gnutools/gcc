@@ -57,7 +57,7 @@ maxloc2_16_s4 (gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_char
   if (extent <= 0)
     return 0;
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
 
   ret = 1;
   src = array->base_addr;
@@ -99,7 +99,7 @@ mmaxloc2_16_s4 (gfc_array_s4 * const restrict array,
   if (extent <= 0)
     return 0;
 
-  sspacing = GFC_DESCRIPTOR_SPACING(array,0) * len;
+  sspacing = GFC_DESCRIPTOR_SPACING(array,0);
 
   mask_kind = GFC_DESCRIPTOR_SIZE (mask);
   mbase = mask->base_addr;
