@@ -213,6 +213,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "wide-int.h"
 #include "selftest.h"
 #include "tree-ssanames.h"
+#include "tree-dfa.h"
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
    secondary queue used during optimization to accommodate passes that
@@ -3903,10 +3904,37 @@ exec_context::evaluate (tree expr) const
 	  }
 	else
 	  {
-	    data_storage *strg = find_reachable_var (TREE_OPERAND (expr, 0));
-	    gcc_assert (strg != nullptr);
-	    storage_address address (strg->get_ref (), 0);
-	    result.set_address (address);
+	    poly_int64 offset;
+	    tree var = get_addr_base_and_unit_offset (TREE_OPERAND (expr, 0),
+						      &offset);
+
+	    HOST_WIDE_INT off;
+	    bool is_constant = offset.is_constant (&off);
+	    gcc_assert (is_constant && off >= 0);
+	    unsigned off_bits = off * CHAR_BIT;
+
+	    if (TREE_CODE (var) == VAR_DECL)
+	      {
+		data_storage *strg = find_reachable_var (var);
+		gcc_assert (strg != nullptr);
+		storage_address address (strg->get_ref (), off_bits);
+		result.set_address (address);
+	      }
+	    else if (TREE_CODE (var) == INDIRECT_REF
+		     || TREE_CODE (var) == MEM_REF)
+	      {
+		gcc_assert (TREE_CODE (var) == INDIRECT_REF
+			    || integer_zerop (TREE_OPERAND (var, 1)));
+		data_value root_val = evaluate (TREE_OPERAND (var, 0));
+		gcc_assert (root_val.classify () == VAL_ADDRESS);
+		storage_address *root_addr = root_val.get_address ();
+		gcc_assert (root_addr != nullptr);
+		gcc_assert (root_addr->offset == 0);
+		storage_address address (root_addr->storage, off_bits);
+		result.set_address (address);
+	      }
+	    else
+	      gcc_unreachable ();
 	  }
 	return result;
       }
@@ -4047,7 +4075,7 @@ data_value
 exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
 {
   gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
-	      || (TREE_CODE (rhs) == INTEGER_CST
+	      || (TREE_CODE (TREE_TYPE (rhs)) == INTEGER_TYPE
 		  && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
 		  && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
 		  && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs)))
@@ -4065,6 +4093,11 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
 	enum value_type rhs_type = val_rhs.classify ();
 	if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
 	  {
+	    gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
+			|| (TREE_CODE (rhs) == INTEGER_CST
+			    && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
+			    && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
+			    && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs))));
 	    tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
 	    tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
 	    tree t = fold_binary (code, type, lval, rval);
@@ -6806,6 +6839,146 @@ exec_context_evaluate_literal_tests ()
   ASSERT_PRED1 (wi::fits_shwi_p, wi_value);
   int int_value = wi_value.to_shwi ();
   ASSERT_EQ (int_value, 13);
+
+  heap_memory mem2;
+  context_printer printer2;
+
+  tree derived = make_node (RECORD_TYPE);
+  tree field2 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (field2) = derived;
+  DECL_CHAIN (field2) = NULL_TREE;
+  tree field1 = build_decl (input_location, FIELD_DECL,
+			    get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field1) = derived;
+  DECL_CHAIN (field1) = field2;
+  TYPE_FIELDS (derived) = field1;
+  layout_type (derived);
+
+  tree d = create_var (derived, "d");
+
+  vec<tree> decls2{};
+  decls2.safe_push (d);
+
+  context_builder builder2 {};
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (mem2, printer2);
+
+  tree comp = fold_build3_loc (input_location, COMPONENT_REF,
+			       integer_type_node, d, field2, NULL_TREE);
+  tree int_ptr = build_pointer_type (integer_type_node);
+  tree comp_addr = build1 (ADDR_EXPR, int_ptr, comp);
+
+  data_value val2 = ctx2.evaluate (comp_addr);
+  ASSERT_EQ (val2.classify (), VAL_ADDRESS);
+  storage_address *ptr_addr2 = val2.get_address ();
+  ASSERT_NE (ptr_addr2, nullptr);
+  data_storage &strg_ptr2 = ptr_addr2->storage.get ();
+  ASSERT_PRED1 (strg_ptr2.matches, d);
+  ASSERT_EQ (ptr_addr2->offset, HOST_BITS_PER_INT);
+
+  heap_memory mem3;
+  context_printer printer3;
+
+  tree derived3 = make_node (RECORD_TYPE);
+  tree d3_field2 = build_decl (input_location, FIELD_DECL,
+			       get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (d3_field2) = derived3;
+  DECL_CHAIN (d3_field2) = NULL_TREE;
+  tree d3_field1 = build_decl (input_location, FIELD_DECL,
+			       get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (d3_field1) = derived3;
+  DECL_CHAIN (d3_field1) = d3_field2;
+  TYPE_FIELDS (derived3) = d3_field1;
+  layout_type (derived3);
+
+  tree d3 = create_var (derived3, "d3");
+  tree ptr_d3 = build_pointer_type (derived3);
+  tree p3 = create_var (ptr_d3, "p3");
+
+  vec<tree> decls3{};
+  decls3.safe_push (d3);
+  decls3.safe_push (p3);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (mem3, printer3);
+
+  data_storage *strg_d3 = ctx3.find_reachable_var (d3);
+  gcc_assert (strg_d3 != nullptr);
+  data_storage *strg_p3 = ctx3.find_reachable_var (p3);
+  gcc_assert (strg_p3 != nullptr);
+  storage_address addr_d3 (strg_d3->get_ref (), 0);
+  data_value val_p3 (ptr_d3);
+  val_p3.set_address (addr_d3);
+  strg_p3->set (val_p3);
+
+  tree deref_p3 = build_fold_indirect_ref_loc (input_location, p3);
+  tree comp3 = fold_build3_loc (input_location, COMPONENT_REF,
+			        integer_type_node, deref_p3, d3_field2,
+				NULL_TREE);
+  tree int_ptr3 = build_pointer_type (integer_type_node);
+  tree comp_addr3 = build1 (ADDR_EXPR, int_ptr3, comp3);
+
+  data_value val3 = ctx3.evaluate (comp_addr3);
+  ASSERT_EQ (val3.classify (), VAL_ADDRESS);
+  storage_address *ptr_addr3 = val3.get_address ();
+  ASSERT_NE (ptr_addr3, nullptr);
+  data_storage &strg_ptr3 = ptr_addr3->storage.get ();
+  ASSERT_PRED1 (strg_ptr3.matches, d3);
+  ASSERT_EQ (ptr_addr3->offset, HOST_BITS_PER_INT);
+
+  heap_memory mem4;
+  context_printer printer4;
+
+  tree derived4 = make_node (RECORD_TYPE);
+  tree d4_field2 = build_decl (input_location, FIELD_DECL,
+			       get_identifier ("field2"), integer_type_node);
+  DECL_CONTEXT (d4_field2) = derived4;
+  DECL_CHAIN (d4_field2) = NULL_TREE;
+  tree d4_field1 = build_decl (input_location, FIELD_DECL,
+			       get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (d4_field1) = derived4;
+  DECL_CHAIN (d4_field1) = d4_field2;
+  TYPE_FIELDS (derived4) = d4_field1;
+  layout_type (derived4);
+
+  tree d4 = create_var (derived4, "d4");
+  tree ptr_d4 = build_pointer_type (derived4);
+  tree p4 = create_var (ptr_d4, "p4");
+
+  vec<tree> decls4{};
+  decls4.safe_push (d4);
+  decls4.safe_push (p4);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (mem4, printer4);
+
+  data_storage *strg_d4 = ctx4.find_reachable_var (d4);
+  gcc_assert (strg_d4 != nullptr);
+  data_storage *strg_p4 = ctx4.find_reachable_var (p4);
+  gcc_assert (strg_p4 != nullptr);
+  storage_address addr_d4 (strg_d4->get_ref (), 0);
+  data_value val_p4 (ptr_d4);
+  val_p4.set_address (addr_d4);
+  strg_p4->set (val_p4);
+
+  tree mem_p4 = fold_build2_loc (input_location, MEM_REF,
+				 derived4, p4, build_int_cst (ptr_d4, 0));
+  tree comp4 = fold_build3_loc (input_location, COMPONENT_REF,
+			        integer_type_node, mem_p4, d4_field2,
+				NULL_TREE);
+  tree int_ptr4 = build_pointer_type (integer_type_node);
+  tree comp_addr4 = build1 (ADDR_EXPR, int_ptr4, comp4);
+
+  data_value val4 = ctx4.evaluate (comp_addr4);
+  ASSERT_EQ (val4.classify (), VAL_ADDRESS);
+  storage_address *ptr_addr4 = val4.get_address ();
+  ASSERT_NE (ptr_addr4, nullptr);
+  data_storage &strg_ptr4 = ptr_addr4->storage.get ();
+  ASSERT_PRED1 (strg_ptr4.matches, d4);
+  ASSERT_EQ (ptr_addr4->offset, HOST_BITS_PER_INT);
 }
 
 void
