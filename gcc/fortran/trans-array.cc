@@ -4706,7 +4706,7 @@ done:
 
 	case GFC_SS_CONSTRUCTOR:
 	  {
-	    gcc_assert (info->shape != nullptr);
+	    gcc_assert (info->shape != nullptr || ss->dimen == 1);
 	    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
 	    tree spacing = fold_convert_loc (input_location,
 					     gfc_array_index_type,
@@ -4719,11 +4719,14 @@ done:
 		info->end[dim]    = gfc_index_zero_node;
 		info->stride[dim] = gfc_index_one_node;
 		info->spacing[dim] = spacing;
-		tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
-						gfc_array_index_type);
-		spacing = fold_build2_loc (input_location, MULT_EXPR,
-					   gfc_array_index_type, spacing,
-					   extent);
+		if (n < ss->dimen - 1)
+		  {
+		    tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
+						    gfc_array_index_type);
+		    spacing = fold_build2_loc (input_location, MULT_EXPR,
+					       gfc_array_index_type, spacing,
+					       extent);
+		  }
 	      }
 	  }
 	  break;
