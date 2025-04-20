@@ -3635,8 +3635,8 @@ build_ptr_array_ref (tree data, tree offset)
 
 
 tree
-build_array_ref_dim (gfc_ss *ss, tree index, tree spacing,
-		     tree offset = NULL_TREE, bool tmp_array = false)
+build_array_ref_dim (gfc_ss *ss, tree index, tree lbound, tree spacing,
+		     bool tmp_array = false)
 {
   gfc_array_info *info = &ss->info->data.array;
 
@@ -3648,8 +3648,8 @@ build_array_ref_dim (gfc_ss *ss, tree index, tree spacing,
 			     || ss_type == GFC_SS_INTRINSIC
 			     || tmp_array
 			     || non_negative_strides_array_p (info->descriptor);
-  return gfc_build_array_ref (base, index, non_negative_stride, NULL_TREE,
-			      spacing, offset);
+  return gfc_build_array_ref (base, index, non_negative_stride, lbound,
+			      spacing);
 }
 
 
@@ -3670,8 +3670,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar, bool tmp_array =
   tree index = conv_array_index (se, ss, ss->dim[n], n, ar);
 
   gfc_array_info *info = &ss->info->data.array;
-  se->expr = build_array_ref_dim (ss, index, info->spacing[ss->dim[n]],
-				  info->offset, tmp_array);
+  se->expr = build_array_ref_dim (ss, index, info->lbound[ss->dim[n]],
+				  info->spacing[ss->dim[n]], tmp_array);
 }
 
 
@@ -3880,7 +3880,7 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 
   gfc_add_block_to_block (pblock, &se.pre);
 
-  tree tmp = build_array_ref_dim (ss, index, info->spacing[array_dim]);
+  tree tmp = build_array_ref_dim (ss, index, info->lbound[array_dim], info->spacing[array_dim]);
   tmp = gfc_build_addr_expr (NULL_TREE, tmp);
   tmp = fold_convert_loc (input_location, type, tmp);
   info->data = gfc_evaluate_now (tmp, pblock);
@@ -4274,7 +4274,7 @@ evaluate_bound (stmtblock_t *block, tree *bounds, gfc_expr ** values,
 
 
 static void
-conv_array_spacing (stmtblock_t * block, gfc_ss * ss, int dim)
+conv_array_lbound_spacing (stmtblock_t * block, gfc_ss * ss, int dim)
 {
   gfc_array_info *info;
 
@@ -4312,6 +4312,12 @@ conv_array_spacing (stmtblock_t * block, gfc_ss * ss, int dim)
     info->spacing[dim] = gfc_evaluate_now (value, block);
   else
     info->spacing[dim] = value;
+
+  value = gfc_conv_array_lbound (desc, dim);
+  if (save_value)
+    info->lbound[dim] = gfc_evaluate_now (value, block);
+  else
+    info->lbound[dim] = value;
 }
 
 
@@ -4624,13 +4630,13 @@ done:
 	  for (n = 0; n < ss->dimen; n++)
 	    {
 	      gfc_conv_section_startstride (&outer_loop->pre, ss, ss->dim[n]);
-	      conv_array_spacing (&outer_loop->pre, ss, ss->dim[n]);
+	      conv_array_lbound_spacing (&outer_loop->pre, ss, ss->dim[n]);
 	    }
 	  if (loop->parent == nullptr)
 	    for (n = 0; n < GFC_MAX_DIMENSIONS; n++)
 	      if (info->subscript[n]
 		  && info->subscript[n]->info->type == GFC_SS_SCALAR)
-		conv_array_spacing (&outer_loop->pre, ss, n);
+		conv_array_lbound_spacing (&outer_loop->pre, ss, n);
 	  break;
 
 	case GFC_SS_INTRINSIC:

@@ -3926,7 +3926,8 @@ do_warn_aggressive_loop_optimizations (class loop *loop,
 	 known constant bound.  */
       || wi::cmpu (i_bound, wi::to_widest (loop->nb_iterations)) >= 0
       /* And undefined behavior happens unconditionally.  */
-      || !dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (stmt)))
+      || !dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (stmt))
+      || loop->latch == gimple_bb (stmt))
     return;
 
   edge e = single_exit (loop);
