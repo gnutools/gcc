@@ -3648,10 +3648,8 @@ build_array_ref_dim (gfc_ss *ss, tree index, tree spacing,
 			     || ss_type == GFC_SS_INTRINSIC
 			     || tmp_array
 			     || non_negative_strides_array_p (info->descriptor);
-  return gfc_build_array_ref (base, index, 
-			      non_negative_stride
-			      && (!offset || integer_zerop (offset)),
-			      NULL_TREE, spacing, offset);
+  return gfc_build_array_ref (base, index, non_negative_stride, NULL_TREE,
+			      spacing, offset);
 }
 
 
@@ -6891,7 +6889,7 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 
 /* Calculate the overall offset, including subreferences.  */
 void
-gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc,
+gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 			bool subref, gfc_expr *expr)
 {
   tree field;
@@ -6901,15 +6899,13 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc,
   gfc_se start;
   int n;
 
-  tree offset = gfc_index_zero_node;
-
   bool non_negative_strides = non_negative_strides_array_p (desc);
 
   tree tmp = gfc_conv_array_data (desc);
   tree array = build_fold_indirect_ref_loc (input_location, tmp);
 
   tmp = gfc_build_array_ref (array, gfc_index_zero_node, non_negative_strides,
-			     gfc_index_zero_node, NULL_TREE);
+			     gfc_index_zero_node, NULL_TREE, offset);
 
   /* Offset the data pointer for pointer assignments from arrays with
      subreferences; e.g. my_integer => my_type(:)%integer_component.  */

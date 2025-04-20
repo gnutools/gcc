@@ -146,7 +146,7 @@ void gfc_conv_array_ref (gfc_se *, gfc_array_ref *, gfc_expr *, locus *);
 void gfc_conv_tmp_array_ref (gfc_se * se);
 
 /* Calculate the overall offset, including subreferences.  */
-void gfc_get_dataptr_offset (stmtblock_t*, tree, tree, bool, gfc_expr*);
+void gfc_get_dataptr_offset (stmtblock_t*, tree, tree, tree, bool, gfc_expr*);
 /* Obtain the span of an array.  */
 tree gfc_get_array_span (tree, gfc_expr *);
 /* Evaluate an array expression.  */

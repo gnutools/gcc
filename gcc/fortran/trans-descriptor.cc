@@ -2468,7 +2468,7 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
 
   /* Add any offsets from subreferences.  */
   if (subref)
-    gfc_get_dataptr_offset (block, dest, src, subref, src_expr);
+    gfc_get_dataptr_offset (block, dest, src, NULL_TREE, subref, src_expr);
 
   /* ....and set the span field.  */
   tree tmp2;
@@ -3077,12 +3077,13 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
   gfc_conv_descriptor_dtype_set (block, dest, dtype);
 
+  /* The 1st element in the section.  */
+  tree base = gfc_index_zero_node;
+  if (src_expr->ts.type == BT_CHARACTER && src_expr->rank == 0 && corank)
+    base = gfc_conv_descriptor_elem_len_get (dest);
+
   /* The offset from the 1st element in the section.  */
   tree offset = gfc_index_zero_node;
-
-  /* The 1st element in the section.  */
-  if (src_expr->ts.type == BT_CHARACTER && src_expr->rank == 0 && corank)
-    offset = gfc_conv_descriptor_elem_len_get (dest);
 
   for (int n = 0; n < ndim; n++)
     {
@@ -3109,8 +3110,8 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 			     start, tmp);
       tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
 			     tmp, spacing);
-      offset = fold_build2_loc (input_location, PLUS_EXPR, TREE_TYPE (tmp),
-				offset, tmp);
+      base = fold_build2_loc (input_location, PLUS_EXPR, TREE_TYPE (tmp),
+			      base, tmp);
 
       if (info->ref
 	  && info->ref->u.ar.dimen_type[n] == DIMEN_ELEMENT)
@@ -3172,7 +3173,7 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 
   if (data_needed)
     /* Point the data pointer at the 1st element in the section.  */
-    gfc_get_dataptr_offset (block, dest, src, subref, src_expr);
+    gfc_get_dataptr_offset (block, dest, src, base, subref, src_expr);
   else
     gfc_conv_descriptor_data_set (block, dest,
 				  gfc_index_zero_node);

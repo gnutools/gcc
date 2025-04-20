@@ -5977,7 +5977,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       if (POINTER_TYPE_P (TREE_TYPE (gfc)))
 	gfc = build_fold_indirect_ref_loc (input_location, gfc);
       else if (is_subref_array (e) && e->ts.type != BT_CHARACTER)
-	 gfc_get_dataptr_offset (&se.pre, gfc, gfc, true, e);
+	gfc_get_dataptr_offset (&se.pre, gfc, gfc, NULL_TREE, true, e);
     }
   if (e->ts.type == BT_CHARACTER)
     {

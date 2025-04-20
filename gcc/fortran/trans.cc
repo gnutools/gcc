@@ -435,8 +435,15 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 				     build_int_cst (gfc_array_index_type,
 						    elt_align));
 	}
-      return build4_loc (input_location, ARRAY_REF, type, base, index,
-			 min_idx, spacing);
+      tree ref = build4_loc (input_location, ARRAY_REF, type, base, index,
+			     min_idx, spacing);
+      if (!offset || integer_zerop (offset))
+	return ref;
+
+      tree addr = gfc_build_addr_expr (NULL_TREE, ref);
+
+      tree ptr = fold_build_pointer_plus_loc (input_location, addr, offset);
+      return build_fold_indirect_ref_loc (input_location, ptr);
     }
   /* Otherwise use pointer arithmetic.  */
   else
