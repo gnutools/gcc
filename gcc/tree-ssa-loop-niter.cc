@@ -3926,8 +3926,8 @@ do_warn_aggressive_loop_optimizations (class loop *loop,
 	 known constant bound.  */
       || wi::cmpu (i_bound, wi::to_widest (loop->nb_iterations)) >= 0
       /* And undefined behavior happens unconditionally.  */
-      || !dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (stmt))
-      || loop->latch == gimple_bb (stmt))
+      || !(dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (stmt))
+	   || loop->latch == gimple_bb (stmt)))
     return;
 
   edge e = single_exit (loop);
@@ -4004,7 +4004,8 @@ record_estimate (class loop *loop, tree bound, const widest_int &i_bound,
 
   /* If statement is executed on every path to the loop latch, we can directly
      infer the upper bound on the # of iterations of the loop.  */
-  if (!dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (at_stmt)))
+  if (!(dominated_by_p (CDI_DOMINATORS, loop->latch, gimple_bb (at_stmt)))
+	|| loop->latch == gimple_bb (at_stmt))
     upper = false;
 
   /* Update the number of iteration estimates according to the bound.
