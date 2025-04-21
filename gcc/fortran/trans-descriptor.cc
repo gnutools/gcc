@@ -3079,8 +3079,6 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 
   /* The 1st element in the section.  */
   tree base = gfc_index_zero_node;
-  if (src_expr->ts.type == BT_CHARACTER && src_expr->rank == 0 && corank)
-    base = gfc_conv_descriptor_elem_len_get (dest);
 
   /* The offset from the 1st element in the section.  */
   tree offset = gfc_index_zero_node;
