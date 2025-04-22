@@ -2845,8 +2845,7 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 					       ? &CLASS_DATA (ss_info->expr)->ts
 					       : &ss_info->expr->ts);
 	    if (ss_info->expr->ts.type == BT_CHARACTER
-		&& ss_info->expr->ts.u.cl->length
-		&& ss_info->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT)
+		&& gfc_is_constant_expr (ss_info->expr))
 	      type = build_pointer_type (type);
 	    tree spacing = TYPE_SIZE_UNIT (type);
 	    if (spacing == NULL_TREE)
