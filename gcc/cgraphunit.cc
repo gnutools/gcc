@@ -4438,6 +4438,28 @@ exec_context::evaluate_condition (gcond *cond) const
       else
 	gcc_unreachable ();
     }
+  else if (lhs_type == VAL_ADDRESS && rhs_type == VAL_ADDRESS)
+    {
+      storage_address *laddr = val_lhs.get_address ();
+      storage_address *raddr = val_rhs.get_address ();
+
+      gcc_assert (laddr != nullptr && raddr != nullptr);
+
+      bool equal = &laddr->storage.get () == &raddr->storage.get ()
+		   && laddr->offset == raddr->offset;
+
+      switch (code)
+	{
+	case EQ_EXPR:
+	  return equal;
+
+	case NE_EXPR:
+	  return !equal;
+
+	default:
+	  gcc_unreachable ();
+	}
+    }
   else if ((lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
 	   || (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT))
     {
@@ -7410,6 +7432,109 @@ exec_context_evaluate_condition_tests ()
   gcond *cond4 = gimple_build_cond (EQ_EXPR, p1, p2, NULL_TREE, NULL_TREE);
 
   ASSERT_FALSE (ctx2.evaluate_condition (cond4));
+
+
+  heap_memory mem3;
+  context_printer printer3;
+
+  tree x1 = create_var (integer_type_node, "x1");
+  tree x2 = create_var (integer_type_node, "x2");
+  tree px1 = create_var (ptr_type_node, "px1");
+  tree px2 = create_var (ptr_type_node, "px2");
+
+  vec<tree> decls3 {};
+  decls3.safe_push (x1);
+  decls3.safe_push (x2);
+  decls3.safe_push (px1);
+  decls3.safe_push (px2);
+
+  context_builder builder3 {};
+  builder3.add_decls (&decls3);
+  exec_context ctx3 = builder3.build (mem3, printer3);
+
+  data_storage *strg3_x1 = ctx3.find_reachable_var (x1);
+  gcc_assert (strg3_x1 != nullptr);
+  storage_address addr_x1 (strg3_x1->get_ref (), 0);
+  data_value val_addr1 (HOST_BITS_PER_PTR);
+  val_addr1.set_address (addr_x1);
+
+  data_storage *strg3_px1 = ctx3.find_reachable_var (px1);
+  gcc_assert (strg3_px1 != nullptr);
+  strg3_px1->set (val_addr1);
+
+  gcond *cond5 = gimple_build_cond (EQ_EXPR, px1, px1, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx3.evaluate_condition (cond5));
+
+  gcond *cond6 = gimple_build_cond (NE_EXPR, px1, px1, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx3.evaluate_condition (cond6));
+
+  data_storage *strg3_x2 = ctx3.find_reachable_var (x2);
+  gcc_assert (strg3_x2 != nullptr);
+  storage_address addr_x2 (strg3_x2->get_ref (), 0);
+  data_value val_addr2 (HOST_BITS_PER_PTR);
+  val_addr2.set_address (addr_x2);
+
+  data_storage *strg3_px2 = ctx3.find_reachable_var (px2);
+  gcc_assert (strg3_px2 != nullptr);
+  strg3_px2->set (val_addr2);
+
+  gcond *cond7 = gimple_build_cond (EQ_EXPR, px1, px2, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx3.evaluate_condition (cond7));
+
+  gcond *cond8 = gimple_build_cond (NE_EXPR, px2, px1, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx3.evaluate_condition (cond8));
+
+
+  heap_memory mem4;
+  context_printer printer4;
+
+  tree pm1 = create_var (ptr_type_node, "pm1");
+  tree pm2 = create_var (ptr_type_node, "pm2");
+
+  vec<tree> decls4 {};
+  decls4.safe_push (pm1);
+  decls4.safe_push (pm2);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (mem4, printer4);
+
+  data_storage & m1 = ctx4.allocate (4);
+  storage_address addr_m11 (m1.get_ref (), CHAR_BIT);
+  data_value val_addr_m11 (HOST_BITS_PER_PTR);
+  val_addr_m11.set_address (addr_m11);
+
+  data_storage *strg4_pm1 = ctx4.find_reachable_var (pm1);
+  gcc_assert (strg4_pm1 != nullptr);
+  strg4_pm1->set (val_addr_m11);
+
+  storage_address addr_m12 (m1.get_ref (), 2 * CHAR_BIT);
+  data_value val_addr_m12 (HOST_BITS_PER_PTR);
+  val_addr_m12.set_address (addr_m12);
+
+  data_storage *strg4_pm2 = ctx4.find_reachable_var (pm2);
+  gcc_assert (strg4_pm2 != nullptr);
+  strg4_pm2->set (val_addr_m12);
+
+  gcond *cond09 = gimple_build_cond (EQ_EXPR, pm1, pm2, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx4.evaluate_condition (cond09));
+
+  gcond *cond10 = gimple_build_cond (NE_EXPR, pm2, pm1, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx4.evaluate_condition (cond10));
+
+  gcond *cond11 = gimple_build_cond (EQ_EXPR, pm1, pm1, NULL_TREE, NULL_TREE);
+
+  ASSERT_TRUE (ctx4.evaluate_condition (cond11));
+
+  gcond *cond12 = gimple_build_cond (NE_EXPR, pm2, pm2, NULL_TREE, NULL_TREE);
+
+  ASSERT_FALSE (ctx4.evaluate_condition (cond12));
 }
 
 void
