@@ -125,4 +125,6 @@ tree gfc_get_caf_reference_type ();
 
 tree gfc_build_incomplete_array_type (tree, tree);
 
+tree gfc_get_unbounded_array_type (tree);
+
 #endif

@@ -4301,4 +4301,41 @@ gfc_build_incomplete_array_type (tree elt_type, tree index_type)
 }
 
 
+tree
+gfc_get_unbounded_array_type (tree type)
+{
+  bool ptr_wrapper = TREE_CODE (type) == POINTER_TYPE;
+
+  tree array_type;
+  if (ptr_wrapper)
+    array_type = TREE_TYPE (type);
+  else
+    array_type = type;
+
+  gcc_assert (TREE_CODE (array_type) == ARRAY_TYPE);
+  tree index_type = TYPE_DOMAIN (array_type);
+  if (TYPE_MAX_VALUE (index_type) == NULL_TREE
+      && TYPE_SIZE (array_type) == NULL_TREE
+      && TYPE_SIZE_UNIT (array_type) == NULL_TREE)
+    return type;
+
+  tree modified_index_type = build_distinct_type_copy (index_type);
+  TYPE_MAX_VALUE (modified_index_type) = NULL_TREE;
+
+  tree modified_array_type = build_distinct_type_copy (array_type);
+  TYPE_DOMAIN (modified_array_type) = modified_index_type;
+  TYPE_SIZE (modified_array_type) = NULL_TREE;
+  TYPE_SIZE_UNIT (modified_array_type) = NULL_TREE;
+  layout_type (modified_array_type);
+
+  tree modified_type;
+  if (ptr_wrapper)
+    modified_type = build_pointer_type (modified_array_type);
+  else
+    modified_type = modified_array_type;
+
+  return modified_type;
+}
+
+
 #include "gt-fortran-trans-types.h"

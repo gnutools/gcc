@@ -3882,7 +3882,8 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 
   tree tmp = build_array_ref_dim (ss, index, info->lbound[array_dim], info->spacing[array_dim]);
   tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-  tmp = fold_convert_loc (input_location, type, tmp);
+  tree fixed_type = gfc_get_unbounded_array_type (type);
+  tmp = fold_convert_loc (input_location, fixed_type, tmp);
   info->data = gfc_evaluate_now (tmp, pblock);
 }
 

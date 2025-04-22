@@ -3909,27 +3909,9 @@ gfc_grow_array (stmtblock_t * pblock, tree desc, tree extra)
 
   /* Reset array type upper bound if known.  */
   tree dataptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc));
-  gcc_assert (TREE_CODE (dataptr_type) == POINTER_TYPE);
-  tree array_type = TREE_TYPE (dataptr_type);
-  gcc_assert (TREE_CODE (array_type) == ARRAY_TYPE);
-  tree index_type = TYPE_DOMAIN (array_type);
-  if (index_type != NULL_TREE
-      && (TYPE_MAX_VALUE (index_type) != NULL_TREE
-	  || TYPE_SIZE (array_type) != NULL_TREE
-	  || TYPE_SIZE_UNIT (array_type) != NULL_TREE))
-    {
-      tree fixed_index_type = build_distinct_type_copy (index_type);
-      TYPE_MAX_VALUE (fixed_index_type) = NULL_TREE;
-
-      tree fixed_array_type = build_distinct_type_copy (array_type);
-      TYPE_DOMAIN (fixed_array_type) = fixed_index_type;
-      TYPE_SIZE (fixed_array_type) = NULL_TREE;
-      TYPE_SIZE_UNIT (fixed_array_type) = NULL_TREE;
-      layout_type (fixed_array_type);
-
-      tree fixed_ptr_type = build_pointer_type (fixed_array_type);
-      GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc)) = fixed_ptr_type;
-    }
+  tree fixed_ptr_type = gfc_get_unbounded_array_type (dataptr_type);
+  if (fixed_ptr_type != dataptr_type)
+    GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc)) = fixed_ptr_type;
 
   /* Call the realloc() function.  */
   tmp = gfc_call_realloc (pblock, arg0, arg1);
