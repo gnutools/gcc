@@ -10447,9 +10447,13 @@ trans_class_vptr_len_assignment (stmtblock_t *block, gfc_expr * le,
 	    pre = &rse->pre;
 
 	  if (class_expr != NULL_TREE && UNLIMITED_POLY (re))
-	      tmp = gfc_evaluate_now (TREE_OPERAND (rse->expr, 0), &rse->pre);
+	    {
+	      tmp = gfc_build_addr_expr (NULL_TREE, rse->expr);
+	      tmp = gfc_evaluate_now (tmp, &rse->pre);
+	      tmp = build_fold_indirect_ref_loc (input_location, tmp);
+	    }
 	  else
-	      tmp = gfc_evaluate_now (rse->expr, &rse->pre);
+	    tmp = gfc_evaluate_now (rse->expr, &rse->pre);
 
 	  rse->expr = tmp;
 	}
