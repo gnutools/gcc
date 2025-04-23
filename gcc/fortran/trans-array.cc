@@ -4273,12 +4273,13 @@ evaluate_bound (stmtblock_t *block, tree *bounds, gfc_expr ** values,
 }
 
 
-static void
-conv_array_lbound_spacing (stmtblock_t * block, gfc_ss * ss, int dim)
+void
+gfc_conv_array_lbound_spacing (stmtblock_t * block, gfc_ss * ss, int dim)
 {
   gfc_array_info *info;
 
-  gcc_assert (ss->info->type == GFC_SS_SECTION);
+  gcc_assert (ss->info->type == GFC_SS_SECTION
+	      || ss->info->type == GFC_SS_COMPONENT);
 
   info = &ss->info->data.array;
   tree desc = info->descriptor;
@@ -4630,13 +4631,13 @@ done:
 	  for (n = 0; n < ss->dimen; n++)
 	    {
 	      gfc_conv_section_startstride (&outer_loop->pre, ss, ss->dim[n]);
-	      conv_array_lbound_spacing (&outer_loop->pre, ss, ss->dim[n]);
+	      gfc_conv_array_lbound_spacing (&outer_loop->pre, ss, ss->dim[n]);
 	    }
 	  if (loop->parent == nullptr)
 	    for (n = 0; n < GFC_MAX_DIMENSIONS; n++)
 	      if (info->subscript[n]
 		  && info->subscript[n]->info->type == GFC_SS_SCALAR)
-		conv_array_lbound_spacing (&outer_loop->pre, ss, n);
+		gfc_conv_array_lbound_spacing (&outer_loop->pre, ss, n);
 	  break;
 
 	case GFC_SS_INTRINSIC:

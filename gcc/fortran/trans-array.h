@@ -121,6 +121,8 @@ gfc_ss *gfc_get_scalar_ss (gfc_ss *, gfc_expr *);
 
 bool gfc_scalar_elemental_arg_saved_as_reference (gfc_ss_info *);
 
+void gfc_conv_array_lbound_spacing (stmtblock_t *, gfc_ss *, int);
+
 /* Calculates the lower bound and stride of array sections.  */
 void gfc_conv_ss_startstride (gfc_loopinfo *);
 

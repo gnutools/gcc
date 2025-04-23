@@ -2199,6 +2199,8 @@ transfer_array_component (tree expr, gfc_component * cm, locus * where)
 		   cm->as->lower[n]->value.integer);
 	  mpz_add_ui (ss_array->shape[n], ss_array->shape[n], 1);
 	}
+
+      gfc_conv_array_lbound_spacing (&block, ss, n);
     }
 
   /* Once we got ss, we use scalarizer to create the loop.  */
