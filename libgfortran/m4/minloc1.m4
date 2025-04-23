@@ -36,66 +36,72 @@ include(ifunction.m4)dnl
 ARRAY_FUNCTION(0,
 `	atype_name minval;
 #if defined ('atype_inf`)
-	minval = atype_inf;
+	minval = 'atype_inf`;
 #else
-	minval = atype_max;
+	minval = 'atype_max`;
 #endif
 	result = 1;',
 `#if defined ('atype_nan`)
-     	   for (n = 0; n < len; n++, src += delta)
+     	   for (n = 0; n < len; n++)
 	     {
 		if (*src <= minval)
 		  {
 		    minval = *src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		    break;
 		  }
+
+		src = (const 'atype_name` * restrict) (((char*)src) + delta);
 	      }
 #else
 	    n = 0;
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta)
+	      for (; n < len; n++)
 	        {
 		  if (unlikely (*src <= minval))
 		    {
 		      minval = *src;
-		      result = (rtype_name)n + 1;
+		      result = ('rtype_name`)n + 1;
 		    }
+
+		src = (const 'atype_name` * restrict) (((char*)src) + delta);
 		}
 	    else
-	      for (; n < len; n++, src += delta)
+	      for (; n < len; n++)
 	        {
 		  if (unlikely (*src < minval))
 		    {
 		      minval = *src;
-		      result = (rtype_name) n + 1;
+		      result = ('rtype_name`) n + 1;
 		    }')
 
 MASKED_ARRAY_FUNCTION(0,
-`	atype_name minval;
+`	'atype_name` minval;
 #if defined ('atype_inf`)
-	minval = atype_inf;
+	minval = 'atype_inf`;
 #else
-	minval = atype_max;
+	minval = 'atype_max`;
 #endif
 #if defined ('atype_nan`)
-	rtype_name result2 = 0;
+	'rtype_name` result2 = 0;
 #endif
 	result = 0;',
 `		if (*msrc)
 		  {
 #if defined ('atype_nan`)
 		    if (!result2)
-		      result2 = (rtype_name)n + 1;
+		      result2 = ('rtype_name`)n + 1;
 		    if (*src <= minval)
 #endif
 		      {
 			minval = *src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
 		  }
+
+		src = (const 'atype_name` * restrict) (((char*)src) + delta);
 	      }
 #if defined ('atype_nan`)
 	    if (unlikely (n >= len))
@@ -103,21 +109,23 @@ MASKED_ARRAY_FUNCTION(0,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++, msrc += mdelta)
 	      	{
 		  if (*msrc && unlikely (*src <= minval))
 		    {
 		      minval = *src;
-		      result = (rtype_name)n + 1;
+		      result = ('rtype_name`)n + 1;
 		    }
+
+		  src = (const 'atype_name` * restrict) (((char*)src) + delta);
 		}
 	      else
-	        for (; n < len; n++, src += delta, msrc += mdelta)
+	        for (; n < len; n++, msrc += mdelta)
 		  {
 		    if (*msrc && unlikely (*src < minval))
 		      {
 		        minval = *src;
-			result = (rtype_name) n + 1;
+			result = ('rtype_name`) n + 1;
 		      }')
 
 SCALAR_ARRAY_FUNCTION(0)

@@ -32,9 +32,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sspacing[GFC_MAX_DIMENSIONS];
-  index_type dspacing;
   const 'atype_name` *base;
-  index_type * restrict dest;
   index_type rank;
   index_type n;
   index_type sz;
@@ -56,9 +54,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	bounds_iforeach_return ((array_t *) retarray, (array_t *) array,
 				"FINDLOC");
     }
-
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
@@ -161,9 +156,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sspacing[GFC_MAX_DIMENSIONS];
   index_type mspacing[GFC_MAX_DIMENSIONS];
-  index_type dspacing;
   const 'atype_name` *base;
-  index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
   index_type rank;
   index_type n;
@@ -204,9 +197,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     mbase = GFOR_POINTER_TO_L1 (mbase, mask_kind);
   else
     internal_error (NULL, "Funny sized logical array");
-
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)

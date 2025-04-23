@@ -159,7 +159,7 @@ minloc1_8_i1 (gfc_array_i8 * const restrict retarray,
 #endif
 
 #if defined (GFC_INTEGER_1_QUIET_NAN)
-     	   for (n = 0; n < len; n++, src += delta)
+     	   for (n = 0; n < len; n++)
 	     {
 		if (*src <= minval)
 		  {
@@ -167,21 +167,25 @@ minloc1_8_i1 (gfc_array_i8 * const restrict retarray,
 		    result = (GFC_INTEGER_8)n + 1;
 		    break;
 		  }
+
+		src = (const GFC_INTEGER_1 * restrict) (((char*)src) + delta);
 	      }
 #else
 	    n = 0;
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta)
+	      for (; n < len; n++)
 	        {
 		  if (unlikely (*src <= minval))
 		    {
 		      minval = *src;
 		      result = (GFC_INTEGER_8)n + 1;
 		    }
+
+		src = (const GFC_INTEGER_1 * restrict) (((char*)src) + delta);
 		}
 	    else
-	      for (; n < len; n++, src += delta)
+	      for (; n < len; n++)
 	        {
 		  if (unlikely (*src < minval))
 		    {
@@ -399,6 +403,8 @@ mminloc1_8_i1 (gfc_array_i8 * const restrict retarray,
 			break;
 		      }
 		  }
+
+		src = (const GFC_INTEGER_1 * restrict) (((char*)src) + delta);
 	      }
 #if defined (GFC_INTEGER_1_QUIET_NAN)
 	    if (unlikely (n >= len))
@@ -406,16 +412,18 @@ mminloc1_8_i1 (gfc_array_i8 * const restrict retarray,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++, msrc += mdelta)
 	      	{
 		  if (*msrc && unlikely (*src <= minval))
 		    {
 		      minval = *src;
 		      result = (GFC_INTEGER_8)n + 1;
 		    }
+
+		  src = (const GFC_INTEGER_1 * restrict) (((char*)src) + delta);
 		}
 	      else
-	        for (; n < len; n++, src += delta, msrc += mdelta)
+	        for (; n < len; n++, msrc += mdelta)
 		  {
 		    if (*msrc && unlikely (*src < minval))
 		      {

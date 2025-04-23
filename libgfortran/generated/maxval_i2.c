@@ -371,6 +371,8 @@ mmaxval_i2 (gfc_array_i2 * const restrict retarray,
 #endif
 		      break;
 		  }
+
+		src = (const GFC_INTEGER_2 * restrict) (((char*)src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      {
@@ -380,7 +382,7 @@ mmaxval_i2 (gfc_array_i2 * const restrict retarray,
 		result = (-GFC_INTEGER_2_HUGE-1);
 #endif
 	      }
-	    else for (; n < len; n++, src += delta, msrc += mdelta)
+	    else for (; n < len; n++, msrc += mdelta)
 	      {
 #endif
 		if (*msrc && *src > result)

@@ -42,9 +42,7 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sspacing[GFC_MAX_DIMENSIONS];
-  index_type dspacing;
   const GFC_UINTEGER_1 *base;
-  index_type * restrict dest;
   index_type rank;
   index_type n;
   index_type sz;
@@ -66,9 +64,6 @@ findloc0_s1 (gfc_array_index_type * const restrict retarray,
 	bounds_iforeach_return ((array_t *) retarray, (array_t *) array,
 				"FINDLOC");
     }
-
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
@@ -181,9 +176,7 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sspacing[GFC_MAX_DIMENSIONS];
   index_type mspacing[GFC_MAX_DIMENSIONS];
-  index_type dspacing;
   const GFC_UINTEGER_1 *base;
-  index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
   index_type rank;
   index_type n;
@@ -224,9 +217,6 @@ mfindloc0_s1 (gfc_array_index_type * const restrict retarray,
     mbase = GFOR_POINTER_TO_L1 (mbase, mask_kind);
   else
     internal_error (NULL, "Funny sized logical array");
-
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
 
   /* Set the return value.  */
   for (n = 0; n < rank; n++)

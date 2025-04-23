@@ -156,10 +156,12 @@ minval_i4 (gfc_array_i4 * const restrict retarray,
 #if defined (GFC_INTEGER_4_QUIET_NAN)
 		if (*src <= result)
 		  break;
+
+		src = (const GFC_INTEGER_4 * restrict) (((char*)src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      result = GFC_INTEGER_4_QUIET_NAN;
-	    else for (; n < len; n++, src += delta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*src < result)
@@ -369,6 +371,8 @@ mminval_i4 (gfc_array_i4 * const restrict retarray,
 #endif
 		      break;
 		  }
+
+		src = (const GFC_INTEGER_4 * restrict) (((char*)src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      {
@@ -378,7 +382,7 @@ mminval_i4 (gfc_array_i4 * const restrict retarray,
 		result = GFC_INTEGER_4_HUGE;
 #endif
 	      }
-	    else for (; n < len; n++, src += delta, msrc += mdelta)
+	    else for (; n < len; n++, msrc += mdelta)
 	      {
 #endif
 		if (*msrc && *src < result)

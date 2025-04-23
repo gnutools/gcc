@@ -156,10 +156,12 @@ minval_m16 (gfc_array_m16 * const restrict retarray,
 #if defined (GFC_UINTEGER_16_QUIET_NAN)
 		if (*src <= result)
 		  break;
+
+		src = (const GFC_UINTEGER_16 * restrict) (((char*)src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      result = GFC_UINTEGER_16_QUIET_NAN;
-	    else for (; n < len; n++, src += delta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*src < result)
@@ -369,6 +371,8 @@ mminval_m16 (gfc_array_m16 * const restrict retarray,
 #endif
 		      break;
 		  }
+
+		src = (const GFC_UINTEGER_16 * restrict) (((char*)src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      {
@@ -378,7 +382,7 @@ mminval_m16 (gfc_array_m16 * const restrict retarray,
 		result = GFC_UINTEGER_16_HUGE;
 #endif
 	      }
-	    else for (; n < len; n++, src += delta, msrc += mdelta)
+	    else for (; n < len; n++, msrc += mdelta)
 	      {
 #endif
 		if (*msrc && *src < result)

@@ -29,63 +29,69 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 include(iparm.m4)dnl
 include(ifunction.m4)dnl
 
+traceon()
+
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 #define HAVE_BACK_ARG 1
 
 ARRAY_FUNCTION(0,
-`	atype_name maxval;
+`	'atype_name` maxval;
 #if defined ('atype_inf`)
-	maxval = -atype_inf;
+	maxval = -'atype_inf`;
 #else
-	maxval = atype_min;
+	maxval = 'atype_min`;
 #endif
 	result = 1;',
 `#if defined ('atype_nan`)
-     	     for (n = 0; n < len; n++, src = ('atype_name`*) (((char*) src) + delta))
+     	     for (n = 0; n < len; n++)
 	       {
 		if (*src >= maxval)
 		  {
 		    maxval = *src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		    break;
 		  }
+
+		src = (const 'atype_name` * restrict) (((char*)src) + delta);
 	      }
 #else
 	    n = 0;
 #endif
-	    for (; n < len; n++, src = ('atype_name`*) (((char*) src) + delta))
+	    for (; n < len; n++)
 	      {
 		if (back ? *src >= maxval : *src > maxval)
 		  {
 		    maxval = *src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		  }', `')
 
 MASKED_ARRAY_FUNCTION(0,
-`	atype_name maxval;
+`	'atype_name` maxval;
 #if defined ('atype_inf`)
-	maxval = -atype_inf;
+	maxval = -'atype_inf`;
 #else
-	maxval = atype_min;
+	maxval = 'atype_min`;
 #endif
 #if defined ('atype_nan`)
-	rtype_name result2 = 0;
+	'rtype_name` result2 = 0;
 #endif
 	result = 0;',
 `		if (*msrc)
 		  {
 #if defined ('atype_nan`)
 		    if (!result2)
-		      result2 = (rtype_name)n + 1;
+		      result2 = ('rtype_name`)n + 1;
 		    if (*src >= maxval)
 #endif
 		      {
 			maxval = *src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
 		  }
+
+		src = (const 'atype_name` * restrict) (((char*)src) + delta);
 	      }
 #if defined ('atype_nan`)
 	    if (unlikely (n >= len))
@@ -93,21 +99,23 @@ MASKED_ARRAY_FUNCTION(0,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta))
+	      for (; n < len; n++, msrc += mdelta)
 	      	{
 		  if (*msrc && unlikely (*src >= maxval))
 		    {
 		      maxval = *src;
-		      result = (rtype_name)n + 1;
+		      result = ('rtype_name`)n + 1;
 		    }
+
+		  src = (const 'atype_name` * restrict) (((char*)src) + delta);
 		}
 	    else
-	      for (; n < len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta))
+	      for (; n < len; n++, msrc += mdelta)
 	        {
 		  if (*msrc && unlikely (*src > maxval))
 		    {
 		      maxval = *src;
-		      result = (rtype_name)n + 1;
+		      result = ('rtype_name`)n + 1;
 		    }')
 
 SCALAR_ARRAY_FUNCTION(0)
