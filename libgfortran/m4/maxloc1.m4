@@ -29,8 +29,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 include(iparm.m4)dnl
 include(ifunction.m4)dnl
 
-traceon()
-
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 #define HAVE_BACK_ARG 1

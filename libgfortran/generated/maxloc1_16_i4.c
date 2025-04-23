@@ -27,8 +27,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include <assert.h>
 
 
-
-
 #if defined (HAVE_GFC_INTEGER_4) && defined (HAVE_GFC_INTEGER_16)
 
 #define HAVE_BACK_ARG 1
