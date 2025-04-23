@@ -116,7 +116,7 @@ minloc0_16_s4 (gfc_array_i16 * const restrict retarray,
     {
       minval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -260,7 +260,7 @@ mminloc0_16_s4 (gfc_array_i16 * const restrict retarray,
     {
       minval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */

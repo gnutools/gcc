@@ -116,7 +116,7 @@ maxloc0_4_s1 (gfc_array_i4 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -260,7 +260,7 @@ mmaxloc0_4_s1 (gfc_array_i4 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */

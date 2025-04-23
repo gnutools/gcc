@@ -45,7 +45,7 @@ FOREACH_FUNCTION(
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (rtype_name, dest, n * dspacing) = count[n] + 1;
     }')
 
 MASKED_FOREACH_FUNCTION(
@@ -59,7 +59,7 @@ MASKED_FOREACH_FUNCTION(
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM (rtype_name, dest, n * dspacing) = count[n] + 1;
     }')
 
 SCALAR_FOREACH_FUNCTION(`0')
