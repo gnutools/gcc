@@ -3208,6 +3208,13 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 		   gfc_build_array_type should use !is_ptr instead of
 		   c->attr.pointer and codim unconditionally without '? :'. */
 		akind = GFC_ARRAY_ASSUMED_SHAPE;
+
+	      /* Use char as array element type for unlimited_polymorphic
+		 entities.  */
+	      if (c->ts.type == BT_DERIVED
+		  && c->ts.u.derived->attr.unlimited_polymorphic
+		  && field_type == ptr_type_node)
+		field_type = char_type_node;
 	      /* Pointers to arrays aren't actually pointer types.  The
 		 descriptors are separate, but the data is common.  Every
 		 array pointer in a coarray derived type needs to provide space
