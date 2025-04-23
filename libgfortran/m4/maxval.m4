@@ -39,10 +39,12 @@ ARRAY_FUNCTION(atype_min,
 `#if defined ('atype_nan`)
 		if (*src >= result)
 		  break;
+
+		src = (const atype_name * restrict) (((char*) src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      result = atype_nan;
-	    else for (; n < len; n++, src += delta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*src > result)

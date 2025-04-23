@@ -145,11 +145,13 @@ product_c4 (gfc_array_c4 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_COMPLEX_4*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
   result *= *src;
+
+		src = (const GFC_COMPLEX_4 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -334,11 +336,13 @@ mproduct_c4 (gfc_array_c4 * const restrict retarray,
       {
 
   result = 1;
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_COMPLEX_4*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
   if (*msrc)
     result *= *src;
+
+	    src = (const GFC_COMPLEX_4 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }

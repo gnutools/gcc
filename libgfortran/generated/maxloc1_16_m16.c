@@ -154,7 +154,7 @@ maxloc1_16_m16 (gfc_array_i16 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_UINTEGER_16*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
@@ -178,6 +178,8 @@ maxloc1_16_m16 (gfc_array_i16 * const restrict retarray,
 		    maxval = *src;
 		    result = (GFC_INTEGER_16)n + 1;
 		  }
+
+		src = (const GFC_UINTEGER_16 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -371,7 +373,7 @@ mmaxloc1_16_m16 (gfc_array_i16 * const restrict retarray,
 	GFC_INTEGER_16 result2 = 0;
 #endif
 	result = 0;
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_UINTEGER_16*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
 		if (*msrc)
@@ -410,6 +412,8 @@ mmaxloc1_16_m16 (gfc_array_i16 * const restrict retarray,
 		      maxval = *src;
 		      result = (GFC_INTEGER_16)n + 1;
 		    }
+
+	    src = (const GFC_UINTEGER_16 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }

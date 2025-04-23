@@ -343,8 +343,6 @@ sfindloc0_s4 (gfc_array_index_type * const restrict retarray,
 	    gfc_charlen_type len_value)
 {
   index_type rank;
-  index_type dspacing;
-  index_type * restrict dest;
   index_type n;
 
   if (mask == NULL || *mask)
@@ -371,8 +369,6 @@ sfindloc0_s4 (gfc_array_index_type * const restrict retarray,
 			       "FINDLOC");
     }
 
-  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
     GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0 ;
 }

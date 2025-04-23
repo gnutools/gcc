@@ -156,7 +156,7 @@ norm2_r17 (gfc_array_r17 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_REAL_17*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
@@ -176,6 +176,8 @@ norm2_r17 (gfc_array_r17 * const restrict retarray,
 		  result += val * val;
 		}
 	    }
+
+		src = (const GFC_REAL_17 * restrict) (((char*) src) + delta);
 	      }
 	    result = scale * MATHFUNC(sqrt) (result);
 	    *dest = result;

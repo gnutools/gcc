@@ -154,7 +154,7 @@ minloc1_16_r8 (gfc_array_i16 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_REAL_8*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
@@ -188,6 +188,8 @@ minloc1_16_r8 (gfc_array_i16 * const restrict retarray,
 		      minval = *src;
 		      result = (GFC_INTEGER_16) n + 1;
 		    }
+
+		src = (const GFC_REAL_8 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -381,7 +383,7 @@ mminloc1_16_r8 (gfc_array_i16 * const restrict retarray,
 	GFC_INTEGER_16 result2 = 0;
 #endif
 	result = 0;
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_REAL_8*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
 		if (*msrc)
@@ -420,6 +422,8 @@ mminloc1_16_r8 (gfc_array_i16 * const restrict retarray,
 		        minval = *src;
 			result = (GFC_INTEGER_16) n + 1;
 		      }
+
+	    src = (const GFC_REAL_8 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }

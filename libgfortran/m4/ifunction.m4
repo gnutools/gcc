@@ -135,12 +135,14 @@ define(START_ARRAY_BLOCK,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = ('atype_name`*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 ')dnl
 define(FINISH_ARRAY_FUNCTION,
-`	      }
+`
+		src = (const 'atype_name` * restrict) (((char*) src) + delta);
+	      }
 	    '$1`
 	    *dest = result;
 	  }
@@ -324,11 +326,13 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       {
 ')dnl
 define(START_MASKED_ARRAY_BLOCK,
-`	for (n = 0; n < len; n++, msrc += mdelta, src = ('atype_name`*) (((char*) src) + delta))
+`	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 ')dnl
 define(FINISH_MASKED_ARRAY_FUNCTION,
-`	  }
+`
+	    src = (const 'atype_name` * restrict) (((char*)src) + delta);
+	  }
 	*dest = result;
       }
       /* Advance to the next element.  */

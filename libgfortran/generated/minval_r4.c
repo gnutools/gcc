@@ -149,7 +149,7 @@ minval_r4 (gfc_array_r4 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_REAL_4*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
@@ -164,6 +164,8 @@ minval_r4 (gfc_array_r4 * const restrict retarray,
 #endif
 		if (*src < result)
 		  result = *src;
+
+		src = (const GFC_REAL_4 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -355,7 +357,7 @@ mminval_r4 (gfc_array_r4 * const restrict retarray,
 #if defined (GFC_REAL_4_QUIET_NAN)
 	int non_empty_p = 0;
 #endif
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_REAL_4*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
 #if defined (GFC_REAL_4_INFINITY) || defined (GFC_REAL_4_QUIET_NAN)
@@ -381,6 +383,8 @@ mminval_r4 (gfc_array_r4 * const restrict retarray,
 #endif
 		if (*msrc && *src < result)
 		  result = *src;
+
+	    src = (const GFC_REAL_4 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }

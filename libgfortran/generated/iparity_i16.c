@@ -145,11 +145,13 @@ iparity_i16 (gfc_array_i16 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_INTEGER_16*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
   result ^= *src;
+
+		src = (const GFC_INTEGER_16 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -334,11 +336,13 @@ miparity_i16 (gfc_array_i16 * const restrict retarray,
       {
 
   result = 0;
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_INTEGER_16*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
   if (*msrc)
     result ^= *src;
+
+	    src = (const GFC_INTEGER_16 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }

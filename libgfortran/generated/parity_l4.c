@@ -145,11 +145,13 @@ parity_l4 (gfc_array_l4 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_LOGICAL_4*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
   result = result != *src;
+
+		src = (const GFC_LOGICAL_4 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;

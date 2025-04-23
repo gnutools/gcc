@@ -149,21 +149,25 @@ maxval_r16 (gfc_array_r16 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src = (GFC_REAL_16*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
 #if defined (GFC_REAL_16_QUIET_NAN)
 		if (*src >= result)
 		  break;
+
+		src = (const GFC_REAL_16 * restrict) (((char*) src) + delta);
 	      }
 	    if (unlikely (n >= len))
 	      result = GFC_REAL_16_QUIET_NAN;
-	    else for (; n < len; n++, src += delta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*src > result)
 		  result = *src;
+
+		src = (const GFC_REAL_16 * restrict) (((char*) src) + delta);
 	      }
 	    
 	    *dest = result;
@@ -355,7 +359,7 @@ mmaxval_r16 (gfc_array_r16 * const restrict retarray,
 #if defined (GFC_REAL_16_QUIET_NAN)
 	int non_empty_p = 0;
 #endif
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_REAL_16*) (((char*) src) + delta))
+	for (n = 0; n < len; n++, msrc += mdelta)
 	  {
 
 #if defined (GFC_REAL_16_INFINITY) || defined (GFC_REAL_16_QUIET_NAN)
@@ -381,6 +385,8 @@ mmaxval_r16 (gfc_array_r16 * const restrict retarray,
 #endif
 		if (*msrc && *src > result)
 		  result = *src;
+
+	    src = (const GFC_REAL_16 * restrict) (((char*)src) + delta);
 	  }
 	*dest = result;
       }
