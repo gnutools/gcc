@@ -633,6 +633,10 @@ translate_error (int code)
       p = "Bad ID in WAIT statement";
       break;
 
+    case LIBERROR_MISALIGNED_INTERNAL_UNIT:
+      p = "Misaligned offset reading internal file";
+      break;
+
     default:
       p = "Unknown error code";
       break;

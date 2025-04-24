@@ -251,6 +251,18 @@ next_char_internal (st_parameter_dt *dtp)
 	      goto done;
 	    }
 
+	  if (unlikely (is_char4_unit(dtp)))
+	    {
+	      if (unlikely (record % sizeof (gfc_char4_t) != 0))
+		{
+		  generate_error (&dtp->common,
+				  LIBERROR_MISALIGNED_INTERNAL_UNIT, NULL);
+		  return '\0';
+		}
+	      else
+		record /= sizeof (gfc_char4_t);
+	    }
+
 	  if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 	    return EOF;
 
