@@ -1259,6 +1259,26 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
       GFC_TYPE_ARRAY_SIZE (type) = create_index_var ("size", nest);
       suppress_warning (GFC_TYPE_ARRAY_SIZE (type));
     }
+
+  if (POINTER_TYPE_P (type))
+    {
+      gcc_assert (GFC_ARRAY_TYPE_P (TREE_TYPE (type)));
+      gcc_assert (TYPE_LANG_SPECIFIC (type)
+		  == TYPE_LANG_SPECIFIC (TREE_TYPE (type)));
+      type = TREE_TYPE (type);
+    }
+
+  if (! COMPLETE_TYPE_P (type) && GFC_TYPE_ARRAY_SIZE (type))
+    {
+      tree size, range;
+
+      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			      GFC_TYPE_ARRAY_SIZE (type), gfc_index_one_node);
+      range = build_range_type (gfc_array_index_type, gfc_index_zero_node,
+				size);
+      TYPE_DOMAIN (type) = range;
+      layout_type (type);
+    }
 }
 
 
