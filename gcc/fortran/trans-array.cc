@@ -6385,15 +6385,6 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
 	}
     }
 
-  if (onstack)
-    {
-      gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE,
-			    back);
-      return;
-    }
-
-  type = TREE_TYPE (type);
-
   gcc_assert (!sym->attr.use_assoc);
   gcc_assert (!sym->module);
 
@@ -6401,17 +6392,23 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
       && !INTEGER_CST_P (sym->ts.u.cl->backend_decl))
     gfc_conv_string_length (sym->ts.u.cl, NULL, &init);
 
+  if (!onstack)
+    type = TREE_TYPE (type);
+
   size = gfc_trans_array_bounds (type, sym, &offset, &init);
 
-  /* Don't actually allocate space for Cray Pointees.  */
-  if (sym->attr.cray_pointee)
-    {
-      if (VAR_P (GFC_TYPE_ARRAY_OFFSET (type)))
-	gfc_add_modify (&init, GFC_TYPE_ARRAY_OFFSET (type), offset);
+  /* Set offset of the array.  */
+  if (VAR_P (GFC_TYPE_ARRAY_OFFSET (type)))
+    gfc_add_modify (&init, GFC_TYPE_ARRAY_OFFSET (type), offset);
 
-      gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE);
+  /* Don't actually allocate space for Cray Pointees.  */
+  if (onstack || sym->attr.cray_pointee)
+    {
+      gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE,
+			    onstack && back);
       return;
     }
+
   if (sym->attr.omp_allocate)
     {
       size = gfc_evaluate_now (size, &init);
@@ -6440,10 +6437,6 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
       tmp = gfc_call_free (decl);
       space = NULL_TREE;
     }
-
-  /* Set offset of the array.  */
-  if (VAR_P (GFC_TYPE_ARRAY_OFFSET (type)))
-    gfc_add_modify (&init, GFC_TYPE_ARRAY_OFFSET (type), offset);
 
   /* Automatic arrays should not have initializers.  */
   gcc_assert (!sym->value);
