@@ -267,8 +267,8 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
-		 i1, i2, i3, i4, i5, i6;
+      index_type a_dim0, a_dim1, a_offset, b_dim0, b_dim1, b_offset,
+		 c_dim0, c_dim1, c_offset, i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
       GFC_COMPLEX_8 f11, f12, f21, f22, f31, f32, f41, f42,
@@ -282,20 +282,23 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
       c = retarray->base_addr;
 
       /* Parameter adjustments */
+      c_dim0 = rxspacing;
       c_dim1 = ryspacing;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
+      c_offset = rxspacing + c_dim1;
+      c = (GFC_COMPLEX_8 *) (((char*)c) - c_offset);
+      a_dim0 = axspacing;
       a_dim1 = ayspacing;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
+      a_offset = axspacing + a_dim1;
+      a = (GFC_COMPLEX_8 *) (((char*)a) - a_offset);
+      b_dim0 = bxspacing;
       b_dim1 = byspacing;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
+      b_offset = bxspacing + b_dim1;
+      b = (GFC_COMPLEX_8 *) (((char*)b) - b_offset);
 
       /* Empty c first.  */
       for (j=1; j<=n; j++)
 	for (i=1; i<=m; i++)
-	  *((GFC_COMPLEX_8*) (((char*) c) + i + j * c_dim1)) = (GFC_COMPLEX_8)0;
+	  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * rxspacing + j * c_dim1) = (GFC_COMPLEX_8)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -347,20 +350,20 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
 		      for (i = ii; i <= i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + (l + 1) * a_dim1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (i + 1) * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (i + 1) * a_dim0 + (l + 1) * a_dim1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (ii + isec - 1) * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (ii + isec - 1) * a_dim0 + (l + 1) * a_dim1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -369,7 +372,7 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
 		      for (i = ii; i<= i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + (ll + lsec - 1) * a_dim1);
 			}
 		    }
 
@@ -380,100 +383,100 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
 		      i5 = ii + uisec - 1;
 		      for (i = ii; i <= i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			  f21 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1);
+			  f12 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1);
+			  f22 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 1) * c_dim1);
+			  f13 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1);
+			  f23 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 2) * c_dim1);
+			  f14 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1);
+			  f24 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 3) * c_dim1);
+			  f31 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1);
+			  f41 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1);
+			  f32 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 1) * c_dim1);
+			  f42 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 1) * c_dim1);
+			  f33 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 2) * c_dim1);
+			  f43 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 2) * c_dim1);
+			  f34 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 3) * c_dim1);
+			  f44 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 3) * c_dim1);
 			  i6 = ll + lsec - 1;
 			  for (l = ll; l <= i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1) = f21;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1) = f12;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 1) * c_dim1) = f22;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2)  * c_dim1) = f13;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 2) * c_dim1) = f23;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3)  * c_dim1) = f14;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 3) * c_dim1) = f24;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1) = f31;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1) = f41;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 1) * c_dim1) = f32;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 1) * c_dim1) = f42;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 2) * c_dim1) = f33;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 2) * c_dim1) = f43;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 3) * c_dim1) = f34;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 3) * c_dim1) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec - 1;
 			  for (i = ii + uisec; i <= i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			      f12 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1);
+			      f13 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1);
+			      f14 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1) = f12;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1) = f13;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1) = f14;
 			    }
 			}
 		    }
@@ -485,38 +488,38 @@ matmul_c8_avx128_fma3 (gfc_array_c8 * const restrict retarray,
 			  i5 = ii + uisec - 1;
 			  for (i = ii; i <= i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			      f21 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1);
+			      f31 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1);
+			      f41 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i) * c_dim0 + j * c_dim1) = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1) = f21;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1) = f31;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1) = f41;
 			    }
 			  i5 = ii + isec - 1;
 			  for (i = ii + uisec; i <= i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
 			    }
 			}
 		    }
@@ -849,8 +852,8 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
-		 i1, i2, i3, i4, i5, i6;
+      index_type a_dim0, a_dim1, a_offset, b_dim0, b_dim1, b_offset,
+		 c_dim0, c_dim1, c_offset, i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
       GFC_COMPLEX_8 f11, f12, f21, f22, f31, f32, f41, f42,
@@ -864,20 +867,23 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
       c = retarray->base_addr;
 
       /* Parameter adjustments */
+      c_dim0 = rxspacing;
       c_dim1 = ryspacing;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
+      c_offset = rxspacing + c_dim1;
+      c = (GFC_COMPLEX_8 *) (((char*)c) - c_offset);
+      a_dim0 = axspacing;
       a_dim1 = ayspacing;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
+      a_offset = axspacing + a_dim1;
+      a = (GFC_COMPLEX_8 *) (((char*)a) - a_offset);
+      b_dim0 = bxspacing;
       b_dim1 = byspacing;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
+      b_offset = bxspacing + b_dim1;
+      b = (GFC_COMPLEX_8 *) (((char*)b) - b_offset);
 
       /* Empty c first.  */
       for (j=1; j<=n; j++)
 	for (i=1; i<=m; i++)
-	  *((GFC_COMPLEX_8*) (((char*) c) + i + j * c_dim1)) = (GFC_COMPLEX_8)0;
+	  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * rxspacing + j * c_dim1) = (GFC_COMPLEX_8)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -929,20 +935,20 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
 		      for (i = ii; i <= i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + (l + 1) * a_dim1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (i + 1) * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (i + 1) * a_dim0 + (l + 1) * a_dim1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (ii + isec - 1) * a_dim0 + l * a_dim1);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, (ii + isec - 1) * a_dim0 + (l + 1) * a_dim1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -951,7 +957,7 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
 		      for (i = ii; i<= i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    GFC_ARRAY_ELEM (GFC_COMPLEX_8, a, i * a_dim0 + (ll + lsec - 1) * a_dim1);
 			}
 		    }
 
@@ -962,100 +968,100 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
 		      i5 = ii + uisec - 1;
 		      for (i = ii; i <= i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			  f21 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1);
+			  f12 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1);
+			  f22 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 1) * c_dim1);
+			  f13 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1);
+			  f23 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 2) * c_dim1);
+			  f14 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1);
+			  f24 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 3) * c_dim1);
+			  f31 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1);
+			  f41 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1);
+			  f32 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 1) * c_dim1);
+			  f42 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 1) * c_dim1);
+			  f33 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 2) * c_dim1);
+			  f43 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 2) * c_dim1);
+			  f34 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 3) * c_dim1);
+			  f44 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 3) * c_dim1);
 			  i6 = ll + lsec - 1;
 			  for (l = ll; l <= i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1) = f21;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1) = f12;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 1) * c_dim1) = f22;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2)  * c_dim1) = f13;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 2) * c_dim1) = f23;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3)  * c_dim1) = f14;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + (j + 3) * c_dim1) = f24;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1) = f31;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1) = f41;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 1) * c_dim1) = f32;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 1) * c_dim1) = f42;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 2) * c_dim1) = f33;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 2) * c_dim1) = f43;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + (j + 3) * c_dim1) = f34;
+			  GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + (j + 3) * c_dim1) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec - 1;
 			  for (i = ii + uisec; i <= i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			      f12 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1);
+			      f13 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1);
+			      f14 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 1) * b_dim1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 2) * b_dim1);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + (j + 3) * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 1) * c_dim1) = f12;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 2) * c_dim1) = f13;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + (j + 3) * c_dim1) = f14;
 			    }
 			}
 		    }
@@ -1067,38 +1073,38 @@ matmul_c8_avx128_fma4 (gfc_array_c8 * const restrict retarray,
 			  i5 = ii + uisec - 1;
 			  for (i = ii; i <= i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
+			      f21 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1);
+			      f31 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1);
+			      f41 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i) * c_dim0 + j * c_dim1) = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 1) * c_dim0 + j * c_dim1) = f21;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 2) * c_dim0 + j * c_dim1) = f31;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, (i + 3) * c_dim0 + j * c_dim1) = f41;
 			    }
 			  i5 = ii + isec - 1;
 			  for (i = ii + uisec; i <= i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1);
 			      i6 = ll + lsec - 1;
 			      for (l = ll; l <= i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * GFC_ARRAY_ELEM (GFC_COMPLEX_8, b, l * b_dim0 + j * b_dim1);
 				}
-			      c[i + j * c_dim1] = f11;
+			      GFC_ARRAY_ELEM (GFC_COMPLEX_8, c, i * c_dim0 + j * c_dim1) = f11;
 			    }
 			}
 		    }
