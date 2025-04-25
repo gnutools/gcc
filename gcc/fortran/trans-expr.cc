@@ -9271,7 +9271,8 @@ gfc_trans_subarray_assign (tree dest, gfc_component * cm, gfc_expr * expr)
   lss_array->offset = gfc_conv_array_offset (dest);
   for (n = 0; n < cm->as->rank; n++)
     {
-      lss_array->start[n] = gfc_conv_array_lbound (dest, n);
+      lss_array->start[n] = lss_array->lbound[n] = gfc_conv_array_lbound (dest, n);
+      lss_array->spacing[n] = gfc_conv_array_spacing (dest, n);
       lss_array->stride[n] = gfc_index_one_node;
 
       mpz_init (lss_array->shape[n]);
