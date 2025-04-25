@@ -1108,6 +1108,7 @@ struct GTY(()) lang_decl {
 #define GFC_ARRAY_TYPE_P(node) TYPE_LANG_FLAG_2(node)
 /* Fortran CLASS type.  */
 #define GFC_CLASS_TYPE_P(node) TYPE_LANG_FLAG_4(node)
+#define GFC_TYPE_PACKED_ARRAY(node) TYPE_LANG_FLAG_5(node)
 /* The GFC_TYPE_ARRAY_* members are present in both descriptor and
    descriptorless array types.  */
 #define GFC_TYPE_ARRAY_LBOUND(node, dim) \

@@ -2022,6 +2022,9 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   if (packed != PACKED_NO)
     GFC_TYPE_ARRAY_ELEM_LEN (type) = TYPE_SIZE_UNIT (etype);
 
+  if (packed == PACKED_FULL || packed == PACKED_STATIC)
+    GFC_TYPE_PACKED_ARRAY (type) = 1;
+
   GFC_TYPE_ARRAY_RANK (type) = as->rank;
   GFC_TYPE_ARRAY_CORANK (type) = as->corank;
   GFC_TYPE_ARRAY_DTYPE (type) = NULL_TREE;

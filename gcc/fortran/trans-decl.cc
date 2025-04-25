@@ -1262,7 +1262,7 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 
   if (! COMPLETE_TYPE_P (type)
       && GFC_TYPE_ARRAY_SIZE (type)
-      && GFC_DECL_PACKED_ARRAY (decl))
+      && GFC_TYPE_PACKED_ARRAY (type))
     {
       tree size, range;
 
