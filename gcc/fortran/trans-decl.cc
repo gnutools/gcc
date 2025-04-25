@@ -1260,14 +1260,6 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
       suppress_warning (GFC_TYPE_ARRAY_SIZE (type));
     }
 
-  if (POINTER_TYPE_P (type))
-    {
-      gcc_assert (GFC_ARRAY_TYPE_P (TREE_TYPE (type)));
-      gcc_assert (TYPE_LANG_SPECIFIC (type)
-		  == TYPE_LANG_SPECIFIC (TREE_TYPE (type)));
-      type = TREE_TYPE (type);
-    }
-
   if (! COMPLETE_TYPE_P (type) && GFC_TYPE_ARRAY_SIZE (type))
     {
       tree size, range;
