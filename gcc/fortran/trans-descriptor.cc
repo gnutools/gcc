@@ -3862,6 +3862,7 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree desc,
       tree upper = tse.expr;
       gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[i], upper);
       size = gfc_evaluate_now (size, block);
+      size = fold_convert_loc (input_location, gfc_array_index_type, size);
       gfc_conv_descriptor_spacing_set (block, desc, gfc_rank_cst[i], size);
       offset = fold_build2_loc (input_location, MINUS_EXPR,
 				gfc_array_index_type, offset, size);
