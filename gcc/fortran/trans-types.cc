@@ -1869,7 +1869,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   mpz_init_set_ui (stride, 1);
   mpz_init (spc);
 
-  bool known_spacing = INTEGER_CST_P (TYPE_SIZE_UNIT (etype));
+  bool known_spacing = packed != PACKED_NO && INTEGER_CST_P (TYPE_SIZE_UNIT (etype));
   if (known_spacing)
     {
       wide_int elem_len = wi::to_wide (TYPE_SIZE_UNIT (etype));

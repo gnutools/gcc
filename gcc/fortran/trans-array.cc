@@ -6395,6 +6395,12 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
   if (!onstack)
     type = TREE_TYPE (type);
 
+  if (!GFC_TYPE_ARRAY_ELEM_LEN (type))
+    {
+      gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE);
+      return;
+    }
+
   size = gfc_trans_array_bounds (type, sym, &offset, &init);
 
   /* Set offset of the array.  */
