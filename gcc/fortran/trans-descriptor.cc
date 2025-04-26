@@ -2109,6 +2109,9 @@ conv_shift_descriptor (stmtblock_t *block, tree src, tree dest, int rank,
     {
       tree tmp = gfc_conv_descriptor_data_get (src);
       gfc_conv_descriptor_data_set (block, dest, tmp);
+
+      tmp = gfc_conv_descriptor_span_get (src);
+      gfc_conv_descriptor_span_set (block, dest, tmp);
     }
 
   tree offset = gfc_create_var (gfc_array_index_type, "offset");

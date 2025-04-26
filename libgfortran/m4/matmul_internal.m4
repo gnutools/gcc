@@ -50,6 +50,8 @@
 				       * sizeof ('rtype_name`));
         }
 
+      retarray->span = sizeof ('rtype_name`);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof ('rtype_name`));
       retarray->offset = 0;

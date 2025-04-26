@@ -135,6 +135,8 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 				       * sizeof (GFC_COMPLEX_4));
         }
 
+      retarray->span = sizeof (GFC_COMPLEX_4);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_COMPLEX_4));
       retarray->offset = 0;
@@ -719,6 +721,8 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 				       * sizeof (GFC_COMPLEX_4));
         }
 
+      retarray->span = sizeof (GFC_COMPLEX_4);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_COMPLEX_4));
       retarray->offset = 0;
@@ -1302,6 +1306,8 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_COMPLEX_4));
         }
+
+      retarray->span = sizeof (GFC_COMPLEX_4);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_COMPLEX_4));
@@ -1900,6 +1906,8 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_COMPLEX_4));
         }
+
+      retarray->span = sizeof (GFC_COMPLEX_4);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_COMPLEX_4));
@@ -2557,6 +2565,8 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_COMPLEX_4));
         }
+
+      retarray->span = sizeof (GFC_COMPLEX_4);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_COMPLEX_4));

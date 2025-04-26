@@ -135,6 +135,8 @@ matmul_r17_avx (gfc_array_r17 * const restrict retarray,
 				       * sizeof (GFC_REAL_17));
         }
 
+      retarray->span = sizeof (GFC_REAL_17);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_17));
       retarray->offset = 0;
@@ -719,6 +721,8 @@ matmul_r17_avx2 (gfc_array_r17 * const restrict retarray,
 				       * sizeof (GFC_REAL_17));
         }
 
+      retarray->span = sizeof (GFC_REAL_17);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_17));
       retarray->offset = 0;
@@ -1302,6 +1306,8 @@ matmul_r17_avx512f (gfc_array_r17 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_REAL_17));
         }
+
+      retarray->span = sizeof (GFC_REAL_17);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_17));
@@ -1900,6 +1906,8 @@ matmul_r17_vanilla (gfc_array_r17 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_REAL_17));
         }
+
+      retarray->span = sizeof (GFC_REAL_17);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_17));
@@ -2557,6 +2565,8 @@ matmul_r17 (gfc_array_r17 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_REAL_17));
         }
+
+      retarray->span = sizeof (GFC_REAL_17);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_17));

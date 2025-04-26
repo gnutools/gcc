@@ -100,6 +100,8 @@ matmul_r16_avx128_fma3 (gfc_array_r16 * const restrict retarray,
 				       * sizeof (GFC_REAL_16));
         }
 
+      retarray->span = sizeof (GFC_REAL_16);
+
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_16));
       retarray->offset = 0;
@@ -684,6 +686,8 @@ matmul_r16_avx128_fma4 (gfc_array_r16 * const restrict retarray,
 				       GFC_DESCRIPTOR_EXTENT(retarray,0)
 				       * sizeof (GFC_REAL_16));
         }
+
+      retarray->span = sizeof (GFC_REAL_16);
 
       retarray->base_addr
 	= xmallocarray (size0 ((array_t *) retarray), sizeof (GFC_REAL_16));
