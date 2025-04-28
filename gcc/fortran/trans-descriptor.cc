@@ -2445,7 +2445,7 @@ gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
 			   int rank, tree zero_cond)
 {
   conv_shift_descriptor (block, src, dest, rank,
-			 cond_descr_lb (dest, zero_cond));
+			 cond_descr_lb (src, zero_cond));
 }
 
 
