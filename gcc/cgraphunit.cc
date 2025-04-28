@@ -4060,13 +4060,12 @@ exec_context::evaluate_unary (enum tree_code code, tree type, tree arg) const
     default:
       {
 	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
-		    || TREE_CODE (type) == BOOLEAN_TYPE);
+		    || TREE_CODE (type) == BOOLEAN_TYPE
+		    || TREE_CODE (type) == REAL_TYPE);
 	tree val = evaluate (arg).to_tree (TREE_TYPE (arg));
 	tree t = fold_unary (code, type, val);
 	gcc_assert (t != NULL_TREE);
-	data_value result (type);
-	result.set_cst (wi::to_wide (t));
-	return result;
+	return evaluate (t);
       }
     }
 }
@@ -7203,6 +7202,19 @@ exec_context_evaluate_unary_tests ()
   wide_int wi1 = val1.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi1);
   ASSERT_EQ (wi1.to_uhwi (), 18);
+
+
+  REAL_VALUE_TYPE f25 = REAL_VALUE_ATOF ("2.5", TYPE_MODE (float_type_node));
+  tree t25 = build_real (float_type_node, f25);
+
+  data_value valfm25 = ctx1.evaluate_unary (NEGATE_EXPR, float_type_node, t25);
+
+  ASSERT_EQ (valfm25.get_bitwidth (), TYPE_PRECISION (float_type_node));
+  ASSERT_EQ (valfm25.classify (), VAL_CONSTANT);
+  tree tfm25 = valfm25.to_tree (float_type_node);
+  ASSERT_EQ (TREE_CODE (tfm25), REAL_CST);
+  REAL_VALUE_TYPE fm25 = REAL_VALUE_ATOF ("-2.5", TYPE_MODE (float_type_node));
+  ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (tfm25), &fm25));
 }
 
 
