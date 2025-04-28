@@ -4086,7 +4086,8 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
       {
 	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
 		    || TREE_CODE (type) == BOOLEAN_TYPE
-		    || TREE_CODE (type) == POINTER_TYPE);
+		    || TREE_CODE (type) == POINTER_TYPE
+		    || TREE_CODE (type) == REAL_TYPE);
 	data_value val_lhs = evaluate (lhs);
 	data_value val_rhs = evaluate (rhs);
 	enum value_type lhs_type = val_lhs.classify ();
@@ -4102,9 +4103,7 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
 	    tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
 	    tree t = fold_binary (code, type, lval, rval);
 	    gcc_assert (t != NULL_TREE);
-	    data_value result (type);
-	    result.set_cst (wi::to_wide (t));
-	    return result;
+	    return evaluate (t);
 	  }
 	else
 	  {
@@ -4335,6 +4334,39 @@ exec_context::execute_call (gcall *g)
       gcc_assert (wi::fits_uhwi_p (wi_size));
       HOST_WIDE_INT alloc_amount = wi_size.to_uhwi ();
       data_storage &storage = allocate (alloc_amount);
+
+      storage_address address (storage.get_ref (), 0);
+      (*result).set_address (address);
+    }
+  else if (gimple_call_builtin_p (g, BUILT_IN_CALLOC))
+    {
+      gcc_assert (lhs != NULL_TREE);
+      result.emplace (data_value (TREE_TYPE (lhs)));
+
+      gcc_assert (gimple_call_num_args (g) == 2);
+      tree arg0 = gimple_call_arg (g, 0);
+      tree arg1 = gimple_call_arg (g, 1);
+      data_value size0 = evaluate (arg0);
+      data_value size1 = evaluate (arg1);
+      gcc_assert (size0.classify () == VAL_CONSTANT);
+      gcc_assert (size1.classify () == VAL_CONSTANT);
+      wide_int wi_size0 = size0.get_cst ();
+      wide_int wi_size1 = size1.get_cst ();
+      wi::overflow_type ovf;
+      wide_int combined_size = umul (wi_size0, wi_size1, &ovf);
+      gcc_assert (ovf == wi::OVF_NONE);
+      gcc_assert (wi::fits_uhwi_p (combined_size));
+      HOST_WIDE_INT alloc_amount = combined_size.to_uhwi ();
+      data_storage &storage = allocate (alloc_amount);
+
+      wide_int char_bit = wi::shwi (CHAR_BIT, TYPE_PRECISION (size_type_node));
+      wide_int size_bits = umul (combined_size, char_bit, &ovf);
+      gcc_assert (ovf == wi::OVF_NONE);
+      gcc_assert (wi::fits_uhwi_p (size_bits));
+      unsigned HOST_WIDE_INT hwi_size = size_bits.to_uhwi ();
+      data_value val (hwi_size);
+      val.set_cst (wi::zero (hwi_size));
+      storage.set (val);
 
       storage_address address (storage.get_ref (), 0);
       (*result).set_address (address);
@@ -7347,6 +7379,46 @@ exec_context_evaluate_binary_tests ()
   storage_address *i_p6 = val_i_p6.get_address ();
   ASSERT_EQ (&i_p6->storage.get (), v12_storage);
   ASSERT_EQ (i_p6->offset, 48);
+
+
+  tree f25 = create_var (float_type_node, "f25");
+
+  vec<tree> decls4{};
+  decls4.safe_push (f25);
+
+  context_builder builder4 {};
+  builder4.add_decls (&decls4);
+  exec_context ctx4 = builder4.build (mem, printer);
+
+  machine_mode float_mode = TYPE_MODE (float_type_node);
+  REAL_VALUE_TYPE val25 = REAL_VALUE_ATOF ("2.5", float_mode);
+  tree c25 = build_real (float_type_node, val25);
+  tree float_size = TYPE_SIZE (float_type_node);
+  ASSERT_PRED1 (tree_fits_uhwi_p, float_size);
+  tree itype = make_signed_type (tree_to_uhwi (float_size));
+  tree i25 = fold_build1 (VIEW_CONVERT_EXPR, itype, c25);
+
+  wide_int wi25 = wi::to_wide (i25);
+  data_value data25 (float_type_node);
+  data25.set_cst (wi25);
+
+  data_storage *f25_storage = ctx4.find_reachable_var (f25);
+  gcc_assert (f25_storage != nullptr);
+  f25_storage->set (data25);
+
+  REAL_VALUE_TYPE val325 = REAL_VALUE_ATOF ("3.25", float_mode);
+  tree c325 = build_real (float_type_node, val325);
+
+  data_value val_f = ctx4.evaluate_binary (PLUS_EXPR, float_type_node,
+					   f25, c325);
+
+  ASSERT_EQ (val_f.classify (), VAL_CONSTANT);
+  wide_int wi_f = val_f.get_cst ();
+  tree t_f = wide_int_to_tree (itype, wi_f);
+  tree f = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, t_f);
+  ASSERT_EQ (TREE_CODE (f), REAL_CST);
+  REAL_VALUE_TYPE val575 = REAL_VALUE_ATOF ("5.75", float_mode);
+  ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (f), &val575));
 }
 
 
@@ -8205,6 +8277,44 @@ exec_context_execute_call_tests ()
   gcall * simple_call = gimple_build_call (simple_func, 0);
 
   ctx6.execute (simple_call);
+
+
+  vec<tree> decls7{};
+  decls7.safe_push (p);
+
+  heap_memory mem7;
+  context_builder builder7 {};
+  builder7.add_decls (&decls7);
+  exec_context ctx7 = builder7.build (mem7, printer);
+
+  tree s6 = build_int_cst (size_type_node, 6);
+  tree s4 = build_int_cst (size_type_node, 4);
+
+  tree calloc_fn = builtin_decl_explicit (BUILT_IN_CALLOC);
+  gcall * calloc_call7 = gimple_build_call (calloc_fn, 2, s6, s4);
+  gimple_set_lhs (calloc_call7, p);
+
+  ASSERT_EQ (ctx7.find_alloc (0), nullptr);
+
+  ctx7.execute (calloc_call7);
+
+  data_storage *p_strg7 = ctx7.find_reachable_var (p);
+  ASSERT_NE (p_strg7, nullptr);
+  data_value p_val7 = p_strg7->get_value ();
+  ASSERT_EQ (p_val7.classify (), VAL_ADDRESS);
+  storage_address *val_addr7 = p_val7.get_address ();
+
+  data_storage *alloc_strg7 = ctx7.find_alloc (0);
+  ASSERT_NE (alloc_strg7, nullptr);
+  ASSERT_EQ (&val_addr7->storage.get (), alloc_strg7);
+  ASSERT_EQ (val_addr7->offset, 0);
+
+  data_value alloc_val7 = alloc_strg7->get_value ();
+  ASSERT_EQ (alloc_val7.get_bitwidth (), 192);
+  ASSERT_EQ (alloc_val7.classify (), VAL_CONSTANT);
+  wide_int wi7 = alloc_val7.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi7);
+  ASSERT_EQ (wi7.to_shwi (), 0);
 }
 
 void
