@@ -312,6 +312,12 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE (ival, -64, -1)")))
 
-(define_constraint "Q"
-  "An address operand that is valid for a prefetch instruction"
-  (match_operand 0 "prefetch_operand"))
+(define_constraint "Ou01"
+  "A 1-bit unsigned immediate."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 1)")))
+
+(define_constraint "Ou02"
+  "A 2-bit unsigned immediate."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 3)")))
