@@ -8888,6 +8888,9 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	{
 	  /*  Otherwise use the TYPE_DOMAIN information.  */
 	  tmp = array_type_nelts_minus_one (decl_type);
+	  if (error_operand_p (tmp)
+	      && GFC_ARRAY_TYPE_P (decl_type))
+	    tmp = GFC_TYPE_ARRAY_SIZE (decl_type);
 	  tmp = fold_convert (gfc_array_index_type, tmp);
 	}
 
