@@ -11536,7 +11536,7 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   /* Now reset the bounds returned from the function call to bounds based
      on the lhs lbounds, except where the lhs is not allocated or the shapes
      of 'variable and 'expr' are different. Set the offset accordingly.  */
-  gfc_conv_shift_descriptor (&se->post, desc, res_desc, rank, zero_cond);
+  gfc_conv_shift_descriptor (&se->post, desc, res_desc, rank);
 }
 
 

@@ -84,7 +84,7 @@ tree gfc_get_cfi_dim_sm (tree, tree);
 tree gfc_build_desc_array_type (tree, tree, int, tree *, tree *);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, const gfc_array_ref &);
 void gfc_conv_shift_descriptor (stmtblock_t*, tree, int);
-void gfc_conv_shift_descriptor (stmtblock_t*, tree, tree, int, tree);
+void gfc_conv_shift_descriptor (stmtblock_t*, tree, tree, int);
 void gfc_conv_shift_descriptor_subarray (stmtblock_t*, tree, gfc_expr *, gfc_expr *);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, int, tree *, tree *);
 

@@ -2142,27 +2142,10 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 }
 
 
-class cond_descr_lb : public lb_info_base
+void
+gfc_conv_shift_descriptor (stmtblock_t* block, tree dest, tree src, int rank)
 {
-  tree desc;
-  tree cond;
-public:
-  cond_descr_lb (tree arg_desc, tree arg_cond)
-    : desc (arg_desc), cond (arg_cond) { }
-
-  virtual tree lower_bound (stmtblock_t *block, int dim) const;
-  virtual bool zero_based_src () const { return true; }
-};
-
-
-tree
-cond_descr_lb::lower_bound (stmtblock_t *block ATTRIBUTE_UNUSED, int dim) const
-{
-  tree lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
-  lbound = fold_build3_loc (input_location, COND_EXPR,
-			    gfc_array_index_type, cond,
-			    gfc_index_one_node, lbound);
-  return lbound;
+  conv_shift_descriptor (block, src, dest, rank, unset_lb ());
 }
 
 
@@ -2437,15 +2420,6 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
   array_ref_to_array_spec (ar, as);
 
   gfc_conv_remap_descriptor (block, dest, src, src_rank, as);
-}
-
-
-void
-gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
-			   int rank, tree zero_cond)
-{
-  conv_shift_descriptor (block, src, dest, rank,
-			 cond_descr_lb (src, zero_cond));
 }
 
 
