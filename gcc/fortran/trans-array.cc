@@ -2818,6 +2818,39 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		      info->spacing[dim] = spacing;
 		    }
 	      }
+	    else
+	      {
+		bool missing_spacing;
+		for (int n = 0; n < ss_info->expr->rank; n++)
+		  if (info->spacing[n] == NULL_TREE)
+		    {
+		      missing_spacing = true;
+		      break;
+		    }
+		if (missing_spacing
+		    && ss_info->expr->ts.type != BT_CLASS)
+		  {
+		    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
+		    tree spacing = fold_convert_loc (input_location,
+						     gfc_array_index_type, 
+						     TYPE_SIZE_UNIT (type));
+		    spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
+
+		    for (n = 0; n < ss_info->expr->rank; n++)
+		      {
+			info->spacing[n] = spacing;
+
+			tree extent = gfc_conv_descriptor_extent_get (info->descriptor,
+								      gfc_rank_cst[n]);
+
+			spacing = fold_build2_loc (input_location, MULT_EXPR,
+						   gfc_array_index_type, spacing,
+						   extent);
+			spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
+		      }
+		  }
+	      }
+
 	    gfc_add_block_to_block (&outer_loop->post, &se.post);
 	    gfc_add_block_to_block (&outer_loop->post, &se.finalblock);
 	    ss_info->string_length = se.string_length;
