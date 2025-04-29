@@ -1345,14 +1345,12 @@ finalization_scalarizer (gfc_symbol *array, gfc_symbol *ptr,
      offset = 0
      do idx2 = 1, rank
        offset = offset + mod (idx, sizes(idx2)) / sizes(idx2-1) * strides(idx2)
-     end do
-     offset = offset * byte_stride.  */
+     end do  */
 
 static gfc_code*
 finalization_get_offset (gfc_symbol *idx, gfc_symbol *idx2, gfc_symbol *offset,
 			 gfc_symbol *strides, gfc_symbol *sizes,
-			 gfc_symbol *byte_stride, gfc_expr *rank,
-			 gfc_code *block, gfc_namespace *sub_ns)
+			 gfc_expr *rank, gfc_code *block, gfc_namespace *sub_ns)
 {
   gfc_iterator *iter;
   gfc_expr *expr, *expr2;
@@ -1445,17 +1443,6 @@ finalization_get_offset (gfc_symbol *idx, gfc_symbol *idx2, gfc_symbol *offset,
   block->block->next->expr2->ts = idx->ts;
   block->block->next->expr2->where = gfc_current_locus;
 
-  /* After the loop:  offset = offset * byte_stride.  */
-  block->next = gfc_get_code (EXEC_ASSIGN);
-  block = block->next;
-  block->expr1 = gfc_lval_expr_from_sym (offset);
-  block->expr2 = gfc_get_expr ();
-  block->expr2->expr_type = EXPR_OP;
-  block->expr2->value.op.op = INTRINSIC_TIMES;
-  block->expr2->value.op.op1 = gfc_lval_expr_from_sym (offset);
-  block->expr2->value.op.op2 = gfc_lval_expr_from_sym (byte_stride);
-  block->expr2->ts = block->expr2->value.op.op1->ts;
-  block->expr2->where = gfc_current_locus;
   return block;
 }
 
@@ -1928,10 +1915,29 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
   last_code->ext.iterator = iter;
   last_code->block = gfc_get_code (EXEC_DO);
 
-  /* sizes(idx) = ...  */
+  /* strides(idx) = _F._stride(array,dim=idx).  */
   last_code->block->next = gfc_get_code (EXEC_ASSIGN);
   block = last_code->block->next;
 
+  block->expr1 = gfc_lval_expr_from_sym (strides);
+  block->expr1->ref = gfc_get_ref ();
+  block->expr1->ref->type = REF_ARRAY;
+  block->expr1->ref->u.ar.type = AR_ELEMENT;
+  block->expr1->ref->u.ar.dimen = 1;
+  block->expr1->ref->u.ar.dimen_type[0] = DIMEN_ELEMENT;
+  block->expr1->ref->u.ar.start[0] = gfc_lval_expr_from_sym (idx);
+  block->expr1->ref->u.ar.as = strides->as;
+
+  block->expr2 = gfc_build_intrinsic_call (sub_ns, GFC_ISYM_STRIDE, "stride",
+					   gfc_current_locus, 2,
+					   gfc_lval_expr_from_sym (array),
+					   gfc_lval_expr_from_sym (idx));
+
+  /* sizes(idx) = sizes(idx-1) * size(array,dim=idx, kind=index_kind).  */
+  block->next = gfc_get_code (EXEC_ASSIGN);
+  block = block->next;
+
+  /* sizes(idx) = ...  */
   block->expr1 = gfc_lval_expr_from_sym (sizes);
   block->expr1->ref = gfc_get_ref ();
   block->expr1->ref->type = REF_ARRAY;
@@ -2148,8 +2154,7 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
 
 	  /* Offset calculation.  */
 	  block = finalization_get_offset (idx, idx2, offset, strides, sizes,
-					   byte_stride, rank, block->block,
-					   sub_ns);
+					   rank, block->block, sub_ns);
 
 	  /* Create code for
 	     CALL C_F_POINTER (TRANSFER (TRANSFER (C_LOC (array, cptr), c_intptr)
@@ -2220,7 +2225,7 @@ finish_assumed_rank:
 
       /* Offset calculation.  */
       block = finalization_get_offset (idx, idx2, offset, strides, sizes,
-				       byte_stride, rank, last_code->block,
+				       rank, last_code->block,
 				       sub_ns);
 
       /* Create code for
