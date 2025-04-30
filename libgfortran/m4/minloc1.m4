@@ -34,7 +34,7 @@ include(ifunction.m4)dnl
 #define HAVE_BACK_ARG 1
 
 ARRAY_FUNCTION(0,
-`	atype_name minval;
+`	'atype_name` minval;
 #if defined ('atype_inf`)
 	minval = 'atype_inf`;
 #else

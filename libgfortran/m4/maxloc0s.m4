@@ -37,7 +37,7 @@ include(iforeach-s.m4)dnl
 #define HAVE_BACK_ARG 1
 
 FOREACH_FUNCTION(
-`  const atype_name *maxval;
+`  const 'atype_name` *maxval;
    maxval = NULL;'
 ,
 `    if (maxval == NULL || (back ? compare_fcn (base, maxval, len) >= 0 :
@@ -45,11 +45,11 @@ FOREACH_FUNCTION(
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-	GFC_ARRAY_ELEM (rtype_name, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
     }')
 
 MASKED_FOREACH_FUNCTION(
-`  const atype_name *maxval;
+`  const 'atype_name` *maxval;
 
   maxval = NULL;'
 ,
@@ -59,7 +59,7 @@ MASKED_FOREACH_FUNCTION(
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-	GFC_ARRAY_ELEM (rtype_name, dest, n * dspacing) = count[n] + 1;
+	GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
     }')
 
 SCALAR_FOREACH_FUNCTION(`0')

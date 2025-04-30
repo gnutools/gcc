@@ -52,7 +52,7 @@ FOREACH_FUNCTION(
 		  fast = 1;
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		  break;
 		}
 	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
@@ -70,7 +70,7 @@ FOREACH_FUNCTION(
 	       {
 	         maxval = *base;
 	      	 for (n = 0; n < rank; n++)
-		   GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		   GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	       }
 	     base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	   }
@@ -82,7 +82,7 @@ FOREACH_FUNCTION(
 	       {
 	         maxval = *base;
 		 for (n = 0; n < rank; n++)
-		   GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		   GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	       }')
 MASKED_FOREACH_FUNCTION(
 `  atype_name maxval;
@@ -102,14 +102,14 @@ MASKED_FOREACH_FUNCTION(
 #if defined('atype_nan`)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		      GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		  if (*base >= maxval)
 #endif
 		    {
 		      fast = 1;
 		      maxval = *base;
 		      for (n = 0; n < rank; n++)
-			GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+			GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		      break;
 		    }
 		}
@@ -128,7 +128,7 @@ MASKED_FOREACH_FUNCTION(
 	        {
 	          maxval = *base;
 	          for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		}
 	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	    }
@@ -140,7 +140,7 @@ MASKED_FOREACH_FUNCTION(
 	        {
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	        }')
 
 SCALAR_FOREACH_FUNCTION(`0')

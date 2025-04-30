@@ -112,7 +112,7 @@ minloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 		  fast = 1;
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 		  break;
 		}
 	      base = (GFC_REAL_8*) (((char*)base) + sspacing[0]);
@@ -130,7 +130,7 @@ minloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		  GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 	      }
 	    base = (GFC_REAL_8*) (((char*)base) + sspacing[0]);
 	  }
@@ -142,7 +142,7 @@ minloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		  GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 	      }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -286,14 +286,14 @@ mminloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 #if defined(GFC_REAL_8_QUIET_NAN)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		      GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 		  if (*base <= minval)
 #endif
 		    {
 		      fast = 1;
 		      minval = *base;
 		      for (n = 0; n < rank; n++)
-			GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+			GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 		      break;
 		    }
 		}
@@ -312,7 +312,7 @@ mminloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 	        {
 	      	  minval = *base;
 	      	  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 	    	}
 		base = (GFC_REAL_8*) (((char*)base) + sspacing[0]);
 	    }
@@ -324,7 +324,7 @@ mminloc0_4_r8 (gfc_array_i4 * const restrict retarray,
 		{
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
 		}
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */

@@ -112,7 +112,7 @@ minloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 		  fast = 1;
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 		  break;
 		}
 	      base = (GFC_UINTEGER_16*) (((char*)base) + sspacing[0]);
@@ -130,7 +130,7 @@ minloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		  GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 	      }
 	    base = (GFC_UINTEGER_16*) (((char*)base) + sspacing[0]);
 	  }
@@ -142,7 +142,7 @@ minloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		  GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 	      }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -286,14 +286,14 @@ mminloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 #if defined(GFC_UINTEGER_16_QUIET_NAN)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		      GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 		  if (*base <= minval)
 #endif
 		    {
 		      fast = 1;
 		      minval = *base;
 		      for (n = 0; n < rank; n++)
-			GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+			GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 		      break;
 		    }
 		}
@@ -312,7 +312,7 @@ mminloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 	        {
 	      	  minval = *base;
 	      	  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 	    	}
 		base = (GFC_UINTEGER_16*) (((char*)base) + sspacing[0]);
 	    }
@@ -324,7 +324,7 @@ mminloc0_16_m16 (gfc_array_i16 * const restrict retarray,
 		{
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    GFC_ARRAY_ELEM (index_type, dest, n * dspacing) = count[n] + 1;
+		    GFC_ARRAY_ELEM (GFC_INTEGER_16, dest, n * dspacing) = count[n] + 1;
 		}
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
