@@ -2831,7 +2831,8 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		    && ss_info->expr->ts.type != BT_CLASS)
 		  {
 		    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
-		    if (TYPE_SIZE_UNIT (type) == NULL_TREE)
+		    if (TYPE_SIZE_UNIT (type) == NULL_TREE
+			|| !INTEGER_CST_P (TYPE_SIZE_UNIT (type)))
 		      {
 			for (n = 0; n < ss_info->expr->rank; n++)
 			  {
