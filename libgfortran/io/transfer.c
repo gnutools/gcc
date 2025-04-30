@@ -3934,6 +3934,18 @@ next_record_r (st_parameter_dt *dtp, int done)
 	      if (!done && finished)
 		hit_eof (dtp);
 
+	      if (unlikely (is_char4_unit(dtp)))
+		{
+		  if (unlikely (record % sizeof (gfc_char4_t) != 0))
+		    {
+		      generate_error (&dtp->common,
+				      LIBERROR_MISALIGNED_INTERNAL_UNIT, NULL);
+		      break;
+		    }
+		  else
+		    record /= sizeof (gfc_char4_t);
+		}
+
 	      /* Now seek to this record.  */
 	      if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 		{
@@ -4270,6 +4282,18 @@ next_record_w (st_parameter_dt *dtp, int done)
 	      if (finished)
 		dtp->u.p.current_unit->endfile = AT_ENDFILE;
 
+	      if (unlikely (is_char4_unit(dtp)))
+		{
+		  if (unlikely (record % sizeof (gfc_char4_t) != 0))
+		    {
+		      generate_error (&dtp->common,
+				      LIBERROR_MISALIGNED_INTERNAL_UNIT, NULL);
+		      break;
+		    }
+		  else
+		    record /= sizeof (gfc_char4_t);
+		}
+	    
 	      /* Now seek to this record */
 	      if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 		{
