@@ -3208,7 +3208,7 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
 		      stmtblock_t * descriptor_block, tree * overflow,
 		      tree expr3_elem_size, gfc_expr *expr3, tree expr3_desc,
 		      bool e3_has_nodescriptor, gfc_expr *expr,
-		      tree element_size, bool explicit_ts,
+		      tree element_size, gfc_typespec * explicit_ts,
 		      tree *empty_array_cond)
 {
   tree type;
@@ -3256,6 +3256,12 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
 			     TREE_OPERAND (descriptor, 0), tmp, NULL_TREE);
       tmp = fold_convert (gfc_charlen_type_node, tmp);
       type = gfc_get_character_type_len (expr->ts.kind, tmp);
+      tree dtype_value = gfc_get_dtype_rank_type (rank, type);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype_value);
+    }
+  else if (explicit_ts)
+    {
+      type = gfc_typenode_for_spec (explicit_ts);
       tree dtype_value = gfc_get_dtype_rank_type (rank, type);
       gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype_value);
     }
@@ -3802,6 +3808,23 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       gfc_conv_descriptor_dtype_set (block, desc,
 				     gfc_get_dtype (TREE_TYPE (desc)));
     }
+}
+
+
+void
+gfc_set_empty_descriptor (stmtblock_t *block, tree descr, int rank)
+{
+  for (int n = 0; n < rank; n++)
+    {
+      gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[n],
+				      gfc_index_one_node);
+      gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[n],
+				      gfc_index_zero_node);
+      gfc_conv_descriptor_spacing_set (block, descr, gfc_rank_cst[n],
+				       gfc_index_zero_node);
+    }
+
+  gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
 }
 
 
