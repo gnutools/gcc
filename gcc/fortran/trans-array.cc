@@ -3727,7 +3727,8 @@ void
 gfc_conv_tmp_array_ref (gfc_se * se)
 {
   se->string_length = se->ss->info->string_length;
-  bool tmp_array = !gfc_expr_attr (se->ss->info->expr).pointer;
+  bool tmp_array = !(se->ss->info->expr
+		     && gfc_expr_attr (se->ss->info->expr).pointer);
   gfc_conv_scalarized_array_ref (se, NULL, tmp_array);
   gfc_advance_se_ss_chain (se);
 }
