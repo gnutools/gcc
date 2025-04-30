@@ -2831,22 +2831,34 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		    && ss_info->expr->ts.type != BT_CLASS)
 		  {
 		    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
-		    tree spacing = fold_convert_loc (input_location,
-						     gfc_array_index_type, 
-						     TYPE_SIZE_UNIT (type));
-		    spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
-
-		    for (n = 0; n < ss_info->expr->rank; n++)
+		    if (TYPE_SIZE_UNIT (type) == NULL_TREE)
 		      {
-			info->spacing[n] = spacing;
-
-			tree extent = gfc_conv_descriptor_extent_get (info->descriptor,
-								      gfc_rank_cst[n]);
-
-			spacing = fold_build2_loc (input_location, MULT_EXPR,
-						   gfc_array_index_type, spacing,
-						   extent);
+			for (n = 0; n < ss_info->expr->rank; n++)
+			  {
+			    tree spacing = gfc_conv_descriptor_spacing_get (info->descriptor,
+									    gfc_rank_cst[n]);
+			    info->spacing[n] = gfc_evaluate_now (spacing, &outer_loop->pre);
+			  }
+		      }
+		    else
+		      {
+			tree spacing = fold_convert_loc (input_location,
+							 gfc_array_index_type, 
+							 TYPE_SIZE_UNIT (type));
 			spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
+
+			for (n = 0; n < ss_info->expr->rank; n++)
+			  {
+			    info->spacing[n] = spacing;
+
+			    tree extent = gfc_conv_descriptor_extent_get (info->descriptor,
+									  gfc_rank_cst[n]);
+
+			    spacing = fold_build2_loc (input_location, MULT_EXPR,
+						       gfc_array_index_type, spacing,
+						       extent);
+			    spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
+			  }
 		      }
 		  }
 	      }
