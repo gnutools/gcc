@@ -2832,7 +2832,8 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		  {
 		    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
 		    if (TYPE_SIZE_UNIT (type) == NULL_TREE
-			|| !INTEGER_CST_P (TYPE_SIZE_UNIT (type)))
+			|| !INTEGER_CST_P (TYPE_SIZE_UNIT (type))
+			|| gfc_expr_attr (ss_info->expr).pointer)
 		      {
 			for (n = 0; n < ss_info->expr->rank; n++)
 			  {
@@ -3726,7 +3727,8 @@ void
 gfc_conv_tmp_array_ref (gfc_se * se)
 {
   se->string_length = se->ss->info->string_length;
-  gfc_conv_scalarized_array_ref (se, NULL, true);
+  bool tmp_array = !gfc_expr_attr (se->ss->info->expr).pointer;
+  gfc_conv_scalarized_array_ref (se, NULL, tmp_array);
   gfc_advance_se_ss_chain (se);
 }
 
