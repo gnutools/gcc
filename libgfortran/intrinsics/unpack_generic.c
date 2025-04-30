@@ -121,9 +121,6 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 				       spacing);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_SPACING(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
 	  rs *= extent[n];
 	  spacing *= extent[n];
 	}
@@ -138,10 +135,15 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_SPACING(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
 	}
+    }
+
+  bool scalar_field = GFC_DESCRIPTOR_RANK (field) == 0;
+  for (n = 0; n < dim; n++)
+    {
+      rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
+      fstride[n] = scalar_field ? 0 : GFC_DESCRIPTOR_SPACING(field, n);
     }
 
   if (empty)
