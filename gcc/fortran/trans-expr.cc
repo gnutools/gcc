@@ -5501,6 +5501,13 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
      freeing of allocated memory is done at the right time.  */
   gfc_add_block_to_block (&parmse->pre, &loop.pre);
 
+  /* Remove the temporary from the first loop before cleanup, as we need it in
+     the second loop.  */
+  gfc_ss *tmp_ss = loop.temp_ss;
+  gcc_assert (loop.ss == tmp_ss);
+  loop.ss = loop.ss->loop_chain;
+  gfc_cleanup_loop (&loop);
+
   /**********Copy the temporary back again.*********/
 
   gfc_init_se (&lse, NULL);
@@ -5508,7 +5515,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 
   /* Walk the argument expression.  */
   lss = gfc_walk_expr (expr);
-  rse.ss = loop.temp_ss;
+  rse.ss = tmp_ss;
   lse.ss = lss;
 
   /* Initialize the scalarizer.  */
@@ -5527,11 +5534,15 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
   /* Setup the scalarizing loops.  */
   gfc_conv_loop_setup (&loop2, &expr->where);
 
+  /* Add the temporary late, as it doesn't need to be set up again.  */
+  tmp_ss->info->data.array.data = tmp_ss->info->data.array.saved_data;
+  gfc_add_ss_to_loop (&loop2, tmp_ss);
+
   gfc_copy_loopinfo_to_se (&lse, &loop2);
   gfc_copy_loopinfo_to_se (&rse, &loop2);
 
   gfc_mark_ss_chain_used (lss, 1);
-  gfc_mark_ss_chain_used (loop.temp_ss, 1);
+  gfc_mark_ss_chain_used (tmp_ss, 1);
 
   gfc_start_scalarized_body (&loop2, &body);
 
@@ -5566,9 +5577,6 @@ class_array_fcn:
 
   gfc_add_block_to_block (&parmse->post, &loop.post);
 
-  gfc_cleanup_loop (&loop);
-  gfc_cleanup_loop (&loop2);
-
   /* Pass the string length to the argument expression.  */
   if (expr->ts.type == BT_CHARACTER)
     parmse->string_length = expr->ts.u.cl->backend_decl;
@@ -5578,6 +5586,8 @@ class_array_fcn:
   if (formal_ptr)
     gfc_conv_shift_descriptor (&parmse->pre, parmse->expr, dimen,
 			       rse.loop->from, rse.loop->to);
+
+  gfc_cleanup_loop (&loop2);
 
   /* We want either the address for the data or the address of the descriptor,
      depending on the mode of passing array arguments.  */
