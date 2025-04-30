@@ -4399,6 +4399,21 @@ gfc_trans_assign_aux_var (gfc_symbol * sym, gfc_wrapped_block * block)
   gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE);
 }
 
+
+static bool
+decl_ref_or_const_like_p (tree t)
+{
+  if (TREE_CONSTANT (t) || DECL_P (t))
+    return true;
+
+  if (TREE_CODE (t) == SAVE_EXPR
+      || TREE_CODE (t) == NON_LVALUE_EXPR)
+    return decl_ref_or_const_like_p (TREE_OPERAND (t, 0));
+  else
+    return false;
+}
+
+
 static void
 gfc_trans_vla_one_sizepos (tree *tp, tree root_decl, stmtblock_t *body)
 {
@@ -4406,7 +4421,7 @@ gfc_trans_vla_one_sizepos (tree *tp, tree root_decl, stmtblock_t *body)
 
   if (t == NULL || t == error_mark_node)
     return;
-  if (TREE_CONSTANT (t) || DECL_P (t))
+  if (decl_ref_or_const_like_p (t))
     return;
 
   if (contains_placeholder_p (t))

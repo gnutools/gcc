@@ -6281,6 +6281,8 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 
   int dim;
 
+  gfc_trans_vla_type_sizes (sym, pblock);
+
   as = IS_CLASS_COARRAY_OR_ARRAY (sym) ? CLASS_DATA (sym)->as : sym->as;
 
   tree eltype = gfc_get_element_type (type);
