@@ -312,10 +312,10 @@ secnds (GFC_REAL_4 *x)
   gfc_array_i4 *avalues = xmalloc (sizeof (gfc_array_i4)
 				   + sizeof (descriptor_dimension));
   avalues->base_addr = &values[0];
-  GFC_DESCRIPTOR_DTYPE (avalues).type = BT_REAL;
+  GFC_DESCRIPTOR_DTYPE (avalues).type = BT_INTEGER;
   GFC_DESCRIPTOR_DTYPE (avalues).elem_len = 4;
   GFC_DESCRIPTOR_DTYPE (avalues).rank = 1;
-  GFC_DESCRIPTOR_DIMENSION_SET(avalues, 0, 0, 7, 1);
+  GFC_DESCRIPTOR_DIMENSION_SET(avalues, 0, 0, 7, 4);
 
   date_and_time (NULL, NULL, NULL, avalues, 0, 0, 0);
 
