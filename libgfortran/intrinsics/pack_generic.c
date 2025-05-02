@@ -535,7 +535,7 @@ pack_s_internal (gfc_array_char *ret, const gfc_array_char *array,
 	}
 
       /* Setup the array descriptor.  */
-      GFC_DESCRIPTOR_DIMENSION_SET(ret,0,0,total-1,1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret,0,0,total-1,size);
 
       ret->offset = 0;
 
