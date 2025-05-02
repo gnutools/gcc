@@ -2481,6 +2481,7 @@ public:
   value_type classify () const;
   value_type classify (unsigned offset, unsigned width) const;
   unsigned get_bitwidth () const { return bit_width; }
+  void set_undefined_at (unsigned offset, unsigned width);
   void set_address_at (storage_address & address, unsigned offset);
   void set_address (storage_address & address);
   void set_at (const data_value & value, unsigned offset);
@@ -3289,6 +3290,18 @@ data_value::set_address (storage_address & address)
 
 
 void
+data_value::set_undefined_at (unsigned offset, unsigned width)
+{
+  wide_int dest_mask = wi::shifted_mask (offset, width, false,
+					 bit_width);
+
+  // TODO: invalidate existing address if any
+  constant_mask &= ~dest_mask;
+  address_mask &= ~dest_mask;
+}
+
+
+void
 data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
 			const wide_int & value_src, unsigned src_offset)
 {
@@ -3333,6 +3346,10 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
   enum value_type type = value_src.classify (src_offset, value_width);
   switch (type)
     {
+    case VAL_UNDEFINED:
+      set_undefined_at (dest_offset, value_width);
+      break;
+
     case VAL_CONSTANT:
       set_cst_at (dest_offset, value_width, value_src.constant_value, src_offset);
       break;
@@ -5511,6 +5528,58 @@ data_value_set_at_tests ()
 				   HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_i3);
   ASSERT_EQ (wi_i3.to_shwi (), 7);
+
+
+  tree range17 = build_range_type (integer_type_node,
+				  build_int_cst (integer_type_node, 0),
+				  build_int_cst (integer_type_node, 17));
+  tree array_char_17 = build_array_type (char_type_node, range17);
+  tree c17 = create_var (array_char_17, "c17");
+  tree i5 = create_var (integer_type_node, "i5");
+
+  vec<tree> decls5{};
+  decls5.safe_push (c17);
+  decls5.safe_push (i5);
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (mem, printer);
+
+  data_value z17 (array_char_17);
+
+  wide_int wi0 = wi::shwi (0, 17 * CHAR_BIT);
+  z17.set_cst_at (wi0, 0);
+
+  data_storage *strg_c17 = ctx5.find_reachable_var (c17);
+  gcc_assert (strg_c17 != nullptr);
+  strg_c17->set (z17);
+
+  data_storage *strg_i5 = ctx5.find_reachable_var (i5);
+  gcc_assert (strg_i5 != nullptr);
+
+  storage_address addr_i5(strg_i5->get_ref (), 0);
+  data_value val_addr_i5 (ptr_type_node);
+  val_addr_i5.set_address (addr_i5);
+  strg_c17->set_at (val_addr_i5, HOST_BITS_PER_PTR);
+
+  data_value val17_before = strg_c17->get_value ();
+
+  ASSERT_EQ (val17_before.classify (), VAL_MIXED);
+  ASSERT_EQ (val17_before.classify (0, HOST_BITS_PER_PTR), VAL_CONSTANT);
+  ASSERT_EQ (val17_before.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
+  ASSERT_EQ (val17_before.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT), VAL_CONSTANT);
+
+  data_value undef (5 * CHAR_BIT + HOST_BITS_PER_PTR);
+  strg_c17->set_at (undef, 3 * CHAR_BIT);
+
+  data_value val17_after = strg_c17->get_value ();
+
+  ASSERT_EQ (val17_after.classify (), VAL_MIXED);
+  ASSERT_EQ (val17_after.classify (0, 3 * CHAR_BIT), VAL_CONSTANT);
+  ASSERT_EQ (val17_after.classify (3 * CHAR_BIT, 5 * CHAR_BIT + HOST_BITS_PER_PTR),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val17_after.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT),
+	     VAL_CONSTANT);
 }
 
 void
