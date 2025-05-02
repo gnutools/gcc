@@ -3303,9 +3303,10 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
   else
     gfc_conv_descriptor_dtype_set (pblock, descriptor, gfc_get_dtype (type));
 
+  gfc_conv_descriptor_elem_len_set (pblock, descriptor, element_size);
+
   tree empty_cond = logical_false_node;
-  spacing = gfc_conv_descriptor_elem_len_get (descriptor);
-  spacing = fold_convert_loc (input_location, gfc_array_index_type, spacing);
+  spacing = fold_convert_loc (input_location, gfc_array_index_type, element_size);
 
   for (n = 0; n < rank; n++)
     {

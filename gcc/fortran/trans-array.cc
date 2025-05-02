@@ -5631,8 +5631,8 @@ gfc_set_delta (gfc_loopinfo *loop)
 
 
 static tree
-descriptor_element_size (tree descriptor, tree expr3_elem_size,
-			 gfc_expr *expr3)
+descriptor_element_size (tree descriptor, gfc_typespec *explicit_ts,
+			 tree expr3_elem_size, gfc_expr *expr3)
 {
   tree type;
   tree tmp;
@@ -5663,7 +5663,15 @@ descriptor_element_size (tree descriptor, tree expr3_elem_size,
 	}
     }
   else
-    tmp = TYPE_SIZE_UNIT (gfc_get_element_type (type));
+    {
+      tree element_type;
+      if (explicit_ts)
+	element_type = gfc_typenode_for_spec (explicit_ts);
+      else
+	element_type = gfc_get_element_type (type);
+
+      tmp = TYPE_SIZE_UNIT (element_type);
+    }
 
   /* Convert to size_t.  */
   return fold_convert (size_type_node, tmp);
@@ -5897,7 +5905,8 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
   gfc_init_block (&set_descriptor_block);
 
 
-  element_size = descriptor_element_size (se->expr, expr3_elem_size, expr3);
+  element_size = descriptor_element_size (se->expr, explicit_ts,
+					  expr3_elem_size, expr3);
 
   tree empty_array_cond;
   /* Take the corank only from the actual ref and not from the coref.  The
