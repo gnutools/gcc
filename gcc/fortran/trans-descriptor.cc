@@ -2864,7 +2864,9 @@ gfc_set_gfc_from_cfi (stmtblock_t *unconditional_block,
       tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp2),
 			     tmp2, tmp);
       tmp = build3_loc (input_location, COND_EXPR, gfc_array_index_type, cond,
-			gfc_get_cfi_desc_elem_len (cfi), tmp);
+			fold_convert (gfc_array_index_type,
+				      gfc_get_cfi_desc_elem_len (cfi)),
+			tmp);
     }
   else
     {
