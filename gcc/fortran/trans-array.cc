@@ -2816,6 +2816,10 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		      spacing = gfc_conv_descriptor_spacing_get (tmp, tree_dim);
 		      spacing = gfc_evaluate_now (spacing, &outer_loop->pre);
 		      info->spacing[dim] = spacing;
+
+		      tree lbound = gfc_conv_descriptor_lbound_get (tmp, tree_dim);
+		      lbound = gfc_evaluate_now (lbound, &outer_loop->pre);
+		      info->lbound[dim] = lbound;
 		    }
 	      }
 	    else
