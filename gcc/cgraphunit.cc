@@ -4094,69 +4094,85 @@ exec_context::evaluate_unary (enum tree_code code, tree type, tree arg) const
 data_value
 exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
 {
-  gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
-	      || (TREE_CODE (TREE_TYPE (rhs)) == INTEGER_TYPE
-		  && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
-		  && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
-		  && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs)))
-	      || code == POINTER_PLUS_EXPR);
-  switch (code)
+  gcc_assert (TREE_CODE (type) == INTEGER_TYPE
+	      || TREE_CODE (type) == BOOLEAN_TYPE
+	      || TREE_CODE (type) == POINTER_TYPE
+	      || TREE_CODE (type) == REAL_TYPE);
+  data_value val_lhs = evaluate (lhs);
+  data_value val_rhs = evaluate (rhs);
+  enum value_type lhs_type = val_lhs.classify ();
+  enum value_type rhs_type = val_rhs.classify ();
+  if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
     {
-    default:
-      {
-	gcc_assert (TREE_CODE (type) == INTEGER_TYPE
-		    || TREE_CODE (type) == BOOLEAN_TYPE
-		    || TREE_CODE (type) == POINTER_TYPE
-		    || TREE_CODE (type) == REAL_TYPE);
-	data_value val_lhs = evaluate (lhs);
-	data_value val_rhs = evaluate (rhs);
-	enum value_type lhs_type = val_lhs.classify ();
-	enum value_type rhs_type = val_rhs.classify ();
-	if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
-	  {
-	    gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
-			|| (TREE_CODE (rhs) == INTEGER_CST
-			    && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
-			    && TYPE_PRECISION (TREE_TYPE (lhs)) == TYPE_PRECISION (TREE_TYPE (rhs))
-			    && TYPE_UNSIGNED (TREE_TYPE (lhs)) == TYPE_UNSIGNED (TREE_TYPE (rhs))));
-	    tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
-	    tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
-	    tree t = fold_binary (code, type, lval, rval);
-	    gcc_assert (t != NULL_TREE);
-	    return evaluate (t);
-	  }
-	else
-	  {
-	    gcc_assert (code == PLUS_EXPR
-			|| code == POINTER_PLUS_EXPR);
-	    data_value *val_address = nullptr, *val_offset = nullptr;
-	    if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
-	      {
-		val_address = &val_lhs;
-		val_offset = &val_rhs;
-	      }
-	    else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
-	      {
-		val_address = &val_rhs;
-		val_offset = &val_lhs;
-	      }
-	    else
-	      gcc_unreachable ();
-
-	    storage_address *address = val_address->get_address ();
-	    gcc_assert (address != nullptr);
-	    wide_int offset = val_offset->get_cst ();
-	    wide_int bit_offset = offset * CHAR_BIT;
-	    wide_int total_offset = address->offset + bit_offset;
-	    gcc_assert (wi::fits_uhwi_p (total_offset));
-	    storage_address final_address (address->storage,
-					   total_offset.to_uhwi ());
-	    data_value result (type);
-	    result.set_address (final_address);
-	    return result;
-	  }
-      }
+      gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
+		  || (TREE_CODE (rhs) == INTEGER_CST
+		      && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
+		      && TYPE_PRECISION (TREE_TYPE (lhs))
+			 == TYPE_PRECISION (TREE_TYPE (rhs))
+		      && TYPE_UNSIGNED (TREE_TYPE (lhs))
+			 == TYPE_UNSIGNED (TREE_TYPE (rhs))));
+      tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
+      tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
+      tree t = fold_binary (code, type, lval, rval);
+      gcc_assert (t != NULL_TREE);
+      return evaluate (t);
     }
+  else if ((lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	   || (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS))
+    {
+      if (code == PLUS_EXPR || code == POINTER_PLUS_EXPR)
+	{
+	  data_value *val_address = nullptr, *val_offset = nullptr;
+	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	    {
+	      val_address = &val_lhs;
+	      val_offset = &val_rhs;
+	    }
+	  else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	    {
+	      val_address = &val_rhs;
+	      val_offset = &val_lhs;
+	    }
+	  else
+	    gcc_unreachable ();
+
+	  storage_address *address = val_address->get_address ();
+	  gcc_assert (address != nullptr);
+	  wide_int offset = val_offset->get_cst ();
+	  wide_int bit_offset = offset * CHAR_BIT;
+	  wide_int total_offset = address->offset + bit_offset;
+	  gcc_assert (wi::fits_uhwi_p (total_offset));
+	  storage_address final_address (address->storage,
+					 total_offset.to_uhwi ());
+	  data_value result (type);
+	  result.set_address (final_address);
+	  return result;
+	}
+      else if (code == EQ_EXPR || code == NE_EXPR)
+	{
+	  data_value *val_null = nullptr;
+	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	    val_null = &val_rhs;
+	  else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	    val_null = &val_lhs;
+	  else
+	    gcc_unreachable ();
+
+	  /* Check that val_null really is the null pointer.  */
+	  wide_int wi_null_val = val_null->get_cst ();
+	  gcc_assert (wi_null_val == 0);
+
+	  data_value result (type);
+	  bool bool_result = code == NE_EXPR;
+	  wide_int wi_result = wi::uhwi (bool_result, result.get_bitwidth ());
+	  result.set_cst (wi_result);
+	  return result;
+	}
+      else
+	gcc_unreachable ();
+    }
+  else
+    gcc_unreachable ();
 }
 
 void
@@ -7580,6 +7596,37 @@ exec_context_evaluate_binary_tests ()
   ASSERT_EQ (TREE_CODE (f), REAL_CST);
   REAL_VALUE_TYPE val575 = REAL_VALUE_ATOF ("5.75", float_mode);
   ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (f), &val575));
+
+
+  tree i5 = create_var (integer_type_node, "i5");
+  tree p5 = create_var (build_pointer_type (integer_type_node), "p5");
+
+  vec<tree> decls5{};
+  decls5.safe_push (i5);
+  decls5.safe_push (p5);
+
+  context_builder builder5 {};
+  builder5.add_decls (&decls5);
+  exec_context ctx5 = builder5.build (mem, printer);
+
+  data_storage *strg_i5 = ctx5.find_reachable_var (i5);
+  gcc_assert (strg_i5 != nullptr);
+  data_value addr_i5 (ptr_type_node);
+  storage_address strg_addr_i5 (strg_i5->get_ref (), 0);
+  addr_i5.set_address (strg_addr_i5);
+
+  data_storage *strg_p5 = ctx5.find_reachable_var (p5);
+  gcc_assert (strg_p5 != nullptr);
+  strg_p5->set (addr_i5);
+
+  data_value val_ne5 = ctx5.evaluate_binary (NE_EXPR, boolean_type_node,
+					     p5,
+					     build_int_cst (ptr_type_node, 0));
+
+  ASSERT_EQ (val_ne5.classify (), VAL_CONSTANT);
+  wide_int wi_ne5 = val_ne5.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_ne5);
+  ASSERT_EQ (wi_ne5.to_uhwi (), 1);
 }
 
 
