@@ -3520,6 +3520,10 @@ data_value::get_at (unsigned offset, unsigned width) const
       }
       break;
 
+    case VAL_MIXED:
+      result.set_at (0, width, *this, offset);
+      break;
+
     case VAL_UNDEFINED:
       break;
 
@@ -5748,6 +5752,59 @@ data_value_print_tests ()
   printer10.print (v10, integer_type_node);
 
   ASSERT_STREQ (pp_formatted_text (&pp10), "<undef>");
+}
+
+
+void
+data_value_get_at_tests ()
+{
+  tree mixed1 = make_node (RECORD_TYPE);
+  tree i3 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("i3"), integer_type_node);
+  DECL_CONTEXT (i3) = mixed1;
+  DECL_CHAIN (i3) = NULL_TREE;
+  tree p2 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("p2"), ptr_type_node);
+  DECL_CONTEXT (p2) = mixed1;
+  DECL_CHAIN (p2) = i3;
+  tree i1 = build_decl (input_location, FIELD_DECL,
+			get_identifier ("i1"), long_integer_type_node);
+  DECL_CONTEXT (i1) = mixed1;
+  DECL_CHAIN (i1) = p2;
+  TYPE_FIELDS (mixed1) = i1;
+  layout_type (mixed1);
+
+  heap_memory mem1;
+  context_printer printer;
+
+  tree m1 = create_var (mixed1, "m1");
+
+  vec<tree> decls1{};
+  decls1.safe_push (m1);
+
+  context_builder builder1 {};
+  builder1.add_decls (&decls1);
+  exec_context ctx1 = builder1.build (mem1, printer);
+
+  data_value val1 (mixed1);
+  wide_int wi7 = wi::uhwi (7, HOST_BITS_PER_INT);
+  val1.set_cst_at (wi7, tree_to_shwi (bit_position (i1)));
+
+  data_storage * storage1 = ctx1.find_reachable_var (m1);
+  storage_address address (storage1->get_ref (), 0);
+  val1.set_address_at (address, tree_to_shwi (bit_position (p2)));
+
+  data_value sub_val = val1.get_at (0, tree_to_shwi (bit_position (i3)));
+
+  ASSERT_EQ (sub_val.classify (), VAL_MIXED);
+  ASSERT_EQ (sub_val.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (sub_val.classify (HOST_BITS_PER_INT,
+			       tree_to_shwi (bit_position (p2))
+			       - HOST_BITS_PER_INT),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (sub_val.classify (tree_to_shwi (bit_position (p2)),
+			       HOST_BITS_PER_PTR),
+	     VAL_ADDRESS);
 }
 
 
@@ -8470,6 +8527,7 @@ gimple_exec_cc_tests ()
   data_value_set_tests ();
   data_value_set_at_tests ();
   data_value_print_tests ();
+  data_value_get_at_tests ();
   data_storage_set_at_tests ();
   context_printer_print_tests ();
   context_printer_print_first_data_ref_part_tests ();
