@@ -4391,6 +4391,29 @@ exec_context::execute_call (gcall *g)
       storage_address address (storage.get_ref (), 0);
       (*result).set_address (address);
     }
+  else if (gimple_call_builtin_p (g, BUILT_IN_MEMCPY))
+    {
+      gcc_assert (gimple_call_num_args (g) == 3);
+      tree arg0 = gimple_call_arg (g, 0);
+      tree arg1 = gimple_call_arg (g, 1);
+      tree arg2 = gimple_call_arg (g, 2);
+      data_value ptr0 = evaluate (arg0);
+      data_value ptr1 = evaluate (arg1);
+      data_value len2 = evaluate (arg2);
+      gcc_assert (ptr0.classify () == VAL_ADDRESS);
+      gcc_assert (ptr1.classify () == VAL_ADDRESS);
+      gcc_assert (len2.classify () == VAL_CONSTANT);
+      storage_address addr0 = *ptr0.get_address ();
+      data_storage & storage0 = addr0.storage.get ();
+      data_value dest_val = storage0.get_value ();
+      storage_address addr1 = *ptr1.get_address ();
+      data_storage & storage1 = addr1.storage.get ();
+      data_value src = storage1.get_value ();
+      wide_int wi_len2 = len2.get_cst ();
+      gcc_assert (wi::fits_uhwi_p (wi_len2));
+      dest_val.set (src);
+      storage0.set (dest_val);
+    }
   else
     {
       tree fn = gimple_call_fn (g);
@@ -8453,6 +8476,52 @@ exec_context_execute_call_tests ()
   wide_int wi7 = alloc_val7.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi7);
   ASSERT_EQ (wi7.to_shwi (), 0);
+
+
+  tree v81 = create_var (integer_type_node, "v81");
+  tree v82 = create_var (integer_type_node, "v82");
+
+  vec<tree> decls8{};
+  decls8.safe_push (v81);
+  decls8.safe_push (v82);
+
+  heap_memory mem8;
+  context_builder builder8 {};
+  builder8.add_decls (&decls8);
+  exec_context ctx8 = builder8.build (mem8, printer);
+
+  tree a81 = build1_loc (UNKNOWN_LOCATION, ADDR_EXPR,
+			 ptr_type_node, v81);
+  tree a82 = build1_loc (UNKNOWN_LOCATION, ADDR_EXPR,
+			 ptr_type_node, v82);
+  tree s84 = build_int_cst (size_type_node, HOST_BITS_PER_INT / CHAR_BIT);
+
+  tree memcpy_fn = builtin_decl_explicit (BUILT_IN_MEMCPY);
+  gcall * memcpy_call8 = gimple_build_call (memcpy_fn, 3, a82, a81, s84);
+
+  data_value val17 (integer_type_node);
+  wide_int wi17 = wi::uhwi (17, HOST_BITS_PER_INT);
+  val17.set_cst (wi17);
+
+  data_storage * storage_v81 = ctx8.find_reachable_var (v81);
+  gcc_assert (storage_v81 != nullptr);
+  storage_v81->set (val17);
+  
+  data_storage *storage_v82 = ctx8.find_reachable_var (v82);
+  gcc_assert (storage_v82 != nullptr);
+
+  data_value v82_before = storage_v82->get_value ();
+
+  ASSERT_EQ (v82_before.classify (), VAL_UNDEFINED);
+
+  ctx8.execute (memcpy_call8);
+
+  data_value v82_after = storage_v82->get_value ();
+
+  ASSERT_EQ (v82_after.classify (), VAL_CONSTANT);
+  wide_int wi_v82 = v82_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_v82);
+  ASSERT_EQ (wi_v82.to_shwi (), 17);
 }
 
 void
