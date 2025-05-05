@@ -248,7 +248,8 @@ gfc_omp_privatize_by_reference (const_tree decl)
 	  || GFC_DECL_GET_SCALAR_ALLOCATABLE (decl)
 	  || GFC_DECL_CRAY_POINTEE (decl)
 	  || GFC_DECL_ASSOCIATE_VAR_P (decl)
-	  || VOID_TYPE_P (TREE_TYPE (TREE_TYPE (decl))))
+	  || VOID_TYPE_P (TREE_TYPE (TREE_TYPE (decl)))
+	  || !TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (decl))))
 	return false;
 
       if (!DECL_ARTIFICIAL (decl)
