@@ -6177,6 +6177,14 @@ gfc_conv_array_initializer (tree type, gfc_expr * expr)
 	      else
 		tmp1 = gfc_conv_mpz_to_tree (c->offset, gfc_index_integer_kind);
 
+	      if (min_index)
+		{
+		  tmp1 = fold_build2_loc (input_location, PLUS_EXPR,
+					  TREE_TYPE (tmp1), tmp1, min_index);
+		  tmp2 = fold_build2_loc (input_location, PLUS_EXPR,
+					  TREE_TYPE (tmp2), tmp2, min_index);
+		}
+
 	      range = fold_build2 (RANGE_EXPR, gfc_array_index_type, tmp1, tmp2);
 	      mpz_clear (maxval);
 	    }
