@@ -1863,6 +1863,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   mpz_t stride;
   mpz_t spc;
   mpz_t delta;
+  mpz_t *lbound0 = nullptr;
   gfc_expr *expr;
 
   mpz_init_set_ui (offset, 0);
@@ -1892,6 +1893,8 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
       expr = as->lower[n];
       if (expr && expr->expr_type == EXPR_CONSTANT)
         {
+	  if (n == 0)
+	    lbound0 = &expr->value.integer;
           tmp = gfc_conv_mpz_to_tree (expr->value.integer,
 				      gfc_index_integer_kind);
         }
@@ -2007,13 +2010,25 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
 	  mpz_t size;
 	  mpz_init (size);
 	  mpz_sub_ui (size, stride, 1);
+	  if (as->rank == 1 && lbound0)
+	    mpz_add (size, size, *lbound0);
+	  else if (as->rank == 1 && as->lower[0] == nullptr)
+	    mpz_add_ui (size, size, 1);
 	  max_idx = gfc_conv_mpz_to_tree (size, gfc_index_integer_kind);
 	}
       else
 	max_idx = NULL_TREE;
 
+      tree lower;
+      if (as->rank == 1 && lbound0)
+	lower = gfc_conv_mpz_to_tree (*lbound0, gfc_index_integer_kind);
+      else if (as->rank == 1 && as && as->lower[0] == nullptr)
+	lower = gfc_index_one_node;
+      else
+	lower = gfc_index_zero_node;
+
       TYPE_DOMAIN (type) = build_range_type (gfc_array_index_type,
-					     gfc_index_zero_node, max_idx);
+					     lower, max_idx);
       TREE_TYPE (type) = etype;
     }
 
