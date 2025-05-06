@@ -5060,10 +5060,10 @@ gfc_conv_intrinsic_minmaxloc (gfc_se * se, gfc_expr * expr, enum tree_code op)
       as.rank = 1;
       as.lower[0] = gfc_get_int_expr (gfc_index_integer_kind,
 				      &arrayexpr->where,
-				      HOST_WIDE_INT_1);
+				      HOST_WIDE_INT_0);
       as.upper[0] = gfc_get_int_expr (gfc_index_integer_kind,
 				      &arrayexpr->where,
-				      arrayexpr->rank);
+				      arrayexpr->rank - 1);
 
       tree array = gfc_get_nodesc_array_type (type, &as, PACKED_STATIC, true);
 
