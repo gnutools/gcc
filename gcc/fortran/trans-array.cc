@@ -8940,13 +8940,13 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
       /* Build the body of the loop.  */
       gfc_init_block (&loopbody);
 
-      vref = gfc_build_array_ref (var, index, true);
+      vref = gfc_build_array_ref (var, index, true, gfc_index_zero_node);
 
       if (purpose == COPY_ALLOC_COMP || purpose == COPY_ONLY_ALLOC_COMP)
 	{
 	  tmp = build_fold_indirect_ref_loc (input_location,
 					     gfc_conv_array_data (dest));
-	  dref = gfc_build_array_ref (tmp, index, true);
+	  dref = gfc_build_array_ref (tmp, index, true, gfc_index_zero_node);
 	  tmp = structure_alloc_comps (der_type, vref, dref, rank,
 				       COPY_ALLOC_COMP, caf_mode, args,
 				       no_finalization);
