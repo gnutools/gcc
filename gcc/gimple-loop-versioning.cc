@@ -172,6 +172,8 @@ struct address_term_info
   /* True if STRIDE == 1 is a versioning opportunity when considered
      in isolation.  */
   bool versioning_opportunity_p;
+
+  unsigned HOST_WIDE_INT versioning_value;
 };
 
 /* Information about an address calculation, and the range of constant
@@ -237,6 +239,13 @@ public:
      (keyed off their SSA_NAME_VERSION) are all equal to 1 at runtime.  */
   bitmap_head unity_names;
 
+  /* We'd like to version the loop for the case in which these SSA names
+     (keyed off their SSA_NAME_VERSION) are equal to the respective access size
+     at runtime.  */
+  hash_map <unsigned, unsigned HOST_WIDE_INT,
+	    simple_hashmap_traits <int_hash <unsigned, UINT_MAX>, unsigned HOST_WIDE_INT>>
+  non_unity_versioning_values;
+
   /* If versioning succeeds, this points the version of the loop that
      assumes the version conditions holds.  */
   class loop *optimized_loop;
@@ -283,7 +292,7 @@ private:
   unsigned int max_insns_for_loop (class loop *);
   bool expensive_stmt_p (gimple *);
 
-  void version_for_unity (gimple *, tree);
+  void version_for_value (gimple *, tree, unsigned HOST_WIDE_INT);
   bool acceptable_multiplier_p (tree, unsigned HOST_WIDE_INT,
 				unsigned HOST_WIDE_INT * = 0);
   bool acceptable_type_p (tree, unsigned HOST_WIDE_INT *);
@@ -487,7 +496,9 @@ bool
 loop_info::worth_versioning_p () const
 {
   return (!rejected_p
-	  && (!bitmap_empty_p (&unity_names) || subloops_benefit_p));
+	  && (!bitmap_empty_p (&unity_names)
+	      || !non_unity_versioning_values.is_empty ()
+	      || subloops_benefit_p));
 }
 
 loop_versioning::lv_dom_walker::lv_dom_walker (loop_versioning &lv)
@@ -512,9 +523,17 @@ loop_versioning::lv_dom_walker::before_dom_children (basic_block bb)
 tree
 loop_versioning::name_prop::value_of_expr (tree val, gimple *)
 {
-  if (TREE_CODE (val) == SSA_NAME
-      && bitmap_bit_p (&m_li.unity_names, SSA_NAME_VERSION (val)))
+  if (TREE_CODE (val) != SSA_NAME)
+    return NULL_TREE;
+
+  if (bitmap_bit_p (&m_li.unity_names, SSA_NAME_VERSION (val)))
     return build_one_cst (TREE_TYPE (val));
+
+  unsigned HOST_WIDE_INT *version_size;
+  version_size = m_li.non_unity_versioning_values.get (SSA_NAME_VERSION (val));
+  if (version_size)
+    return build_int_cst (TREE_TYPE (val), version_size);
+
   return NULL_TREE;
 }
 
@@ -535,6 +554,7 @@ loop_versioning::loop_versioning (function *fn)
     {
       m_loops[i].outermost = get_loop (m_fn, 0);
       bitmap_initialize (&m_loops[i].unity_names, &m_bitmap_obstack);
+      m_loops[i].non_unity_versioning_values.empty ();
     }
 
   /* Initialize the list of blocks that belong to each loop.  */
@@ -606,12 +626,40 @@ loop_versioning::expensive_stmt_p (gimple *stmt)
    is invariant in the loop.  */
 
 void
-loop_versioning::version_for_unity (gimple *stmt, tree name)
+loop_versioning::version_for_value (gimple *stmt, tree name,
+				    unsigned HOST_WIDE_INT value)
 {
   class loop *loop = loop_containing_stmt (stmt);
   loop_info &li = get_loop_info (loop);
 
-  if (bitmap_set_bit (&li.unity_names, SSA_NAME_VERSION (name)))
+  bool changed = false;
+  if (value == 1
+      && bitmap_set_bit (&li.unity_names, SSA_NAME_VERSION (name)))
+    changed = true;
+  else
+    {
+      bool existed;
+      unsigned HOST_WIDE_INT &versioning_value
+			  = li.non_unity_versioning_values.get_or_insert (
+					SSA_NAME_VERSION (name), &existed);
+      if (!existed)
+	{
+	  versioning_value = value;
+	  changed = true;
+	}
+      else if (versioning_value != value)
+	{
+	  li.rejected_p = true;
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_NOTE, stmt, "disabling versioning of loop with"
+			     " multiple values for %T: " HOST_WIDE_INT_PRINT_DEC
+			     " and " HOST_WIDE_INT_PRINT_DEC "\n", name,
+			     versioning_value, value);
+	  return;
+	}
+    }
+
+  if (changed)
     {
       /* This is the first time we've wanted to version LOOP for NAME.
 	 Keep track of the outermost loop that can handle all versioning
@@ -624,7 +672,8 @@ loop_versioning::version_for_unity (gimple *stmt, tree name)
       if (dump_enabled_p ())
 	{
 	  dump_printf_loc (MSG_NOTE, stmt, "want to version containing loop"
-			   " for when %T == 1", name);
+			   " for when %T == " HOST_WIDE_INT_PRINT_UNSIGNED,
+			   name, value);
 	  if (outermost == loop)
 	    dump_printf (MSG_NOTE, "; cannot hoist check further");
 	  else
@@ -645,7 +694,8 @@ loop_versioning::version_for_unity (gimple *stmt, tree name)
       /* This is a duplicate request.  */
       if (dump_enabled_p ())
 	dump_printf_loc (MSG_NOTE, stmt, "already asked to version containing"
-			 " loop for when %T == 1\n", name);
+			 " loop for when %T == " HOST_WIDE_INT_PRINT_UNSIGNED "\n",
+			 name, value);
     }
 }
 
@@ -836,15 +886,24 @@ loop_versioning::analyze_stride (address_info &address,
      - the stride is an SSA name that is invariant in STMT's loop,
        since otherwise versioning isn't possible.  */
   unsigned HOST_WIDE_INT access_size = address.max_offset - address.min_offset;
-  if (term.multiplier == access_size
+  if ((term.multiplier == access_size
+       || term.multiplier == 1)
       && address.loop == op_loop
       && TREE_CODE (stride) == SSA_NAME
       && expr_invariant_in_loop_p (address.loop, stride))
     {
       term.versioning_opportunity_p = true;
+      if (term.multiplier == access_size)
+	term.versioning_value = 1;
+      else
+	term.versioning_value = access_size;
+
       if (dump_enabled_p ())
-	dump_printf_loc (MSG_NOTE, address.stmt, "%T == 1 is a versioning"
-			 " opportunity\n", stride);
+	dump_printf_loc (MSG_NOTE, address.stmt, "%T == "
+			 HOST_WIDE_INT_PRINT_DEC " is a versioning"
+			 " opportunity\n", stride,
+			 term.multiplier == access_size ? HOST_WIDE_INT_1U
+							: access_size);
     }
 }
 
@@ -1125,36 +1184,39 @@ loop_versioning::analyze_address_fragment (address_info &address)
 
      Pointer equality is enough to check for uniqueness in (1), since we
      only care about SSA names.  */
-  tree chosen_stride = NULL_TREE;
-  tree version_stride = NULL_TREE;
+  address_term_info *chosen_term = nullptr;
+  address_term_info *version_term = nullptr;
   for (unsigned int i = 0; i < address.terms.length (); ++i)
-    if (chosen_stride != address.terms[i].stride
+    if ((chosen_term == nullptr
+	 || chosen_term->stride != address.terms[i].stride)
 	&& address.terms[i].inner_likelihood == INNER_LIKELY)
       {
-	if (chosen_stride)
+	if (chosen_term)
 	  return;
-	chosen_stride = address.terms[i].stride;
+	chosen_term = &address.terms[i];
 	if (address.terms[i].versioning_opportunity_p)
-	  version_stride = chosen_stride;
+	  version_term = chosen_term;
       }
 
   /* If there are no likely inner strides, see if there is a single
      versioning opportunity for a stride that was rated as INNER_DONT_KNOW.
      See the comment above the function for the cases that this code
      handles.  */
-  if (!chosen_stride)
+  if (!chosen_term)
     for (unsigned int i = 0; i < address.terms.length (); ++i)
-      if (version_stride != address.terms[i].stride
+      if ((version_term == nullptr
+	   || version_term->stride != address.terms[i].stride)
 	  && address.terms[i].inner_likelihood == INNER_DONT_KNOW
 	  && address.terms[i].versioning_opportunity_p)
 	{
-	  if (version_stride)
+	  if (version_term)
 	    return;
-	  version_stride = address.terms[i].stride;
+	  version_term = &address.terms[i];
 	}
 
-  if (version_stride)
-    version_for_unity (address.stmt, version_stride);
+  if (version_term)
+    version_for_value (address.stmt, version_term->stride,
+		       version_term->versioning_value);
 }
 
 /* Treat EXPR * MULTIPLIER + OFFSET as a fragment of an address that addresses
@@ -1190,6 +1252,7 @@ loop_versioning::record_address_fragment (gimple *stmt,
   address->terms[0].stride = NULL_TREE;
   address->terms[0].inner_likelihood = INNER_UNLIKELY;
   address->terms[0].versioning_opportunity_p = false;
+  address->terms[0].versioning_value = 0;
   address->min_offset = offset;
 
   /* Peel apart the expression into a sum of address_terms, where each
@@ -1455,6 +1518,50 @@ loop_versioning::analyze_blocks ()
   return m_num_conditions != 0;
 }
 
+
+static bool
+name_can_have_value_in_loop (unsigned id_name, unsigned HOST_WIDE_INT value,
+			     class loop *loop)
+{
+  tree name = ssa_name (id_name);
+  gimple *stmt = first_stmt (loop->header);
+
+  int_range_max r;
+  if (get_range_query (cfun)->range_of_expr (r, name, stmt)
+      && !r.contains_p (wi::one (TYPE_PRECISION (TREE_TYPE (name)))))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_NOTE, find_loop_location (loop),
+			 "%T can never be " HOST_WIDE_INT_PRINT_DEC
+			 " in this loop\n", name, value);
+
+      return false;
+    }
+  else
+    return true;
+}
+
+
+struct loop_versioning_info
+{
+  class loop *loop;
+  class loop_versioning *loop_versioning;
+  bitmap names_to_remove;
+};
+
+static bool
+check_possible_value (const unsigned &id_name,
+		      const unsigned HOST_WIDE_INT &version_value,
+		      struct loop_versioning_info &versioning_info)
+{
+  if (!name_can_have_value_in_loop (id_name, version_value,
+				    versioning_info.loop))
+    bitmap_set_bit (versioning_info.names_to_remove, id_name);
+
+  return true;
+}
+
+
 /* Use the ranges in VRS to remove impossible versioning conditions from
    LOOP.  */
 
@@ -1463,30 +1570,28 @@ loop_versioning::prune_loop_conditions (class loop *loop)
 {
   loop_info &li = get_loop_info (loop);
 
-  int to_remove = -1;
+  auto_bitmap names_to_remove;
+
   bitmap_iterator bi;
   unsigned int i;
-  int_range_max r;
   EXECUTE_IF_SET_IN_BITMAP (&li.unity_names, 0, i, bi)
+    if (!name_can_have_value_in_loop (i, 1, loop))
+      bitmap_set_bit (names_to_remove, i);
+
+  struct loop_versioning_info versioning_info;
+  versioning_info.loop = loop;
+  versioning_info.loop_versioning = this;
+  versioning_info.names_to_remove = names_to_remove;
+
+  li.non_unity_versioning_values
+	.traverse<loop_versioning_info &, check_possible_value> (
+		    versioning_info);
+
+  EXECUTE_IF_SET_IN_BITMAP (names_to_remove, 0, i, bi)
     {
-      tree name = ssa_name (i);
-      gimple *stmt = first_stmt (loop->header);
-
-      if (get_range_query (cfun)->range_of_expr (r, name, stmt)
-	  && !r.contains_p (wi::one (TYPE_PRECISION (TREE_TYPE (name)))))
-	{
-	  if (dump_enabled_p ())
-	    dump_printf_loc (MSG_NOTE, find_loop_location (loop),
-			     "%T can never be 1 in this loop\n", name);
-
-	  if (to_remove >= 0)
-	    bitmap_clear_bit (&li.unity_names, to_remove);
-	  to_remove = i;
-	  m_num_conditions -= 1;
-	}
+      bitmap_clear_bit (&li.unity_names, i);
+      li.non_unity_versioning_values.remove (i);
     }
-  if (to_remove >= 0)
-    bitmap_clear_bit (&li.unity_names, to_remove);
 }
 
 /* Remove any scheduled loop version conditions that will never be true.
