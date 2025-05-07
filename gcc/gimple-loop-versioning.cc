@@ -242,9 +242,11 @@ public:
   /* We'd like to version the loop for the case in which these SSA names
      (keyed off their SSA_NAME_VERSION) are equal to the respective access size
      at runtime.  */
-  hash_map <unsigned, unsigned HOST_WIDE_INT,
-	    simple_hashmap_traits <int_hash <unsigned, 0, UINT_MAX>, unsigned HOST_WIDE_INT>>
-  non_unity_versioning_values;
+  typedef hash_map <unsigned, unsigned HOST_WIDE_INT,
+		    simple_hashmap_traits <int_hash <unsigned, 0, UINT_MAX>,
+					   unsigned HOST_WIDE_INT>>
+  name_value_map_t;
+  name_value_map_t non_unity_versioning_values;
 
   /* If versioning succeeds, this points the version of the loop that
      assumes the version conditions holds.  */
@@ -532,7 +534,7 @@ loop_versioning::name_prop::value_of_expr (tree val, gimple *)
   unsigned HOST_WIDE_INT *version_size;
   version_size = m_li.non_unity_versioning_values.get (SSA_NAME_VERSION (val));
   if (version_size)
-    return build_int_cst (TREE_TYPE (val), version_size);
+    return build_int_cst (TREE_TYPE (val), *version_size);
 
   return NULL_TREE;
 }
@@ -1609,6 +1611,23 @@ loop_versioning::prune_conditions ()
   return m_num_conditions != 0;
 }
 
+
+static bool
+copy_versioning_value (const unsigned &id_name,
+		       const unsigned HOST_WIDE_INT &version_value,
+		       loop_info::name_value_map_t &dest_map)
+{
+  bool existed = false;
+  unsigned HOST_WIDE_INT &copied_value = dest_map.get_or_insert (
+				    id_name, &existed);
+  if (!existed)
+    copied_value = version_value;
+  else if (copied_value != version_value)
+    dest_map.remove (id_name);
+
+  return true;
+}
+
 /* Merge the version checks for INNER into immediately-enclosing loop
    OUTER.  */
 
@@ -1630,6 +1649,11 @@ loop_versioning::merge_loop_info (class loop *outer, class loop *inner)
     }
 
   bitmap_ior_into (&outer_li.unity_names, &inner_li.unity_names);
+
+  inner_li.non_unity_versioning_values
+	.traverse<loop_info::name_value_map_t &, copy_versioning_value> (
+		    outer_li.non_unity_versioning_values);
+
   if (loop_depth (outer_li.outermost) < loop_depth (inner_li.outermost))
     outer_li.outermost = inner_li.outermost;
 }
@@ -1760,6 +1784,35 @@ loop_versioning::make_versioning_decisions ()
   return !m_loops_to_version.is_empty ();
 }
 
+
+struct loop_versioning_condition
+{
+  tree cond;
+};
+
+
+static tree
+add_condition (tree cond, const unsigned &id_name,
+	       const unsigned HOST_WIDE_INT &value)
+{
+  tree name = ssa_name (id_name);
+  tree ne_one = fold_build2 (NE_EXPR, boolean_type_node, name,
+			     build_int_cst (TREE_TYPE (name), value));
+  return fold_build2 (TRUTH_OR_EXPR, boolean_type_node, cond, ne_one);
+}
+
+
+static bool
+add_condition (const unsigned &id_name,
+	       const unsigned HOST_WIDE_INT &version_value,
+	       struct loop_versioning_condition &condition_info)
+{
+  condition_info.cond = add_condition (condition_info.cond, id_name,
+				       version_value);
+
+  return true;
+}
+
 /* Attempt to implement loop versioning for LOOP, using the information
    cached in the associated loop_info.  Return true on success.  */
 
@@ -1781,6 +1834,15 @@ loop_versioning::version_loop (class loop *loop)
       cond = fold_build2 (TRUTH_OR_EXPR, boolean_type_node, cond, ne_one);
     }
 
+  loop_versioning_condition condition_info;
+  condition_info.cond = cond;
+
+  li.non_unity_versioning_values
+	.traverse<loop_versioning_condition &, add_condition> (
+		    condition_info);
+
+  cond = condition_info.cond;
+
   /* Convert the condition into a suitable gcond.  */
   gimple_seq stmts = NULL;
   cond = force_gimple_operand_1 (cond, &stmts, is_gimple_condexpr_for_cond,
@@ -1799,14 +1861,14 @@ loop_versioning::version_loop (class loop *loop)
     {
       if (dump_enabled_p ())
 	dump_printf_loc (MSG_MISSED_OPTIMIZATION, find_loop_location (loop),
-			 "tried but failed to version this loop for when"
-			 " certain strides are 1\n");
+			 "tried but failed to version this loop for "
+			 " certain stride values\n");
       return false;
     }
 
   if (dump_enabled_p ())
     dump_printf_loc (MSG_OPTIMIZED_LOCATIONS, find_loop_location (loop),
-		     "versioned this loop for when certain strides are 1\n");
+		     "versioned this loop for certain stride values\n");
 
   /* Insert the statements that feed COND.  */
   if (stmts)
