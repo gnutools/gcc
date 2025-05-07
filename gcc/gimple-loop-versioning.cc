@@ -243,7 +243,7 @@ public:
      (keyed off their SSA_NAME_VERSION) are equal to the respective access size
      at runtime.  */
   hash_map <unsigned, unsigned HOST_WIDE_INT,
-	    simple_hashmap_traits <int_hash <unsigned, UINT_MAX>, unsigned HOST_WIDE_INT>>
+	    simple_hashmap_traits <int_hash <unsigned, 0, UINT_MAX>, unsigned HOST_WIDE_INT>>
   non_unity_versioning_values;
 
   /* If versioning succeeds, this points the version of the loop that
