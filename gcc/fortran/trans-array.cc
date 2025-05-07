@@ -1049,10 +1049,22 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 	}
     }
 
-  /* Initialize the descriptor.  */
+  /* Clear type upper bound if dynamic.  */
+  tree to0 = NULL_TREE;
+  if (dynamic && total_dim == 1)
+    {
+      to0 = to[0];
+      to[0] = NULL_TREE;
+    }
   type =
     gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, 1,
 			       GFC_ARRAY_UNKNOWN, true);
+  /* Restore the upper bound, for the rest (not type-related) of the descriptor
+     initialization.  */
+  if (to0)
+    to[0] = to0;
+
+  /* Initialize the descriptor.  */
   desc = gfc_create_var (type, "atmp");
   GFC_DECL_PACKED_ARRAY (desc) = 1;
 
