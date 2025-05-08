@@ -3680,9 +3680,12 @@ conv_array_index (gfc_se * se, gfc_ss * ss, int dim, int i, gfc_array_ref * ar)
 
 
 static tree
-build_ptr_array_ref (tree data, tree offset)
+build_array_ref (tree array, tree offset, bool use_array_ref)
 {
-  tree ptr = data;
+  if (use_array_ref)
+    return gfc_build_array_ref (array, offset, true);
+ 
+  tree ptr = gfc_conv_array_data (array);
   gcc_assert (TREE_CODE (TREE_TYPE (ptr)) == POINTER_TYPE);
   if (TREE_CODE (TREE_TYPE (TREE_TYPE (ptr))) == ARRAY_TYPE)
     {
@@ -3768,6 +3771,36 @@ add_to_offset (tree *cst_offset, tree *offset, tree t)
 }
 
 
+bool
+array_ref_safe_p (tree array, tree *elt_size)
+{
+  if (!non_negative_strides_array_p (array))
+    return false;
+
+  STRIP_NOPS (array);
+  if (TREE_CODE (array) == COMPONENT_REF)
+    {
+      tree parent = TREE_OPERAND (array, 0);
+      if (GFC_CLASS_TYPE_P (TREE_TYPE (parent)))
+	return false;
+
+      STRIP_NOPS (parent);
+      if (GFC_CLASS_TYPE_P (TREE_TYPE (parent)))
+	return false;
+    }
+
+  tree elt_type = gfc_get_element_type (TREE_TYPE (array));
+  if (TYPE_SIZE_UNIT (elt_type) == NULL_TREE
+      || !INTEGER_CST_P (TYPE_SIZE_UNIT (elt_type)))
+    return false;
+
+  if (elt_size)
+    *elt_size = TYPE_SIZE_UNIT (elt_type);
+
+  return true;
+}
+
+
 /* Build an array reference.  se->expr already holds the array descriptor.
    This should be either a variable, indirect variable reference or component
    reference.  For arrays which do not have a descriptor, se->expr will be
@@ -3836,8 +3869,16 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
       && ar->as->type != AS_DEFERRED)
     decl = sym->backend_decl;
 
+  tree elt_size;
+  bool use_array_ref = array_ref_safe_p (decl, &elt_size);
+
+  tree off = gfc_conv_array_offset (decl);
+  if (use_array_ref)
+    off = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+			   gfc_array_index_type, off, elt_size);
+
   cst_offset = offset = gfc_index_zero_node;
-  add_to_offset (&cst_offset, &offset, gfc_conv_array_offset (decl));
+  add_to_offset (&cst_offset, &offset, off);
 
   /* Calculate the offsets from all the dimensions.  Make sure to associate
      the final offset so that we form a chain of loop invariant summands.  */
@@ -3906,6 +3947,9 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 
       /* Multiply the index by the stride.  */
       tree spacing = gfc_conv_array_spacing (decl, n);
+      if (use_array_ref)
+	spacing = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+				   gfc_array_index_type, spacing, elt_size);
       tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			     indexse.expr, spacing);
  
@@ -3919,7 +3963,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
     offset = fold_build2_loc (input_location, PLUS_EXPR,
 			      gfc_array_index_type, offset, cst_offset);
 
-  se->expr = build_ptr_array_ref (gfc_conv_array_data (decl), offset);
+  se->expr = build_array_ref (decl, offset, use_array_ref);
 }
 
 
