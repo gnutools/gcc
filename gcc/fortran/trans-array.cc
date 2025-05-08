@@ -3686,7 +3686,7 @@ build_array_ref (tree array, tree offset, bool use_array_ref)
     {
       if (TREE_CODE (TREE_TYPE (array)) == POINTER_TYPE)
 	array = build_fold_indirect_ref_loc (input_location, array);
-      return gfc_build_array_ref (array, offset, true);
+      return gfc_build_array_ref (array, offset, true, gfc_index_zero_node);
     }
  
   tree ptr = gfc_conv_array_data (array);
