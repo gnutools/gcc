@@ -3789,6 +3789,9 @@ array_ref_safe_p (tree array, tree *elt_size)
 	return false;
     }
 
+  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
+    return false;
+
   tree elt_type = gfc_get_element_type (TREE_TYPE (array));
   if (TYPE_SIZE_UNIT (elt_type) == NULL_TREE
       || !INTEGER_CST_P (TYPE_SIZE_UNIT (elt_type)))
