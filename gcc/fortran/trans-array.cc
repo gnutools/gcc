@@ -3878,7 +3878,9 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 
   tree elt_size;
   bool use_array_ref = array_ref_safe_p (decl, &elt_size);
-  elt_size = fold_convert_loc (input_location, gfc_array_index_type, elt_size);
+  if (use_array_ref)
+    elt_size = fold_convert_loc (input_location, gfc_array_index_type,
+				 elt_size);
 
   tree off = gfc_conv_array_offset (decl);
   if (use_array_ref)
