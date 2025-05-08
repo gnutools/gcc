@@ -832,6 +832,30 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    (rshift (convert @0)
 	   { build_int_cst (integer_type_node,
 			    wi::exact_log2 (wi::to_wide (@2))); }))))
+(for div (trunc_div ceil_div floor_div round_div exact_div rshift)
+ (for mul (mult lshift)
+  (simplify (div (mul @0 INTEGER_CST@1) INTEGER_CST@2)
+   (with
+    {wide_int cst1, cst2;
+     if (mul == LSHIFT_EXPR)
+       cst1 = wi::lshift (wi::one (TYPE_PRECISION (type)), wi::to_wide (@1));
+     else
+       cst1 = wi::to_wide (@1);
+     if (div == RSHIFT_EXPR)
+       cst2 = wi::lshift (wi::one (TYPE_PRECISION (type)), wi::to_wide (@2));
+     else
+       cst2 = wi::to_wide (@2);}
+    (switch
+     (if (cst1 == cst2) @0)
+     (if (wi::multiple_of_p (cst1, cst2, TYPE_SIGN (type)))
+      (mul @0 { wide_int_to_tree (type,
+				  wi::div_trunc (cst1, cst2,
+						 TYPE_SIGN (type))); }))
+     (if (wi::multiple_of_p (cst2, cst1, TYPE_SIGN (type)))
+      (div @0 { wide_int_to_tree (type,
+				  wi::div_trunc (cst2, cst1,
+						 TYPE_SIGN (type))); })))))))
+
 
 /* If ARG1 is a constant, we can convert this to a multiply by the
    reciprocal.  This does not have the same rounding properties,
