@@ -3683,7 +3683,11 @@ static tree
 build_array_ref (tree array, tree offset, bool use_array_ref)
 {
   if (use_array_ref)
-    return gfc_build_array_ref (array, offset, true);
+    {
+      if (TREE_CODE (TREE_TYPE (array)) == POINTER_TYPE)
+	array = build_fold_indirect_ref_loc (input_location, array);
+      return gfc_build_array_ref (array, offset, true);
+    }
  
   tree ptr = gfc_conv_array_data (array);
   gcc_assert (TREE_CODE (TREE_TYPE (ptr)) == POINTER_TYPE);
