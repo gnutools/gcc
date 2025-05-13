@@ -2593,6 +2593,7 @@ public:
   void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
   void print_at (const data_value & value, tree type, unsigned offset);
   void print (const data_value & value, tree type);
+  void print_condition_value (bool value);
 };
 
 
@@ -2859,6 +2860,15 @@ context_printer::begin_stmt (gimple *g)
 }
 
 void
+context_printer::print_condition_value (bool value)
+{
+  pp_indent (&pp);
+  pp_string (&pp, "# Condition evaluates to ");
+  pp_string (&pp, value ? "true" : "false");
+  print_newline ();
+}
+
+void
 context_printer::print (exec_context * ctx, tree expr)
 {
   switch (TREE_CODE (expr))
@@ -2940,7 +2950,7 @@ context_printer::print_bb_jump (edge e)
   pp_indent (&pp);
   pp_string (&pp, "# Leaving bb ");
   pp_decimal_int (&pp, e->src->index);
-  pp_string (&pp, ", preparing to enter bb ");
+  pp_string (&pp, ", preparing to execute bb ");
   pp_decimal_int (&pp, e->dest->index);
   print_newline ();
 }
@@ -2950,7 +2960,7 @@ void
 context_printer::print_bb_entry (basic_block bb)
 {
   pp_indent (&pp);
-  pp_string (&pp, "# Entering bb ");
+  pp_string (&pp, "# Executing bb ");
   pp_decimal_int (&pp, bb->index);
   print_newline ();
 }
@@ -4592,6 +4602,7 @@ exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
   if (is_a <gcond *> (last_stmt))
     {
       bool cond_result = evaluate_condition (as_a <gcond *> (last_stmt));
+      printer.print_condition_value (cond_result);
       int flag;
       if (cond_result)
 	flag = EDGE_TRUE_VALUE;
