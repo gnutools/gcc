@@ -4482,6 +4482,10 @@ exec_context::execute (gimple *g)
       execute_call (as_a <gcall *> (g));
       break;
 
+    case GIMPLE_LABEL:
+      printer.print_ignored_stmt ();
+      break;
+
     default:
       gcc_unreachable ();
     }
