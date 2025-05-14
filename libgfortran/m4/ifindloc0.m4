@@ -35,7 +35,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   const 'atype_name` *base;
   index_type rank;
   index_type n;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -59,12 +58,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = sizeof ('atype_name`);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
@@ -74,7 +71,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = ('atype_name`*) (((char*)array->base_addr) + (sz - 1));
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	base = ('atype_name`*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
 
       while (1)
         {
@@ -161,7 +160,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type rank;
   index_type n;
   int mask_kind;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -202,13 +200,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = sizeof ('atype_name`);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
@@ -218,8 +214,13 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = ('atype_name`*) (((char*)array->base_addr) + (sz - 1));
-      mbase = mbase + (sz - 1) * mask_kind;
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	{
+	  base = ('atype_name`*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
+	  mbase = mbase + (extent[n] - 1) * mspacing[n];
+	}
+
       while (1)
         {
 	  do

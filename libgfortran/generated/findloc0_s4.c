@@ -45,7 +45,6 @@ findloc0_s4 (gfc_array_index_type * const restrict retarray,
   const GFC_UINTEGER_4 *base;
   index_type rank;
   index_type n;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -69,12 +68,10 @@ findloc0_s4 (gfc_array_index_type * const restrict retarray,
   for (n = 0; n < rank; n++)
     GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = sizeof (GFC_UINTEGER_4);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
@@ -84,7 +81,9 @@ findloc0_s4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = (GFC_UINTEGER_4*) (((char*)array->base_addr) + (sz - 1));
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	base = (GFC_UINTEGER_4*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
 
       while (1)
         {
@@ -181,7 +180,6 @@ mfindloc0_s4 (gfc_array_index_type * const restrict retarray,
   index_type rank;
   index_type n;
   int mask_kind;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -222,13 +220,11 @@ mfindloc0_s4 (gfc_array_index_type * const restrict retarray,
   for (n = 0; n < rank; n++)
     GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = sizeof (GFC_UINTEGER_4);
   for (n = 0; n < rank; n++)
     {
       sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
@@ -238,8 +234,13 @@ mfindloc0_s4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = (GFC_UINTEGER_4*) (((char*)array->base_addr) + (sz - 1));
-      mbase = mbase + (sz - 1) * mask_kind;
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	{
+	  base = (GFC_UINTEGER_4*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
+	  mbase = mbase + (extent[n] - 1) * mspacing[n];
+	}
+
       while (1)
         {
 	  do
