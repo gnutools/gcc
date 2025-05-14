@@ -8705,6 +8705,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	     one is necessary to ensure no memory leakage.  */
 	  se->expr = gfc_evaluate_now (se->expr, &se->pre);
 
+	  se->class_container = se->expr;
+
 	  /* Finalize the result, if necessary.  */
 	  attr = expr->value.function.esym
 		 ? CLASS_DATA (expr->value.function.esym->result)->attr
@@ -10450,7 +10452,12 @@ trans_class_vptr_len_assignment (stmtblock_t *block, gfc_expr * le,
       if (!DECL_P (rse->expr))
 	{
 	  if (re->ts.type == BT_CLASS && !GFC_CLASS_TYPE_P (TREE_TYPE (rse->expr)))
-	    class_expr = gfc_get_class_from_expr (rse->expr);
+	    {
+	      if (rse->class_container)
+		class_expr = rse->class_container;
+	      else
+		class_expr = gfc_get_class_from_expr (rse->expr);
+	    }
 
 	  if (rse->loop)
 	    pre = &rse->loop->pre;

@@ -2802,6 +2802,9 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		&& se.expr
 		&& GFC_CLASS_TYPE_P (TREE_TYPE (se.expr)))
 	      {
+		if (!ss->info->class_container
+		    && se.class_container)
+		  ss->info->class_container = se.class_container;
 		tree tmp = gfc_class_data_get (se.expr);
 		info->descriptor = tmp;
 		info->data = gfc_conv_descriptor_data_get (tmp);
@@ -3741,6 +3744,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar, bool tmp_array =
   gfc_array_info *info = &ss->info->data.array;
   se->expr = build_array_ref_dim (ss, index, info->lbound[ss->dim[n]],
 				  info->spacing[ss->dim[n]], tmp_array);
+  if (ss->info->class_container)
+    se->class_container = ss->info->class_container;
 }
 
 
