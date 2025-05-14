@@ -4002,6 +4002,9 @@ exec_context::evaluate (tree expr) const
     case CONSTRUCTOR:
       return evaluate_constructor (expr);
 
+    case VIEW_CONVERT_EXPR:
+      return evaluate (TREE_OPERAND (expr, 0));
+
     default:
       gcc_unreachable ();
     }
@@ -7395,6 +7398,31 @@ exec_context_evaluate_unary_tests ()
   ASSERT_EQ (TREE_CODE (tfm25), REAL_CST);
   REAL_VALUE_TYPE fm25 = REAL_VALUE_ATOF ("-2.5", TYPE_MODE (float_type_node));
   ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (tfm25), &fm25));
+
+
+  tree i2 = create_var (intSI_type_node, "i2");
+
+  vec<tree> decls2 {};
+  decls2.safe_push (i2);
+
+  context_builder builder2;
+  builder2.add_decls (&decls2);
+  exec_context ctx2 = builder2.build (mem, printer);
+
+  wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
+  data_value val23 (intSI_type_node);
+  val23.set_cst (wi23);
+  data_storage *strg_i2 = ctx2.find_reachable_var (i2);
+  gcc_assert (strg_i2 != nullptr);
+  strg_i2->set (val23);
+  
+  data_value val2 = ctx2.evaluate_unary (VIEW_CONVERT_EXPR, unsigned_intSI_type_node, i2);
+
+  ASSERT_EQ (val2.get_bitwidth (), HOST_BITS_PER_INT);
+  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+  wide_int wi2 = val2.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi2);
+  ASSERT_EQ (wi2.to_uhwi (), 23);
 }
 
 
@@ -8265,6 +8293,42 @@ exec_context_execute_assign_tests ()
   wide_int wi29_27 = val27_after.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
   ASSERT_EQ  (wi29_27.to_uhwi (), 14);
+
+
+  tree i10 = create_var (intSI_type_node, "i10");
+  tree v10 = create_var (unsigned_intSI_type_node, "v10");
+
+  vec<tree> decls10 {};
+  decls10.safe_push (i10);
+  decls10.safe_push (v10);
+
+  context_builder builder10;
+  builder10.add_decls (&decls10);
+  exec_context ctx10 = builder10.build (mem, printer);
+
+  wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
+  data_value val23 (intSI_type_node);
+  val23.set_cst (wi23);
+  data_storage *strg_i10 = ctx10.find_reachable_var (i10);
+  gcc_assert (strg_i10 != nullptr);
+  strg_i10->set (val23);
+  
+  data_storage *strg_v10 = ctx10.find_reachable_var (v10);
+  gcc_assert (strg_v10 != nullptr);
+
+  data_value val10_before = strg_v10->get_value ();
+  ASSERT_EQ (val10_before.classify (), VAL_UNDEFINED);
+
+  tree conv10 = build1 (VIEW_CONVERT_EXPR, unsigned_intSI_type_node, i10);
+  gimple *g10 = gimple_build_assign (v10, conv10);
+  ctx10.execute (g10);
+
+  data_value val10_after = strg_v10->get_value ();
+  ASSERT_EQ (val10_after.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val10_after.get_bitwidth (), TYPE_PRECISION (unsigned_intSI_type_node));
+  wide_int wi10 = val10_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi10);
+  ASSERT_EQ (wi10.to_shwi (), 23);
 }
 
 void
