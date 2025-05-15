@@ -851,7 +851,9 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
   var = gfc_create_var (tmp, "class");
 
   /* Set the vptr.  */
-  if (opt_vptr_src)
+  if (parmse->class_container)
+    gfc_class_set_vptr (&parmse->pre, var, parmse->class_container);
+  else if (opt_vptr_src)
     gfc_class_set_vptr (&parmse->pre, var, opt_vptr_src);
   else
     gfc_reset_vptr (&parmse->pre, e, var);
