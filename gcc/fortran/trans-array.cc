@@ -6396,7 +6396,6 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
   tree eltype = gfc_get_element_type (type);
   tree elem_len = fold_convert_loc (input_location, gfc_array_index_type,
 				    TYPE_SIZE_UNIT (eltype));
-  gcc_assert (INTEGER_CST_P (elem_len));
   size = gfc_index_one_node;
   offset = gfc_index_zero_node;
   tree spacing = GFC_TYPE_ARRAY_SPACING (type, 0);
