@@ -6418,6 +6418,18 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 	  gfc_add_block_to_block (pblock, &se.finalblock);
 	  gfc_add_modify (pblock, lbound, se.expr);
 	}
+      /* The offset of this dimension.  offset = offset - lbound * sm.  */
+      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     lbound, spacing);
+      offset = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+				offset, tmp);
+      if (as->type == AS_ASSUMED_SIZE
+	  && dim == as->rank - 1)
+	{
+	  size = NULL_TREE;
+	  break;
+	}
+
       ubound = GFC_TYPE_ARRAY_UBOUND (type, dim);
       if (as->upper[dim] && !INTEGER_CST_P (ubound))
 	{
@@ -6427,11 +6439,6 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 	  gfc_add_block_to_block (pblock, &se.finalblock);
 	  gfc_add_modify (pblock, ubound, se.expr);
 	}
-      /* The offset of this dimension.  offset = offset - lbound * sm.  */
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     lbound, spacing);
-      offset = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-				offset, tmp);
 
       /* Calculate spacing = size * (ubound + 1 - lbound).  */
       tmp = gfc_conv_array_extent_dim (lbound, ubound, nullptr);
