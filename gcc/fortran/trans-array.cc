@@ -6396,7 +6396,8 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
   tree eltype = gfc_get_element_type (type);
   tree elem_len = fold_convert_loc (input_location, gfc_array_index_type,
 				    TYPE_SIZE_UNIT (eltype));
-  size = elem_len;
+  gcc_assert (INTEGER_CST_P (elem_len));
+  size = gfc_index_one_node;
   offset = gfc_index_zero_node;
   tree spacing = GFC_TYPE_ARRAY_SPACING (type, 0);
   if (spacing && VAR_P (spacing))
@@ -6428,39 +6429,38 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 	}
       /* The offset of this dimension.  offset = offset - lbound * sm.  */
       tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     lbound, size);
+			     lbound, spacing);
       offset = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 				offset, tmp);
 
-      /* The size of this dimension, and the stride of the next.  */
-      tree spacing;
+      /* Calculate spacing = size * (ubound + 1 - lbound).  */
+      tmp = gfc_conv_array_extent_dim (lbound, ubound, nullptr);
+      size = fold_build2_loc (input_location, MULT_EXPR,
+			      gfc_array_index_type, size, tmp);
+
+      tree array_info;
       if (dim + 1 < as->rank)
-        spacing = GFC_TYPE_ARRAY_SPACING (type, dim + 1);
+	array_info = GFC_TYPE_ARRAY_SPACING (type, dim + 1);
       else
-	spacing = GFC_TYPE_ARRAY_SIZE (type);
+	array_info = GFC_TYPE_ARRAY_SIZE (type);
 
-      if (ubound != NULL_TREE && !(spacing && INTEGER_CST_P (spacing)))
+      if (!(array_info && INTEGER_CST_P (array_info)))
 	{
-	  /* Calculate spacing = size * (ubound + 1 - lbound).  */
-	  tmp = gfc_conv_array_extent_dim (lbound, ubound, nullptr);
-	  tmp = fold_build2_loc (input_location, MULT_EXPR,
-				 gfc_array_index_type, size, tmp);
-	  if (spacing)
-	    gfc_add_modify (pblock, spacing, tmp);
+	  if (dim + 1 < as->rank)
+	    {
+	      tmp = fold_build2_loc (input_location, MULT_EXPR,
+				     gfc_array_index_type, spacing, tmp);
+	      spacing = array_info;
+	    }
 	  else
-	    spacing = gfc_evaluate_now (tmp, pblock);
+	    {
+	      tmp = size;
+	      spacing = NULL_TREE;
+	    }
 
-	  /* Make sure that negative size arrays are translated
-	     to being zero size.  */
-	  tmp = fold_build2_loc (input_location, GE_EXPR, logical_type_node,
-				 spacing, gfc_index_zero_node);
-	  tmp = fold_build3_loc (input_location, COND_EXPR,
-				 gfc_array_index_type, tmp,
-				 spacing, gfc_index_zero_node);
-	  gfc_add_modify (pblock, spacing, tmp);
+	  gcc_assert (array_info);
+	  gfc_add_modify (pblock, array_info, tmp);
 	}
-
-      size = spacing;
     }
 
   gfc_trans_array_cobounds (type, pblock, sym);
@@ -6560,6 +6560,11 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
 
   if (sym->attr.omp_allocate)
     {
+      /* The size is the number of elements in the array, so multiply by the
+	 size of an element to get the total size.  */
+      tmp = TYPE_SIZE_UNIT (gfc_get_element_type (type));
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, fold_convert (gfc_array_index_type, tmp));
       size = gfc_evaluate_now (size, &init);
 
       tree omp_alloc = lookup_attribute ("omp allocate",
@@ -6578,6 +6583,11 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
     }
   else
     {
+      /* The size is the number of elements in the array, so multiply by the
+	 size of an element to get the total size.  */
+      tmp = TYPE_SIZE_UNIT (gfc_get_element_type (type));
+      size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      size, fold_convert (gfc_array_index_type, tmp));
       /* Allocate memory to hold the data.  */
       tmp = gfc_call_malloc (&init, TREE_TYPE (decl), size);
       gfc_add_modify (&init, decl, tmp);
