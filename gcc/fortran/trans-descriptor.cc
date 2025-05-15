@@ -3552,6 +3552,9 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
   gfc_conv_descriptor_dtype_set (block, lhs_desc,
 				 gfc_conv_descriptor_dtype_get (rhs_desc));
 
+  gfc_conv_descriptor_span_set (block, lhs_desc,
+				gfc_conv_descriptor_span_get (rhs_desc));
+
   /* Assign the dimension as range-ref.  */
   tmp = gfc_conv_descriptor_dimensions_get (lhs_desc);
   tmp2 = gfc_conv_descriptor_dimensions_get (rhs_desc);
