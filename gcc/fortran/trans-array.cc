@@ -6400,7 +6400,21 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
   offset = gfc_index_zero_node;
   tree spacing = GFC_TYPE_ARRAY_SPACING (type, 0);
   if (spacing && VAR_P (spacing))
-    gfc_add_modify (pblock, spacing, elem_len);
+    {
+      tree spacing0;
+      if (sym->ts.type == BT_CLASS
+	  && DECL_LANG_SPECIFIC (sym->backend_decl)
+	  && GFC_DECL_SAVED_DESCRIPTOR (sym->backend_decl))
+	{
+	  tree class_desc = GFC_DECL_SAVED_DESCRIPTOR (sym->backend_decl);
+	  tree array_desc = gfc_class_data_get (class_desc);
+	  spacing0 = gfc_conv_array_spacing (array_desc, 0);
+	}
+      else
+	spacing0 = elem_len;
+
+      gfc_add_modify (pblock, spacing, spacing0);
+    }
   for (dim = 0; dim < as->rank; dim++)
     {
       /* Evaluate non-constant array bound expressions.

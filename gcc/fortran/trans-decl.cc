@@ -1347,7 +1347,7 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 	 are not repacked.  */
       if (!flag_repack_arrays || sym->attr.target)
 	{
-	  if (as->type == AS_ASSUMED_SIZE)
+	  if (as->type == AS_ASSUMED_SIZE && !is_classarray)
 	    packed = PACKED_FULL;
 	}
       else
