@@ -2457,8 +2457,6 @@ class data_value
   void set_cst_at (unsigned dest_offset, unsigned value_width,
 		   const wide_int &val, unsigned src_offset);
   stored_address *find_address (unsigned offset) const;
-  void set_at (unsigned dest_offset, unsigned value_width,
-	       const data_value & value_src, unsigned src_offset);
 
   friend void selftest::data_value_classify_tests ();
   friend void selftest::data_value_set_address_tests ();
@@ -2484,6 +2482,8 @@ public:
   void set_undefined_at (unsigned offset, unsigned width);
   void set_address_at (storage_address & address, unsigned offset);
   void set_address (storage_address & address);
+  void set_at (unsigned dest_offset, unsigned value_width,
+	       const data_value & value_src, unsigned src_offset);
   void set_at (const data_value & value, unsigned offset);
   void set (const data_value & value);
   void set_cst_at (const wide_int & val, unsigned offset);
@@ -4439,8 +4439,10 @@ exec_context::execute_call (gcall *g)
       data_storage & storage1 = addr1.storage.get ();
       data_value src = storage1.get_value ();
       wide_int wi_len2 = len2.get_cst ();
+      wi_len2 *= CHAR_BIT;
       gcc_assert (wi::fits_uhwi_p (wi_len2));
-      dest_val.set (src);
+      dest_val.set_at (0, wi_len2.to_uhwi (),
+		       src, addr1.offset);
       storage0.set (dest_val);
     }
   else
@@ -8648,6 +8650,60 @@ exec_context_execute_call_tests ()
   wide_int wi_v82 = v82_after.get_cst ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_v82);
   ASSERT_EQ (wi_v82.to_shwi (), 17);
+
+
+  tree i91 = create_var (integer_type_node, "i91");
+  tree c92 = create_var (char_type_node, "c92");
+  tree p93 = create_var (ptr_type_node, "p93");
+
+  vec<tree> decls9{};
+  decls9.safe_push (i91);
+  decls9.safe_push (c92);
+  decls9.safe_push (p93);
+
+  heap_memory mem9;
+  context_builder builder9 {};
+  builder9.add_decls (&decls9);
+  exec_context ctx9 = builder9.build (mem9, printer);
+
+  data_storage * storage_i91 = ctx9.find_reachable_var (i91);
+  gcc_assert (storage_i91 != nullptr);
+  storage_address addr91 (storage_i91->get_ref (), CHAR_BIT);
+
+  data_value val_addr91 (ptr_type_node);
+  val_addr91.set_address (addr91);
+
+  data_storage * storage_p93 = ctx9.find_reachable_var (p93);
+  gcc_assert (storage_p93 != nullptr);
+  storage_p93->set (val_addr91);
+
+  tree a92 = build1_loc (UNKNOWN_LOCATION, ADDR_EXPR,
+			 ptr_type_node, c92);
+
+  gcall * memcpy_call9 = gimple_build_call (memcpy_fn, 3, a92, p93,
+					    size_one_node);
+
+  data_value val91 (integer_type_node);
+  wide_int wi91 = wi::uhwi (5 + 3 * 256 + 1 * 65536, HOST_BITS_PER_INT);
+  val91.set_cst (wi91);
+
+  storage_i91->set (val91);
+  
+  data_storage *storage_c92 = ctx9.find_reachable_var (c92);
+  gcc_assert (storage_c92 != nullptr);
+
+  data_value c92_before = storage_c92->get_value ();
+
+  ASSERT_EQ (c92_before.classify (), VAL_UNDEFINED);
+
+  ctx9.execute (memcpy_call9);
+
+  data_value c92_after = storage_c92->get_value ();
+
+  ASSERT_EQ (c92_after.classify (), VAL_CONSTANT);
+  wide_int wi_c92 = c92_after.get_cst ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_c92);
+  ASSERT_EQ (wi_c92.to_shwi (), 3);
 }
 
 void
