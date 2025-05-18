@@ -164,6 +164,8 @@ pack_'rtype_code` ('rtype` *ret, const 'rtype` *array,
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, sizeof('rtype_name`));
 
 	  ret->offset = 0;
+	  GFC_DESCRIPTOR_SIZE (ret) = sizeof ('rtype_name`);
+	  GFC_DESCRIPTOR_SPAN (ret) = sizeof ('rtype_name`);
 
 	  /* xmallocarray allocates a single byte for zero size.  */
 	  ret->base_addr = xmallocarray (total, sizeof ('rtype_name`));

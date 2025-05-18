@@ -163,6 +163,8 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, sizeof(GFC_INTEGER_4));
 
 	  ret->offset = 0;
+	  GFC_DESCRIPTOR_SIZE (ret) = sizeof (GFC_INTEGER_4);
+	  GFC_DESCRIPTOR_SPAN (ret) = sizeof (GFC_INTEGER_4);
 
 	  /* xmallocarray allocates a single byte for zero size.  */
 	  ret->base_addr = xmallocarray (total, sizeof (GFC_INTEGER_4));

@@ -163,6 +163,8 @@ pack_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array,
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, sizeof(GFC_REAL_10));
 
 	  ret->offset = 0;
+	  GFC_DESCRIPTOR_SIZE (ret) = sizeof (GFC_REAL_10);
+	  GFC_DESCRIPTOR_SPAN (ret) = sizeof (GFC_REAL_10);
 
 	  /* xmallocarray allocates a single byte for zero size.  */
 	  ret->base_addr = xmallocarray (total, sizeof (GFC_REAL_10));
