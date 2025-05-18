@@ -3883,18 +3883,23 @@ exec_context::evaluate (tree expr) const
 	if (code == TARGET_MEM_REF)
 	  {
 	    tree index = TREE_OPERAND (expr, 2);
-	    data_value val_idx = evaluate (index);
-	    gcc_assert (val_idx.classify () == VAL_CONSTANT);
-	    wide_int wi_idx = val_idx.get_cst ();
-
 	    tree step = TREE_OPERAND (expr, 3);
-	    data_value val_step = evaluate (step);
-	    gcc_assert (val_step.classify () == VAL_CONSTANT);
-	    wide_int wi_step = val_step.get_cst ();
+	    if (index || step)
+	      {
+		gcc_assert (index && step);
 
-	    wide_int additional_off = wi_idx * wi_step;
-	    gcc_assert (wi::fits_uhwi_p (additional_off));
-	    offset += additional_off.to_uhwi ();
+		data_value val_idx = evaluate (index);
+		gcc_assert (val_idx.classify () == VAL_CONSTANT);
+		wide_int wi_idx = val_idx.get_cst ();
+
+		data_value val_step = evaluate (step);
+		gcc_assert (val_step.classify () == VAL_CONSTANT);
+		wide_int wi_step = val_step.get_cst ();
+
+		wide_int additional_off = wi_idx * wi_step;
+		gcc_assert (wi::fits_uhwi_p (additional_off));
+		offset += additional_off.to_uhwi ();
+	      }
 	  }
 
 	return storage_value.get_at (offset * CHAR_BIT + ptr_offset, bit_width);
@@ -4118,8 +4123,8 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
   if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
     {
       gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
-		  || (TREE_CODE (rhs) == INTEGER_CST
-		      && TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
+		  || (TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
+		      && TREE_CODE (TREE_TYPE (rhs)) == INTEGER_TYPE
 		      && TYPE_PRECISION (TREE_TYPE (lhs))
 			 == TYPE_PRECISION (TREE_TYPE (rhs))
 		      && TYPE_UNSIGNED (TREE_TYPE (lhs))
@@ -7055,6 +7060,44 @@ exec_context_evaluate_tests ()
   wide_int wi5 = val5.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi5);
   ASSERT_EQ (wi5.to_uhwi (), 19);
+
+
+  tree c19 = build_array_type_nelts (char_type_node, 19);
+  tree a19 = create_var (c19, "a19");
+  tree ssa101 = make_node (SSA_NAME);
+  TREE_TYPE (ssa101) = size_type_node;
+  tree ssa102 = make_node (SSA_NAME);
+  TREE_TYPE (ssa102) = size_type_node;
+
+  vec<tree> decls10{};
+  decls10.safe_push (a19);
+  decls10.safe_push (ssa101);
+  decls10.safe_push (ssa102);
+
+  context_builder builder10;
+  builder10.add_decls (&decls10);
+  exec_context ctx10 = builder10.build (mem, printer);
+
+  data_storage * strg19 = ctx10.find_reachable_var (a19);
+  gcc_assert (strg19 != nullptr);
+
+  tree ref19 = build5 (TARGET_MEM_REF, char_type_node,
+		       build1 (ADDR_EXPR, ptr_type_node, a19),
+		       build_zero_cst (ptr_type_node),
+		       NULL_TREE, NULL_TREE, NULL_TREE);
+
+  wide_int cst23 = wi::shwi (23, CHAR_BIT);
+  data_value tmp19_0 (CHAR_BIT);
+  tmp19_0.set_cst (cst23);
+  strg19->set_at (tmp19_0, 0);
+
+  data_value val19_0 = ctx10.evaluate (ref19);
+
+  ASSERT_EQ (val19_0.get_bitwidth (), CHAR_BIT);
+  ASSERT_EQ (val19_0.classify (), VAL_CONSTANT);
+  wide_int wi19_0 = val19_0.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi19_0);
+  ASSERT_EQ  (wi19_0.to_uhwi (), 23);
 }
 
 
