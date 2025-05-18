@@ -111,6 +111,8 @@ norm2_r16 (gfc_array_r16 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_16);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_16);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 

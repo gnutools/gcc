@@ -100,6 +100,8 @@ maxval_m1 (gfc_array_m1 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_UINTEGER_1);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_UINTEGER_1);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
@@ -312,6 +314,8 @@ mmaxval_m1 (gfc_array_m1 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_UINTEGER_1);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_UINTEGER_1);
 
       retarray->base_addr = xmalloc (alloc_size);
       if (alloc_size == 0)
@@ -501,6 +505,8 @@ smaxval_m1 (gfc_array_m1 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_UINTEGER_1);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_UINTEGER_1);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 

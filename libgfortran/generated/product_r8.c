@@ -100,6 +100,8 @@ product_r8 (gfc_array_r8 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_8);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_8);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
@@ -296,6 +298,8 @@ mproduct_r8 (gfc_array_r8 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_8);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_8);
 
       retarray->base_addr = xmalloc (alloc_size);
       if (alloc_size == 0)
@@ -455,6 +459,8 @@ sproduct_r8 (gfc_array_r8 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_8);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_8);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 

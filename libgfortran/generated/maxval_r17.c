@@ -100,6 +100,8 @@ maxval_r17 (gfc_array_r17 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_17);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_17);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
@@ -312,6 +314,8 @@ mmaxval_r17 (gfc_array_r17 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_17);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_17);
 
       retarray->base_addr = xmalloc (alloc_size);
       if (alloc_size == 0)
@@ -501,6 +505,8 @@ smaxval_r17 (gfc_array_r17 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_REAL_17);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_REAL_17);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 

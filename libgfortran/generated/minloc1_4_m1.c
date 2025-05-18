@@ -103,6 +103,8 @@ minloc1_4_m1 (gfc_array_i4 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_INTEGER_4);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_INTEGER_4);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
@@ -338,6 +340,8 @@ mminloc1_4_m1 (gfc_array_i4 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_INTEGER_4);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_INTEGER_4);
 
       retarray->base_addr = xmalloc (alloc_size);
       if (alloc_size == 0)
@@ -544,6 +548,8 @@ sminloc1_4_m1 (gfc_array_i4 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      GFC_DESCRIPTOR_SIZE (retarray) = sizeof (GFC_INTEGER_4);
+      GFC_DESCRIPTOR_SPAN (retarray) = sizeof (GFC_INTEGER_4);
 
       alloc_size = GFC_DESCRIPTOR_SPACING(retarray,rank-1) * extent[rank-1];
 
