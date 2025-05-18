@@ -1301,7 +1301,9 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
     }
 
   if ((ref == NULL || class_ref == ref)
-      && !(gfc_is_class_array_function (e) && parmse->class_vptr != NULL_TREE)
+      && !(gfc_is_class_array_function (e)
+	   && (parmse->class_vptr != NULL_TREE
+	       || parmse->class_container != NULL_TREE))
       && (!class_ts.u.derived->components->as
 	  || class_ts.u.derived->components->as->rank != -1))
     return;
