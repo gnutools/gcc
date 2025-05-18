@@ -1345,12 +1345,7 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 
       /* Even when -frepack-arrays is used, symbols with TARGET attribute
 	 are not repacked.  */
-      if (!flag_repack_arrays || sym->attr.target)
-	{
-	  if (as->type == AS_ASSUMED_SIZE && !is_classarray)
-	    packed = PACKED_FULL;
-	}
-      else
+      if (flag_repack_arrays && !sym->attr.target)
 	{
 	  if (as->type == AS_EXPLICIT)
 	    {
@@ -1370,6 +1365,11 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 	  else
 	    packed = PACKED_PARTIAL;
 	}
+      else if ((as->type == AS_ASSUMED_SIZE && !is_classarray)
+	       || ((sym->attr.result || sym->attr.function)
+		   && sym->ts.type != BT_CLASS
+		   && !sym->attr.pointer))
+	packed = PACKED_FULL;
 
       /* For classarrays the element type is required, but
 	 gfc_typenode_for_spec () returns the array descriptor.  */
