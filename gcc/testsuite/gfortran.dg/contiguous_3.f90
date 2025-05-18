@@ -33,10 +33,10 @@ subroutine t2(a1,b1,c2,d2)
   c2 = d2
 end subroutine t2
 
-! { dg-final { scan-tree-dump-times "= a1->dim.0..stride;" 0 "original" } }
-! { dg-final { scan-tree-dump-times "= b1->dim.0..stride;" 0 "original" } }
-! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?c2->dim\[0\]\.stride>?;} 1 "original" } }
-! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?d2->dim\[0\]\.stride>?;} 1 "original" } }
+! { dg-final { scan-tree-dump-times "= a1->dim.0..spacing;" 0 "original" } }
+! { dg-final { scan-tree-dump-times "= b1->dim.0..spacing;" 0 "original" } }
+! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?c2->dim\[0\]\.spacing>?;} 1 "original" } }
+! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?d2->dim\[0\]\.spacing>?;} 1 "original" } }
 
 
 subroutine test3()
