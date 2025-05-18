@@ -1377,6 +1377,10 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
   if (gfc_is_class_array_function (e)
       && parmse->class_vptr != NULL_TREE)
     tmp = parmse->class_vptr;
+  else if (parmse->class_container != NULL_TREE)
+    /* Don't redundantly evaluate the expression if the required information
+       is already available.  */
+    tmp = parmse->class_container;
   else if (class_ref == NULL
 	   && e->symtree && e->symtree->n.sym->ts.type == BT_CLASS)
     {
@@ -1390,10 +1394,6 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
 
       slen = build_zero_cst (size_type_node);
     }
-  else if (parmse->class_container != NULL_TREE)
-    /* Don't redundantly evaluate the expression if the required information
-       is already available.  */
-    tmp = parmse->class_container;
   else
     {
       /* Remove everything after the last class reference, convert the
