@@ -848,13 +848,19 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (switch
      (if (cst1 == cst2) @0)
      (if (wi::multiple_of_p (cst1, cst2, TYPE_SIGN (type)))
-      (mul @0 { wide_int_to_tree (type,
-				  wi::div_trunc (cst1, cst2,
-						 TYPE_SIGN (type))); }))
+      (with
+       {wide_int simplified = wi::div_trunc (cst1, cst2, TYPE_SIGN (type));
+        if (mul == LSHIFT_EXPR)
+	  simplified = wi::shwi (wi::exact_log2 (simplified),
+				 TYPE_PRECISION (type));}
+       (mul @0 { wide_int_to_tree (type, simplified); })))
      (if (wi::multiple_of_p (cst2, cst1, TYPE_SIGN (type)))
-      (div @0 { wide_int_to_tree (type,
-				  wi::div_trunc (cst2, cst1,
-						 TYPE_SIGN (type))); })))))))
+      (with
+       {wide_int simplified = wi::div_trunc (cst2, cst1, TYPE_SIGN (type));
+        if (div == RSHIFT_EXPR)
+	  simplified = wi::shwi (wi::exact_log2 (simplified),
+				 TYPE_PRECISION (type));}
+       (div @0 { wide_int_to_tree (type, simplified); }))))))))
 
 
 /* If ARG1 is a constant, we can convert this to a multiply by the
