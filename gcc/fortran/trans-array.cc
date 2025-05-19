@@ -3687,6 +3687,8 @@ build_array_ref (tree array, tree offset, bool use_array_ref)
 {
   if (use_array_ref)
     {
+      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
+	array = gfc_conv_array_data (array);
       if (TREE_CODE (TREE_TYPE (array)) == POINTER_TYPE)
 	array = build_fold_indirect_ref_loc (input_location, array);
       return gfc_build_array_ref (array, offset, true, gfc_index_zero_node);
@@ -3781,7 +3783,7 @@ add_to_offset (tree *cst_offset, tree *offset, tree t)
 
 
 bool
-array_ref_safe_p (tree array, tree *elt_size)
+array_ref_safe_p (gfc_expr *expr, gfc_array_ref *ar, tree array, tree *elt_size)
 {
   if (!non_negative_strides_array_p (array))
     return false;
@@ -3798,7 +3800,29 @@ array_ref_safe_p (tree array, tree *elt_size)
 	return false;
     }
 
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
+  gfc_symbol *root_sym = expr->symtree->n.sym;
+  bt last_type = root_sym->ts.type;
+  bool last_is_allocatable = root_sym->attr.allocatable;
+  for (gfc_ref *ref = expr->ref; ref; ref = ref->next)
+    {
+      if (ref->type == REF_ARRAY && &ref->u.ar == ar)
+	break;
+
+      if (ref->type != REF_COMPONENT)
+	continue;
+
+      if (last_type == BT_CLASS
+	  && strcmp (ref->u.c.component->name, "_data") == 0)
+	continue;
+
+      last_type = ref->u.c.component->ts.type;
+      last_is_allocatable = ref->u.c.component->attr.allocatable;
+    }
+
+  if (!(last_type == BT_CLASS || last_type == BT_CHARACTER)
+      && last_is_allocatable)
+    ;
+  else if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
     return false;
 
   tree elt_type = gfc_get_element_type (TREE_TYPE (array));
@@ -3882,7 +3906,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
     decl = sym->backend_decl;
 
   tree elt_size;
-  bool use_array_ref = array_ref_safe_p (decl, &elt_size);
+  bool use_array_ref = array_ref_safe_p (expr, ar, decl, &elt_size);
   if (use_array_ref)
     elt_size = fold_convert_loc (input_location, gfc_array_index_type,
 				 elt_size);
