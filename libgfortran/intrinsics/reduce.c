@@ -52,7 +52,7 @@ reduce (parray *ret,
   index_type ext0, ext1, ext2;
   index_type spc0, spc1, spc2;
   index_type idx0, idx1, idx2;
-  index_type dimen, dimen_m1, ldx, ext, spc;
+  index_type dimen, dimen_m1, off, ext, spc;
   bool started;
   bool masked = false;
   bool dim_present = dim != NULL;
@@ -94,8 +94,8 @@ reduce (parray *ret,
   /* Set up the shape and strides for the reduction. This is made relatively
      painless by the use of pointer arithmetic throughout (except for MASK,
      whose type is known.  */
-  ext0 = ext1 = ext2 = elem_len;
-  spc0 = spc1 = spc2 = elem_len;
+  ext0 = ext1 = ext2 = 1;
+  spc0 = spc1 = spc2 = 0;
 
   scalar_result = (!dim_present && array_rank > 1) || array_rank == 1;
 
@@ -154,14 +154,14 @@ reduce (parray *ret,
     {
       for (idx2 = 0; idx2 < ext2; idx2++)
 	{
-	  ldx = idx0 * spc0  + idx2 * spc2;
+	  off = idx0 * spc0  + idx2 * spc2;
 	  if (mask_present)
-	    maskR = mask->base_addr[ldx];
+	    maskR = *(mask->base_addr + (size_t) off);
 
 	  started = (mask_present && maskR) || !mask_present;
 
 	  buffer_ptr = array->base_addr
-			+ (size_t)(idx0 * spc0 + idx2 * spc2);
+		       + (size_t)(idx0 * spc0 + idx2 * spc2);
 
 	  /* Start the iteration over the second dimension of ARRAY.  */
 	  for (idx1 = 1; idx1 < ext1; idx1++)
@@ -169,13 +169,12 @@ reduce (parray *ret,
 	      /* If masked, cycle until after first element that is not masked
 		 out. Then set 'started' and cycle so that this becomes the
 		 first element in the reduction.  */
-	      ldx = idx0 * spc0 + idx1 * spc1 + idx2 * spc2;
+	      off = idx0 * spc0 + idx1 * spc1 + idx2 * spc2;
 	      if (mask_present)
-		maskR = mask->base_addr[ldx];
+		maskR = *(mask->base_addr + (size_t) off);
 
 	      array_ptr = array->base_addr
-			  + (size_t)(idx0 * spc0 + idx1 * spc1
-				      + idx2 * spc2);
+			  + (size_t)(idx0 * spc0 + idx1 * spc1 + idx2 * spc2);
 	      if (!started)
 		{
 		  if (mask_present && maskR)
