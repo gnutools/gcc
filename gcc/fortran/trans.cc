@@ -423,6 +423,17 @@ gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 
   if (non_negative_offset)
     {
+      tree base_type = TREE_TYPE (base);
+      if (TREE_CODE (base_type) == ARRAY_TYPE
+	  && tree_int_cst_equal (min_idx,
+				 TYPE_MIN_VALUE (TYPE_DOMAIN (base_type)))
+	  && tree_int_cst_equal (spacing_bytes,
+				 TYPE_SIZE_UNIT (TREE_TYPE (base_type))))
+	{
+	  min_idx = NULL_TREE;
+	  spacing_bytes = NULL_TREE;
+	}
+
       tree spacing;
       if (spacing_bytes == NULL_TREE)
 	spacing = NULL_TREE;
