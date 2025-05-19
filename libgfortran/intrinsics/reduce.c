@@ -95,7 +95,7 @@ reduce (parray *ret,
      painless by the use of pointer arithmetic throughout (except for MASK,
      whose type is known.  */
   ext0 = ext1 = ext2 = 1;
-  spc0 = spc1 = spc2 = 0;
+  spc0 = spc1 = spc2 = elem_len;
 
   scalar_result = (!dim_present && array_rank > 1) || array_rank == 1;
 
@@ -140,12 +140,16 @@ reduce (parray *ret,
       if (dimen < array_rank)
 	spc2 = GFC_DESCRIPTOR_SPACING (array, dimen);
       else
-	spc2 = 1;
+	spc2 = elem_len;
     }
 
   /* Allocate the result data, the result buffer and zero.  */
   if (ret->base_addr == NULL)
-    ret->base_addr = calloc ((size_t)(ext0 * ext2), elem_len);
+    {
+      ret->base_addr = calloc ((size_t)(ext0 * ext2), elem_len);
+      GFC_DESCRIPTOR_SPAN (ret) = GFC_DESCRIPTOR_SIZE (ret);
+    }
+
   buffer = calloc (1, elem_len);
   zero = calloc (1, elem_len);
 
