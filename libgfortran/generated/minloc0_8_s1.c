@@ -83,7 +83,7 @@ minloc0_8_s1 (gfc_array_i8 * const restrict retarray,
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -224,7 +224,7 @@ mminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
