@@ -2907,23 +2907,21 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 	  trans_array_constructor (ss, where);
 	  {
 	    gcc_assert (info->shape != nullptr || ss->dimen == 1);
-	    tree type = gfc_typenode_for_spec (ss_info->expr->ts.type == BT_CLASS
-					       ? &CLASS_DATA (ss_info->expr)->ts
-					       : &ss_info->expr->ts);
-	    if (ss_info->expr->ts.type == BT_CHARACTER
+	    tree type = gfc_typenode_for_spec (expr->ts.type == BT_CLASS
+					       ? &CLASS_DATA (expr)->ts
+					       : &expr->ts);
+	    if (expr->ts.type == BT_CHARACTER
 		&& gfc_is_constant_expr (ss_info->expr))
 	      type = build_pointer_type (type);
 	    tree spacing = TYPE_SIZE_UNIT (type);
 	    if (spacing == NULL_TREE)
-	      spacing = ss_info->expr->ts.u.cl->backend_decl;
+	      spacing = expr->ts.u.cl->backend_decl;
 	    spacing = fold_convert_loc (input_location, gfc_array_index_type,
 					spacing);
-	    for (n = 0; n < ss->dimen; n++)
+	    for (n = 0; n < expr->rank; n++)
 	      {
-		int dim = ss->dim[n];
-
-		info->spacing[dim] = spacing;
-		if (n < ss->dimen - 1)
+		info->spacing[n] = spacing;
+		if (n < expr->rank - 1)
 		  {
 		    tree extent = gfc_conv_mpz_to_tree_type (info->shape[n],
 						    gfc_array_index_type);
