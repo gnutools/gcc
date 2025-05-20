@@ -2418,12 +2418,21 @@ struct storage_address
 struct stored_address
 {
   storage_address address;
-  unsigned position;
+  HOST_WIDE_INT position;
 
-  stored_address (storage_address addr, unsigned pos)
+  stored_address (storage_address addr, HOST_WIDE_INT pos)
     : address (addr), position (pos)
   {}
+  void invalidate ();
 };
+
+
+void
+stored_address::invalidate ()
+{
+  position = HOST_WIDE_INT_M1;
+}
+
 
 namespace selftest
 {
@@ -2456,7 +2465,7 @@ class data_value
   vec<stored_address> addresses;
   void set_cst_at (unsigned dest_offset, unsigned value_width,
 		   const wide_int &val, unsigned src_offset);
-  stored_address *find_address (unsigned offset) const;
+  stored_address *find_address (HOST_WIDE_INT offset) const;
 
   friend void selftest::data_value_classify_tests ();
   friend void selftest::data_value_set_address_tests ();
@@ -3250,7 +3259,7 @@ data_value::classify (unsigned offset, unsigned width) const
 
 
 stored_address *
-data_value::find_address (unsigned offset) const
+data_value::find_address (HOST_WIDE_INT offset) const
 {
   gcc_assert (offset <= bit_width - HOST_BITS_PER_PTR);
 
@@ -3279,8 +3288,7 @@ data_value::set_address_at (storage_address & address, unsigned offset)
     {
       stored_address *existing_address = find_address (offset);
       gcc_assert (existing_address != nullptr);
-      /* Invalidate existing address.  */
-      existing_address->position = -1;
+      existing_address->invalidate ();
     }
 
   constant_mask &= ~mask;
@@ -3324,8 +3332,13 @@ data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
   enum value_type orig_type = classify (dest_offset, value_width);
   wide_int dest_mask = wi::shifted_mask (dest_offset, value_width, false,
 					 bit_width);
-  // TODO: invalidate existing address if any
-  gcc_assert (orig_type != VAL_ADDRESS);
+  if (orig_type == VAL_ADDRESS)
+    {
+      stored_address *existing_address = find_address (dest_offset);
+      if (existing_address)
+	existing_address->invalidate ();
+    }
+
   if (orig_type != VAL_CONSTANT)
     {
       constant_mask |= dest_mask;
