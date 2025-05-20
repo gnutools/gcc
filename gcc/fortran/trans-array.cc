@@ -7186,7 +7186,7 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 		}
 
 	      /* Apply the index to obtain the array element.  */
-	      tmp = gfc_build_array_ref (tmp, index, true);
+	      tmp = gfc_build_array_ref (tmp, index, true, gfc_index_zero_node);
 	      break;
 
 	    case REF_INQUIRY:
