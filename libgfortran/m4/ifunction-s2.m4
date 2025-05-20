@@ -391,7 +391,6 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	gfc_charlen_type xlen, 'atype` * const restrict array, 
 	const index_type * const restrict pdim,
 	GFC_LOGICAL_4 *mask, gfc_charlen_type string_len)
-
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];

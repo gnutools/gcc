@@ -359,8 +359,10 @@ mmaxval1_s1 (gfc_array_s1 * const restrict retarray,
 			retval = src;
 			break;
 		      }
+		src = (GFC_UINTEGER_1*) (((char*)src) + delta);
+		msrc += mdelta;
 	    }
-	    for (; n < len; n++, src += delta, msrc += mdelta)
+	    for (; n < len; n++)
 	      {
 		if (*msrc && compare_fcn (src, retval, string_len) > 0)
 		  {
@@ -419,7 +421,6 @@ smaxval1_s1 (gfc_array_s1 * const restrict retarray,
 	gfc_charlen_type xlen, gfc_array_s1 * const restrict array, 
 	const index_type * const restrict pdim,
 	GFC_LOGICAL_4 *mask, gfc_charlen_type string_len)
-
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
