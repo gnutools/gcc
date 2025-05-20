@@ -158,13 +158,14 @@ minval1_s4 (gfc_array_s4 * const restrict retarray,
 	  memset (dest, 255, sizeof (*dest) * string_len);
 	else
 	  {
-	    for (n = 0; n < len; n++, src = (GFC_UINTEGER_4*) (((char*) src) + delta))
+	    for (n = 0; n < len; n++)
 	      {
 
 		if (compare_fcn (src, retval, string_len) < 0)
 		  {
 		    retval = src;
 		  }
+		src = (GFC_UINTEGER_4*) (((char*)src) + delta);
 	      }
 	    
 	    memcpy (dest, retval, sizeof (*dest) * string_len);
@@ -350,7 +351,7 @@ mminval1_s4 (gfc_array_s4 * const restrict retarray,
 	const GFC_UINTEGER_4 *retval;
 	memset (dest, 255, sizeof (*dest) * string_len);
 	retval = dest;
-	for (n = 0; n < len; n++, msrc += mdelta, src = (GFC_UINTEGER_4*) (((char*) src) + delta))
+	for (n = 0; n < len; n++)
 	  {
 
 		if (*msrc)
@@ -366,6 +367,8 @@ mminval1_s4 (gfc_array_s4 * const restrict retarray,
 		    retval = src;
 		  }
 	      
+	    src = (GFC_UINTEGER_4*) (((char*)src) + delta);
+	    msrc += mdelta;
 	  }
 	memcpy (dest, retval, sizeof (*dest) * string_len);
       }

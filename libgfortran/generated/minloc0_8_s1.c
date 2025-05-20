@@ -44,12 +44,12 @@ compare_fcn (const GFC_UINTEGER_1 *a, const GFC_UINTEGER_1 *b, gfc_charlen_type 
 
 }
 
-extern void minloc0_8_s1 (gfc_array_i8 * const restrict retarray, 
+extern void minloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 	gfc_array_s1 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len);
 export_proto(minloc0_8_s1);
 
 void
-minloc0_8_s1 (gfc_array_i8 * const restrict retarray, 
+minloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 	gfc_array_s1 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -151,13 +151,13 @@ minloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 }
 
 
-extern void mminloc0_8_s1 (gfc_array_i8 * const restrict, 
+extern void mminloc0_8_s1 (gfc_array_i8 * const restrict,
 	gfc_array_s1 * const restrict, gfc_array_l1 * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(mminloc0_8_s1);
 
 void
-mminloc0_8_s1 (gfc_array_i8 * const restrict retarray, 
+mminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 	gfc_array_s1 * const restrict array,
 	gfc_array_l1 * const restrict mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
@@ -176,7 +176,7 @@ mminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 
   if (mask == NULL)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       minloc0_8_s1 (retarray, array, back, len);
 #else
       minloc0_8_s1 (retarray, array, len);
@@ -298,13 +298,13 @@ mminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 }
 
 
-extern void sminloc0_8_s1 (gfc_array_i8 * const restrict, 
+extern void sminloc0_8_s1 (gfc_array_i8 * const restrict,
 	gfc_array_s1 * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(sminloc0_8_s1);
 
 void
-sminloc0_8_s1 (gfc_array_i8 * const restrict retarray, 
+sminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 	gfc_array_s1 * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
@@ -316,7 +316,7 @@ sminloc0_8_s1 (gfc_array_i8 * const restrict retarray,
 
   if (mask == NULL || *mask)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       minloc0_8_s1 (retarray, array, back, len);
 #else
       minloc0_8_s1 (retarray, array, len);

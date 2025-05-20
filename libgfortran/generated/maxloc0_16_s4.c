@@ -44,12 +44,12 @@ compare_fcn (const GFC_UINTEGER_4 *a, const GFC_UINTEGER_4 *b, gfc_charlen_type 
 
 }
 
-extern void maxloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+extern void maxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len);
 export_proto(maxloc0_16_s4);
 
 void
-maxloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+maxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -151,13 +151,13 @@ maxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void mmaxloc0_16_s4 (gfc_array_i16 * const restrict, 
+extern void mmaxloc0_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, gfc_array_l1 * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(mmaxloc0_16_s4);
 
 void
-mmaxloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+mmaxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array,
 	gfc_array_l1 * const restrict mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
@@ -176,7 +176,7 @@ mmaxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 
   if (mask == NULL)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       maxloc0_16_s4 (retarray, array, back, len);
 #else
       maxloc0_16_s4 (retarray, array, len);
@@ -298,13 +298,13 @@ mmaxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void smaxloc0_16_s4 (gfc_array_i16 * const restrict, 
+extern void smaxloc0_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(smaxloc0_16_s4);
 
 void
-smaxloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+smaxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
@@ -316,7 +316,7 @@ smaxloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 
   if (mask == NULL || *mask)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       maxloc0_16_s4 (retarray, array, back, len);
 #else
       maxloc0_16_s4 (retarray, array, len);
