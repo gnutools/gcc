@@ -59,4 +59,4 @@
           END IF
         END IF
       END PROGRAM MFE
-! { dg-final { scan-tree-dump-times "it_objs->_vptr->_size" 1 "original" } }
+! { dg-final { scan-tree-dump-times {it_objs\._vptr->_size} 1 "original" } }
