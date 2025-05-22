@@ -71,22 +71,23 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
 
-      size_t ub;
-      index_type spacing;
+      size_t ub, spacing;
+      index_type next_spacing;
 
       ret->dtype.rank = rrank;
 
       dim = 0;
-      rs = size;
-      spacing = size;
+      rs = 1;
+      next_spacing = size;
       for (n = 0; n < rrank; n++)
 	{
+	  spacing = next_spacing;
 	  if (n == *along - 1)
 	    {
 	      ub = ncopies - 1;
 	      rdelta = rs * size;
 	      rs *= ncopies;
-	      spacing *= ncopies;
+	      next_spacing *= ncopies;
 	    }
 	  else
 	    {
@@ -97,7 +98,7 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 
 	      ub = extent[dim]-1;
 	      rs *= extent[dim];
-	      spacing *= extent[dim];
+	      next_spacing *= extent[dim];
 	      dim++;
 	    }
 
