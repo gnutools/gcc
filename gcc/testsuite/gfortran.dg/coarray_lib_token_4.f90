@@ -33,7 +33,7 @@ contains
   end subroutine expl
 end program test_caf
 
-! { dg-final { scan-tree-dump-times "expl \\(integer\\(kind=4\\).0:. . restrict z, void . restrict caf_token.\[0-9\]+, integer\\(kind=.\\) caf_offset.\[0-9\]+\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {expl \(integer\(kind=4\).[01]:. . restrict z, void . restrict caf_token.[0-9]+, integer\(kind=.\) caf_offset.[0-9]+\)} 1 "original" } }
 !
 ! { dg-final { scan-tree-dump-times "bar \\(struct array02_integer\\(kind=4\\) & restrict y, void . restrict caf_token.\[0-9\]+, integer\\(kind=.\\) caf_offset.\[0-9\]+\\)" 1 "original" } }
 !
