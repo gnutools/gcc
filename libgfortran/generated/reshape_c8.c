@@ -120,6 +120,7 @@ reshape_c8 (gfc_array_c8 * const restrict ret,
 
       ret->base_addr = xmalloc (alloc_size);
       ret->dtype.rank = rdim;
+      ret->span = sizeof (GFC_COMPLEX_8);
     }
 
   if (shape_empty)
