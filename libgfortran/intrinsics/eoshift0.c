@@ -67,6 +67,7 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
+      GFC_DESCRIPTOR_SPAN (ret) = GFC_DESCRIPTOR_SPAN (array);
 
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
