@@ -2846,13 +2846,13 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		      missing_spacing = true;
 		      break;
 		    }
-		if (missing_spacing
-		    && ss_info->expr->ts.type != BT_CLASS)
+		if (missing_spacing)
 		  {
 		    tree type = gfc_typenode_for_spec (&ss_info->expr->ts);
 		    if (TYPE_SIZE_UNIT (type) == NULL_TREE
 			|| !INTEGER_CST_P (TYPE_SIZE_UNIT (type))
-			|| gfc_expr_attr (ss_info->expr).pointer)
+			|| expr->ts.type == BT_CLASS
+			|| gfc_expr_attr (expr).pointer)
 		      {
 			for (n = 0; n < ss_info->expr->rank; n++)
 			  {
