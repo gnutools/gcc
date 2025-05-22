@@ -8418,6 +8418,10 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 				       !sym->attr.pointer, callee_alloc,
 				       &se->ss->info->expr->where, true);
 
+	  if (se->ss->info->class_container
+	      && !se->class_container)
+	    se->class_container = se->ss->info->class_container;
+
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;
 	  tmp = gfc_build_addr_expr (NULL_TREE, result);
@@ -12858,10 +12862,15 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
 	 references. Use the vptr copy function, since this does a deep
 	 copy of allocatable components, without which the finalizer call
 	 will deallocate the components.  */
-      tmp = gfc_get_vptr_from_expr (rse.expr);
-      if (tmp != NULL_TREE)
+      tree cls = rse.class_container;
+      tree vptr;
+      if (cls == NULL_TREE)
+	vptr = gfc_get_vptr_from_expr (rse.expr);
+      else
+	vptr = gfc_class_vptr_get (cls);
+      if (vptr != NULL_TREE)
 	{
-	  tree fcn = gfc_vptr_copy_get (tmp);
+	  tree fcn = gfc_vptr_copy_get (vptr);
 	  if (POINTER_TYPE_P (TREE_TYPE (fcn)))
 	    fcn = build_fold_indirect_ref_loc (input_location, fcn);
 	  tmp = build_call_expr_loc (input_location,

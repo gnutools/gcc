@@ -1142,9 +1142,6 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 
       class_data = gfc_class_data_get (tmp);
 
-      if (rank_changer)
-	fcn_ss->info->class_container = NULL_TREE;
-
       /* Assign the new descriptor to the _data field. This allows the
 	 vptr _copy to be used for scalarized assignment since the class
 	 temporary can be found from the descriptor.  */
