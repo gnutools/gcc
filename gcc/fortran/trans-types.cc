@@ -2306,12 +2306,34 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
 
   /* We define data as an array with the correct size if possible.
      Much better than doing pointer arithmetic.  */
+  bool known_zero_size = false;
   if (stride)
-    rtype = build_range_type (gfc_array_index_type, gfc_index_zero_node,
-			      int_const_binop (MINUS_EXPR, stride,
-					       build_int_cst (TREE_TYPE (stride), 1)));
+    {
+      tree range_bound = int_const_binop (MINUS_EXPR, stride,
+					  build_int_cst (TREE_TYPE (stride),
+							 1));
+      rtype = build_range_type (gfc_array_index_type, gfc_index_zero_node,
+				range_bound);
+      if (integer_minus_onep (range_bound))
+	known_zero_size = true;
+    }
   else
     rtype = gfc_array_range_type;
+  if (known_zero_size
+      && TREE_CODE (etype) == ARRAY_TYPE
+      && TYPE_DOMAIN (etype)
+      && TYPE_MAX_VALUE (TYPE_DOMAIN (etype))
+      && TREE_CODE (TYPE_MAX_VALUE (TYPE_DOMAIN (etype))) != INTEGER_CST)
+    {
+      tree elt = TREE_TYPE (etype);
+      tree domain = TYPE_DOMAIN (etype);
+      tree min = TYPE_MIN_VALUE (domain);
+      domain = build_range_type (TREE_TYPE (domain), min, min);
+      tree new_etype = build_array_type (elt, domain);
+      TYPE_STRING_FLAG (new_etype) = TYPE_STRING_FLAG (etype);
+      layout_type (new_etype);
+      etype = new_etype;
+    }
   arraytype = build_array_type (etype, rtype);
   arraytype = build_pointer_type (arraytype);
   if (restricted)

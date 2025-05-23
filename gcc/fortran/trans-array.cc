@@ -2438,6 +2438,8 @@ trans_array_constructor (gfc_ss * ss, locus * where)
       /* Complex character array constructors should have been taken care of
 	 and not end up here.  */
       gcc_assert (ss_info->string_length);
+      ss_info->string_length = gfc_evaluate_now (ss_info->string_length,
+						 &outer_loop->pre);
 
       store_backend_decl (&expr->ts.u.cl, ss_info->string_length, force_new_cl);
 
@@ -5637,10 +5639,15 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
 
       /* Make absolutely sure that this is a complete type.  */
       if (tmp_ss_info->string_length)
-	tmp_ss_info->data.temp.type
-		= gfc_get_character_type_len_for_eltype
-			(TREE_TYPE (tmp_ss_info->data.temp.type),
-			 tmp_ss_info->string_length);
+	{
+	  tree len = tmp_ss_info->string_length;
+	  len = gfc_evaluate_now (len, &outermost_loop (loop)->pre);
+	  tmp_ss_info->string_length = len;
+	  tmp_ss_info->data.temp.type
+		  = gfc_get_character_type_len_for_eltype
+			  (TREE_TYPE (tmp_ss_info->data.temp.type),
+			   tmp_ss_info->string_length);
+	}
 
       tmp = tmp_ss_info->data.temp.type;
       memset (&tmp_ss_info->data.array, 0, sizeof (gfc_array_info));
@@ -8203,9 +8210,21 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 
   if (expr->expr_type == EXPR_ARRAY && expr->ts.type == BT_CHARACTER)
     {
-      get_array_ctor_strlen (&se->pre, expr->value.constructor, &tmp);
-      expr->ts.u.cl->backend_decl = tmp;
-      se->string_length = tmp;
+      if (expr->ts.u.cl->length_from_typespec)
+	{
+	  gfc_se len_se;
+	  gfc_init_se (&len_se, NULL);
+	  gfc_conv_expr_val (&len_se, expr->ts.u.cl->length);
+	  gfc_add_block_to_block (&se->pre, &len_se.pre);
+	  expr->ts.u.cl->backend_decl = len_se.expr;
+	  se->string_length = len_se.expr;
+	}
+      else
+	{
+	  get_array_ctor_strlen (&se->pre, expr->value.constructor, &tmp);
+	  expr->ts.u.cl->backend_decl = tmp;
+	  se->string_length = tmp;
+	}
     }
 
   /* Is this the result of the enclosing procedure?  */
