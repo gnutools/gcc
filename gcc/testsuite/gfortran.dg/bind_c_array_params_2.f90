@@ -30,12 +30,12 @@ end
 ! { dg-final { scan-tree-dump "parm...dtype = {.elem_len=4, .version=0, .rank=2, .type=1};" "original" } }
 ! { dg-final { scan-tree-dump "parm...dim\\\[0\\\].lbound = 1;" "original" } }
 ! { dg-final { scan-tree-dump "parm...dim\\\[0\\\].ubound = 4;" "original" } }
-! { dg-final { scan-tree-dump "parm...dim\\\[0\\\].stride = 1;" "original" } }
+! { dg-final { scan-tree-dump {parm...dim\[0\].spacing = 4;} "original" } }
 ! { dg-final { scan-tree-dump "parm...dim\\\[1\\\].lbound = 1;" "original" } }
 ! { dg-final { scan-tree-dump "parm...dim\\\[1\\\].ubound = 4;" "original" } }
-! { dg-final { scan-tree-dump "parm...dim\\\[1\\\].stride = 4;" "original" } }
-! { dg-final { scan-tree-dump "parm...data = \\(void \\*\\) &aa\\\[0\\\];" "original" } }
-! { dg-final { scan-tree-dump "parm...offset = -5;" "original" } }
+! { dg-final { scan-tree-dump {parm...dim\[1\].spacing = 16;} "original" } }
+! { dg-final { scan-tree-dump {parm...data = \(void \*\) &aa\[0\](?:{lb: 0 sz: 4})?;} "original" } }
+! { dg-final { scan-tree-dump {parm...offset = -20;} "original" } }
 ! { dg-final { scan-tree-dump "cfi...version = 1;" "original" } }
 ! { dg-final { scan-tree-dump "cfi...rank = 2;" "original" } }
 ! { dg-final { scan-tree-dump "cfi...type = 1025;" "original" } }
@@ -47,7 +47,7 @@ end
 ! { dg-final { scan-tree-dump "if \\(idx.. <= 1\\) goto L..;" "original" } }
 ! { dg-final { scan-tree-dump "cfi...dim\\\[idx..\\\].lower_bound = 0;" "original" } }
 ! { dg-final { scan-tree-dump "cfi...dim\\\[idx..\\\].extent = \\(parm...dim\\\[idx..\\\].ubound - parm...dim\\\[idx..\\\].lbound\\) \\+ 1;" "original" } }
-! { dg-final { scan-tree-dump "cfi...dim\\\[idx..\\\].sm = parm...dim\\\[idx..\\\].stride \\* parm...span;" "original" } }
+! { dg-final { scan-tree-dump {cfi...dim\[idx..\].sm = (?:NON_LVALUE_EXPR <)?parm...dim\[idx..\].spacing>?;} "original" } }
 ! { dg-final { scan-tree-dump "idx.. = idx.. \\+ 1;" "original" } }
 
 ! { dg-final { scan-tree-dump "test \\(&cfi..\\);" "original" } }
