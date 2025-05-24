@@ -1589,7 +1589,7 @@ gfc_is_nodesc_array (gfc_symbol * sym)
 static tree
 gfc_build_array_type (tree type, gfc_array_spec * as,
 		      enum gfc_array_kind akind, bool restricted,
-		      bool contiguous, int codim)
+		      bool contiguous, int codim, bt type_type)
 {
   tree lbound[GFC_MAX_DIMENSIONS];
   tree ubound[GFC_MAX_DIMENSIONS];
@@ -1647,7 +1647,7 @@ gfc_build_array_type (tree type, gfc_array_spec * as,
   return gfc_get_array_type_bounds (type, as->rank == -1
 					  ? GFC_MAX_DIMENSIONS : as->rank,
 				    corank, lbound, ubound, 0, akind,
-				    restricted);
+				    restricted, type_type);
 }
 
 /* Returns the struct descriptor_dimension type.  */
@@ -1851,7 +1851,7 @@ gfc_get_dtype (tree type, int * rank)
 
 tree
 gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
-			   bool restricted)
+			   bool restricted, bt type_type)
 {
   tree lbound[GFC_MAX_DIMENSIONS];
   tree ubound[GFC_MAX_DIMENSIONS];
@@ -2034,7 +2034,11 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
 
   layout_type (type);
 
-  if (packed != PACKED_NO)
+  if (type_type != BT_UNKNOWN
+      && type_type != BT_CLASS
+      && (type_type != BT_CHARACTER
+	  || (TREE_CODE (etype) == ARRAY_TYPE
+	      && TYPE_SIZE_UNIT (etype))))
     GFC_TYPE_ARRAY_ELEM_LEN (type) = TYPE_SIZE_UNIT (etype);
 
   if (packed == PACKED_FULL || packed == PACKED_STATIC)
@@ -2168,7 +2172,8 @@ gfc_get_array_descriptor_base (int dimen, int codimen, bool restricted)
 tree
 gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
 			   tree * ubound, int packed,
-			   enum gfc_array_kind akind, bool restricted)
+			   enum gfc_array_kind akind, bool restricted,
+			   bt type_type)
 {
   char name[8 + 2*GFC_RANK_DIGITS + 1 + GFC_MAX_SYMBOL_LEN];
   tree fat_type, base_type, arraytype, lower, upper, stride, tmp, rtype;
@@ -2219,21 +2224,29 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
   GFC_TYPE_ARRAY_DTYPE (fat_type) = NULL_TREE;
   GFC_TYPE_ARRAY_AKIND (fat_type) = akind;
 
+  if (type_type != BT_UNKNOWN
+      && type_type != BT_CLASS
+      && (type_type != BT_CHARACTER
+	  || (TREE_CODE (etype) == ARRAY_TYPE
+	      && TYPE_SIZE_UNIT (etype) != NULL_TREE)))
+    GFC_TYPE_ARRAY_ELEM_LEN (fat_type) = TYPE_SIZE_UNIT (etype);
+
   /* Build an array descriptor record type.  */
   tree spacing;
-  if (packed == 0)
-    {
-      stride = NULL_TREE;
-      spacing = NULL_TREE;
-    }
-  else
+  if (packed != PACKED_NO
+      && GFC_TYPE_ARRAY_ELEM_LEN (fat_type))
     {
       stride = gfc_index_one_node;
       if (dimen == 0)
 	spacing = NULL_TREE;
       else
 	spacing = fold_convert_loc (input_location, gfc_array_index_type,
-				    TYPE_SIZE_UNIT (etype));
+				    GFC_TYPE_ARRAY_ELEM_LEN (fat_type));
+    }
+  else
+    {
+      stride = NULL_TREE;
+      spacing = NULL_TREE;
     }
   for (n = 0; n < dimen + codimen; n++)
     {
@@ -2304,10 +2317,21 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
       return fat_type;
     }
 
+  bool contiguous = packed == PACKED_FULL
+		    || packed == PACKED_STATIC
+		    || akind == GFC_ARRAY_ASSUMED_SHAPE_CONT
+		    || akind == GFC_ARRAY_ASSUMED_RANK_CONT
+		    || akind == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
+		    || akind == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT
+		    || akind == GFC_ARRAY_ALLOCATABLE
+		    || akind == GFC_ARRAY_POINTER_CONT;
+  if (contiguous)
+    GFC_TYPE_PACKED_ARRAY (fat_type) = 1;
+
   /* We define data as an array with the correct size if possible.
      Much better than doing pointer arithmetic.  */
   bool known_zero_size = false;
-  if (stride)
+  if (stride && contiguous)
     {
       tree range_bound = int_const_binop (MINUS_EXPR, stride,
 					  build_int_cst (TREE_TYPE (stride),
@@ -2318,7 +2342,8 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
 	known_zero_size = true;
     }
   else
-    rtype = gfc_array_range_type;
+    rtype = build_range_type (gfc_array_index_type, gfc_index_zero_node,
+			      NULL_TREE);
   if (known_zero_size
       && TREE_CODE (etype) == ARRAY_TYPE
       && TYPE_DOMAIN (etype)
@@ -2613,7 +2638,8 @@ gfc_sym_type (gfc_symbol * sym, bool is_bind_c)
 	      type = gfc_get_nodesc_array_type (type, sym->as,
 						byref ? PACKED_FULL
 						      : PACKED_STATIC,
-						restricted);
+						restricted,
+						sym->ts.type);
 	      byref = 0;
 	    }
         }
@@ -2626,7 +2652,8 @@ gfc_sym_type (gfc_symbol * sym, bool is_bind_c)
 	  else if (sym->attr.allocatable)
 	    akind = GFC_ARRAY_ALLOCATABLE;
 	  type = gfc_build_array_type (type, sym->as, akind, restricted,
-				       sym->attr.contiguous, sym->as->corank);
+				       sym->attr.contiguous, sym->as->corank,
+				       sym->ts.type);
 	}
     }
   else
@@ -3264,13 +3291,15 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 		(
 		  field_type, c->as, akind, !c->attr.target && !c->attr.pointer,
 		  c->attr.contiguous,
-		  c->attr.codimension || c->attr.pointer ? codimen : 0
+		  c->attr.codimension || c->attr.pointer ? codimen : 0,
+		  c->ts.type
 		);
 	    }
 	  else
 	    field_type = gfc_get_nodesc_array_type (field_type, c->as,
 						    PACKED_STATIC,
-						    !c->attr.target);
+						    !c->attr.target,
+						    c->ts.type);
 	}
       else if ((c->attr.pointer || c->attr.allocatable || c->attr.pdt_string)
 	       && !c->attr.proc_pointer

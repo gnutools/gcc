@@ -100,8 +100,8 @@ tree gfc_build_uint_type (int);
 
 tree gfc_get_element_type (tree);
 tree gfc_get_array_type_bounds (tree, int, int, tree *, tree *, int,
-				enum gfc_array_kind, bool);
-tree gfc_get_nodesc_array_type (tree, gfc_array_spec *, gfc_packed, bool);
+				enum gfc_array_kind, bool, bt);
+tree gfc_get_nodesc_array_type (tree, gfc_array_spec *, gfc_packed, bool, bt);
 
 /* Add a field of given name and type to a UNION_TYPE or RECORD_TYPE.  */
 tree gfc_add_field_to_struct (tree, tree, tree, tree **);

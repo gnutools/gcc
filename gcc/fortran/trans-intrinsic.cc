@@ -5065,7 +5065,8 @@ gfc_conv_intrinsic_minmaxloc (gfc_se * se, gfc_expr * expr, enum tree_code op)
 				      &arrayexpr->where,
 				      arrayexpr->rank - 1);
 
-      tree array = gfc_get_nodesc_array_type (type, &as, PACKED_STATIC, true);
+      tree array = gfc_get_nodesc_array_type (type, &as, PACKED_STATIC, true,
+					      BT_INTEGER);
 
       result_var = gfc_create_var (array, "loc_result");
     }

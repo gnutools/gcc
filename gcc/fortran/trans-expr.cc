@@ -132,7 +132,8 @@ gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
   tree elt_type = gfc_typenode_for_spec (&sym->ts);
   tree desc_type = gfc_get_array_type_bounds (elt_type, expr->rank, 0,
 					      lower, upper, 0,
-					      GFC_ARRAY_UNKNOWN, false);
+					      GFC_ARRAY_UNKNOWN, false,
+					      expr->ts.type);
   tree desc = gfc_create_var (desc_type, "desc");
   DECL_ARTIFICIAL (desc) = 1;
 
@@ -4832,7 +4833,7 @@ gfc_get_interface_mapping_array (stmtblock_t * block, gfc_symbol * sym,
     type = gfc_typenode_for_spec (&sym->ts);
   type = gfc_get_nodesc_array_type (type, sym->as, packed,
 				    !sym->attr.target && !sym->attr.pointer
-				    && !sym->attr.proc_pointer);
+				    && !sym->attr.proc_pointer, sym->ts.type);
 
   var = gfc_create_var (type, "ifm");
   gfc_add_modify (block, var, fold_convert (type, data));
@@ -10911,7 +10912,8 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
 	      tmp = gfc_typenode_for_spec (&expr2->ts);
 	      tmp = gfc_get_array_type_bounds (tmp, expr2->rank, 0,
 					       bound, bound, 0,
-					       GFC_ARRAY_POINTER_CONT, false);
+					       GFC_ARRAY_POINTER_CONT, false,
+					       expr2->ts.type);
 	      tmp = gfc_create_var (tmp, "ptrtemp");
 	      rse.descriptor_only = 0;
 	      rse.expr = tmp;

@@ -1262,7 +1262,7 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 
   if (! COMPLETE_TYPE_P (type)
       && GFC_TYPE_ARRAY_SIZE (type)
-      && GFC_TYPE_PACKED_ARRAY (type))
+      && GFC_TYPE_ARRAY_ELEM_LEN (type))
     {
       tree size, range;
 
@@ -1276,7 +1276,47 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 			      size, lower);
       range = build_range_type (gfc_array_index_type, lower, size);
       TYPE_DOMAIN (type) = range;
-      layout_type (type);
+      if (GFC_TYPE_PACKED_ARRAY (type))
+	layout_type (type);
+      else
+	{
+	  tree off = gfc_index_zero_node;
+	  for (dim = 0; dim < GFC_TYPE_ARRAY_RANK (type); dim++)
+	    {
+	      tree lb = GFC_TYPE_ARRAY_LBOUND (type, dim);
+	      tree ub = GFC_TYPE_ARRAY_UBOUND (type, dim);
+	      tree extent = gfc_conv_array_extent_dim (lb, ub, nullptr);
+	      tree extent_m1 = fold_build2_loc (input_location, MINUS_EXPR,
+						gfc_array_index_type, extent,
+						gfc_index_one_node);
+	      tree spacing = GFC_TYPE_ARRAY_SPACING (type, dim);
+	      tree tmp = fold_build2_loc (input_location, MULT_EXPR,
+					  gfc_array_index_type,
+					  extent_m1, spacing);
+	      tmp = fold_build2_loc (input_location, MAX_EXPR,
+				     gfc_array_index_type, tmp,
+				     gfc_index_zero_node);
+	      off = fold_build2_loc (input_location, PLUS_EXPR,
+				     gfc_array_index_type, off, tmp);
+	    }
+	  tree elem_len = GFC_TYPE_ARRAY_ELEM_LEN (type);
+	  elem_len = fold_convert_loc (input_location, gfc_array_index_type,
+				       elem_len);
+	  off = fold_build2_loc (input_location, PLUS_EXPR,
+				 gfc_array_index_type, off, elem_len);
+	  tree size_units = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+					     gfc_array_index_type,
+					     off, elem_len);
+	  tree size = fold_build2_loc (input_location, MULT_EXPR,
+				       gfc_array_index_type, size_units,
+				       build_int_cst (gfc_array_index_type,
+						      BITS_PER_UNIT));
+	  size_units = fold_convert_loc (input_location, sizetype, size_units);
+	  TYPE_SIZE_UNIT (type) = size_units;
+	  size = fold_convert_loc (input_location, sizetype, size);
+	  TYPE_SIZE (type) = size;
+	  layout_type (type);
+	}
     }
 }
 
@@ -1375,8 +1415,8 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 	 gfc_typenode_for_spec () returns the array descriptor.  */
       type = is_classarray ? gfc_get_element_type (type)
 			   : gfc_typenode_for_spec (&sym->ts);
-      type = gfc_get_nodesc_array_type (type, as, packed,
-					!sym->attr.target);
+      type = gfc_get_nodesc_array_type (type, as, packed, !sym->attr.target,
+					sym->ts.type);
     }
   else
     {

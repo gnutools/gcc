@@ -1058,7 +1058,9 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
     }
   type =
     gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, 1,
-			       GFC_ARRAY_UNKNOWN, true);
+			       GFC_ARRAY_UNKNOWN, true,
+			       ss->info->expr ? ss->info->expr->ts.type
+					      : BT_UNKNOWN);
   /* Restore the upper bound, for the rest (not type-related) of the descriptor
      initialization.  */
   if (to0)
@@ -2172,7 +2174,8 @@ gfc_build_constant_array_constructor (gfc_expr * expr, tree type)
 					NULL, tmp - 1);
       }
 
-  tmptype = gfc_get_nodesc_array_type (type, &as, PACKED_STATIC, true);
+  tmptype = gfc_get_nodesc_array_type (type, &as, PACKED_STATIC, true,
+				       expr->ts.type);
 
   /* as is not needed anymore.  */
   for (i = 0; i < as.rank + as.corank; i++)
@@ -7901,7 +7904,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 
 	  parmtype = gfc_get_array_type_bounds (parmtype, loop.dimen, codim,
 						loop.from, loop.to, 0,
-						GFC_ARRAY_UNKNOWN, false);
+						GFC_ARRAY_UNKNOWN, false,
+						expr->ts.type);
 	  parm = gfc_create_var (parmtype, "parm");
 
 	  /* When expression is a class object, then add the class' handle to
@@ -9276,7 +9280,8 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 	    {
 	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
 						 &ubound, 1,
-						 GFC_ARRAY_ALLOCATABLE, false);
+						 GFC_ARRAY_ALLOCATABLE, false,
+						 c->ts.type);
 
 	      cdesc = gfc_create_var (cdesc, "cdesc");
 	      DECL_ARTIFICIAL (cdesc) = 1;
@@ -9429,7 +9434,8 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 
 	      cdesc = gfc_get_array_type_bounds (tmp, 1, 0, &gfc_index_one_node,
 						 &ubound, 1,
-						 GFC_ARRAY_ALLOCATABLE, false);
+						 GFC_ARRAY_ALLOCATABLE, false,
+						 c->ts.type);
 
 	      cdesc = gfc_create_var (cdesc, "cdesc");
 	      DECL_ARTIFICIAL (cdesc) = 1;

@@ -2446,7 +2446,7 @@ layout_type (tree type)
   type = TYPE_MAIN_VARIANT (type);
 
   /* Do nothing if type has been laid out before.  */
-  if (TYPE_SIZE (type))
+  if (TYPE_SIZE (type) && TYPE_ALIGN (type))
     return;
 
   switch (TREE_CODE (type))
@@ -2665,8 +2665,12 @@ layout_type (tree type)
 	tree element = TREE_TYPE (type);
 
 	/* We need to know both bounds in order to compute the size.  */
-	if (index && TYPE_MAX_VALUE (index) && TYPE_MIN_VALUE (index)
-	    && TYPE_SIZE (element))
+	if (index
+	    && TYPE_MAX_VALUE (index)
+	    && TYPE_MIN_VALUE (index)
+	    && TYPE_SIZE (element)
+	    && !TYPE_SIZE (type)
+	    && !TYPE_SIZE_UNIT (type))
 	  {
 	    tree ub = TYPE_MAX_VALUE (index);
 	    tree lb = TYPE_MIN_VALUE (index);
