@@ -3850,6 +3850,8 @@ exec_context::evaluate (tree expr) const
     {
     case ARRAY_REF:
     case COMPONENT_REF:
+    case MEM_REF:
+    case TARGET_MEM_REF:
       {
 	data_storage *storage = nullptr;
 	int offset = -1;
@@ -3868,54 +3870,6 @@ exec_context::evaluate (tree expr) const
 	tree sint = make_signed_type (TYPE_PRECISION (TREE_TYPE (expr)));
 	tree t = fold_build1 (VIEW_CONVERT_EXPR, sint, expr);
 	return evaluate (t);
-      }
-      break;
-
-    case MEM_REF:
-    case TARGET_MEM_REF:
-      {
-	tree ptr = TREE_OPERAND (expr, 0);
-	data_value val_ptr = evaluate (ptr);
-	gcc_assert (val_ptr.classify () == VAL_ADDRESS);
-	storage_address *address = val_ptr.get_address ();
-	gcc_assert (address != nullptr);
-	data_value storage_value = address->storage.get ().get_value ();
-	wide_int ptr_off = wi::uhwi (address->offset,
-				     HOST_BITS_PER_WIDE_INT);
-
-	tree offset_bytes = TREE_OPERAND (expr, 1);
-	data_value val_off = evaluate (offset_bytes);
-	gcc_assert (val_off.classify () == VAL_CONSTANT);
-	wide_int wi_off = val_off.get_cst ();
-
-	unsigned bit_width;
-	if (!get_constant_type_size (TREE_TYPE (expr), bit_width))
-	  gcc_unreachable ();
-
-	if (code == TARGET_MEM_REF)
-	  {
-	    tree index = TREE_OPERAND (expr, 2);
-	    tree step = TREE_OPERAND (expr, 3);
-	    if (index || step)
-	      {
-		gcc_assert (index && step);
-
-		data_value val_idx = evaluate (index);
-		gcc_assert (val_idx.classify () == VAL_CONSTANT);
-		wide_int wi_idx = val_idx.get_cst ();
-
-		data_value val_step = evaluate (step);
-		gcc_assert (val_step.classify () == VAL_CONSTANT);
-		wide_int wi_step = val_step.get_cst ();
-
-		wi_off += wi_idx * wi_step;
-	      }
-	  }
-
-	wi_off = wi_off * CHAR_BIT + ptr_off;
-	gcc_assert (wi::fits_uhwi_p (wi_off));
-
-	return storage_value.get_at (wi_off.to_shwi (), bit_width);
       }
       break;
 
@@ -4288,15 +4242,20 @@ exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offs
 	    if (code == TARGET_MEM_REF)
 	      {
 		tree index = TREE_OPERAND (data_ref, 2);
-		data_value idx_val = evaluate (index);
-		gcc_assert (idx_val.classify () == VAL_CONSTANT);
-		add_index = idx_val.get_cst ();
-
 		tree step = TREE_OPERAND (data_ref, 3);
-		data_value step_val = evaluate (step);
-		gcc_assert (step_val.classify () == VAL_CONSTANT);
-		add_multiplier = step_val.get_cst ();
-		add_multiplier *= CHAR_BIT;
+		if (index || step)
+		  {
+		    gcc_assert (index && step);
+
+		    data_value idx_val = evaluate (index);
+		    gcc_assert (idx_val.classify () == VAL_CONSTANT);
+		    add_index = idx_val.get_cst ();
+
+		    data_value step_val = evaluate (step);
+		    gcc_assert (step_val.classify () == VAL_CONSTANT);
+		    add_multiplier = step_val.get_cst ();
+		    add_multiplier *= CHAR_BIT;
+		  }
 	      }
 	  }
 	  break;
