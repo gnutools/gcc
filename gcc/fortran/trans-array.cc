@@ -7944,7 +7944,7 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 
       gfc_set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim,
 			  ss, info, loop.from, loop.to, !se->data_not_needed,
-			  subref_array_target);
+			  subref_array_target, !se->direct_byref);
 
       desc = parm;
     }

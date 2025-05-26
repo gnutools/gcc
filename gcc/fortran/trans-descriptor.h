@@ -94,7 +94,7 @@ void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
 
 void gfc_set_descriptor (stmtblock_t *, tree, tree, gfc_expr *, int, int,
 			 gfc_ss *, gfc_array_info *, tree [GFC_MAX_DIMENSIONS],
-			 tree [GFC_MAX_DIMENSIONS], bool, bool);
+			 tree [GFC_MAX_DIMENSIONS], bool, bool, bool);
 
 tree gfc_descr_init_count (tree, int, int, gfc_expr **, gfc_expr **,
 			   stmtblock_t *, stmtblock_t *, tree *, tree,

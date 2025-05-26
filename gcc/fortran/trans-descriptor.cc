@@ -2977,6 +2977,9 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree desc, tree class_src,
 	  tree this_lbound = shift_bounds ? gfc_index_zero_node : lbound[n];
 	  set_descriptor_dimension (block, desc, n, this_lbound, ubound[n],
 				    spacing[n], &offset, nullptr);
+	  if (TREE_CODE (spacing[n]) == INTEGER_CST
+	      && GFC_TYPE_ARRAY_SPACING (TREE_TYPE (desc), n) == NULL_TREE)
+	    GFC_TYPE_ARRAY_SPACING (TREE_TYPE (desc), n) = spacing[n];
 	}
     }
 
@@ -3046,7 +3049,7 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
 		    tree lowers[GFC_MAX_DIMENSIONS],
 		    tree uppers[GFC_MAX_DIMENSIONS], bool data_needed,
-		    bool subref)
+		    bool subref, bool update_spacing_in_type)
 {
   int ndim = info->ref ? info->ref->u.ar.dimen : rank;
 
@@ -3159,6 +3162,11 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 			     TREE_TYPE (offset), spacing, from);
       offset = fold_build2_loc (input_location, MINUS_EXPR,
 			       TREE_TYPE (offset), offset, tmp);
+
+      if (update_spacing_in_type
+	  && TREE_CODE (spacing) == INTEGER_CST
+	  && GFC_TYPE_ARRAY_SPACING (TREE_TYPE (dest), dim) == NULL_TREE)
+	GFC_TYPE_ARRAY_SPACING (TREE_TYPE (dest), dim) = spacing;
 
       /* Store the new spacing.  */
       gfc_conv_descriptor_spacing_set (block, dest, gfc_rank_cst[dim], spacing);
