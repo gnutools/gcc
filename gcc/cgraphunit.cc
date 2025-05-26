@@ -3880,14 +3880,13 @@ exec_context::evaluate (tree expr) const
 	storage_address *address = val_ptr.get_address ();
 	gcc_assert (address != nullptr);
 	data_value storage_value = address->storage.get ().get_value ();
-	unsigned ptr_offset = address->offset;
+	wide_int ptr_off = wi::uhwi (address->offset,
+				     HOST_BITS_PER_WIDE_INT);
 
 	tree offset_bytes = TREE_OPERAND (expr, 1);
 	data_value val_off = evaluate (offset_bytes);
 	gcc_assert (val_off.classify () == VAL_CONSTANT);
 	wide_int wi_off = val_off.get_cst ();
-	gcc_assert (wi::fits_uhwi_p (wi_off));
-	unsigned offset = wi_off.to_uhwi ();
 
 	unsigned bit_width;
 	if (!get_constant_type_size (TREE_TYPE (expr), bit_width))
@@ -3909,13 +3908,14 @@ exec_context::evaluate (tree expr) const
 		gcc_assert (val_step.classify () == VAL_CONSTANT);
 		wide_int wi_step = val_step.get_cst ();
 
-		wide_int additional_off = wi_idx * wi_step;
-		gcc_assert (wi::fits_uhwi_p (additional_off));
-		offset += additional_off.to_uhwi ();
+		wi_off += wi_idx * wi_step;
 	      }
 	  }
 
-	return storage_value.get_at (offset * CHAR_BIT + ptr_offset, bit_width);
+	wi_off = wi_off * CHAR_BIT + ptr_off;
+	gcc_assert (wi::fits_uhwi_p (wi_off));
+
+	return storage_value.get_at (wi_off.to_shwi (), bit_width);
       }
       break;
 
@@ -4206,105 +4206,130 @@ exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rh
     gcc_unreachable ();
 }
 
+
+static bool
+is_zero_offset_data_ref (enum tree_code code)
+{
+  switch (code)
+    {
+    case VAR_DECL:
+    case SSA_NAME:
+      return true;
+
+    default:
+      return false;
+    }
+}
+
+
 void
 exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
 {
   offset = -1;
   enum tree_code code = TREE_CODE (data_ref);
-  switch (code)
+  if (is_zero_offset_data_ref (code))
     {
-    case VAR_DECL:
-    case SSA_NAME:
-      {
-	tree var = data_ref;
-	offset = 0;
-	storage = find_reachable_var (var);
-      }
-      break;
-
-    case ARRAY_REF:
-      {
-	data_storage *parent_storage = nullptr;
-	int parent_offset = -1;
-	tree parent_ref = TREE_OPERAND (data_ref, 0);
-	decompose_ref (parent_ref, parent_storage, parent_offset);
-	gcc_assert (parent_offset >= 0);
-	gcc_assert (parent_storage != nullptr);
-
-	tree idx = TREE_OPERAND (data_ref, 1);
-	data_value val = evaluate (idx);
-	gcc_assert (val.classify () == VAL_CONSTANT);
-	wide_int wi_idx = val.get_cst ();
-	gcc_assert (wi::fits_uhwi_p (wi_idx));
-	unsigned HOST_WIDE_INT hw_idx = wi_idx.to_uhwi ();
-
-	gcc_assert (TREE_OPERAND (data_ref, 3) == NULL_TREE);
-	tree elt_type = TREE_TYPE (TREE_TYPE (parent_ref));
-	unsigned size_bits;
-	bool found_size = get_constant_type_size (elt_type, size_bits);
-	gcc_assert (found_size);
-	unsigned this_offset = hw_idx * size_bits;
-
-	storage = parent_storage;
-	offset = parent_offset + this_offset;
-      }
-      break;
-
-    case COMPONENT_REF:
-      {
-	data_storage *parent_storage = nullptr;
-	int parent_offset = -1;
-	decompose_ref (TREE_OPERAND (data_ref, 0), parent_storage, parent_offset);
-	gcc_assert (parent_offset >= 0);
-	gcc_assert (parent_storage != nullptr);
-
-	int this_offset = int_bit_position (TREE_OPERAND (data_ref, 1));
-	gcc_assert (this_offset >= 0);
-
-	storage = parent_storage;
-	offset = parent_offset + this_offset;
-      }
-      break;
-
-    case MEM_REF:
-    case TARGET_MEM_REF:
-      {
-	tree var = TREE_OPERAND (data_ref, 0);
-	data_value addr = evaluate (var);
-	gcc_assert (addr.classify () == VAL_ADDRESS);
-	storage = &(addr.get_address ()->storage.get ());
-
-	tree off = TREE_OPERAND (data_ref, 1);
-	data_value off_val = evaluate (off);
-	gcc_assert (off_val.classify () == VAL_CONSTANT);
-	wide_int wi_off = off_val.get_cst ();
-	gcc_assert (wi::fits_uhwi_p (wi_off));
-	unsigned HOST_WIDE_INT uhwi_off = wi_off.to_uhwi ();
-
-	if (code == TARGET_MEM_REF)
+      offset = 0;
+      storage = find_reachable_var (data_ref);
+    }
+  else
+    {
+      tree parent_data_ref = nullptr;
+      wide_int add_offset = wi::zero (HOST_BITS_PER_WIDE_INT);
+      wide_int add_index = wi::zero (HOST_BITS_PER_WIDE_INT);
+      wide_int add_multiplier = wi::zero (HOST_BITS_PER_WIDE_INT);
+      switch (code)
+	{
+	case ARRAY_REF:
 	  {
-	    tree index = TREE_OPERAND (data_ref, 2);
-	    data_value idx_val = evaluate (index);
-	    gcc_assert (idx_val.classify () == VAL_CONSTANT);
-	    wide_int wi_idx = idx_val.get_cst ();
+	    parent_data_ref = TREE_OPERAND (data_ref, 0);
 
-	    tree step = TREE_OPERAND (data_ref, 3);
-	    data_value step_val = evaluate (step);
-	    gcc_assert (step_val.classify () == VAL_CONSTANT);
-	    wide_int wi_step = step_val.get_cst ();
+	    tree idx = TREE_OPERAND (data_ref, 1);
+	    data_value val = evaluate (idx);
+	    gcc_assert (val.classify () == VAL_CONSTANT);
+	    add_index = val.get_cst ();
 
-	    wide_int additional_off = wi_idx * wi_step;
-	    gcc_assert (wi::fits_uhwi_p (additional_off));
-	    uhwi_off += additional_off.to_uhwi ();
+	    gcc_assert (TREE_OPERAND (data_ref, 3) == NULL_TREE);
+	    tree elt_type = TREE_TYPE (TREE_TYPE (parent_data_ref));
+	    unsigned size_bits;
+	    bool found_size = get_constant_type_size (elt_type, size_bits);
+	    gcc_assert (found_size);
+	    add_multiplier = wi::uhwi (size_bits, HOST_BITS_PER_WIDE_INT);
 	  }
+	  break;
 
-	gcc_assert (uhwi_off <= UINT_MAX / CHAR_BIT);
-	offset = uhwi_off * CHAR_BIT;
-      }
-      break;
+	case COMPONENT_REF:
+	  {
+	    parent_data_ref = TREE_OPERAND (data_ref, 0);
 
-    default:
-      gcc_unreachable ();
+	    int comp_offset = int_bit_position (TREE_OPERAND (data_ref, 1));
+	    gcc_assert (comp_offset >= 0);
+
+	    add_offset = wi::shwi (comp_offset, HOST_BITS_PER_WIDE_INT);
+	  }
+	  break;
+
+	case MEM_REF:
+	case TARGET_MEM_REF:
+	  {
+	    tree var = TREE_OPERAND (data_ref, 0);
+	    data_value var_val = evaluate (var);
+	    gcc_assert (var_val.classify () == VAL_ADDRESS);
+	    storage_address *addr = var_val.get_address ();
+	    gcc_assert (addr != nullptr);
+	    storage = &(addr->storage.get ());
+
+	    add_offset = wi::uhwi (addr->offset, HOST_BITS_PER_WIDE_INT);
+	    tree off = TREE_OPERAND (data_ref, 1);
+	    data_value off_val = evaluate (off);
+	    gcc_assert (off_val.classify () == VAL_CONSTANT);
+	    add_offset += off_val.get_cst () * CHAR_BIT;
+
+	    if (code == TARGET_MEM_REF)
+	      {
+		tree index = TREE_OPERAND (data_ref, 2);
+		data_value idx_val = evaluate (index);
+		gcc_assert (idx_val.classify () == VAL_CONSTANT);
+		add_index = idx_val.get_cst ();
+
+		tree step = TREE_OPERAND (data_ref, 3);
+		data_value step_val = evaluate (step);
+		gcc_assert (step_val.classify () == VAL_CONSTANT);
+		add_multiplier = step_val.get_cst ();
+		add_multiplier *= CHAR_BIT;
+	      }
+	  }
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+
+      if (parent_data_ref != nullptr)
+	{
+	  int parent_offset;
+	  decompose_ref (parent_data_ref, storage, parent_offset);
+	  add_offset += parent_offset;
+	}
+
+      if (add_offset.get_precision () < HOST_BITS_PER_WIDE_INT)
+	add_offset = wide_int_storage::from (add_offset,
+					     HOST_BITS_PER_WIDE_INT,
+					     UNSIGNED);
+
+      if (add_index.get_precision () < HOST_BITS_PER_WIDE_INT)
+	add_index = wide_int_storage::from (add_index,
+					    HOST_BITS_PER_WIDE_INT,
+					    UNSIGNED);
+
+      if (add_multiplier.get_precision () < HOST_BITS_PER_WIDE_INT)
+	add_multiplier = wide_int_storage::from (add_multiplier,
+						 HOST_BITS_PER_WIDE_INT,
+						 UNSIGNED);
+
+      wide_int off = add_offset + add_index * add_multiplier;
+      gcc_assert (wi::fits_shwi_p (off));
+      offset = off.to_shwi ();
     }
 
   gcc_assert (storage != nullptr);
@@ -7111,6 +7136,52 @@ exec_context_evaluate_tests ()
   wide_int wi19_0 = val19_0.get_cst ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi19_0);
   ASSERT_EQ  (wi19_0.to_uhwi (), 23);
+
+
+  tree ta11 = build_array_type_nelts (integer_type_node, 2);
+  tree taa11 = build_array_type_nelts (ta11, 2);
+  tree a11 = create_var (taa11, "a11");
+  tree p11 = create_var (ptr_type_node, "p11");
+
+  vec<tree> decls11{};
+  decls11.safe_push (a11);
+  decls11.safe_push (p11);
+
+  context_builder builder11;
+  builder11.add_decls (&decls11);
+  exec_context ctx11 = builder11.build (mem, printer);
+
+  data_value val_a11 (integer_type_node);
+  wide_int wi_a11 = wi::shwi (7, TYPE_PRECISION (integer_type_node));
+  val_a11.set_cst (wi_a11);
+
+  data_storage * strg_a11 = ctx11.find_reachable_var (a11);
+  gcc_assert (strg_a11 != nullptr);
+  strg_a11->set_at (val_a11, 2 * HOST_BITS_PER_INT);
+
+  storage_address addr_a11 (strg_a11->get_ref (), 2 * HOST_BITS_PER_INT);
+
+  data_value val_p11 (ptr_type_node);
+  val_p11.set_address (addr_a11);
+
+  data_storage * strg_p11 = ctx11.find_reachable_var (p11);
+  gcc_assert (strg_p11 != nullptr);
+  strg_p11->set (val_p11);
+
+  tree pta11 = build_pointer_type (ta11);
+  tree mem11 = build2 (MEM_REF, ta11,
+		       p11, build_zero_cst (pta11));
+  tree ar11 = build4 (ARRAY_REF, integer_type_node,
+		      mem11, build_zero_cst (integer_type_node),
+		      NULL_TREE, NULL_TREE);
+
+  data_value val_ref11 = ctx11.evaluate (ar11);
+
+  ASSERT_EQ (val_ref11.get_bitwidth (), HOST_BITS_PER_INT);
+  ASSERT_EQ (val_ref11.classify (), VAL_CONSTANT);
+  wide_int wi_ref11 = val_ref11.get_cst ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_ref11);
+  ASSERT_EQ  (wi_ref11.to_uhwi (), 7);
 }
 
 
