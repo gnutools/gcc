@@ -7584,7 +7584,10 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 
 	      else if (e->expr_type == EXPR_VARIABLE
 		    && is_subref_array (e)
-		    && !(fsym && fsym->attr.pointer))
+		    && !(fsym && fsym->attr.pointer)
+		    && !(e->symtree->n.sym
+			 && e->symtree->n.sym->as
+			 && e->symtree->n.sym->as->type == AS_ASSUMED_RANK))
 		/* The actual argument is a component reference to an
 		   array of derived types.  In this case, the argument
 		   is converted to a temporary, which is passed and then
@@ -7629,7 +7632,9 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 		       && (fsym->attr.target
 			   ? gfc_is_not_contiguous (e)
 			   : !gfc_is_simply_contiguous (e, false, true))
-		       && gfc_expr_is_variable (e))
+		       && gfc_expr_is_variable (e)
+		       && !(e->symtree->n.sym->as
+			    && e->symtree->n.sym->as->type == AS_ASSUMED_RANK))
 		{
 		  gfc_conv_subref_array_arg (&parmse, e, nodesc_arg,
 					     fsym->attr.intent,

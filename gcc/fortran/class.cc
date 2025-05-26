@@ -1624,7 +1624,6 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
   array->ts.u.derived = derived;
   array->attr.flavor = FL_VARIABLE;
   array->attr.dummy = 1;
-  array->attr.contiguous = 1;
   array->attr.dimension = 1;
   array->attr.artificial = 1;
   array->as = gfc_get_array_spec();
@@ -2129,8 +2128,15 @@ finish_assumed_rank:
       last_code->symtree = ancestor_wrapper->symtree;
       last_code->resolved_sym = ancestor_wrapper->symtree->n.sym;
 
+      gfc_expr *parent_type_array = gfc_lval_expr_from_sym (array);
+      gfc_ref **subref = &parent_type_array->ref;
+      if (*subref)
+	subref = &(*subref)->next;
+      insert_component_ref (&parent_type_array->ts, subref,
+			    derived->components->name);
+
       last_code->ext.actual = gfc_get_actual_arglist ();
-      last_code->ext.actual->expr = gfc_lval_expr_from_sym (array);
+      last_code->ext.actual->expr = parent_type_array;
       last_code->ext.actual->next = gfc_get_actual_arglist ();
       last_code->ext.actual->next->expr = gfc_lval_expr_from_sym (byte_stride);
       last_code->ext.actual->next->next = gfc_get_actual_arglist ();
