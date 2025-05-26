@@ -1479,148 +1479,18 @@ finalization_get_offset (gfc_symbol *idx, gfc_symbol *idx2, gfc_symbol *offset,
 
 static void
 finalizer_insert_packed_call (gfc_code *block, gfc_finalizer *fini,
-			      gfc_symbol *array, gfc_symbol *byte_stride,
-			      gfc_symbol *nelem, gfc_symbol *is_contiguous,
-			      gfc_namespace *sub_ns)
+			      gfc_symbol *array, gfc_symbol *byte_stride ATTRIBUTE_UNUSED,
+			      gfc_symbol *nelem ATTRIBUTE_UNUSED, gfc_symbol *is_contiguous ATTRIBUTE_UNUSED,
+			      gfc_namespace *sub_ns ATTRIBUTE_UNUSED)
 {
-  gfc_symbol *ptr2;
-  gfc_expr *size_expr, *expr;
-  gfc_namespace *ns;
-
-  block->next = gfc_get_code (EXEC_IF);
-  block = block->next;
-
-  block->block = gfc_get_code (EXEC_IF);
-  block = block->block;
-
-  /* size_expr = STORAGE_SIZE (...) / NUMERIC_STORAGE_SIZE.  */
-  size_expr = gfc_get_expr ();
-  size_expr->where = gfc_current_locus;
-  size_expr->expr_type = EXPR_OP;
-  size_expr->value.op.op = INTRINSIC_DIVIDE;
-
-  /* STORAGE_SIZE (array,kind=c_intptr_t).  */
-  size_expr->value.op.op1
-	= gfc_build_intrinsic_call (sub_ns, GFC_ISYM_STORAGE_SIZE,
-				    "storage_size", gfc_current_locus, 2,
-				    gfc_lval_expr_from_sym (array),
-				    gfc_get_int_expr (gfc_index_integer_kind,
-						      NULL, 0));
-
-  /* NUMERIC_STORAGE_SIZE.  */
-  size_expr->value.op.op2 = gfc_get_int_expr (gfc_index_integer_kind, NULL,
-					      gfc_character_storage_size);
-  size_expr->value.op.op1->ts = size_expr->value.op.op2->ts;
-  size_expr->ts = size_expr->value.op.op1->ts;
-
-  /* IF condition: (stride == size_expr
-		    && ((fini's as->ASSUMED_SIZE && !fini's attr.contiguous)
-			|| is_contiguous)
-		   || 0 == size_expr.  */
-  block->expr1 = gfc_get_expr ();
-  block->expr1->ts.type = BT_LOGICAL;
-  block->expr1->ts.kind = gfc_default_logical_kind;
-  block->expr1->expr_type = EXPR_OP;
-  block->expr1->where = gfc_current_locus;
-
-  block->expr1->value.op.op = INTRINSIC_OR;
-
-  /* byte_stride == size_expr */
-  expr = gfc_get_expr ();
-  expr->ts.type = BT_LOGICAL;
-  expr->ts.kind = gfc_default_logical_kind;
-  expr->expr_type = EXPR_OP;
-  expr->where = gfc_current_locus;
-  expr->value.op.op = INTRINSIC_EQ;
-  expr->value.op.op1
-	= gfc_lval_expr_from_sym (byte_stride);
-  expr->value.op.op2 = size_expr;
-
-  /* If strides aren't allowed (not assumed shape or CONTIGUOUS),
-     add is_contiguous check.  */
-
-  if (fini->proc_tree->n.sym->formal->sym->as->type != AS_ASSUMED_SHAPE
-      || fini->proc_tree->n.sym->formal->sym->attr.contiguous)
-    {
-      gfc_expr *expr2;
-      expr2 = gfc_get_expr ();
-      expr2->ts.type = BT_LOGICAL;
-      expr2->ts.kind = gfc_default_logical_kind;
-      expr2->expr_type = EXPR_OP;
-      expr2->where = gfc_current_locus;
-      expr2->value.op.op = INTRINSIC_AND;
-      expr2->value.op.op1 = expr;
-      expr2->value.op.op2 = gfc_lval_expr_from_sym (is_contiguous);
-      expr = expr2;
-    }
-
-  block->expr1->value.op.op1 = expr;
-
-  /* 0 == size_expr */
-  block->expr1->value.op.op2 = gfc_get_expr ();
-  block->expr1->value.op.op2->ts.type = BT_LOGICAL;
-  block->expr1->value.op.op2->ts.kind = gfc_default_logical_kind;
-  block->expr1->value.op.op2->expr_type = EXPR_OP;
-  block->expr1->value.op.op2->where = gfc_current_locus;
-  block->expr1->value.op.op2->value.op.op = INTRINSIC_EQ;
-  block->expr1->value.op.op2->value.op.op1 =
-			gfc_get_int_expr (gfc_index_integer_kind, NULL, 0);
-  block->expr1->value.op.op2->value.op.op2 = gfc_copy_expr (size_expr);
-
   /* IF body: call final subroutine.  */
   block->next = gfc_get_code (EXEC_CALL);
-  block->next->symtree = fini->proc_tree;
-  block->next->resolved_sym = fini->proc_tree->n.sym;
-  block->next->ext.actual = gfc_get_actual_arglist ();
-  block->next->ext.actual->expr = gfc_lval_expr_from_sym (array);
-
-  /* ELSE.  */
-
-  block->block = gfc_get_code (EXEC_IF);
-  block = block->block;
-
-  /* BLOCK ... END BLOCK.  */
-  block->next = gfc_get_code (EXEC_BLOCK);
   block = block->next;
 
-  ns = gfc_build_block_ns (sub_ns);
-  block->ext.block.ns = ns;
-  block->ext.block.assoc = NULL;
-
-  gfc_get_symbol ("ptr2", ns, &ptr2);
-  ptr2->ts.type = BT_DERIVED;
-  ptr2->ts.u.derived = array->ts.u.derived;
-  ptr2->attr.flavor = FL_VARIABLE;
-  ptr2->attr.pointer = 1;
-  ptr2->attr.artificial = 1;
-  ptr2->attr.dimension = 1;
-  ptr2->as = gfc_get_array_spec ();
-  ptr2->as->type = AS_DEFERRED;
-  ptr2->as->rank = 1;
-  gfc_set_sym_referenced (ptr2);
-  gfc_commit_symbol (ptr2);
-
-  block = gfc_get_code (EXEC_POINTER_ASSIGN);
-  ns->code = block;
-  block->expr1 = gfc_lval_expr_from_sym (ptr2);
-  gfc_free_ref_list (block->expr1->ref);
-  block->expr1->ref = gfc_get_ref ();
-  block->expr1->ref->type = REF_ARRAY;
-  block->expr1->ref->u.ar.type = AR_SECTION;
-  block->expr1->ref->u.ar.dimen = 1;
-  block->expr1->ref->u.ar.as = ptr2->as;
-  block->expr1->ref->u.ar.dimen_type[0] = DIMEN_RANGE;
-  block->expr1->ref->u.ar.start[0] = gfc_get_int_expr (gfc_index_integer_kind, nullptr, 1);
-  block->expr1->ref->u.ar.end[0] = gfc_lval_expr_from_sym (nelem);
-  block->expr2 = gfc_lval_expr_from_sym (array);
-
-  /* Call now the user's final subroutine.  */
-  block->next  = gfc_get_code (EXEC_CALL);
-  block = block->next;
   block->symtree = fini->proc_tree;
   block->resolved_sym = fini->proc_tree->n.sym;
   block->ext.actual = gfc_get_actual_arglist ();
-  block->ext.actual->expr = gfc_lval_expr_from_sym (ptr2);
+  block->ext.actual->expr = gfc_lval_expr_from_sym (array);
 }
 
 
