@@ -1351,7 +1351,7 @@ finalization_scalarizer (gfc_symbol *array, gfc_symbol *ptr,
 static gfc_code*
 finalization_get_offset (gfc_symbol *idx, gfc_symbol *idx2, gfc_symbol *offset,
 			 gfc_symbol *strides, gfc_symbol *sizes,
-			 gfc_symbol *byte_stride, gfc_expr *rank,
+			 gfc_symbol *byte_stride ATTRIBUTE_UNUSED, gfc_expr *rank,
 			 gfc_code *block, gfc_namespace *sub_ns)
 {
   gfc_iterator *iter;
@@ -1445,17 +1445,6 @@ finalization_get_offset (gfc_symbol *idx, gfc_symbol *idx2, gfc_symbol *offset,
   block->block->next->expr2->ts = idx->ts;
   block->block->next->expr2->where = gfc_current_locus;
 
-  /* After the loop:  offset = offset * byte_stride.  */
-  block->next = gfc_get_code (EXEC_ASSIGN);
-  block = block->next;
-  block->expr1 = gfc_lval_expr_from_sym (offset);
-  block->expr2 = gfc_get_expr ();
-  block->expr2->expr_type = EXPR_OP;
-  block->expr2->value.op.op = INTRINSIC_TIMES;
-  block->expr2->value.op.op1 = gfc_lval_expr_from_sym (offset);
-  block->expr2->value.op.op2 = gfc_lval_expr_from_sym (byte_stride);
-  block->expr2->ts = block->expr2->value.op.op1->ts;
-  block->expr2->where = gfc_current_locus;
   return block;
 }
 
