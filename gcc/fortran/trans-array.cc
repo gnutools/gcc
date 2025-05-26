@@ -3637,7 +3637,7 @@ conv_array_index (gfc_se * se, gfc_ss * ss, int dim, int i, gfc_array_ref * ar)
 	  index = gfc_build_array_ref (data, index,
 				       non_negative_strides_array_p (desc),
 				       se->loop->from[i],
-				       gfc_conv_array_spacing (desc, 0));
+				       info->subscript[dim]->info->data.array.spacing[0]);
 	  index = gfc_evaluate_now (index, &se->pre);
 	  index = fold_convert (gfc_array_index_type, index);
 
