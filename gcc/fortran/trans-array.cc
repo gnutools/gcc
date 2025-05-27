@@ -1057,7 +1057,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
       to[0] = NULL_TREE;
     }
   type =
-    gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, 1,
+    gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, PACKED_STATIC,
 			       GFC_ARRAY_UNKNOWN, true,
 			       ss->info->expr ? ss->info->expr->ts.type
 					      : BT_UNKNOWN);
@@ -7747,6 +7747,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 				       ? expr->ts.u.cl->backend_decl
 				       : NULL),
 				      loop.dimen);
+
+      loop.temp_ss->info->expr = expr;
 
       se->string_length = loop.temp_ss->info->string_length;
       gcc_assert (loop.temp_ss->dimen == loop.dimen);
