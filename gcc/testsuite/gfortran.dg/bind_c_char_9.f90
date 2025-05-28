@@ -201,7 +201,7 @@ end
 ! { dg-final { scan-tree-dump-not "dtype" "original" } }
 ! { dg-final { scan-tree-dump-times "void s1 \\(character\\(kind=1\\)\\\[1:1\\\] & restrict x1\\)" 1 "original" } }
 ! { dg-final { scan-tree-dump-not "void s2 " "original" } }
-! { dg-final { scan-tree-dump-times "void az1 \\(character\\(kind=1\\)\\\[0:\\\]\\\[1:1\\\] \\* restrict x1\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {void az1 \(character\(kind=1\)\[.:\]\[1:1\] \* restrict x1\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-not "void az2 " "original" } }
-! { dg-final { scan-tree-dump-times "void ae1 \\(character\\(kind=1\\)\\\[6\\\]\\\[1:1\\\] \\* restrict x1\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {void ae1 \(character\(kind=1\)\[(?:1:)?6\]\[1:1\] \* restrict x1\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-not "void ae2 " "original" } }
