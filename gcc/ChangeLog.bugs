@@ -1,28 +1,4 @@
-==================== Branch work206-bugs, patch #115 ====================
-
-Update tests.
-
-2025-05-22  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/testsuite/
-
-	PR target/118541
-	* gcc.target/powerpc/p9-minmax-2.c: Delete test.
-	* gcc.target/powerpc/float128-minmax-3.c: Use -Ofast, not -O2.
-
-==================== Branch work206-bugs, patch #114 ====================
-
-Disable fp cmove on power9
-
-2025-05-22  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	PR target/118541
-	* config/rs6000/rs6000.cc (have_compare_and_set_mask): Disable unless
-	NaNs are disabled.
-
-==================== Branch work206-bugs, patch #113 ====================
+==================== Branch work206-bugs, patch #120 ====================
 
 Fix PR 118541, do not generate unordered fp cmoves for IEEE compares.
 
@@ -63,11 +39,13 @@ However, the XSCMPGTDP instruction traps if one of the arguments is a signaling
 NaN.  This patch disables generating XSCMP{EQ,GT,GE}{DP,QP} instructions unless
 -ffinite-math-only is in effect so that we do not get a trap.
 
-2025-05-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-05-28  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
 	PR target/118541
+	* config/rs6000/rs6000.cc (have_compare_and_set_mask): Don't do compare
+	and set mask operations unless -ffinite-math-only.
 	* config/rs6000/rs6000.md (mov<SFDF:mode><SFDF2:mode>cc_p9): Disable
 	generating XSCMP{EQ,GT,GE}{DP,QP} unless -ffinite-math-only is in
 	effect.
@@ -85,7 +63,15 @@ gcc/testsuite/
 	PR target/118541
 	* gcc.target/powerpc/float128-cmove.c: Change optimization flag to
 	-Ofast instead of -O2.
+	* gcc.target/powerpc/float128-minmax-3.: Likewise.
+	* gcc.target/powerpc/p9-minmax-2.c: Delete test, the code is no longer
+	valid unless NaNs are not handled.
+	* gcc.target/powerpc/pr118541-1.c: New test.
+	* gcc.target/powerpc/pr118541-2.c: Likewise.
 
+==================== Branch work206-bugs, patch #115 was reverted ====================
+==================== Branch work206-bugs, patch #114 was reverted ====================
+==================== Branch work206-bugs, patch #113 was reverted ====================
 ==================== Branch work206-bugs, patch #112 was reverted ====================
 ==================== Branch work206-bugs, patch #111 was reverted ====================
 ==================== Branch work206-bugs, patch #110 was reverted ====================
