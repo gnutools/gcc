@@ -67,7 +67,7 @@ end
 ! { dg-final { scan-tree-dump-times "yy->data = \\(void \\* restrict\\) _yy->base_addr;" 1 "original" } }
 ! { dg-final { scan-tree-dump-times {__builtin_memcpy \(_yy->base_addr \+ shift.[0-9]+, \(void \*\) yy->data \+ yy->dtype.elem_len \* arrayidx.[0-9]+, (?:NON_LVALUE_EXPR <)?yy->dtype.elem_len>?\);} 1 "original" } }
 
-! { dg-final { scan-tree-dump-times "zz = \\(character\\(kind=1\\)\\\[0:\\\]\\\[1:zz.\[0-9\]+\\\] \\* restrict\\) _zz->base_addr;" 1 "original" } }
+! { dg-final { scan-tree-dump-times {zz = \(character\(kind=1\)\[.:\]\[1:zz.[0-9]+\] \* restrict\) _zz->base_addr;} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "__builtin_memcpy \\(\\(void \\*\\) zz \\+ _zz->elem_len \\* arrayidx.\[0-9\]+, _zz->base_addr \\+ shift.\[0-9\]+, _zz->elem_len\\);" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "__builtin_memcpy \\(_zz->base_addr \\+ shift.\[0-9\]+, \\(void \\*\\) zz \\+ _zz->elem_len \\* arrayidx.\[0-9\]+, _zz->elem_len\\);" 1 "original" } }
 
@@ -78,5 +78,5 @@ end
 ! { dg-final { scan-tree-dump-times "aa->data = \\(void \\* restrict\\) _aa->base_addr;" 1 "original" } }
 ! { dg-final { scan-tree-dump-times {__builtin_memcpy \(\(void \*\) bb->data \+ bb->dtype.elem_len \* arrayidx.[0-9]+, _bb->base_addr \+ shift.[0-9]+, (?:NON_LVALUE_EXPR <)?bb->dtype.elem_len>?\);} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "bb->data = \\(void \\* restrict\\) _bb->base_addr;" 1 "original" } }
-! { dg-final { scan-tree-dump-times "cc = \\(character\\(kind=1\\)\\\[0:\\\]\\\[1:cc.\[0-9\]+\\\] \\* restrict\\) _cc->base_addr;" 1 "original" } }
+! { dg-final { scan-tree-dump-times {cc = \(character\(kind=1\)\[.:\]\[1:cc.[0-9]+\] \* restrict\) _cc->base_addr;} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "__builtin_memcpy \\(\\(void \\*\\) cc \\+ _cc->elem_len \\* arrayidx.\[0-9\]+, _cc->base_addr \\+ shift.\[0-9\]+, _cc->elem_len\\);" 1 "original" } }
