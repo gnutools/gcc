@@ -1380,7 +1380,7 @@ private:
 
   void debugize_insn (insn_info *);
 
-  void unmark_debugizable(insn_info &, sbitmap);
+  void unmark_debugizable(insn_info *, sbitmap);
   sbitmap find_debugizable(const std::unordered_set<insn_info *> &);
   void debugize_insns (const sbitmap);
 
@@ -1701,6 +1701,8 @@ rtl_ssa_dce::sweep ()
     fprintf (dump_file, "DCE: Sweep phase\n");
 
   auto_vec<insn_change> to_delete;
+
+  // Previously created debug instructions won't be visited here
   for (insn_info *insn : crtl->ssa->nondebug_insns ())
     {
       // Artificial or marked insns should not be deleted.
@@ -1906,15 +1908,13 @@ replace_dead_reg(rtx x, const_rtx old_rtx ATTRIBUTE_UNUSED, void *data)
 
 // visit every marked instruction in INSN dependency tree and unmark it
 void
-rtl_ssa_dce::unmark_debugizable(insn_info &insn, sbitmap debugizable) 
+rtl_ssa_dce::unmark_debugizable (insn_info *insn, sbitmap debugizable) 
 {
   auto_vec<insn_info *> worklist;
-  gcc_assert(!insn.is_artificial());
-  if (insn.uid () < 0)
-    std::cerr << "WTF" << insn.uid() << '\n';
-  std::cout << insn.uid () << '\n';
-  bitmap_set_bit (debugizable, insn.uid ());
-  worklist.safe_push (&insn);
+  gcc_checking_assert (!insn->is_artificial ());
+
+  bitmap_set_bit (debugizable, insn->uid ());
+  worklist.safe_push (insn);
 
   // process all marked dependencies and unmark them
   while (!worklist.is_empty ()) {
@@ -1930,13 +1930,22 @@ rtl_ssa_dce::unmark_debugizable(insn_info &insn, sbitmap debugizable)
     // add all marked dependencies to the worklist
     for (def_info *def : current->defs())
     {
-      if (def->kind() != access_kind::SET)
+      if (def->kind() != access_kind::SET) // skip clobbers
         continue;
   
-      set_info *set = static_cast<set_info *>(def);
+      auto *set = static_cast<set_info *>(def);
       for (use_info *use : set->all_uses()) 
       {
+        // this phi node might not be dead
+        if (use->is_in_phi ())
+          continue;
+
         insn_info *use_insn = use->insn();
+
+        // artificial instruction will never be debugizable
+        if (use_insn->is_artificial ())
+          continue;
+
         if (bitmap_bit_p(debugizable, use_insn->uid()))
           worklist.safe_push (use_insn);
       }
@@ -1949,24 +1958,31 @@ rtl_ssa_dce::unmark_debugizable(insn_info &insn, sbitmap debugizable)
 sbitmap
 rtl_ssa_dce::find_debugizable(const std::unordered_set<insn_info *> &depends_on_dead_phi) 
 {
-  // only real instructions
+  // only real instructions can be turned to debug instructions
   sbitmap debugizable = sbitmap_alloc (get_max_uid () + 1);
   bitmap_clear(debugizable);
 
   for (insn_info *insn : crtl->ssa->reverse_all_insns ()) {
     // Skip live nondebug instrunctions. Debug instructions are by default live 
-    // and we cannot skip them here
+    // and we cannot skip them here - they have to be marked as debugizable
     if (insn->is_artificial () || 
       (m_marked.get_bit (insn->uid ()) && !insn->is_debug_insn()))
       continue;
 
+    // instructions that depend on a dead phi node cannot be debugized
     if (depends_on_dead_phi.count (insn) > 0) {
       if (insn->is_debug_insn ())
         reset_dead_debug_insn (insn);
 
-      // we don't have to call unmark_debugizable, because dead nondebug
-      // instructions that depend on a dead phi won't be turned into a 
+      // we don't have to call unmark_debugizable, because a dead nondebug
+      // instructions that depends on a dead phi won't be turned into a 
       // debug instrunction
+      continue;
+    }
+
+    // handle debug instrunctions - mark them and skip
+    if (insn->is_debug_insn ()) {
+      bitmap_set_bit (debugizable, insn->uid ());
       continue;
     }
 
@@ -1983,35 +1999,38 @@ rtl_ssa_dce::find_debugizable(const std::unordered_set<insn_info *> &depends_on_
       side_effects_p (SET_SRC (rtx_set)) ||
       asm_noperands (PATTERN (rtl)) >= 0)
       {
-        unmark_debugizable(*insn, debugizable);
+        std::cerr << "FAILED TO CREATE DEBUG\n";
+        unmark_debugizable(insn, debugizable);
         continue;
       }
 
-    // some of the checks might be duplicate:
+    // insn is definitely a single_set, following if statement is useless:
     if (insn->num_defs () != 1)
     {
+      gcc_assert (false);
       if (insn->num_defs() > 1)
-        unmark_debugizable(*insn, debugizable);
+        unmark_debugizable(insn, debugizable);
+      std::cerr << "FAILED TO CREATE DEBUG\n";
       continue;
     }
 
     def_info *def = *defs.begin ();
-    if (def->kind () != access_kind::SET)
+    if (def->kind () != access_kind::SET) // Skip clobbers
       continue;
 
     set_info *set = static_cast<set_info *> (def);
-    // this is a problem a bit
-    // TODO: check instruction dependencies and their debugizability
 
     // if some dependent is a debugizable
     bool has_debug_uses = false;
     for (use_info *use : set->all_uses()) 
     {
-      if (!use->is_in_any_insn ())
+      // skip phi nodes
+      if (use->is_in_phi ())
         continue;
 
       insn_info *use_insn = use->insn();
-      gcc_assert(use_insn->is_real());
+      if (use_insn->is_artificial ())
+        continue;
 
       if (bitmap_bit_p(debugizable, use_insn->uid ())) {
         has_debug_uses = true;
@@ -2028,12 +2047,15 @@ rtl_ssa_dce::find_debugizable(const std::unordered_set<insn_info *> &depends_on_
   return debugizable;
 }
 
+// create new debug instructions according to the DEBUGIZABLE sbitmap
 void
 rtl_ssa_dce::debugize_insns (const sbitmap debugizable)
 {
   for (insn_info *insn : crtl->ssa->reverse_all_insns ())
   {
-    if (insn->is_artificial () || !bitmap_bit_p(debugizable, insn->uid ()))
+    if (insn->is_artificial () || 
+      insn->is_debug_insn() ||
+      !bitmap_bit_p(debugizable, insn->uid ()))
       continue;
 
     rtx_insn *rtl = insn->rtl ();
@@ -2060,6 +2082,7 @@ rtl_ssa_dce::debugize_insns (const sbitmap debugizable)
     insn_change change(debug_insn);
     change.new_uses = insn->uses();
     change.move_range = insn_range_info(insn);
+    debug (change);
 
     if (!rtl_ssa::restrict_movement (change))
       std::cerr << "change move range location does not exists\n";
@@ -2069,11 +2092,26 @@ rtl_ssa_dce::debugize_insns (const sbitmap debugizable)
     register_replacement replacement;
     for (use_info *u : set->all_uses ()) {
       // TODO: transform dependent insns
+      if (u->is_artificial())
+        continue;
+
       replacement.regno = u->regno();
       replacement.expr = dval;
 
+      // if debugizable -> replace
+
       simplify_replace_fn_rtx(INSN_VAR_LOCATION_LOC(rtl), NULL_RTX, replace_dead_reg, &replacement);
     }
+
+    // pr113089.c
+    if (insn->uses().size() > 0) {
+      // std::cerr << "Insn has uses...\n";
+    }
+
+    // debug (bind_var_loc);
+    // debug (insn);
+    // debug (change.insn ());
+    // debug (crtl->ssa);
 
     // note:
     // 1. Walk over all insns from last to first. If an insntruction can be
