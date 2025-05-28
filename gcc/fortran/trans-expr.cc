@@ -12625,7 +12625,11 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
 	loop.reverse[n] = GFC_ENABLE_REVERSE;
       /* Resolve any data dependencies in the statement.  */
       if (may_alias)
-	gfc_conv_resolve_dependencies (&loop, lss, rss);
+	{
+	  gfc_conv_resolve_dependencies (&loop, lss, rss);
+	  if (loop.temp_ss)
+	    loop.temp_ss->info->expr = expr2;
+	}
       /* Setup the scalarizing loops.  */
       gfc_conv_loop_setup (&loop, &expr2->where);
 

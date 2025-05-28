@@ -1630,9 +1630,15 @@ gfc_build_array_type (tree type, gfc_array_spec * as,
 	ubound[n] = gfc_conv_array_bound (as->upper[n]);
     }
 
-  if (as->type == AS_ASSUMED_SHAPE)
-    akind = contiguous ? GFC_ARRAY_ASSUMED_SHAPE_CONT
-		       : GFC_ARRAY_ASSUMED_SHAPE;
+  gfc_packed packed = PACKED_NO;
+  if (contiguous)
+    packed = PACKED_FULL;
+  else if (akind == GFC_ARRAY_ALLOCATABLE
+	   && type_type != BT_CLASS
+	   && type_type != BT_UNKNOWN
+	   && type_type != BT_CHARACTER)
+    packed = PACKED_STATIC;
+
   else if (as->type == AS_ASSUMED_RANK)
     {
       if (akind == GFC_ARRAY_ALLOCATABLE)
@@ -1644,9 +1650,10 @@ gfc_build_array_type (tree type, gfc_array_spec * as,
 	akind = contiguous ? GFC_ARRAY_ASSUMED_RANK_CONT
 			   : GFC_ARRAY_ASSUMED_RANK;
     }
+
   return gfc_get_array_type_bounds (type, as->rank == -1
 					  ? GFC_MAX_DIMENSIONS : as->rank,
-				    corank, lbound, ubound, 0, akind,
+				    corank, lbound, ubound, packed, akind,
 				    restricted, type_type);
 }
 

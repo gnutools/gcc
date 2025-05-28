@@ -35,7 +35,7 @@ contains
     call cases(x)
     if (any(x /= (/ 0, 10, 0 /))) stop 10
     ! Assumed shape array are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) assumed_shape_x.\\d+ \\+ \\(sizetype\\) \\(\\(stride.\\d+ \\* 2 \\+ offset.\\d+\\) \\* 4\\)\\) = 10;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) assumed_shape_x.\d+ \+ \(sizetype\) \(spacing.\d+ \* 2 \+ offset.\d+\)\) = 10;} 1 "original" } }
   end subroutine check_assumed_shape_elem
   subroutine casss(assumed_shape_y)
     integer :: assumed_shape_y(:)
@@ -46,7 +46,7 @@ contains
     call casss(y)
     if (any(y /= 11)) stop 11
     ! Assumed shape array are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) assumed_shape_y.\\d+ \\+ \\(sizetype\\) \\(\\(S.\\d+ \\* D.\\d+ \\+ D.\\d+\\) \\* 4\\)\\) = 11;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) assumed_shape_y.\d+ \+ \(sizetype\) \(\(?S.\d+(?: \+ -?\d+\))? \* D.\d+\)\) = 11;} 1 "original" } }
   end subroutine check_assumed_shape_scalarized
   subroutine check_descriptor_dim
     integer, allocatable :: descriptor(:)
@@ -87,7 +87,7 @@ contains
     ptr_x(4) = 16
     if (any(ptr_x /= (/ 0, 0, 0, 16, 0, 0, 0 /))) stop 16
     ! pointers are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(integer\\(kind=4\\) \\*\\) \\(ptr_x\\.data \\+ \\(sizetype\\) \\(\\(ptr_x\\.offset \\+ ptr_x\\.dim\\\[0\\\]\\.stride \\* 4\\) \\* ptr_x\\.span\\)\\) = 16;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) ptr_x\.data \+ \(sizetype\) \(ptr_x\.offset \+ ptr_x\.dim\[0\]\.spacing \* 4\)\) = 16;} 1 "original" } }
   end subroutine check_ptr_elem
   subroutine check_ptr_scalarized
     integer, target :: y(8)
@@ -97,7 +97,7 @@ contains
     ptr_y = 17
     if (any(ptr_y /= 17)) stop 17
     ! pointers are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) D.\\d+ \\+ \\(sizetype\\) \\(\\(S.\\d+ \\* D.\\d+ \\+ D.\\d+\\) \\* ptr_y\\.span\\)\\) = 17;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) D.\d+ \+ \(sizetype\) \(\(S.\d+ [+-] D.\d+\) \* D.\d+\)\) = 17;} 1 "original" } }
   end subroutine check_ptr_scalarized
   subroutine check_explicit_shape_elem
     integer :: explicit_shape_x(9)
@@ -105,14 +105,14 @@ contains
     explicit_shape_x(5) = 18
     if (any(explicit_shape_x /= (/ 0, 0, 0, 0, 18, 0, 0, 0, 0 /))) stop 18
     ! Explicit shape arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "explicit_shape_x\\\[4\\\] = 18;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {explicit_shape_x\[4\](?:{lb: 0 sz: 4})? = 18;} 1 "original" } }
   end subroutine check_explicit_shape_elem
   subroutine check_explicit_shape_scalarized
     integer :: explicit_shape_y(3)
     explicit_shape_y = 19
     if (any(explicit_shape_y /= 19)) stop 19
     ! Explicit shape arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "explicit_shape_y\\\[S.\\d+ \\+ -1\\\] = 19;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {explicit_shape_y\[S.\d+(?: \+ -1)?\](?:{lb: [01] sz: 4})? = 19;} 1 "original" } }
   end subroutine check_explicit_shape_scalarized
   subroutine check_tmp_array
     integer :: non_tmp(6)
@@ -120,8 +120,8 @@ contains
     non_tmp(2:5) = non_tmp(1:4) + non_tmp(3:6)
     if (any(non_tmp /= (/ 15, 30, 30, 30, 30, 15 /))) stop 15
     ! temporary arrays use array indexing
-    ! { dg-final { scan-tree-dump-times "\\(*\\(integer\\(kind=4\\)\\\[4\\\] \\* restrict\\) atmp.\\d+\\.data\\)\\\[S.\\d+\\\] = non_tmp\\\[S.\\d+\\\] \\+ non_tmp\\\[S.\\d+ \\+ 2\\\];" 1 "original" } }
-    ! { dg-final { scan-tree-dump-times "non_tmp\\\[S.\\d+ \\+ 1\\\] = \\(\\*\\(integer\\(kind=4\\)\\\[4\\\] \\* restrict\\) atmp.\\d+\\.data\\)\\\[S.\\d+\\\];" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\(*\(integer\(kind=4\)\[4\] \* restrict\) atmp.\d+\.data\)\[S.\d+\] = non_tmp\[S.\d+(?: \+ 1)?\](?:{lb: [01] sz: 4})? \+ non_tmp\[S.\d+ \+ [23]\](?:{lb: [01] sz: 4})?;} 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {non_tmp\[S.\d+ \+ [12]\](?:{lb: [01] sz: 4})? = \(\*\(integer\(kind=4\)\[4\] \* restrict\) atmp.\d+\.data\)\[S.\d+\];} 1 "original" } }
   end subroutine check_tmp_array
   subroutine check_allocatable_array_elem
     integer, allocatable :: allocatable_x(:)
@@ -129,7 +129,7 @@ contains
     allocatable_x(2) = 20
     if (any(allocatable_x /= (/ 0, 20, 0, 0 /))) stop 20
     ! Allocatable arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*\\(integer\\(kind=4\\)\\\[0:\\\] \\* restrict\\) allocatable_x\\.data\\)\\\[allocatable_x\\.offset \\+ 2\\\] = 20;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(integer\(kind=4\)\[0:\] \* restrict\) allocatable_x\.data\)\[(?:NON_LVALUE_EXPR <)?allocatable_x\.offset>? /\[ex\] 4 \+ 2\](?:{lb: 0 sz: 4})? = 20;} 1 "original" } }
   end subroutine check_allocatable_array_elem
   subroutine check_allocatable_array_scalarized
     integer, allocatable :: allocatable_y(:)
@@ -137,7 +137,7 @@ contains
     allocatable_y = 21
     if (any(allocatable_y /= 21)) stop 21
     ! Allocatable arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*D.\\d+\\)\\\[S.\\d+ \\+ \\D.\\d+\\\] = 21;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\(\*D.\d+\)\[S.\d+(?: \+ D.\d+)?\](?:{lb: D\.\d+ sz: 4})? = 21;} 1 "original" } }
   end subroutine check_allocatable_array_scalarized
   subroutine cares(assumed_rank_x)
     integer :: assumed_rank_x(..)
@@ -152,7 +152,7 @@ contains
     call cares(x)
     if (any(x /= (/ 0, 0, 22, 0, 0, 0 /))) stop 22
     ! Assumed rank arrays are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) __tmp_INTEGER_4_rank_1\\.data \\+ \\(sizetype\\) \\(\\(__tmp_INTEGER_4_rank_1\\.offset \\+ __tmp_INTEGER_4_rank_1\\.dim\\\[0\\\]\\.stride \\* 3\\) \\* 4\\)\\) = 22;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) __tmp_INTEGER_4_rank_1\.data \+ \(sizetype\) \(__tmp_INTEGER_4_rank_1\.offset \+ __tmp_INTEGER_4_rank_1\.dim\[0\]\.spacing \* 3\)\) = 22;} 1 "original" } }
   end subroutine check_assumed_rank_elem
   subroutine carss(assumed_rank_y)
     integer :: assumed_rank_y(..)
@@ -166,7 +166,7 @@ contains
     call carss(y)
     if (any(y /= 23)) stop 23
     ! Assumed rank arrays are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) D.\\d+ \\+ \\(sizetype\\) \\(\\(S.\\d+ \\* D.\\d+ \\+ D.\\d+\\) \\* 4\\)\\) = 23;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) D\.\d+ \+ \(sizetype\) \(\(S\.\d+ - D\.\d+\) \* D.\d+\)\) = 23;} 1 "original" } }
   end subroutine check_assumed_rank_scalarized
   subroutine casces(assumed_shape_cont_x)
     integer, dimension(:), contiguous :: assumed_shape_cont_x
