@@ -2634,11 +2634,14 @@ gfc_copy_sequence_descriptor (stmtblock_t &block, tree lhs_desc, tree rhs_desc,
       gfc_conv_descriptor_lbound_set (&block, arr, gfc_index_zero_node,
 				      gfc_index_zero_node);
       tree size = gfc_conv_descriptor_size (rhs_desc, rhs_rank);
+      tree size_m1 = fold_build2_loc (input_location, MINUS_EXPR,
+				      gfc_array_index_type, size,
+				      gfc_index_one_node);
+      gfc_conv_descriptor_ubound_set (&block, arr, gfc_index_zero_node, size_m1);
       tree spacing0 = 
 	  gfc_conv_descriptor_spacing_get (rhs_desc, gfc_index_zero_node);
       size = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			      size, spacing0);
-      gfc_conv_descriptor_ubound_set (&block, arr, gfc_index_zero_node, size);
       gfc_conv_descriptor_spacing_set ( &block, arr, gfc_index_zero_node, spacing0);
       for (int i = 1; i < lhs_rank; i++)
 	{
