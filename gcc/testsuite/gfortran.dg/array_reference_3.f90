@@ -178,7 +178,7 @@ contains
     call casces(x)
     if (any(x /= (/ 0, 0, 0, 24, 0, 0, 0, 0 /))) stop 24
     ! Contiguous assumed shape arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*assumed_shape_cont_x.\\d+\\)\\\[stride.\\d+ \\* 4 \\+ offset.\\d+\\\] = 24;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\(\*assumed_shape_cont_x.\d+\)\[offset.\d+ /\[ex\] 4 \+ spacing\.\d+\](?:{lb: 0 sz: 4})? = 24;} 1 "original" } }
   end subroutine check_assumed_shape_cont_elem
   subroutine cascss(assumed_shape_cont_y)
     integer, dimension(:), contiguous :: assumed_shape_cont_y
@@ -189,7 +189,7 @@ contains
     call cascss(y)
     if (any(y /= 25)) stop 25
     ! Contiguous assumed shape arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*assumed_shape_cont_y.\\d+\\)\\\[S.\\d+ \\* D.\\d+ \\+ D.\\d+\\\] = 25;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\(\*assumed_shape_cont_y.\d+\)\[S.\d+\](?:{lb: [01] sz: (?:\(sizetype\) )?D\.\d+})? = 25;} 1 "original" } }
   end subroutine check_assumed_shape_cont_scalarized
 end program p
 

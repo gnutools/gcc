@@ -3709,6 +3709,59 @@ build_array_ref (tree array, tree offset, bool use_array_ref)
 }
 
 
+static bool
+array_section_parent_ref_is_contiguous (gfc_expr *expr, gfc_array_ref *ar)
+{
+  if (expr == nullptr || ar == nullptr)
+    return false;
+
+  gfc_symbol *root_sym = expr->symtree->n.sym;
+  bt last_type = root_sym->ts.type;
+  bool last_is_allocatable = root_sym->attr.allocatable;
+  bool last_is_contiguous = root_sym->attr.contiguous;
+  for (gfc_ref *ref = expr->ref; ref; ref = ref->next)
+    {
+      if (ref->type == REF_ARRAY && &ref->u.ar == ar)
+	break;
+
+      if (ref->type != REF_COMPONENT)
+	continue;
+
+      if (last_type == BT_CLASS
+	  && strcmp (ref->u.c.component->name, "_data") == 0)
+	continue;
+
+      last_type = ref->u.c.component->ts.type;
+      last_is_allocatable = ref->u.c.component->attr.allocatable;
+      last_is_contiguous = ref->u.c.component->attr.contiguous;
+    }
+
+  if (!(last_type == BT_CLASS || last_type == BT_CHARACTER)
+      && (last_is_allocatable || last_is_contiguous))
+    return true;
+
+  return false;
+}
+
+
+static bool
+array_section_parent_ref_is_contiguous (gfc_expr *expr, gfc_ref *array_ref)
+{
+  if (array_ref == nullptr)
+    return false;
+
+  return array_section_parent_ref_is_contiguous (expr, &array_ref->u.ar);
+}
+
+
+static bool
+array_section_parent_ref_is_contiguous (gfc_ss *ss)
+{
+  return array_section_parent_ref_is_contiguous (ss->info->expr,
+						 ss->info->data.array.ref);
+}
+
+
 tree
 build_array_ref_dim (gfc_ss *ss, tree index, tree lbound, tree spacing,
 		     bool tmp_array = false)
@@ -3722,6 +3775,8 @@ build_array_ref_dim (gfc_ss *ss, tree index, tree lbound, tree spacing,
 			     || ss_type == GFC_SS_CONSTRUCTOR
 			     || ss_type == GFC_SS_INTRINSIC
 			     || tmp_array
+			     || (ss_type == GFC_SS_SECTION
+				 && array_section_parent_ref_is_contiguous (ss))
 			     || non_negative_strides_array_p (info->descriptor);
   return gfc_build_array_ref (base, index, non_negative_stride, lbound,
 			      spacing);
@@ -3786,9 +3841,6 @@ add_to_offset (tree *cst_offset, tree *offset, tree t)
 bool
 array_ref_safe_p (gfc_expr *expr, gfc_array_ref *ar, tree array, tree *elt_size)
 {
-  if (!non_negative_strides_array_p (array))
-    return false;
-
   STRIP_NOPS (array);
   if (TREE_CODE (array) == COMPONENT_REF)
     {
@@ -3801,29 +3853,9 @@ array_ref_safe_p (gfc_expr *expr, gfc_array_ref *ar, tree array, tree *elt_size)
 	return false;
     }
 
-  gfc_symbol *root_sym = expr->symtree->n.sym;
-  bt last_type = root_sym->ts.type;
-  bool last_is_allocatable = root_sym->attr.allocatable;
-  for (gfc_ref *ref = expr->ref; ref; ref = ref->next)
-    {
-      if (ref->type == REF_ARRAY && &ref->u.ar == ar)
-	break;
-
-      if (ref->type != REF_COMPONENT)
-	continue;
-
-      if (last_type == BT_CLASS
-	  && strcmp (ref->u.c.component->name, "_data") == 0)
-	continue;
-
-      last_type = ref->u.c.component->ts.type;
-      last_is_allocatable = ref->u.c.component->attr.allocatable;
-    }
-
-  if (!(last_type == BT_CLASS || last_type == BT_CHARACTER)
-      && last_is_allocatable)
+  if (array_section_parent_ref_is_contiguous (expr, ar))
     ;
-  else if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
+  else if (!non_negative_strides_array_p (array))
     return false;
 
   tree elt_type = gfc_get_element_type (TREE_TYPE (array));
