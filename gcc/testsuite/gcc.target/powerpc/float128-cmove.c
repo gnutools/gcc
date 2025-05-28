@@ -1,11 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target ppc_float128_hw } */
 /* { dg-require-effective-target power10_ok } */
-/* { dg-options "-mdejagnu-cpu=power10 -Ofast" } */
-
-/* The XSCMP{EQ,GT,GE}QP instructions will trap if a signaling NaN is one of
-   the arguments, so this code is now only generated if -Ofast or
-   -ffinite-math-only is used.  */
+/* { dg-options "-mdejagnu-cpu=power10 -O2" } */
 
 #ifndef TYPE
 #ifdef __LONG_DOUBLE_IEEE128__
