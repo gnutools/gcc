@@ -256,9 +256,8 @@ spread_internal_scalar (gfc_array_char *ret, const char *source,
     }
   else
     {
-      if (ncopies - 1 > (GFC_DESCRIPTOR_EXTENT(ret,0)  - 1)
-			   / GFC_DESCRIPTOR_SPACING(ret,0))
-	runtime_error ("dim too large in spread()");
+      if (ncopies != GFC_DESCRIPTOR_EXTENT(ret,0))
+	runtime_error ("ncopies doesn't match result extent in spread()");
     }
 
   for (n = 0; n < ncopies; n++)
