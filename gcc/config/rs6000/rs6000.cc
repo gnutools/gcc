@@ -16509,11 +16509,17 @@ rs6000_maybe_emit_fp_cmove (rtx dest, rtx op, rtx true_cond, rtx false_cond)
 /* Helper function to return true if the target has instructions to do a
    compare and set mask instruction that can be used with XXSEL to implement a
    conditional move.  It is also assumed that such a target also supports the
-   "C" minimum and maximum instructions. */
+   "C" minimum and maximum instructions.
+
+   However, these instructions will trap if given a signaling NaN, so we can
+   only use them if NaNs are not expected.  */
 
 static bool
 have_compare_and_set_mask (machine_mode mode)
 {
+  if (!flag_finite_math_only)
+    return false;
+
   switch (mode)
     {
     case E_SFmode:
