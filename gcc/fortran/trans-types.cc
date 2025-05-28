@@ -3289,6 +3289,11 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 		  && c->ts.u.derived->attr.unlimited_polymorphic
 		  && field_type == ptr_type_node)
 		field_type = char_type_node;
+
+	      bt type_type = derived->attr.is_class
+			     && strcmp (c->name, "_data") == 0
+			     ? BT_CLASS : c->ts.type;
+
 	      /* Pointers to arrays aren't actually pointer types.  The
 		 descriptors are separate, but the data is common.  Every
 		 array pointer in a coarray derived type needs to provide space
@@ -3299,7 +3304,7 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 		  field_type, c->as, akind, !c->attr.target && !c->attr.pointer,
 		  c->attr.contiguous,
 		  c->attr.codimension || c->attr.pointer ? codimen : 0,
-		  c->ts.type
+		  type_type
 		);
 	    }
 	  else
