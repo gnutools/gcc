@@ -3925,7 +3925,7 @@ rs6000_option_override_internal (bool global_init_p)
     rs6000_isa_flags |= (ISA_2_5_MASKS_EMBEDDED & ~ignore_masks);
   else if (TARGET_FPRND)
     rs6000_isa_flags |= (ISA_2_4_MASKS & ~ignore_masks);
-  else if (TARGET_POPCNTB)
+  else if (TARGET_POWER5)
     rs6000_isa_flags |= (ISA_2_2_MASKS & ~ignore_masks);
   else if (TARGET_ALTIVEC)
     rs6000_isa_flags |= (OPTION_MASK_PPC_GFXOPT & ~ignore_masks);

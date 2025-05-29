@@ -155,7 +155,7 @@ rs6000_builtin_is_supported (enum rs6000_gen_builtins fncode)
     case ENB_ALWAYS:
       return true;
     case ENB_P5:
-      return TARGET_POPCNTB;
+      return TARGET_POWER5;
     case ENB_P6:
       return TARGET_CMPB;
     case ENB_P6_64:
