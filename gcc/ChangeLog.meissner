@@ -1,3 +1,366 @@
+==================== Branch work210, patch #21 ====================
+
+Use architecture flags for defining _ARCH_PWR macros.
+
+For the newer architectures, this patch changes GCC to define the _ARCH_PWR<n>
+macros using the new architecture flags instead of relying on isa options like
+-mpower10.
+
+The -mpower8-internal, -mpower10, -mpower11, and -mfuture options were removed.
+The -mpower11 and -mfuture options were removed completely, since they were just
+added in GCC 15. The other two options were marked as WarnRemoved, and the
+various ISA bits were removed.
+
+TARGET_POWER8, TARGET_POWER10, TARGET_POWER11, and TARGET_FUTURE were re-defined
+to use the architeture bits instead of the ISA bits.
+
+There are other internal isa bits that aren't removed with this patch because
+the built-in function support uses those bits.
+
+I have built both big endian and little endian bootstrap compilers and there
+were no regressions.
+
+Can I install this patch on the GCC 16 trunk?
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros) Add support to
+	use architecture flags instead of ISA flags for setting most of the
+	_ARCH_PWR* macros.
+	(rs6000_cpu_cpp_builtins): Update rs6000_target_modify_macros call.
+	* config/rs6000/rs6000-cpus.def (ISA_2_7_MASKS_SERVER): Remove
+	OPTION_MASK_POWER8.
+	(ISA_3_1_MASKS_SERVER): Remove OPTION_MASK_POWER10.
+	(POWER11_MASKS_SERVER): Remove OPTION_MASK_POWER11.
+	(FUTURE_MASKS_SERVER): Remove OPTION_MASK_FUTURE.
+	(POWERPC_MASKS): Remove OPTION_MASK_POWER8, OPTION_MASK_POWER10,
+	OPTION_MASK_POWER11, and OPTION_MASK_FUTURE.
+	* config/rs6000/rs6000-protos.h (rs6000_target_modify_macros): Update
+	declaration.
+	(rs6000_target_modify_macros_ptr): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_target_modify_macros_ptr): Likewise.
+	(rs6000_option_override_internal): Use architecture flags instead of ISA
+	flags.
+	(rs6000_opt_masks): Remove -mpower10, -mpower11, and -mfuture which are
+	no longer in the ISA flags.
+	(rs6000_pragma_target_parse): Use architecture flags as well as ISA
+	flags.
+	* config/rs6000/rs6000.h (TARGET_POWER5): Redefine to use architecture
+	flags.
+	(TARGET_POWER5X): Likewise.
+	(TARGET_POWER6): Likewise.
+	(TARGET_POWER7): Likewise.
+	(TARGET_POWER8): Likewise.
+	(TARGET_POWER9): Likewise.
+	(TARGET_POWER10): New macro.
+	(TARGET_POWER11): Likewise.
+	(TARGET_FUTURE): Likewise.
+	* config/rs6000/rs6000.opt (-mpower8-internal): Remove ISA flag bits.
+	(-mpower10): Likewise.
+	(-mpower11): Likewise.
+	(-mfuture): Likewise.
+
+==================== Branch work210, patch #20 ====================
+
+Add rs6000 architecture masks.
+
+This patch begins the journey to move architecture bits that are not user ISA
+options from rs6000_isa_flags to a new targt variable rs6000_arch_flags.  The
+intention is to remove switches that are currently isa options, but the user
+should not be using this particular option. For example, we want users to use
+-mcpu=power10 and not just -mpower10.
+
+This patch also changes the target_clones support to use an architecture mask
+instead of isa bits.
+
+This patch also switches the handling of .machine to use architecture masks if
+they exist (power4 through power11).  All of the other PowerPCs will continue to
+use the existing code for setting the .machine option.
+
+I have built both big endian and little endian bootstrap compilers and there
+were no regressions.
+
+In addition, I constructed a test case that used every archiecture define (like
+_ARCH_PWR4, etc.) and I also looked at the .machine directive generated.  I ran
+this test for all supported combinations of -mcpu, big/little endian, and 32/64
+bit support.  Every single instance generated exactly the same code with the
+patches installed compared to the compiler before installing the patches.
+
+The only difference in this patch compared to the first version posted on
+November 6th is that I the correct attribution and copyright year (i.e. that I
+created rs6000-arch.def in 2024).
+
+Can I install this patch on the GCC 16 trunk?
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/default64.h (TARGET_CPU_DEFAULT): Set default cpu name.
+	* config/rs6000/rs6000-arch.def: New file.
+	* config/rs6000/rs6000.cc (struct clone_map): Switch to using
+	architecture masks instead of ISA masks.
+	(rs6000_clone_map): Likewise.
+	(rs6000_print_isa_options): Add an architecture flags argument, change
+	all callers.
+	(get_arch_flag): New function.
+	(rs6000_debug_reg_global): Update rs6000_print_isa_options calls.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_machine_from_flags): Switch to using architecture masks instead
+	of ISA masks.
+	(struct rs6000_arch_mask): New structure.
+	(rs6000_arch_masks): New table of architecutre masks and names.
+	(rs6000_function_specific_save): Save architecture flags.
+	(rs6000_function_specific_restore): Restore architecture flags.
+	(rs6000_function_specific_print): Update rs6000_print_isa_options calls.
+	(rs6000_print_options_internal): Add architecture flags options.
+	(rs6000_clone_priority): Switch to using architecture masks instead of
+	ISA masks.
+	(rs6000_can_inline_p): Don't allow inling if the callee requires a newer
+	architecture than the caller.
+	* config/rs6000/rs6000.h: Use rs6000-arch.def to create the architecture
+	masks.
+	* config/rs6000/rs6000.opt (rs6000_arch_flags): New target variable.
+	(x_rs6000_arch_flags): New save/restore field for rs6000_arch_flags.
+
+==================== Branch work210, patch #13 ====================
+
+Use vector pair load/store for memcpy with -mcpu=future
+
+In the development for the power10 processor, GCC did not enable using the load
+vector pair and store vector pair instructions when optimizing things like
+memory copy.  This patch enables using those instructions if -mcpu=future is
+used.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (ISA_FUTURE_MASKS_SERVER): Enable using
+	load vector pair and store vector pair instructions for memory copy
+	operations.
+	(POWERPC_MASKS): Make the bit for enabling using load vector pair and
+	store vector pair operations set and reset when the PowerPC processor is
+	changed.
+	* gcc/config/rs6000/rs6000.cc (rs6000_machine_from_flags): Disable
+	-mblock-ops-vector-pair from influcing .machine selection.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-3.c: New test.
+
+==================== Branch work210, patch #12 ====================
+
+Add -mcpu=future tests.
+
+This patch adds simple tests for -mcpu=future.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
+==================== Branch work210, patch #11 ====================
+
+Add -mcpu=future tuning support.
+
+This patch makes -mtune=future use the same tuning decision as -mtune=power11.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/power10.md (all reservations): Add future as an
+	alterntive to power10 and power11.
+
+==================== Branch work210, patch #10 ====================
+
+Add support for -mcpu=future
+
+This patch adds the support that can be used in developing GCC support for
+future PowerPC processors.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+	* config.gcc (powerpc*-*-*): Add support for --with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Add support for -mcpu=future.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/driver-rs6000.cc (asm_names): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): If
+	-mcpu=future, define _ARCH_FUTURE.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	(future cpu): Define.
+	* config/rs6000/rs6000-opts.h (enum processor_type): Add
+	PROCESSOR_FUTURE.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (power10_cost): Update comment.
+	(get_arch_flags): Add support for future processor.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_machine_from_flags): Likewise.
+	(rs6000_reassociation_width): Likewise.
+	(rs6000_adjust_cost): Likewise.
+	(rs6000_issue_rate): Likewise.
+	(rs6000_sched_reorder): Likewise.
+	(rs6000_sched_reorder2): Likewise.
+	(rs6000_register_move_cost): Likewise.
+	(rs6000_opt_masks): Add -mfuture.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000.md (cpu attribute): Likewise.
+	* config/rs6000/rs6000.opt (-mfuture): New internal option.
+
+==================== Branch work210, patch #5 ====================
+
+Change TARGET_MODULO to TARGET_POWER9.
+
+This patch changes TARGET_MODULO to TARGET_POWER9.  The -mmodulo switch is not
+being changed, just the name of the macros used to determine if the PowerPC
+processor supports ISA 3.0 (Power9).
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/rs6000-builtin.cc (rs6000_builtin_is_supported):
+	Change TARGET_MODULO to TARGET_POWER9.
+	* gcc/config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Likewise.
+	* gcc/config/rs6000/rs6000.h (TARGET_CTZ): Likewise.
+	(TARGET_EXTSWSLI): Likewise.
+	(TARGET_MADDLD): Likewise.
+	(TARGET_POWER9): New macro.
+	* gcc/config/rs6000/rs6000.md (enabled attribute): Change TARGET_MODULO
+	to TARGET_POWER9.
+	(mod<mode>3): Likewise.
+	(umod<mode>3): Likewise.
+	(divide/modulo peephole2): Likewise.
+
+==================== Branch work210, patch #4 ====================
+
+Change TARGET_POPCNTD to TARGET_POWER7.
+
+This patch changes TARGET_POPCNTD to TARGET_POWER7.  The -mpopcntd switch is not
+being changed, just the name of the macros used to determine if the PowerPC
+processor supports ISA 2.6 (Power7).
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/dfp.md (cmp<mode>_internal1): Change TARGET_POPCNTD
+	to TARGET_POWER7.
+	* gcc/config/rs6000/rs6000-builtin.cc (rs6000_builtin_is_supported):
+	Likewise.
+	* gcc/config/rs6000/rs6000-string.cc (expand_block_compare): Likewise.
+	* gcc/config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached):
+	Likewise.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_rtx_costs): Likewise.
+	* gcc/config/rs6000/rs6000.h (TARGET_LDBRX): Likewise.
+	(TARGET_FCFID): Likewise.
+	(TARGET_LFIWZX): Likewise.
+	(TARGET_FCFIDS): Likewise.
+	(TARGET_FCFIDU): Likewise.
+	(TARGET_FCFIDUS): Likewise.
+	(TARGET_FCTIDUZ): Likewise.
+	(TARGET_FCTIWUZ): Likewise.
+	(TARGET_FCTIDUZ): Likewise.
+	(TARGET_POWER7): New macro.
+	(TARGET_EXTRA_BUILTINS): Change TARGET_POPCNTD to TARGET_POWER7.
+	(CTZ_DEFINED_VALUE_AT_ZERO): Likewise.
+	* gcc/config/rs6000/rs6000.md (enabled attribute): Likewise.
+	(lrint<mode>si2): Likewise.
+	(lrint<mode>si): Likewise.
+	(lrint<mode>si_di): Likewise.
+	(cmpmemsi): Likewise.
+	(bpermd_<mode>): Likewise.
+	(addg6s): Likewise.
+	(cdtbcd): Likewise.
+	(cbcdtd): Likewise.
+	(div<div_extend>_<mode>): Likewise.
+
+==================== Branch work210, patch #3 ====================
+
+Change TARGET_CMPB to TARGET_POWER6.
+
+This patch changes TARGET_CMPB to TARGET_POWER6.  The -mcmpb switch is not being
+changed, just the name of the macros used to determine if the PowerPC processor
+supports ISA 2.5 (Power6).
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/rs6000-builtin.cc (rs6000_builtin_is_supported):
+	Change TARGET_CMPB to TARGET_POWER6.
+	* gcc/config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Likewise.
+	(rs6000_rtx_costs): Likewise.
+	(rs6000_emit_parity): Likewise.
+	* gcc/config/rs6000/rs6000.h (TARGET_FCFID): Likewise.
+	(TARGET_LFIWAX): Likewise.
+	(TARGET_POWER6): New macro.
+	(TARGET_EXTRA_BUILTINS): Change TARGET_CMPB to TARGET_POWER6.
+	* gcc/config/rs6000/rs6000.md (enabled attribute): Likewise.
+	(parity<mode>2_cmp): Likewise.
+	(cmpb<mode>3): Likewise.
+	(copysign<mode>3): Likewise.
+	(copysign<mode>3_fcpsgn): Likewise.
+	(cmpstrnsi): Likewise.
+	(cmpstrsi): Likewise.
+
+==================== Branch work210, patch #2 ====================
+
+Change TARGET_FPRND to TARGET_POWER5X.
+
+This patch changes TARGET_POWER5X to TARGET_POWER5.  The -mfprnd switch is not
+being changed, just the name of the macros used to determine if the PowerPC
+processor supports ISA 2.4 (Power5x).
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Change TARGET_FPRND to TARGET_POWER5X.
+	* gcc/config/rs6000/rs6000.h (TARGET_POWERP5X): New macro.
+	* gcc/config/rs6000/rs6000.md (fmod<mode>3): Change TARGET_FPRND to
+	TARGET_POWER5X.
+	(remainder<mode>3): Likewise.
+	(fctiwuz_<mode): Likewise.
+	(btrunc<mode>): Likewise.
+	(ceil<mode>2): Likewise.
+	(floor<mode>2): Likewise.
+	(round<mode>2): Likewise.
+
+==================== Branch work210, patch #1 ====================
+
+Change TARGET_POPCNTB to TARGET_POWER5.
+
+This patch changes TARGET_POPCNTB to TARGET_POWER5.  The -mpopcntb switch is not
+being changed in this patch, just the name of the macros used to determine if
+the PowerPC processor supports ISA 2.2 (Power5).
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/rs6000-builtin.cc (rs6000_builtin_is_supported):
+	Change TARGET_POPCNTB to TARGET_POWER5.
+	* gcc/config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Likewise.
+	* gcc/config/rs6000/rs6000.h (TARGET_FCFID): Likewise.
+	(TARGET_POWER5): New macro.
+	(TARGET_EXTRA_BUILTINS): Change TARGET_POPCNTB to TARGET_POWER5.
+	(TARGET_FRE): Likewise.
+	(TARGET_FRSQRTES): Likewise.
+	* gcc/config/rs6000/rs6000.md (enabled attribute): Likewise.
+
 ==================== Branch work210, baseline ====================
 
 2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
