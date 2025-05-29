@@ -1,0 +1,14 @@
+==================== Branch work208-sha, baseline ====================
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.sha and update REVISION.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.sha: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
