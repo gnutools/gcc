@@ -232,6 +232,9 @@ enum bif_stanza
  BSTZ_P10,
  BSTZ_P10_64,
  BSTZ_MMA,
+ BSTZ_FUTURE,
+ BSTZ_FUTURE_64,
+ BSTZ_DM,
  NUMBIFSTANZAS
 };
 
@@ -265,7 +268,10 @@ static stanza_entry stanza_map[NUMBIFSTANZAS] =
     { "htm",		BSTZ_HTM	},
     { "power10",	BSTZ_P10	},
     { "power10-64",	BSTZ_P10_64	},
-    { "mma",		BSTZ_MMA	}
+    { "mma",		BSTZ_MMA	},
+    { "future",		BSTZ_FUTURE	},
+    { "future-64",	BSTZ_FUTURE_64	},
+    { "dm",		BSTZ_DM		},
   };
 
 static const char *enable_string[NUMBIFSTANZAS] =
@@ -290,7 +296,10 @@ static const char *enable_string[NUMBIFSTANZAS] =
     "ENB_HTM",
     "ENB_P10",
     "ENB_P10_64",
-    "ENB_MMA"
+    "ENB_MMA",
+    "ENB_FUTURE",
+    "ENB_FUTURE_64",
+    "ENB_DM",
   };
 
 /* Function modifiers provide special handling for const, pure, and fpmath
@@ -392,6 +401,8 @@ struct attrinfo
   bool isendian;
   bool isibmld;
   bool isibm128;
+  bool isfuture;
+  bool isdm;
 };
 
 /* Fields associated with a function prototype (bif or overload).  */
@@ -1470,14 +1481,15 @@ parse_bif_attrs (attrinfo *attrptr)
 	"pred = %d, htm = %d, htmspr = %d, htmcr = %d, mma = %d, "
 	"quad = %d, pair = %d, mmaint = %d, no32bit = %d, 32bit = %d, "
 	"cpu = %d, ldstmask = %d, lxvrse = %d, lxvrze = %d, endian = %d, "
-	"ibmdld = %d, ibm128 = %d.\n",
+	"ibmdld = %d, ibm128 = %d, future = %d, dm = %d.\n",
 	attrptr->isextract, attrptr->isnosoft,attrptr->isldvec,
 	attrptr->isstvec, attrptr->isreve, attrptr->ispred, attrptr->ishtm,
 	attrptr->ishtmspr, attrptr->ishtmcr, attrptr->ismma,
 	attrptr->isquad, attrptr->ispair, attrptr->ismmaint,
 	attrptr->isno32bit, attrptr->is32bit, attrptr->iscpu,
 	attrptr->isldstmask, attrptr->islxvrse,	attrptr->islxvrze,
-	attrptr->isendian, attrptr->isibmld, attrptr->isibm128);
+	attrptr->isendian, attrptr->isibmld, attrptr->isibm128,
+	attrptr->isfuture, attrptr->isdm);
 #endif
 
   return PC_OK;
@@ -2249,7 +2261,10 @@ write_decls (void)
   fprintf (header_file, "  ENB_HTM,\n");
   fprintf (header_file, "  ENB_P10,\n");
   fprintf (header_file, "  ENB_P10_64,\n");
-  fprintf (header_file, "  ENB_MMA\n");
+  fprintf (header_file, "  ENB_MMA,\n");
+  fprintf (header_file, "  ENB_FUTURE,\n");
+  fprintf (header_file, "  ENB_FUTURE_64,\n");
+  fprintf (header_file, "  ENB_DM\n");
   fprintf (header_file, "};\n\n");
 
   fprintf (header_file, "#define PPC_MAXRESTROPNDS 3\n");
@@ -2291,6 +2306,8 @@ write_decls (void)
   fprintf (header_file, "#define bif_endian_bit\t\t(0x00200000)\n");
   fprintf (header_file, "#define bif_ibmld_bit\t\t(0x00400000)\n");
   fprintf (header_file, "#define bif_ibm128_bit\t\t(0x00800000)\n");
+  fprintf (header_file, "#define bif_future_bit\t\t(0x01000000)\n");
+  fprintf (header_file, "#define bif_dm_bit\t\t(0x02000000)\n");
   fprintf (header_file, "\n");
   fprintf (header_file,
 	   "#define bif_is_extract(x)\t((x).bifattrs & bif_extract_bit)\n");
@@ -2336,6 +2353,10 @@ write_decls (void)
 	   "#define bif_is_ibmld(x)\t((x).bifattrs & bif_ibmld_bit)\n");
   fprintf (header_file,
 	   "#define bif_is_ibm128(x)\t((x).bifattrs & bif_ibm128_bit)\n");
+  fprintf (header_file,
+	   "#define bif_is_future(x)\t((x).bifattrs & bif_future_bit)\n");
+  fprintf (header_file,
+	   "#define bif_is_dm(x)\t((x).bifattrs & bif_dm_bit)\n");
   fprintf (header_file, "\n");
 
   fprintf (header_file,
@@ -2535,6 +2556,10 @@ write_bif_static_init (void)
 	fprintf (init_file, " | bif_ibmld_bit");
       if (bifp->attrs.isibm128)
 	fprintf (init_file, " | bif_ibm128_bit");
+      if (bifp->attrs.isfuture)
+	fprintf (init_file, " | bif_future_bit");
+      if (bifp->attrs.isdm)
+	fprintf (init_file, " | bif_dm_bit");
       fprintf (init_file, ",\n");
       fprintf (init_file, "      /* restr_opnd */\t{%d, %d, %d},\n",
 	       bifp->proto.restr_opnd[0], bifp->proto.restr_opnd[1],

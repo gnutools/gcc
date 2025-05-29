@@ -22839,6 +22839,7 @@ Reverse the bit order of a 64-bit unsigned integer.
 * Basic PowerPC Built-in Functions Available on ISA 2.07::
 * Basic PowerPC Built-in Functions Available on ISA 3.0::
 * Basic PowerPC Built-in Functions Available on ISA 3.1::
+* Basic Built-in Functions that may be available on future PowerPCs::
 @end menu
 
 This section describes PowerPC built-in functions that do not require
@@ -23519,6 +23520,29 @@ Truncate and store the rightmost element of a vector, as if implemented by the
 ISA 3.1 @code{stxvrbx}, @code{stxvrhx}, @code{stxvrwx}, and @code{stxvrdx}
 instructions.
 @enddefbuiltin
+
+@node Basic Built-in Functions that may be available on future PowerPCs
+@subsubsection Potential future PowerPC Built-in Functions
+
+The built-in functions described in this section may be available on
+future PowerPC processors.  At present, these built-ins exist to
+allowing testing of new instructions.  There is no guarantee that
+these instructions will actually be implemented.
+
+The following built-in functions are available on Linux 64-bit systems
+that use a potential future instruction set (@option{-mcpu=future}):
+
+@table @code
+@item int __builtin_saturate_subtract32 (int, int)
+Subtract the second operand from the first operand.  If the value
+would be less than 0, then the result is 0 instead of the negative
+value of the subtraction.
+
+@item long __builtin_saturate_subtract64 (long, long)
+Subtract the second operand from the first operand.  If the value
+would be less than 0, then the result is 0 instead of the negative
+value of the subtraction.
+@end table
 
 @node PowerPC AltiVec/VSX Built-in Functions
 @subsection PowerPC AltiVec/VSX Built-in Functions
