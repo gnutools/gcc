@@ -1,4 +1,86 @@
+==================== Branch work206-submit, patch #201 ====================
+
+Fix PR 118541, do not generate unordered fp cmoves for IEEE compares.
+
+In bug PR target/118541 on power9, power10, and power11 systems, for the
+function:
+
+        extern double __ieee754_acos (double);
+
+        double
+        __acospi (double x)
+        {
+          double ret = __ieee754_acos (x) / 3.14;
+          return __builtin_isgreater (ret, 1.0) ? 1.0 : ret;
+        }
+
+GCC currently generates the following code:
+
+        Power9                          Power10 and Power11
+        ======                          ===================
+        bl __ieee754_acos               bl __ieee754_acos@notoc
+        nop                             plfd 0,.LC0@pcrel
+        addis 9,2,.LC2@toc@ha           xxspltidp 12,1065353216
+        addi 1,1,32                     addi 1,1,32
+        lfd 0,.LC2@toc@l(9)             ld 0,16(1)
+        addis 9,2,.LC0@toc@ha           fdiv 0,1,0
+        ld 0,16(1)                      mtlr 0
+        lfd 12,.LC0@toc@l(9)            xscmpgtdp 1,0,12
+        fdiv 0,1,0                      xxsel 1,0,12,1
+        mtlr 0                          blr
+        xscmpgtdp 1,0,12
+        xxsel 1,0,12,1
+        blr
+
+This is because ifcvt.c optimizes the conditional floating point move to use the
+XSCMPGTDP instruction.
+
+However, the XSCMPGTDP instruction traps if one of the arguments is a signaling
+NaN.  This patch disables generating XSCMP{EQ,GT,GE}{DP,QP} instructions unless
+-ffinite-math-only is in effect so that we do not get a trap.
+
+2025-05-28  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/118541
+	* config/rs6000/rs6000.cc (have_compare_and_set_mask): Don't do compare
+	and set mask operations unless -ffinite-math-only.
+	* config/rs6000/rs6000.md (mov<SFDF:mode><SFDF2:mode>cc_p9): Disable
+	generating XSCMP{EQ,GT,GE}{DP,QP} unless -ffinite-math-only is in
+	effect.
+	(mov<SFDF:mode><SFDF2:mode>cc_invert_p9): Likewise.
+	(fpmask<mode>, SFDF iterator): Likewise.
+	(xxsel<mode>, SFDF iterator): Likewise.
+	(mov<mode>cc, IEEE128 iterator): Likewise.
+	(mov<mode>cc_p10): Likewise.
+	(mov<mode>cc_invert_p10): Likewise.
+	(fpmask<mode>, IEEE128 iterator): Likewise.
+	(xxsel<mode>, IEEE128 iterator): Likewise.
+
+gcc/testsuite/
+
+	PR target/118541
+	* gcc.target/powerpc/float128-cmove.c: Change optimization flag to
+	-Ofast instead of -O2.
+	* gcc.target/powerpc/float128-minmax-3.: Likewise.
+	* gcc.target/powerpc/p9-minmax-2.c: Delete test, the code is no longer
+	valid unless NaNs are not handled.
+	* gcc.target/powerpc/pr118541-1.c: New test.
+	* gcc.target/powerpc/pr118541-2.c: Likewise.
+
+==================== Branch work206-submit, patch #200 was revoked ====================
+
 ==================== Branch work206-submit, baseline ====================
+
+Add ChangeLog.submit and update REVISION.
+
+2025-05-19  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.submit: New file for branch.
+	* REVISION: Update.
 
 2025-05-19   Michael Meissner  <meissner@linux.ibm.com>
 
