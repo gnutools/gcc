@@ -21,6 +21,7 @@ along with GCC; see the file COPYING3.  If not see
 #define RS6000_CPU(NAME, CPU, FLAGS)
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
+#undef TARGET_CPU_DEFAULT
 
 #if (TARGET_DEFAULT & MASK_LITTLE_ENDIAN)
 #undef TARGET_DEFAULT
@@ -28,10 +29,20 @@ along with GCC; see the file COPYING3.  If not see
 			| MASK_LITTLE_ENDIAN)
 #undef ASM_DEFAULT_SPEC
 #define ASM_DEFAULT_SPEC "-mpower8"
+#define TARGET_CPU_DEFAULT "power8"
+
 #else
 #undef TARGET_DEFAULT
 #define TARGET_DEFAULT (OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT \
 			| OPTION_MASK_MFCRF | MASK_POWERPC64 | MASK_64BIT)
 #undef ASM_DEFAULT_SPEC
 #define ASM_DEFAULT_SPEC "-mpower4"
+
+#if (TARGET_DEFAULT & MASK_POWERPC64)
+#define TARGET_CPU_DEFAULT "powerpc64"
+
+#else
+#define TARGET_CPU_DEFAULT "powerpc"
+#endif
+
 #endif

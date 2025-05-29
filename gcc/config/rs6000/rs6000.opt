@@ -36,6 +36,14 @@ HOST_WIDE_INT rs6000_isa_flags_explicit
 TargetSave
 HOST_WIDE_INT x_rs6000_isa_flags_explicit
 
+;; Arch bits that are set via -mcpu=<xxx> but don't have a user -m<processor>
+;; option
+Variable
+HOST_WIDE_INT rs6000_arch_flags = 0
+
+TargetSave
+HOST_WIDE_INT x_rs6000_arch_flags
+
 ;; Current processor
 TargetVariable
 enum processor_type rs6000_cpu = PROCESSOR_PPC603

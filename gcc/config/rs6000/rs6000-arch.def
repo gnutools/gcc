@@ -1,0 +1,49 @@
+/* IBM RS/6000 CPU architecture features by processor type.
+   Copyright (C) 2024 Free Software Foundation, Inc.
+   Contributed by Michael Meissner (meissner@linux.ibm.com)
+
+   This file is part of GCC.
+
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3, or (at your
+   option) any later version.
+
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.  */
+
+/* This file defines architecture features that are based on the -mcpu=<proc>
+   option, and not on user options that can be turned on or off.  The intention
+   is for newer processors (power7 and above) to not add new ISA bits for the
+   particular processor, but add these bits.  Otherwise we have to add a bunch
+   of hidden options, just so we have the proper ISA bits.
+
+   For example, in the past we added -mpower8-internal, so that on power8,
+   power9, and power10 would inherit the option, but we had to mark the option
+   generate a warning if the user actually used it.  These options have been
+   moved from the ISA flags to the arch flags.
+
+   To use this, define the macro ARCH_EXPAND which takes 2 arguments.  The
+   first argument is the processor name in upper case, and the second argument
+   is a text name for the processor.
+
+   The function get_arch_flags when passed a processor index number will set up
+   the appropriate architecture flags based on the actual processor
+   enumeration.  */
+
+ARCH_EXPAND(POWER4,  "power4")
+ARCH_EXPAND(POWER5,  "power5")
+ARCH_EXPAND(POWER5X, "power5+")
+ARCH_EXPAND(POWER6,  "power6")
+ARCH_EXPAND(POWER7,  "power7")
+ARCH_EXPAND(POWER8,  "power8")
+ARCH_EXPAND(POWER9,  "power9")
+ARCH_EXPAND(POWER10, "power10")
+ARCH_EXPAND(POWER11, "power11")
+ARCH_EXPAND(FUTURE,  "future")
