@@ -590,9 +590,14 @@ rs6000_target_modify_macros (bool define_p, HOST_WIDE_INT flags,
   if (rs6000_cpu == PROCESSOR_CELL)
     rs6000_define_or_undefine_macro (define_p, "__PPU__");
 
-  /* Tell the user if we support the MMA instructions.  */
+  /* Tell the user if we support the MMA instructions.  Also tell them if MMA
+     uses the dense math registers.  */
   if ((flags & OPTION_MASK_MMA) != 0)
-    rs6000_define_or_undefine_macro (define_p, "__MMA__");
+    {
+      rs6000_define_or_undefine_macro (define_p, "__MMA__");
+      if ((arch_flags & ARCH_MASK_FUTURE) != 0)
+	rs6000_define_or_undefine_macro (define_p, "__DENSE_MATH__");
+    }
   /* Whether pc-relative code is being generated.  */
   if ((flags & OPTION_MASK_PCREL) != 0)
     rs6000_define_or_undefine_macro (define_p, "__PCREL__");
