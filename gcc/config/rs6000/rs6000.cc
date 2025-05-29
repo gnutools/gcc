@@ -1923,7 +1923,7 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
 	  if(GET_MODE_SIZE (mode) == UNITS_PER_FP_WORD)
 	    return 1;
 
-	  if (TARGET_POPCNTD && mode == SImode)
+	  if (TARGET_POWER7 && mode == SImode)
 	    return 1;
 
 	  if (TARGET_P9_VECTOR && (mode == QImode || mode == HImode))
@@ -3917,7 +3917,7 @@ rs6000_option_override_internal (bool global_init_p)
     rs6000_isa_flags |= (ISA_2_7_MASKS_SERVER & ~ignore_masks);
   else if (TARGET_VSX)
     rs6000_isa_flags |= (ISA_2_6_MASKS_SERVER & ~ignore_masks);
-  else if (TARGET_POPCNTD)
+  else if (TARGET_POWER7)
     rs6000_isa_flags |= (ISA_2_6_MASKS_EMBEDDED & ~ignore_masks);
   else if (TARGET_DFP)
     rs6000_isa_flags |= (ISA_2_5_MASKS_SERVER & ~ignore_masks);
@@ -4130,7 +4130,7 @@ rs6000_option_override_internal (bool global_init_p)
   else if (TARGET_LONG_DOUBLE_128)
     {
       if (global_options.x_rs6000_ieeequad
-	  && (!TARGET_POPCNTD || !TARGET_VSX))
+	  && (!TARGET_POWER7 || !TARGET_VSX))
 	error ("%qs requires full ISA 2.06 support", "-mabi=ieeelongdouble");
 
       if (rs6000_ieeequad != TARGET_IEEEQUAD_DEFAULT)
@@ -22390,7 +22390,7 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
       return false;
 
     case POPCOUNT:
-      *total = COSTS_N_INSNS (TARGET_POPCNTD ? 1 : 6);
+      *total = COSTS_N_INSNS (TARGET_POWER7 ? 1 : 6);
       return false;
 
     case PARITY:

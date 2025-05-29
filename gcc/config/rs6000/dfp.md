@@ -214,7 +214,7 @@
 (define_insn "floatdidd2"
   [(set (match_operand:DD 0 "gpc_reg_operand" "=d")
 	(float:DD (match_operand:DI 1 "gpc_reg_operand" "d")))]
-  "TARGET_DFP && TARGET_POPCNTD"
+  "TARGET_DFP && TARGET_POWER7"
   "dcffix %0,%1"
   [(set_attr "type" "dfp")])
 
