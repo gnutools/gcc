@@ -47,7 +47,6 @@
    fusion here, instead set it in rs6000.cc if we are tuning for a power8
    system.  */
 #define ISA_2_7_MASKS_SERVER	(ISA_2_6_MASKS_SERVER			\
-				 | OPTION_MASK_POWER8			\
 				 | OPTION_MASK_P8_VECTOR		\
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
@@ -77,14 +76,11 @@
 				 | OPTION_MASK_PREFIXED)
 
 #define ISA_3_1_MASKS_SERVER	(ISA_3_0_MASKS_SERVER			\
-				 | OPTION_MASK_POWER10			\
 				 | OTHER_POWER10_MASKS)
 
-#define POWER11_MASKS_SERVER (ISA_3_1_MASKS_SERVER			\
-			      | OPTION_MASK_POWER11)
+#define POWER11_MASKS_SERVER	ISA_3_1_MASKS_SERVER
 
 #define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
-				 | OPTION_MASK_FUTURE			\
 				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR)
 
 /* Flags that need to be turned off if -mno-vsx.  */
@@ -124,9 +120,6 @@
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
 				 | OPTION_MASK_FPRND			\
-				 | OPTION_MASK_FUTURE			\
-				 | OPTION_MASK_POWER10			\
-				 | OPTION_MASK_POWER11			\
 				 | OPTION_MASK_P10_FUSION		\
 				 | OPTION_MASK_HTM			\
 				 | OPTION_MASK_ISEL			\
@@ -135,7 +128,6 @@
 				 | OPTION_MASK_MODULO			\
 				 | OPTION_MASK_MULHW			\
 				 | OPTION_MASK_NO_UPDATE		\
-				 | OPTION_MASK_POWER8			\
 				 | OPTION_MASK_P8_FUSION		\
 				 | OPTION_MASK_P8_VECTOR		\
 				 | OPTION_MASK_P9_MINMAX		\

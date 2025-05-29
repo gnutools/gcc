@@ -276,7 +276,7 @@ bool cpu_builtin_p = false;
 /* Pointer to function (in rs6000-c.cc) that can define or undefine target
    macros that have changed.  Languages that don't support the preprocessor
    don't link in rs6000-c.cc, so we can't call it directly.  */
-void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT);
+void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT, HOST_WIDE_INT);
 
 /* Simplfy register classes into simpler classifications.  We assume
    GPR_REG_TYPE - FPR_REG_TYPE are ordered so that we can use a simple range
@@ -3910,8 +3910,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* If little-endian, default to -mstrict-align on older processors.  */
   if (!BYTES_BIG_ENDIAN
-      && !(processor_target_table[tune_index].target_enable
-	   & OPTION_MASK_POWER8))
+      && (get_arch_flags (tune_index) & ARCH_MASK_POWER8) == 0)
     rs6000_isa_flags |= ~rs6000_isa_flags_explicit & OPTION_MASK_STRICT_ALIGN;
 
   /* Add some warnings for VSX.  */
@@ -4220,7 +4219,7 @@ rs6000_option_override_internal (bool global_init_p)
   else if (TARGET_LONG_DOUBLE_128)
     {
       if (global_options.x_rs6000_ieeequad
-	  && (!TARGET_POWER7 || !TARGET_VSX))
+	  && (!TARGET_POWER7 || !TARGET_VSX || !TARGET_POPCNTD))
 	error ("%qs requires full ISA 2.06 support", "-mabi=ieeelongdouble");
 
       if (rs6000_ieeequad != TARGET_IEEEQUAD_DEFAULT)
@@ -24557,9 +24556,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "float128",			OPTION_MASK_FLOAT128_KEYWORD,	false, true  },
   { "float128-hardware",	OPTION_MASK_FLOAT128_HW,	false, true  },
   { "fprnd",			OPTION_MASK_FPRND,		false, true  },
-  { "future",			OPTION_MASK_FUTURE,		false, false },
-  { "power10",			OPTION_MASK_POWER10,		false, true  },
-  { "power11",			OPTION_MASK_POWER11,		false, false },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
@@ -24991,6 +24987,7 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
   tree cur_tree;
   struct cl_target_option *prev_opt, *cur_opt;
   HOST_WIDE_INT prev_flags, cur_flags, diff_flags;
+  HOST_WIDE_INT prev_arch, cur_arch, diff_arch;
 
   if (TARGET_DEBUG_TARGET)
     {
@@ -25043,21 +25040,26 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
     {
       prev_opt    = TREE_TARGET_OPTION (prev_tree);
       prev_flags  = prev_opt->x_rs6000_isa_flags;
+      prev_arch   = prev_opt->x_rs6000_arch_flags;
 
       cur_opt     = TREE_TARGET_OPTION (cur_tree);
       cur_flags   = cur_opt->x_rs6000_isa_flags;
+      cur_arch    = cur_opt->x_rs6000_arch_flags;
 
       diff_flags  = (prev_flags ^ cur_flags);
+      diff_arch   = (prev_arch  ^ cur_arch);
 
-      if (diff_flags != 0)
+      if (diff_flags != 0 || diff_arch != 0)
 	{
 	  /* Delete old macros.  */
 	  rs6000_target_modify_macros_ptr (false,
-					   prev_flags & diff_flags);
+					   prev_flags & diff_flags,
+					   prev_arch  & diff_arch);
 
 	  /* Define new macros.  */
 	  rs6000_target_modify_macros_ptr (true,
-					   cur_flags & diff_flags);
+					   cur_flags & diff_flags,
+					   cur_arch  & diff_arch);
 	}
     }
 

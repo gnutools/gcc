@@ -500,12 +500,19 @@ extern int rs6000_vector_align[];
 #define TARGET_MINMAX	(TARGET_HARD_FLOAT && TARGET_PPC_GFXOPT		\
 			 && (TARGET_P9_MINMAX || !flag_trapping_math))
 
-/* Convert ISA bits like POPCNTB to PowerPC processors like POWER5.  */
-#define TARGET_POWER5		TARGET_POPCNTB
-#define TARGET_POWER5X		TARGET_FPRND
-#define TARGET_POWER6		TARGET_CMPB
-#define TARGET_POWER7		TARGET_POPCNTD
-#define TARGET_POWER9		TARGET_MODULO
+/* In the past we represented the various power cpus (power4, power5, power6,
+   etc.) via ISA bits that highlighted a new instruction or we used an extra
+   option to represent the hardware (i.e. -mpower8-internal or -mpower10).  Now
+   we use architecture flags for this.  */
+#define TARGET_POWER5		((rs6000_arch_flags & ARCH_MASK_POWER5)  != 0)
+#define TARGET_POWER5X		((rs6000_arch_flags & ARCH_MASK_POWER5X) != 0)
+#define TARGET_POWER6		((rs6000_arch_flags & ARCH_MASK_POWER6)  != 0)
+#define TARGET_POWER7		((rs6000_arch_flags & ARCH_MASK_POWER7)  != 0)
+#define TARGET_POWER8		((rs6000_arch_flags & ARCH_MASK_POWER8)  != 0)
+#define TARGET_POWER9		((rs6000_arch_flags & ARCH_MASK_POWER9)  != 0)
+#define TARGET_POWER10		((rs6000_arch_flags & ARCH_MASK_POWER10) != 0)
+#define TARGET_POWER11		((rs6000_arch_flags & ARCH_MASK_POWER11) != 0)
+#define TARGET_FUTURE		((rs6000_arch_flags & ARCH_MASK_FUTURE)  != 0)
 
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
