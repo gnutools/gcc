@@ -6034,6 +6034,7 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 
   if (expr->ts.type == BT_CHARACTER
       && TREE_CODE (se->string_length) == COMPONENT_REF
+      && expr->ts.u.cl->backend_decl
       && expr->ts.u.cl->backend_decl != se->string_length
       && VAR_P (expr->ts.u.cl->backend_decl))
     gfc_add_modify (&se->pre, expr->ts.u.cl->backend_decl,
@@ -10687,7 +10688,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 	      tmp = tmpse.expr;
 	      expr2->ts.u.cl->backend_decl = gfc_evaluate_now (tmp, &fblock);
 	    }
-	  tmp = fold_convert (TREE_TYPE (expr1->ts.u.cl->backend_decl), tmp);
+	  tmp = fold_convert (gfc_charlen_type_node, tmp);
 	}
 
       if (expr1->ts.u.cl->backend_decl

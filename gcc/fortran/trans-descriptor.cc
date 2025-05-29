@@ -3271,6 +3271,7 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
      it initialized.  */
   if (expr->ts.type == BT_CHARACTER
       && expr->ts.deferred
+      && expr->ts.u.cl->backend_decl
       && VAR_P (expr->ts.u.cl->backend_decl))
     {
       type = gfc_typenode_for_spec (&expr->ts);
