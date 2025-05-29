@@ -1,3 +1,364 @@
+==================== Branch work210-dmf, patch #221 ====================
+
+RFC2677-Add xvrlw support.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (xvrlw): New insn.
+	* config/rs6000/rs6000.h (TARGET_XVRLW): New macro.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/vector-rotate-left.c: New test.
+
+==================== Branch work210-dmf, patch #220 ====================
+
+RFC2686-Add paddis support.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/constraints.md (eU): New constraint.
+	(eV): Likewise.
+	* config/rs6000/predicates.md (paddis_operand): New predicate.
+	(paddis_paddi_operand): Likewise.
+	(add_operand): Add paddis support.
+	* config/rs6000/rs6000.cc (num_insns_constant_gpr): Add paddis support.
+	(num_insns_constant_multi): Likewise.
+	(print_operand): Add %B<n> for paddis support.
+	* config/rs6000/rs6000.h (TARGET_PADDIS): New macro.
+	(SIGNED_INTEGER_32BIT_P): Likewise.
+	* config/rs6000/rs6000.md (isa attribute): Add paddis support.
+	(enabled attribute); Likewise.
+	(add<mode>3): Likewise.
+	(adddi3 splitter): New splitter for paddis.
+	(movdi_internal64): Add paddis support.
+	(movdi splitter): New splitter for paddis.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/prefixed-addis.c: New test.
+
+==================== Branch work210-dmf, patch #211 ====================
+
+RFC2655-Add saturating subtract built-ins.
+
+This patch adds support for a saturating subtract built-in function that may be
+added to a future PowerPC processor.  Note, if it is added, the name of the
+built-in function may change before GCC 13 is released.  If the name changes,
+we will submit a patch changing the name.
+
+I also added support for providing dense math built-in functions, even though
+at present, we have not added any new built-in functions for dense math.  It is
+likely we will want to add new dense math built-in functions as the dense math
+support is fleshed out.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-builtin.cc (rs6000_invalid_builtin): Add support
+	for flagging invalid use of future built-in functions.
+	(rs6000_builtin_is_supported): Add support for future built-in
+	functions.
+	* config/rs6000/rs6000-builtins.def (__builtin_saturate_subtract32): New
+	built-in function for -mcpu=future.
+	(__builtin_saturate_subtract64): Likewise.
+	* config/rs6000/rs6000-gen-builtins.cc (enum bif_stanza): Add stanzas
+	for -mcpu=future built-ins.
+	(stanza_map): Likewise.
+	(enable_string): Likewise.
+	(struct attrinfo): Likewise.
+	(parse_bif_attrs): Likewise.
+	(write_decls): Likewise.
+	* config/rs6000/rs6000.md (sat_sub<mode>3): Add saturating subtract
+	built-in insn declarations.
+	(sat_sub<mode>3_dot): Likewise.
+	(sat_sub<mode>3_dot2): Likewise.
+	* doc/extend.texi (Future PowerPC built-ins): New section.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/subfus-1.c: New test.
+	* gcc.target/powerpc/subfus-2.c: Likewise.
+
+==================== Branch work210-dmf, patch #210 ====================
+
+RFC2656-Support load/store vector with right length.
+
+This patch adds support for new instructions that may be added to the PowerPC
+architecture in the future to enhance the load and store vector with length
+instructions.
+
+The current instructions (lxvl, lxvll, stxvl, and stxvll) are inconvient to use
+since the count for the number of bytes must be in the top 8 bits of the GPR
+register, instead of the bottom 8 bits.  This meant that code generating these
+instructions typically had to do a shift left by 56 bits to get the count into
+the right position.  In a future version of the PowerPC architecture, new
+variants of these instructions might be added that expect the count to be in
+the bottom 8 bits of the GPR register.  These patches add this support to GCC
+if the user uses the -mcpu=future option.
+
+I discovered that the code in rs6000-string.cc to generate ISA 3.1 lxvl/stxvl
+future lxvll/stxvll instructions would generate these instructions on 32-bit.
+However the patterns for these instructions is only done on 64-bit systems.  So
+I added a check for 64-bit support before generating the instructions.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-string.cc (expand_block_move): Do not generate
+	lxvl and stxvl on 32-bit.
+	* config/rs6000/vsx.md (lxvl): If -mcpu=future, generate the lxvl with
+	the shift count automaticaly used in the insn.
+	(lxvrl): New insn for -mcpu=future.
+	(lxvrll): Likewise.
+	(stxvl): If -mcpu=future, generate the stxvl with the shift count
+	automaticaly used in the insn.
+	(stxvrl): New insn for -mcpu=future.
+	(stxvrll): Likewise.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/lxvrl.c: New test.
+	* lib/target-supports.exp (check_effective_target_powerpc_future_ok):
+	New effective target.
+
+==================== Branch work210-dmf, patch #202 ====================
+
+RFC2653-PowerPC: Add support for 1,024 bit DMR registers.
+
+This patch is a prelimianry patch to add the full 1,024 bit dense math register
+(DMRs) for -mcpu=future.  The MMA 512-bit accumulators map onto the top of the
+DMR register.
+
+This patch only adds the new 1,024 bit register support.  It does not add
+support for any instructions that need 1,024 bit registers instead of 512 bit
+registers.
+
+I used the new mode 'TDOmode' to be the opaque mode used for 1,024 bit
+registers.  The 'wD' constraint added in previous patches is used for these
+registers.  I added support to do load and store of DMRs via the VSX registers,
+since there are no load/store dense math instructions.  I added the new keyword
+'__dmr' to create 1,024 bit types that can be loaded into DMRs.  At present, I
+don't have aliases for __dmr512 and __dmr1024 that we've discussed internally.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/mma.md (UNSPEC_DM_INSERT512_UPPER): New unspec.
+	(UNSPEC_DM_INSERT512_LOWER): Likewise.
+	(UNSPEC_DM_EXTRACT512): Likewise.
+	(UNSPEC_DMR_RELOAD_FROM_MEMORY): Likewise.
+	(UNSPEC_DMR_RELOAD_TO_MEMORY): Likewise.
+	(movtdo): New define_expand and define_insn_and_split to implement 1,024
+	bit DMR registers.
+	(movtdo_insert512_upper): New insn.
+	(movtdo_insert512_lower): Likewise.
+	(movtdo_extract512): Likewise.
+	(reload_dmr_from_memory): Likewise.
+	(reload_dmr_to_memory): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Add DMR
+	support.
+	(rs6000_init_builtins): Add support for __dmr keyword.
+	* config/rs6000/rs6000-call.cc (rs6000_return_in_memory): Add support
+	for TDOmode.
+	(rs6000_function_arg): Likewise.
+	* config/rs6000/rs6000-modes.def (TDOmode): New mode.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_nregs_internal): Add
+	support for TDOmode.
+	(rs6000_hard_regno_mode_ok_uncached): Likewise.
+	(rs6000_hard_regno_mode_ok): Likewise.
+	(rs6000_modes_tieable_p): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Add support for TDOmode.  Setup reload
+	hooks for DMR mode.
+	(reg_offset_addressing_ok_p): Add support for TDOmode.
+	(rs6000_emit_move): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_secondary_reload_class): Likewise.
+	(rs6000_mangle_type): Add mangling for __dmr type.
+	(rs6000_dmr_register_move_cost): Add support for TDOmode.
+	(rs6000_split_multireg_move): Likewise.
+	(rs6000_invalid_conversion): Likewise.
+	* config/rs6000/rs6000.h (VECTOR_ALIGNMENT_P): Add TDOmode.
+	(enum rs6000_builtin_type_index): Add DMR type nodes.
+	(dmr_type_node): Likewise.
+	(ptr_dmr_type_node): Likewise.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/dm-1024bit.c: New test.
+	* lib/target-supports.exp (check_effective_target_ppc_dmr_ok): New
+	target test.
+
+==================== Branch work210-dmf, patch #201 ====================
+
+RFC2653-Add support for dense math registers.
+
+The MMA subsystem added the notion of accumulator registers as an optional
+feature of ISA 3.1 (power10).  In ISA 3.1, these accumulators overlapped with
+the VSX registers 0..31, but logically the accumulator registers were separate
+from the FPR registers.  In ISA 3.1, it was anticipated that in future systems,
+the accumulator registers may no overlap with the FPR registers.  This patch
+adds the support for dense math registers as separate registers.
+
+This particular patch does not change the MMA support to use the accumulators
+within the dense math registers.  This patch just adds the basic support for
+having separate DMRs.  The next patch will switch the MMA support to use the
+accumulators if -mcpu=future is used.
+
+For testing purposes, I added an undocumented option '-mdense-math' to enable
+or disable the dense math support.
+
+This patch updates the wD constraint added in the previous patch.  If MMA is
+selected but dense math is not selected (i.e. -mcpu=power10), the wD constraint
+will allow access to accumulators that overlap with VSX registers 0..31.  If
+both MMA and dense math are selected (i.e. -mcpu=future), the wD constraint
+will only allow dense math registers.
+
+This patch modifies the existing %A output modifier.  If MMA is selected but
+dense math is not selected, then %A output modifier converts the VSX register
+number to the accumulator number, by dividing it by 4.  If both MMA and dense
+math are selected, then %A will map the separate DMR registers into 0..7.
+
+The intention is that user code using extended asm can be modified to run on
+both MMA without dense math and MMA with dense math:
+
+    1)	If possible, don't use extended asm, but instead use the MMA built-in
+	functions;
+
+    2)	If you do need to write extended asm, change the d constraints
+	targetting accumulators should now use wD;
+
+    3)	Only use the built-in zero, assemble and disassemble functions create
+	move data between vector quad types and dense math accumulators.
+	I.e. do not use the xxmfacc, xxmtacc, and xxsetaccz directly in the
+	extended asm code.  The reason is these instructions assume there is a
+	1-to-1 correspondence between 4 adjacent FPR registers and an
+	accumulator that overlaps with those instructions.  With accumulators
+	now being separate registers, there no longer is a 1-to-1
+	correspondence.
+
+It is possible that the mangling for DMRs and the GDB register numbers may
+produce other changes in the future.
+
+gcc/
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_MMA_DMSETDMRZ): New unspec.
+	(movxo): Add comments about dense math registers.
+	(movxo_nodm): Rename from movxo and restrict the usage to machines
+	without dense math registers.
+	(movxo_dm): New insn for movxo support for machines with dense math
+	registers.
+	(mma_<acc>): Restrict usage to machines without dense math registers.
+	(mma_xxsetaccz): Add a define_expand wrapper, and add support for dense
+	math registers.
+	(mma_dmsetaccz): New insn.
+	* config/rs6000/predicates.md (dmr_operand): New predicate.
+	(accumulator_operand): Add support for dense math registers.
+	* config/rs6000/rs6000-builtin.cc (rs6000_gimple_fold_mma_builtin): Do
+	not issue a de-prime instruction when disassembling a vector quad on a
+	system with dense math registers.
+	* config/rs6000/rs6000-c.cc (rs6000_define_or_undefine_macro): Define
+	__DENSE_MATH__ if we have dense math registers.
+	* config/rs6000/rs6000.cc (enum rs6000_reg_type): Add DMR_REG_TYPE.
+	(enum rs6000_reload_reg_type): Add RELOAD_REG_DMR.
+	(LAST_RELOAD_REG_CLASS): Add support for DMR registers and the wD
+	constraint.
+	(reload_reg_map): Likewise.
+	(rs6000_reg_names): Likewise.
+	(alt_reg_names): Likewise.
+	(rs6000_hard_regno_nregs_internal): Likewise.
+	(rs6000_hard_regno_mode_ok_uncached): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_secondary_reload_memory): Add support for DMR registers.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_secondary_reload_class): Likewise.
+	(print_operand): Make %A handle both FPRs and DMRs.
+	(rs6000_dmr_register_move_cost): New helper function.
+	(rs6000_register_move_cost): Add support for DMR registers.
+	(rs6000_memory_move_cost): Likewise.
+	(rs6000_compute_pressure_classes): Likewise.
+	(rs6000_debugger_regno): Likewise.
+	(rs6000_split_multireg_move): Add support for DMRs.
+	* config/rs6000/rs6000.h (TARGET_DENSE_MATH): New macro.
+	(TARGET_MMA_DENSE_MATH): Likewise.
+	(TARGET_MMA_NO_DENSE_MATH): Likewise
+	(UNITS_PER_DMR_WORD): Likewise.
+	(FIRST_PSEUDO_REGISTER): Update for DMRs.
+	(FIXED_REGISTERS): Add DMRs.
+	(CALL_REALLY_USED_REGISTERS): Likewise.
+	(REG_ALLOC_ORDER): Likewise.
+	(DMR_REGNO_P): New macro.
+	(enum reg_class): Add DM_REGS.
+	(REG_CLASS_NAMES): Likewise.
+	(REG_CLASS_CONTENTS): Likewise.
+	(enum r6000_reg_class_enum): Add RS6000_CONSTRAINT_wD.
+	(REGISTER_NAMES): Add DMR registers.
+	(ADDITIONAL_REGISTER_NAMES): Likewise.
+	* config/rs6000/rs6000.md (FIRST_DMR_REGNO): New constant.
+	(LAST_DMR_REGNO): Likewise.
+
+==================== Branch work210-dmf, patch #200 ====================
+
+RFC2653-Add wD constraint.
+
+This patch adds a new constraint ('wD') that matches the accumulator registers
+that overlap with VSX registers 0..31 on power10.  Future patches will add the
+support for a separate accumulator register class that will be used when the
+support for dense math registes is added.
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+	* config/rs6000/constraints.md (wD): New constraint.
+	* config/rs6000/mma.md (mma_<acc>): Prepare for alternate accumulator
+	registers.  Use wD constraint instead of 'd' constraint.  Use
+	accumulator_operand instead of fpr_reg_operand.
+	(mma_<vv>): Likewise.
+	(mma_<avv>): Likewise.
+	(mma_<pv>): Likewise.
+	(mma_<apv>): Likewise.
+	(mma_<vvi4i4i8>): Likewise.
+	(mma_<avvi4i4i8>): Likewise.
+	(mma_<vvi4i4i2>): Likewise.
+	(mma_<avvi4i4i2>): Likewise.
+	(mma_<vvi4i4>): Likewise.
+	(mma_<avvi4i4>): Likewise.
+	(mma_<pvi4i2): Likewise.
+	(mma_<apvi4i2>): Likewise.
+	(mma_<vvi4i4i4>): Likewise.
+	(mma_<avvi4i4i4): Likewise.
+	* config/rs6000/predicates.md (accumulator_operand): New predicate.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Print the register
+	class for the 'wD' constraint.
+	(rs6000_init_hard_regno_mode_ok): Set up the 'wD' register constraint
+	class.
+	* config/rs6000/rs6000.h (enum r6000_reg_class_enum): Add element for
+	the 'wD' constraint.
+	* doc/md.texi (PowerPC constraints): Document the 'wD' constraint.
+
 ==================== Branch work210-dmf, baseline ====================
 
 2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
