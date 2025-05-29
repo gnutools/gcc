@@ -369,6 +369,53 @@
   return SIGNED_INTEGER_34BIT_P (INTVAL (op));
 })
 
+;; Return 1 if op is a 64-bit constant that uses the paddis instruction
+(define_predicate "paddis_operand"
+  (match_code "const_int")
+{
+  if (!TARGET_PADDIS && TARGET_POWERPC64)
+    return 0;
+
+  /* If addi, addis, or paddi can handle the number, don't return true.  */
+  HOST_WIDE_INT value = INTVAL (op);
+  if (SIGNED_INTEGER_34BIT_P (value))
+    return false;
+
+  /* If the number is too large for padds, return false.  */
+  if (!SIGNED_INTEGER_32BIT_P (value >> 32))
+    return false;
+
+  /* If the bottom 32-bits are non-zero, paddis can't handle it.  */
+  if ((value & HOST_WIDE_INT_C(0xffffffff)) != 0)
+    return false;
+
+  return true;
+})
+
+;; Return 1 if op is a 64-bit constant that needs the paddis instruction and an
+;; addi/addis/paddi instruction combination.
+(define_predicate "paddis_paddi_operand"
+  (match_code "const_int")
+{
+  if (!TARGET_PADDIS && TARGET_POWERPC64)
+    return 0;
+
+  /* If addi, addis, or paddi can handle the number, don't return true.  */
+  HOST_WIDE_INT value = INTVAL (op);
+  if (SIGNED_INTEGER_34BIT_P (value))
+    return false;
+
+  /* If the number is too large for padds, return false.  */
+  if (!SIGNED_INTEGER_32BIT_P (value >> 32))
+    return false;
+
+  /* If the bottom 32-bits are zero, we can use paddis alone to handle it.  */
+  if ((value & HOST_WIDE_INT_C(0xffffffff)) == 0)
+    return false;
+
+  return true;
+})
+
 ;; Return 1 if op is a register that is not special.
 ;; Disallow (SUBREG:SF (REG:SI)) and (SUBREG:SI (REG:SF)) on VSX systems where
 ;; you need to be careful in moving a SFmode to SImode and vice versa due to
@@ -1113,7 +1160,10 @@
   (if_then_else (match_code "const_int")
     (match_test "satisfies_constraint_I (op)
 		 || satisfies_constraint_L (op)
-		 || satisfies_constraint_eI (op)")
+		 || satisfies_constraint_eI (op)
+		 || satisfies_constraint_eU (op)
+		 || satisfies_constraint_eV (op)")
+
     (match_operand 0 "gpc_reg_operand")))
 
 ;; Return 1 if the operand is either a non-special register, or 0, or -1.
