@@ -449,12 +449,12 @@ extern int rs6000_vector_align[];
 #define TARGET_FCFID	(TARGET_POWERPC64				\
 			 || TARGET_PPC_GPOPT	/* 970/power4 */	\
 			 || TARGET_POWER5	/* ISA 2.02 */		\
-			 || TARGET_CMPB		/* ISA 2.05 */		\
+			 || TARGET_POWER6	/* ISA 2.05 */		\
 			 || TARGET_POPCNTD)	/* ISA 2.06 */
 
 #define TARGET_FCTIDZ	TARGET_FCFID
 #define TARGET_STFIWX	TARGET_PPC_GFXOPT
-#define TARGET_LFIWAX	TARGET_CMPB
+#define TARGET_LFIWAX	TARGET_POWER6
 #define TARGET_LFIWZX	TARGET_POPCNTD
 #define TARGET_FCFIDS	TARGET_POPCNTD
 #define TARGET_FCFIDU	TARGET_POPCNTD
@@ -502,6 +502,7 @@ extern int rs6000_vector_align[];
 /* Convert ISA bits like POPCNTB to PowerPC processors like POWER5.  */
 #define TARGET_POWER5		TARGET_POPCNTB
 #define TARGET_POWER5X		TARGET_FPRND
+#define TARGET_POWER6		TARGET_CMPB
 
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
@@ -530,7 +531,7 @@ extern int rs6000_vector_align[];
 #define TARGET_EXTRA_BUILTINS	(TARGET_POWERPC64			 \
 				 || TARGET_PPC_GPOPT /* 970/power4 */	 \
 				 || TARGET_POWER5    /* ISA 2.02 */	 \
-				 || TARGET_CMPB      /* ISA 2.05 */	 \
+				 || TARGET_POWER6    /* ISA 2.05 */	 \
 				 || TARGET_POPCNTD   /* ISA 2.06 */	 \
 				 || TARGET_ALTIVEC			 \
 				 || TARGET_VSX				 \
