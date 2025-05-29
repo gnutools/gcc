@@ -1,0 +1,14 @@
+==================== Branch work209-cmodel, baseline ====================
+
+2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.cmodel and update REVISION.
+
+2025-05-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.cmodel: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
