@@ -169,9 +169,9 @@ rs6000_builtin_is_supported (enum rs6000_gen_builtins fncode)
     case ENB_P8V:
       return TARGET_P8_VECTOR;
     case ENB_P9:
-      return TARGET_MODULO;
+      return TARGET_POWER9;
     case ENB_P9_64:
-      return TARGET_MODULO && TARGET_POWERPC64;
+      return TARGET_POWER9 && TARGET_POWERPC64;
     case ENB_P9V:
       return TARGET_P9_VECTOR;
     case ENB_P10:

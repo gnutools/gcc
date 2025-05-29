@@ -463,9 +463,9 @@ extern int rs6000_vector_align[];
 #define TARGET_FCTIWUZ	TARGET_POWER7
 /* Only powerpc64 and powerpc476 support fctid.  */
 #define TARGET_FCTID	(TARGET_POWERPC64 || rs6000_cpu == PROCESSOR_PPC476)
-#define TARGET_CTZ	TARGET_MODULO
-#define TARGET_EXTSWSLI	(TARGET_MODULO && TARGET_POWERPC64)
-#define TARGET_MADDLD	TARGET_MODULO
+#define TARGET_CTZ	TARGET_POWER9
+#define TARGET_EXTSWSLI	(TARGET_POWER9 && TARGET_POWERPC64)
+#define TARGET_MADDLD	TARGET_POWER9
 
 /* TARGET_DIRECT_MOVE is redundant to TARGET_P8_VECTOR, so alias it to that.  */
 #define TARGET_DIRECT_MOVE	TARGET_P8_VECTOR
@@ -504,6 +504,7 @@ extern int rs6000_vector_align[];
 #define TARGET_POWER5X		TARGET_FPRND
 #define TARGET_POWER6		TARGET_CMPB
 #define TARGET_POWER7		TARGET_POPCNTD
+#define TARGET_POWER9		TARGET_MODULO
 
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
