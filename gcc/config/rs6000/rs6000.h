@@ -501,6 +501,7 @@ extern int rs6000_vector_align[];
 
 /* Convert ISA bits like POPCNTB to PowerPC processors like POWER5.  */
 #define TARGET_POWER5		TARGET_POPCNTB
+#define TARGET_POWER5X		TARGET_FPRND
 
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
