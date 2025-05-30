@@ -16,7 +16,7 @@ subroutine sub(xxx, yyy)
 end
 ! { dg-final { scan-tree-dump-not " _gfortran_internal_pack" "original" } }
 ! { dg-final { scan-tree-dump-times {parm.[0-9]+\.data = \(void .\) xxx.[0-9]+;} 1 "original" } }
-! { dg-final { scan-tree-dump-times {parm.[0-9]+\.data = \(void .\) \(&\(\*xxx.[0-9]+\)\[0\](?:\{lb: 0 sz: 4\})? \+ \(sizetype\) \(D.[0-9]+ \* 4\)\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {parm.[0-9]+\.data = \(void .\) \(xxx.[0-9]+ \+ \(sizetype\) \(D.[0-9]+ \* 4\)\);} 1 "original" } }
 ! { dg-final { scan-tree-dump-times {parm.[0-9]+\.data = \(void .\) yyy.[0-9]+;} 1 "original" } }
 ! { dg-final { scan-tree-dump-times {parm.[0-9]+\.data = \(void .\) \(yyy.[0-9]+ \+ \(sizetype\) \(D.[0-9]+ \* 4\)\);} 1 "original" } }
 
