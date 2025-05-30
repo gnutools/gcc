@@ -174,6 +174,85 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #define UBOUND_SUBFIELD 2
 
 
+static tree
+substitute_placeholder_in_type (tree type, tree root_struct)
+{
+  tree type_size = TYPE_SIZE (type);
+  tree modified_type_size = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size,
+							    root_struct);
+  tree type_size_unit = TYPE_SIZE_UNIT (type);
+  tree modified_type_size_unit = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size_unit,
+								 root_struct);
+
+  switch (TREE_CODE (type))
+    {
+    case POINTER_TYPE:
+      {
+	tree subtype = TREE_TYPE (type);
+	tree modified_subtype = substitute_placeholder_in_type (subtype,
+								root_struct);
+	if (modified_subtype == subtype
+	    && modified_type_size == type_size
+	    && modified_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  return build_pointer_type (modified_subtype);
+      }
+      break;
+
+    case ARRAY_TYPE:
+      {
+	tree elt_type = TREE_TYPE (type);
+	tree modified_elt_type = substitute_placeholder_in_type (elt_type,
+								 root_struct);
+	tree idx_type = TYPE_DOMAIN (type);
+	tree modified_idx_type = substitute_placeholder_in_type (idx_type,
+								 root_struct);
+	if (modified_elt_type == elt_type
+	    && modified_idx_type == idx_type
+	    && modified_type_size == type_size
+	    && modified_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  {
+	    tree new_type = build_array_type (modified_elt_type,
+					      modified_idx_type);
+	    TYPE_STRING_FLAG (new_type) = TYPE_STRING_FLAG (type);
+	    return new_type;
+	  }
+      }
+      break;
+
+    case INTEGER_TYPE:
+      {
+	tree min_val = TYPE_MIN_VALUE (type);
+	tree modified_min_val = SUBSTITUTE_PLACEHOLDER_IN_EXPR (min_val,
+								root_struct);
+	tree max_val = TYPE_MAX_VALUE (type);
+	tree modified_max_val = SUBSTITUTE_PLACEHOLDER_IN_EXPR (max_val,
+								root_struct);
+	if (modified_min_val == min_val
+	    && modified_max_val == max_val
+	    && modified_type_size == type_size
+	    && modified_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  {
+	    tree new_type = build_range_type (type, modified_min_val,
+					      modified_max_val);
+	    TYPE_SIZE (new_type) = modified_type_size;
+	    TYPE_SIZE_UNIT (new_type) = modified_type_size_unit;
+	    return new_type;
+	  }
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+
 namespace gfc_descriptor
 {
 
@@ -223,7 +302,11 @@ conv_data_get (tree desc)
   gcc_assert (TREE_CODE (type) != REFERENCE_TYPE);
 
   tree field = get_data (desc);
-  tree t = fold_convert (GFC_TYPE_ARRAY_DATAPTR_TYPE (type), field);
+  tree target_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
+  gcc_assert (TREE_CODE (target_type) == POINTER_TYPE);
+  if (type_contains_placeholder_p (TREE_TYPE (target_type)))
+    target_type = substitute_placeholder_in_type (target_type, desc);
+  tree t = fold_convert (target_type, field);
   return non_lvalue_loc (input_location, t);
 }
 
@@ -3047,6 +3130,42 @@ gfc_conv_descriptor_cosize (tree desc, int rank, int corank)
 }
 
 
+static bool
+placeholder_free_element_type (tree type)
+{
+  if (!GFC_DESCRIPTOR_TYPE_P (type))
+    return true;
+
+  tree data_ptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
+  gcc_assert (TREE_CODE (data_ptr_type) == POINTER_TYPE);
+
+  return !type_contains_placeholder_p (TREE_TYPE (data_ptr_type));
+}
+
+
+static tree
+get_descriptor_dtype (tree desc, int * prank)
+{
+  tree type = TREE_TYPE (desc);
+
+  if (placeholder_free_element_type (type))
+    return gfc_get_dtype (type, prank);
+  else
+    {
+      tree data_ptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
+      data_ptr_type = substitute_placeholder_in_type (data_ptr_type, desc);
+
+      gcc_assert (TREE_CODE (data_ptr_type) == POINTER_TYPE);
+      tree etype = TREE_TYPE (data_ptr_type);
+      if (TREE_CODE (etype) == ARRAY_TYPE && ! TYPE_STRING_FLAG (etype))
+	etype = TREE_TYPE (etype);
+
+      int rank = prank ? *prank : GFC_TYPE_ARRAY_RANK (type);
+      return gfc_get_dtype_rank_type (rank, etype);
+    }
+}
+
+
 void
 gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
@@ -3086,7 +3205,7 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
       dtype = gfc_conv_descriptor_dtype_get (tmp2);
     }
   else
-    dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
+    dtype = get_descriptor_dtype (src, &rank);
   gfc_conv_descriptor_dtype_set (block, dest, dtype);
 
   /* The 1st element in the section.  */

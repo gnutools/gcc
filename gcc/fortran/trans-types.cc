@@ -2995,7 +2995,6 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 {
   tree typenode = NULL, field = NULL, field_type = NULL;
   tree canonical = NULL_TREE, class_canonical = NULL_TREE;
-  tree *chain = NULL;
   bool got_canonical = false;
   bool self_is_canonical = false;
   bool unlimited_entity = false;
@@ -3219,142 +3218,190 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
      through only the top-level linked list of components so we correctly
      build UNION_TYPE nodes for BT_UNION components. MAPs and other nested
      types are built as part of gfc_get_union_type.  */
-  for (c = derived->components; c; c = c->next)
-    {
-      bool same_alloc_type = c->attr.allocatable
-			     && derived == c->ts.u.derived;
-      /* Prevent infinite recursion, when the procedure pointer type is
-	 the same as derived, by forcing the procedure pointer component to
-	 be built as if the explicit interface does not exist.  */
-      if (c->attr.proc_pointer
-	  && (c->ts.type != BT_DERIVED || (c->ts.u.derived
-		    && !gfc_compare_derived_types (derived, c->ts.u.derived)))
-	  && (c->ts.type != BT_CLASS || (CLASS_DATA (c)->ts.u.derived
-		    && !gfc_compare_derived_types (derived, CLASS_DATA (c)->ts.u.derived))))
-	field_type = gfc_get_ppc_type (c);
-      else if (c->attr.proc_pointer && derived->backend_decl)
-	{
-	  tmp = build_function_type (derived->backend_decl, NULL_TREE);
-	  field_type = build_pointer_type (tmp);
-	}
-      else if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
-	field_type = c->ts.u.derived->backend_decl;
-      else if (c->attr.caf_token)
-	field_type = pvoid_type_node;
-      else
-	{
-	  if (c->ts.type == BT_CHARACTER
-	      && !c->ts.deferred && !c->attr.pdt_string)
-	    {
-	      /* Evaluate the string length.  */
-	      gfc_conv_const_charlen (c->ts.u.cl);
-	      gcc_assert (c->ts.u.cl->backend_decl);
-	    }
+  {
+    auto_vec <tree> fields;
 
-	  field_type = gfc_typenode_for_spec (&c->ts, codimen);
-	}
+    unsigned i;
+    bool do_loop = true;
+    while (do_loop)
+      {
+	do_loop = false;
+	for (c = derived->components, i = 0; c; c = c->next, i++)
+	  {
+	    if (c->backend_decl)
+	      continue;
 
-      /* This returns an array descriptor type.  Initialization may be
-         required.  */
-      if ((c->attr.dimension || c->attr.codimension) && !c->attr.proc_pointer )
-	{
-	  if (c->attr.pointer || c->attr.allocatable || c->attr.pdt_array)
-	    {
-	      enum gfc_array_kind akind;
-	      bool is_ptr = ((c == derived->components
-			      && derived->components->ts.type == BT_DERIVED
-			      && startswith (derived->name, "__class")
-			      && (strcmp (derived->components->name, "_data")
-				  == 0))
-			     ? c->attr.class_pointer : c->attr.pointer);
-	      if (is_ptr)
-		akind = c->attr.contiguous ? GFC_ARRAY_POINTER_CONT
-					   : GFC_ARRAY_POINTER;
-	      else if (c->attr.allocatable)
-		akind = GFC_ARRAY_ALLOCATABLE;
-	      else if (c->as->type == AS_ASSUMED_RANK)
-		akind = GFC_ARRAY_ASSUMED_RANK;
-	      else
-		/* FIXME – see PR fortran/104651.  Additionally, the following
-		   gfc_build_array_type should use !is_ptr instead of
-		   c->attr.pointer and codim unconditionally without '? :'. */
-		akind = GFC_ARRAY_ASSUMED_SHAPE;
+	    bool same_alloc_type = c->attr.allocatable
+				   && derived == c->ts.u.derived;
+	    /* Prevent infinite recursion, when the procedure pointer type is
+	       the same as derived, by forcing the procedure pointer component to
+	       be built as if the explicit interface does not exist.  */
+	    if (c->attr.proc_pointer
+		&& (c->ts.type != BT_DERIVED || (c->ts.u.derived
+			  && !gfc_compare_derived_types (derived, c->ts.u.derived)))
+		&& (c->ts.type != BT_CLASS || (CLASS_DATA (c)->ts.u.derived
+			  && !gfc_compare_derived_types (derived, CLASS_DATA (c)->ts.u.derived))))
+	      field_type = gfc_get_ppc_type (c);
+	    else if (c->attr.proc_pointer && derived->backend_decl)
+	      {
+		tmp = build_function_type (derived->backend_decl, NULL_TREE);
+		field_type = build_pointer_type (tmp);
+	      }
+	    else if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
+	      field_type = c->ts.u.derived->backend_decl;
+	    else if (c->attr.caf_token)
+	      field_type = pvoid_type_node;
+	    else
+	      {
+		if (c->ts.type == BT_CHARACTER
+		    && !c->ts.deferred && !c->attr.pdt_string)
+		  {
+		    /* Evaluate the string length.  */
+		    gfc_conv_const_charlen (c->ts.u.cl);
+		    gcc_assert (c->ts.u.cl->backend_decl);
+		  }
 
-	      /* Use char as array element type for unlimited_polymorphic
-		 entities.  */
-	      if (c->ts.type == BT_DERIVED
-		  && c->ts.u.derived->attr.unlimited_polymorphic
-		  && field_type == ptr_type_node)
-		field_type = char_type_node;
+		field_type = gfc_typenode_for_spec (&c->ts, codimen);
+		tree strlen_field;
+		if (gfc_deferred_strlen (c, &strlen_field))
+		  {
+		    if (strlen_field == nullptr)
+		      {
+			do_loop = true;
+			continue;
+		      }
 
-	      bt type_type = derived->attr.is_class
-			     && strcmp (c->name, "_data") == 0
-			     ? BT_CLASS : c->ts.type;
+		    gcc_assert (TREE_CODE (field_type) == ARRAY_TYPE);
+		    if (TYPE_MAX_VALUE (TYPE_DOMAIN (field_type)) == NULL_TREE)
+		      {
+			tree domain_type = TYPE_DOMAIN (field_type);
+			domain_type = build_distinct_type_copy (domain_type);
+			field_type = build_distinct_type_copy (field_type);
+			TYPE_DOMAIN (field_type) = domain_type;
+			tree max = build3 (COMPONENT_REF, TREE_TYPE (strlen_field),
+					   build0 (PLACEHOLDER_EXPR, typenode),
+					   strlen_field, NULL_TREE);
+			TYPE_MAX_VALUE (domain_type) = max;
+		      }
+		  }
+	      }
 
-	      /* Pointers to arrays aren't actually pointer types.  The
-		 descriptors are separate, but the data is common.  Every
-		 array pointer in a coarray derived type needs to provide space
-		 for the coarray management, too.  Therefore treat coarrays
-		 and pointers to coarrays in derived types the same.  */
-	      field_type = gfc_build_array_type
-		(
-		  field_type, c->as, akind, !c->attr.target && !c->attr.pointer,
-		  c->attr.contiguous,
-		  c->attr.codimension || c->attr.pointer ? codimen : 0,
-		  type_type
-		);
-	    }
-	  else
-	    field_type = gfc_get_nodesc_array_type (field_type, c->as,
-						    PACKED_STATIC,
-						    !c->attr.target,
-						    c->ts.type);
-	}
-      else if ((c->attr.pointer || c->attr.allocatable || c->attr.pdt_string)
-	       && !c->attr.proc_pointer
-	       && !(unlimited_entity && c == derived->components))
-	field_type = build_pointer_type (field_type);
+	    /* This returns an array descriptor type.  Initialization may be
+	       required.  */
+	    if ((c->attr.dimension || c->attr.codimension) && !c->attr.proc_pointer )
+	      {
+		if (c->attr.pointer || c->attr.allocatable || c->attr.pdt_array)
+		  {
+		    enum gfc_array_kind akind;
+		    bool is_ptr = ((c == derived->components
+				    && derived->components->ts.type == BT_DERIVED
+				    && startswith (derived->name, "__class")
+				    && (strcmp (derived->components->name, "_data")
+					== 0))
+				   ? c->attr.class_pointer : c->attr.pointer);
+		    if (is_ptr)
+		      akind = c->attr.contiguous ? GFC_ARRAY_POINTER_CONT
+						 : GFC_ARRAY_POINTER;
+		    else if (c->attr.allocatable)
+		      akind = GFC_ARRAY_ALLOCATABLE;
+		    else if (c->as->type == AS_ASSUMED_RANK)
+		      akind = GFC_ARRAY_ASSUMED_RANK;
+		    else
+		      /* FIXME – see PR fortran/104651.  Additionally, the following
+			 gfc_build_array_type should use !is_ptr instead of
+			 c->attr.pointer and codim unconditionally without '? :'. */
+		      akind = GFC_ARRAY_ASSUMED_SHAPE;
 
-      if (c->attr.pointer || same_alloc_type)
-	field_type = gfc_nonrestricted_type (field_type);
+		    /* Use char as array element type for unlimited_polymorphic
+		       entities.  */
+		    if (c->ts.type == BT_DERIVED
+			&& c->ts.u.derived->attr.unlimited_polymorphic
+			&& field_type == ptr_type_node)
+		      field_type = char_type_node;
 
-      /* vtype fields can point to different types to the base type.  */
-      if (c->ts.type == BT_DERIVED
-	    && c->ts.u.derived && c->ts.u.derived->attr.vtype)
-	  field_type = build_pointer_type_for_mode (TREE_TYPE (field_type),
-						    ptr_mode, true);
+		    bt type_type = derived->attr.is_class
+				   && strcmp (c->name, "_data") == 0
+				   ? BT_CLASS : c->ts.type;
 
-      /* Ensure that the CLASS language specific flag is set.  */
-      if (c->ts.type == BT_CLASS)
-	{
-	  if (POINTER_TYPE_P (field_type))
-	    GFC_CLASS_TYPE_P (TREE_TYPE (field_type)) = 1;
-	  else
-	    GFC_CLASS_TYPE_P (field_type) = 1;
-	}
+		    /* Pointers to arrays aren't actually pointer types.  The
+		       descriptors are separate, but the data is common.  Every
+		       array pointer in a coarray derived type needs to provide space
+		       for the coarray management, too.  Therefore treat coarrays
+		       and pointers to coarrays in derived types the same.  */
+		    field_type = gfc_build_array_type
+		      (
+			field_type, c->as, akind, !c->attr.target && !c->attr.pointer,
+			c->attr.contiguous,
+			c->attr.codimension || c->attr.pointer ? codimen : 0,
+			type_type
+		      );
+		  }
+		else
+		  field_type = gfc_get_nodesc_array_type (field_type, c->as,
+							  PACKED_STATIC,
+							  !c->attr.target,
+							  c->ts.type);
+	      }
+	    else if ((c->attr.pointer || c->attr.allocatable || c->attr.pdt_string)
+		     && !c->attr.proc_pointer
+		     && !(unlimited_entity && c == derived->components))
+	      field_type = build_pointer_type (field_type);
 
-      field = gfc_add_field_to_struct (typenode,
-				       get_identifier (c->name),
-				       field_type, &chain);
-      if (GFC_LOCUS_IS_SET (c->loc))
-	gfc_set_decl_location (field, &c->loc);
-      else if (GFC_LOCUS_IS_SET (derived->declared_at))
-	gfc_set_decl_location (field, &derived->declared_at);
+	    if (c->attr.pointer || same_alloc_type)
+	      field_type = gfc_nonrestricted_type (field_type);
 
-      gfc_finish_decl_attrs (field, &c->attr);
+	    /* vtype fields can point to different types to the base type.  */
+	    if (c->ts.type == BT_DERIVED
+		  && c->ts.u.derived && c->ts.u.derived->attr.vtype)
+		field_type = build_pointer_type_for_mode (TREE_TYPE (field_type),
+							  ptr_mode, true);
 
-      DECL_PACKED (field) |= TYPE_PACKED (typenode);
+	    /* Ensure that the CLASS language specific flag is set.  */
+	    if (c->ts.type == BT_CLASS)
+	      {
+		if (POINTER_TYPE_P (field_type))
+		  GFC_CLASS_TYPE_P (TREE_TYPE (field_type)) = 1;
+		else
+		  GFC_CLASS_TYPE_P (field_type) = 1;
+	      }
 
-      gcc_assert (field);
-      /* Overwrite for class array to supply different bounds for different
-	 types.  */
-      if (class_coarray_flag || !c->backend_decl || c->attr.caf_token)
-	c->backend_decl = field;
+	    field = gfc_add_field_to_struct (typenode,
+					     get_identifier (c->name),
+					     field_type, nullptr);
+	    if (i >= fields.length ())
+	      fields.safe_grow_cleared (i + 1);
 
-      if (c->attr.pointer && (c->attr.dimension || c->attr.codimension)
-	  && !(c->ts.type == BT_DERIVED && strcmp (c->name, "_data") == 0))
-	GFC_DECL_PTR_ARRAY_P (c->backend_decl) = 1;
-    }
+	    fields[i] = field;
+
+	    if (GFC_LOCUS_IS_SET (c->loc))
+	      gfc_set_decl_location (field, &c->loc);
+	    else if (GFC_LOCUS_IS_SET (derived->declared_at))
+	      gfc_set_decl_location (field, &derived->declared_at);
+
+	    gfc_finish_decl_attrs (field, &c->attr);
+
+	    DECL_PACKED (field) |= TYPE_PACKED (typenode);
+
+	    gcc_assert (field);
+	    /* Overwrite for class array to supply different bounds for different
+	       types.  */
+	    if (class_coarray_flag || !c->backend_decl || c->attr.caf_token)
+	      c->backend_decl = field;
+
+	    if (c->attr.pointer && (c->attr.dimension || c->attr.codimension)
+		&& !(c->ts.type == BT_DERIVED && strcmp (c->name, "_data") == 0))
+	      GFC_DECL_PTR_ARRAY_P (c->backend_decl) = 1;
+	  }
+      }
+
+    tree* ptr = &TYPE_FIELDS (typenode);
+    for (c = derived->components, i = 0; c; c = c->next, i++)
+      {
+	tree field = fields[i];
+	*ptr = field;
+	ptr = &DECL_CHAIN (field);
+      }
+  }
 
   if (derived->attr.is_class)
     GFC_CLASS_TYPE_P (typenode) = 1;
