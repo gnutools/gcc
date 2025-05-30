@@ -127,4 +127,7 @@ tree gfc_build_incomplete_array_type (tree, tree);
 
 tree gfc_get_unbounded_array_type (tree);
 
+bool gfc_type_contains_placeholder_p (tree);
+tree gfc_substitute_placeholder_in_type (tree, tree, stmtblock_t *);
+
 #endif

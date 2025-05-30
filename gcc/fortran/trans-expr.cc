@@ -2981,7 +2981,11 @@ gfc_conv_component_ref (gfc_se * se, gfc_ref * ref)
   else
     se->class_vptr = NULL_TREE;
 
-  tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
+  tree type = TREE_TYPE (field);
+  if (gfc_type_contains_placeholder_p (type))
+    type = gfc_substitute_placeholder_in_type (type, decl, &se->pre);
+
+  tmp = fold_build3_loc (input_location, COMPONENT_REF, type,
 			 decl, field, NULL_TREE);
 
   se->expr = tmp;

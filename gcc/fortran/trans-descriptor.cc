@@ -174,85 +174,6 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #define UBOUND_SUBFIELD 2
 
 
-static tree
-substitute_placeholder_in_type (tree type, tree root_struct)
-{
-  tree type_size = TYPE_SIZE (type);
-  tree modified_type_size = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size,
-							    root_struct);
-  tree type_size_unit = TYPE_SIZE_UNIT (type);
-  tree modified_type_size_unit = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size_unit,
-								 root_struct);
-
-  switch (TREE_CODE (type))
-    {
-    case POINTER_TYPE:
-      {
-	tree subtype = TREE_TYPE (type);
-	tree modified_subtype = substitute_placeholder_in_type (subtype,
-								root_struct);
-	if (modified_subtype == subtype
-	    && modified_type_size == type_size
-	    && modified_type_size_unit == type_size_unit)
-	  return type;
-	else
-	  return build_pointer_type (modified_subtype);
-      }
-      break;
-
-    case ARRAY_TYPE:
-      {
-	tree elt_type = TREE_TYPE (type);
-	tree modified_elt_type = substitute_placeholder_in_type (elt_type,
-								 root_struct);
-	tree idx_type = TYPE_DOMAIN (type);
-	tree modified_idx_type = substitute_placeholder_in_type (idx_type,
-								 root_struct);
-	if (modified_elt_type == elt_type
-	    && modified_idx_type == idx_type
-	    && modified_type_size == type_size
-	    && modified_type_size_unit == type_size_unit)
-	  return type;
-	else
-	  {
-	    tree new_type = build_array_type (modified_elt_type,
-					      modified_idx_type);
-	    TYPE_STRING_FLAG (new_type) = TYPE_STRING_FLAG (type);
-	    return new_type;
-	  }
-      }
-      break;
-
-    case INTEGER_TYPE:
-      {
-	tree min_val = TYPE_MIN_VALUE (type);
-	tree modified_min_val = SUBSTITUTE_PLACEHOLDER_IN_EXPR (min_val,
-								root_struct);
-	tree max_val = TYPE_MAX_VALUE (type);
-	tree modified_max_val = SUBSTITUTE_PLACEHOLDER_IN_EXPR (max_val,
-								root_struct);
-	if (modified_min_val == min_val
-	    && modified_max_val == max_val
-	    && modified_type_size == type_size
-	    && modified_type_size_unit == type_size_unit)
-	  return type;
-	else
-	  {
-	    tree new_type = build_range_type (type, modified_min_val,
-					      modified_max_val);
-	    TYPE_SIZE (new_type) = modified_type_size;
-	    TYPE_SIZE_UNIT (new_type) = modified_type_size_unit;
-	    return new_type;
-	  }
-      }
-      break;
-
-    default:
-      gcc_unreachable ();
-    }
-}
-
-
 namespace gfc_descriptor
 {
 
@@ -303,9 +224,9 @@ conv_data_get (tree desc)
 
   tree field = get_data (desc);
   tree target_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
-  gcc_assert (TREE_CODE (target_type) == POINTER_TYPE);
-  if (type_contains_placeholder_p (TREE_TYPE (target_type)))
-    target_type = substitute_placeholder_in_type (target_type, desc);
+  if (gfc_type_contains_placeholder_p (target_type))
+    target_type = gfc_substitute_placeholder_in_type (target_type, desc,
+						      nullptr);
   tree t = fold_convert (target_type, field);
   return non_lvalue_loc (input_location, t);
 }
@@ -314,7 +235,10 @@ void
 conv_data_set (stmtblock_t *block, tree desc, tree value)
 {
   tree field = get_data (desc);
-  gfc_add_modify (block, field, fold_convert (TREE_TYPE (field), value));
+  tree type = TREE_TYPE (field);
+  if (gfc_type_contains_placeholder_p (type))
+    type = gfc_substitute_placeholder_in_type (type, desc, block);
+  gfc_add_modify (block, field, fold_convert (type, value));
 }
 
 tree
@@ -3137,9 +3061,7 @@ placeholder_free_element_type (tree type)
     return true;
 
   tree data_ptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
-  gcc_assert (TREE_CODE (data_ptr_type) == POINTER_TYPE);
-
-  return !type_contains_placeholder_p (TREE_TYPE (data_ptr_type));
+  return !gfc_type_contains_placeholder_p (data_ptr_type);
 }
 
 
@@ -3153,7 +3075,8 @@ get_descriptor_dtype (tree desc, int * prank)
   else
     {
       tree data_ptr_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
-      data_ptr_type = substitute_placeholder_in_type (data_ptr_type, desc);
+      data_ptr_type = gfc_substitute_placeholder_in_type (data_ptr_type, desc,
+							  nullptr);
 
       gcc_assert (TREE_CODE (data_ptr_type) == POINTER_TYPE);
       tree etype = TREE_TYPE (data_ptr_type);

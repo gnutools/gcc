@@ -4470,4 +4470,113 @@ gfc_get_unbounded_array_type (tree type)
 }
 
 
+bool
+gfc_type_contains_placeholder_p (tree type)
+{
+  /* The middle-end function doesn't look at
+     pointer target type, circumvent it here.  */
+  if (TREE_CODE (type) == POINTER_TYPE)
+    return gfc_type_contains_placeholder_p (TREE_TYPE (type));
+  else
+    return type_contains_placeholder_p (type);
+}
+
+
+static tree
+substitute_in_expr (tree expr, tree repl_expr, stmtblock_t *block)
+{
+  tree new_expr = SUBSTITUTE_PLACEHOLDER_IN_EXPR (expr, repl_expr);
+  if (new_expr != expr
+      && !VAR_P (new_expr))
+    {
+      if (block == nullptr)
+	return save_expr (new_expr);
+      else
+	return gfc_evaluate_now (new_expr, block);
+    }
+  else
+    return new_expr;
+}
+
+
+tree
+gfc_substitute_placeholder_in_type (tree type, tree root_struct, stmtblock_t *block)
+{
+  tree type_size = TYPE_SIZE (type);
+  tree new_type_size = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size, root_struct);
+
+  tree type_size_unit = TYPE_SIZE_UNIT (type);
+  tree new_type_size_unit = SUBSTITUTE_PLACEHOLDER_IN_EXPR (type_size_unit,
+							    root_struct);
+
+  switch (TREE_CODE (type))
+    {
+    case POINTER_TYPE:
+      {
+	tree subtype = TREE_TYPE (type);
+	tree new_subtype = gfc_substitute_placeholder_in_type (subtype,
+							       root_struct,
+							       block);
+	if (new_subtype == subtype
+	    && new_type_size == type_size
+	    && new_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  return build_pointer_type (new_subtype);
+      }
+      break;
+
+    case ARRAY_TYPE:
+      {
+	tree elt_type = TREE_TYPE (type);
+	tree new_elt_type = gfc_substitute_placeholder_in_type (elt_type,
+								root_struct,
+								block);
+	tree idx_type = TYPE_DOMAIN (type);
+	tree new_idx_type = gfc_substitute_placeholder_in_type (idx_type,
+								root_struct,
+								block);
+	if (new_elt_type == elt_type
+	    && new_idx_type == idx_type
+	    && new_type_size == type_size
+	    && new_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  {
+	    tree new_type = build_array_type (new_elt_type, new_idx_type);
+	    TYPE_STRING_FLAG (new_type) = TYPE_STRING_FLAG (type);
+	    return new_type;
+	  }
+      }
+      break;
+
+    case INTEGER_TYPE:
+      {
+	tree min_val = TYPE_MIN_VALUE (type);
+	tree new_min_val = substitute_in_expr (min_val, root_struct, block);
+
+	tree max_val = TYPE_MAX_VALUE (type);
+	tree new_max_val = substitute_in_expr (max_val, root_struct, block);
+
+	if (new_min_val == min_val
+	    && new_max_val == max_val
+	    && new_type_size == type_size
+	    && new_type_size_unit == type_size_unit)
+	  return type;
+	else
+	  {
+	    tree new_type = build_range_type (type, new_min_val, new_max_val);
+	    TYPE_SIZE (new_type) = new_type_size;
+	    TYPE_SIZE_UNIT (new_type) = new_type_size_unit;
+	    return new_type;
+	  }
+      }
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
+
 #include "gt-fortran-trans-types.h"
