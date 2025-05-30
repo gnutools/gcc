@@ -1882,8 +1882,12 @@ gfc_deallocate_with_status (tree pointer, tree status, tree errmsg, tree errlen,
 			    omp_tmp, tmp);
 	}
       gfc_add_expr_to_block (&non_null, tmp);
-      gfc_add_modify (&non_null, pointer, build_int_cst (TREE_TYPE (pointer),
-							 0));
+      if (descr)
+	gfc_conv_descriptor_data_set (&non_null, descr,
+				      build_int_cst (ptr_type_node, 0));
+      else
+	gfc_add_modify (&non_null, pointer,
+			build_int_cst (TREE_TYPE (pointer), 0));
       if (flag_openmp_allocators && descr)
 	gfc_conv_descriptor_version_set (&non_null, descr, integer_zero_node);
 
@@ -1949,10 +1953,19 @@ gfc_deallocate_with_status (tree pointer, tree status, tree errmsg, tree errlen,
       if (status != NULL_TREE && !integer_zerop (status))
 	{
 	  tree stat = build_fold_indirect_ref_loc (input_location, status);
-	  tree nullify = fold_build2_loc (input_location, MODIFY_EXPR,
-					  void_type_node, pointer,
-					  build_int_cst (TREE_TYPE (pointer),
-							 0));
+	  tree nullify;
+	  if (descr)
+	    {
+	      stmtblock_t blk;
+	      gfc_init_block (&blk);
+	      gfc_conv_descriptor_data_set (&blk, descr,
+					    build_int_cst (ptr_type_node, 0));
+	      nullify = gfc_finish_block (&blk);
+	    }
+	  else
+	    nullify = fold_build2_loc (input_location, MODIFY_EXPR,
+				       void_type_node, pointer,
+				       build_int_cst (TREE_TYPE (pointer), 0));
 
 	  TREE_USED (label_finish) = 1;
 	  tmp = build1_v (GOTO_EXPR, label_finish);
@@ -1963,6 +1976,9 @@ gfc_deallocate_with_status (tree pointer, tree status, tree errmsg, tree errlen,
 				 tmp, nullify);
 	  gfc_add_expr_to_block (&non_null, tmp);
 	}
+      else if (descr)
+	gfc_conv_descriptor_data_set (&non_null, descr,
+				      build_int_cst (ptr_type_node, 0));
       else
 	gfc_add_modify (&non_null, pointer, build_int_cst (TREE_TYPE (pointer),
 							   0));
