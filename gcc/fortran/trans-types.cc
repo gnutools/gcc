@@ -3228,7 +3228,8 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 	do_loop = false;
 	for (c = derived->components, i = 0; c; c = c->next, i++)
 	  {
-	    if (c->backend_decl)
+	    if (fields.length () > i
+		&& fields[i] != nullptr)
 	      continue;
 
 	    bool same_alloc_type = c->attr.allocatable
