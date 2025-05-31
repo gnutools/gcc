@@ -7836,6 +7836,7 @@ gfc_generate_function_code (gfc_namespace * ns)
 	fsym->backend_decl = NULL;
 	tree type = gfc_sym_type (fsym);
 	gcc_assert (POINTER_TYPE_P (type));
+	tree desc_type = TREE_TYPE (type);
 	if (POINTER_TYPE_P (TREE_TYPE (type)))
 	  /* For instance, allocatable scalars.  */
 	  type = TREE_TYPE (type);
@@ -7867,6 +7868,31 @@ gfc_generate_function_code (gfc_namespace * ns)
 	  }
 	fsym->backend_decl = desc_p;
 	gfc_conv_cfi_to_gfc (&init, &cleanup, tmp, desc, fsym);
+	if (GFC_DESCRIPTOR_TYPE_P (desc_type)
+	    && TYPE_LANG_SPECIFIC (desc_type))
+	  {
+	    if (GFC_TYPE_ARRAY_ELEM_LEN (desc_type)
+		&& TREE_CODE (GFC_TYPE_ARRAY_ELEM_LEN (desc_type)) == SAVE_EXPR)
+	      GFC_TYPE_ARRAY_ELEM_LEN (desc_type) =
+			      gfc_evaluate_now (GFC_TYPE_ARRAY_ELEM_LEN (desc_type),
+						&init);
+
+	    if (GFC_TYPE_ARRAY_OFFSET (desc_type)
+		&& TREE_CODE (GFC_TYPE_ARRAY_OFFSET (desc_type)) == SAVE_EXPR)
+	      GFC_TYPE_ARRAY_OFFSET (desc_type)
+			      = gfc_evaluate_now (GFC_TYPE_ARRAY_OFFSET (desc_type),
+						  &init);
+				    
+
+	    if (GFC_TYPE_ARRAY_RANK (desc_type) > 0)
+	      for (int i = 0; i < GFC_TYPE_ARRAY_RANK (desc_type); i++)
+		if (GFC_TYPE_ARRAY_SPACING (desc_type, i)
+		    && TREE_CODE (GFC_TYPE_ARRAY_SPACING (desc_type, i))
+		       == SAVE_EXPR)
+		  GFC_TYPE_ARRAY_SPACING (desc_type, i)
+			  = gfc_evaluate_now (GFC_TYPE_ARRAY_SPACING (desc_type, i),
+					      &init);
+	  }
       }
 
   /* For OpenMP, ensure that declare variant in INTERFACE is is processed
