@@ -8596,25 +8596,19 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	{
 	  tmp = build_fold_indirect_ref_loc (input_location, desc);
 
-	  gfc_ss * ss = gfc_walk_expr (expr);
-	  if (!transposed_dims (ss))
+	  if (!ctree)
 	    {
-	      if (!ctree)
-		gfc_conv_descriptor_data_set (&se->pre, tmp, ptr);
-	    }
-	  else if (!ctree)
-	    {
-	      /* The original descriptor has transposed dims so we can't reuse
-		 it directly; we have to create a new one.  */
+	      gfc_ss * ss = gfc_walk_expr (expr);
+
 	      tree old_desc = tmp;
 	      tree new_desc = gfc_create_var (TREE_TYPE (old_desc), "arg_desc");
 
-	      gfc_copy_descriptor_info (&se->pre, old_desc, new_desc, expr->rank, ss);
-	      gfc_conv_descriptor_data_set (&se->pre, new_desc, ptr);
-
+	      gfc_copy_descriptor_to_contiguous (&se->pre, old_desc, new_desc,
+						 ptr, expr->rank, ss);
 	      se->expr = gfc_build_addr_expr (NULL_TREE, new_desc);
+
+	      gfc_free_ss (ss);
 	    }
-	  gfc_free_ss (ss);
 	}
 
       if (gfc_option.rtcheck & GFC_RTCHECK_ARRAY_TEMPS)

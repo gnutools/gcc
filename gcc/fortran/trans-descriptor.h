@@ -36,7 +36,7 @@ void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
 int gfc_descriptor_rank (tree);
 
 void gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
-			  gfc_expr *src_expr, bool subref);
+                         gfc_expr *src_expr, bool subref);
 
 tree gfc_conv_descriptor_data_get (tree);
 tree gfc_conv_descriptor_offset_get (tree);
@@ -100,8 +100,7 @@ tree gfc_descr_init_count (tree, int, int, gfc_expr **, gfc_expr **,
 			   stmtblock_t *, stmtblock_t *, tree *, tree,
 			   gfc_expr *, tree, bool, gfc_expr *, tree,
 			   gfc_typespec *, tree *);
-void
-gfc_copy_descriptor_info (stmtblock_t *, tree, tree, int, gfc_ss *);
+void gfc_copy_descriptor_to_contiguous (stmtblock_t *, tree, tree, tree, int, gfc_ss *);
 void
 gfc_set_contiguous_array (stmtblock_t *block, tree desc, tree size,
 			  tree data_ptr);

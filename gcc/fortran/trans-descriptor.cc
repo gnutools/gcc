@@ -520,14 +520,6 @@ conv_dimension_get (tree desc, tree dim)
   return non_lvalue_loc (input_location, get_dimension (desc, dim));
 }
 
-void
-conv_dimension_set (stmtblock_t *block, tree desc, tree dim, tree value)
-{
-  location_t loc = input_location;
-  tree t = get_dimension (desc, dim);
-  gfc_add_modify_loc (loc, block, t, value);
-}
-
 
 tree
 get_token_field (tree desc)
@@ -3549,22 +3541,46 @@ gfc_descr_init_count (tree descriptor, int rank, int corank, gfc_expr ** lower,
 
 
 void
-gfc_copy_descriptor_info (stmtblock_t *block, tree src, tree dest, int rank,
-			  gfc_ss *ss)
+gfc_copy_descriptor_to_contiguous (stmtblock_t *block, tree src, tree dest, 
+				   tree cont_ptr, int rank, gfc_ss *ss)
 {
   tree old_field = gfc_conv_descriptor_dtype_get (src);
   gfc_conv_descriptor_dtype_set (block, dest, old_field);
 
-  old_field = gfc_conv_descriptor_offset_get (src);
-  gfc_conv_descriptor_offset_set (block, dest, old_field);
+  tree offset = gfc_index_zero_node;
+  tree spacing = gfc_conv_descriptor_span_get (src);
+  spacing = gfc_evaluate_now (spacing, block);
 
   for (int i = 0; i < rank; i++)
     {
       tree src_dim = gfc_rank_cst[gfc_get_array_ref_dim_for_loop_dim (ss, i)];
-      old_field = gfc_conv_descriptor_dimension_get (src, src_dim);
-      gfc_descriptor::conv_dimension_set (block, dest, gfc_rank_cst[i],
-					  old_field);
+
+      tree lbound = gfc_conv_descriptor_lbound_get (src, src_dim);
+      lbound = gfc_evaluate_now (lbound, block);
+      gfc_conv_descriptor_lbound_set (block, dest, gfc_rank_cst[i], lbound);
+
+      tree ubound = gfc_conv_descriptor_ubound_get (src, src_dim);
+      ubound = gfc_evaluate_now (ubound, block);
+      gfc_conv_descriptor_ubound_set (block, dest, gfc_rank_cst[i], ubound);
+
+      gfc_conv_descriptor_spacing_set (block, dest, gfc_rank_cst[i], spacing);
+
+      tree tmp = fold_build2_loc (input_location, MULT_EXPR,
+				  gfc_array_index_type, spacing, lbound);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, tmp);
+      if (i < rank - 1)
+	{
+	  tree extent = gfc_conv_array_extent_dim (lbound, ubound, nullptr);
+	  spacing = fold_build2_loc (input_location, MULT_EXPR,
+				     gfc_array_index_type, spacing, extent);
+	  spacing = gfc_evaluate_now (spacing, block);
+	}
     }
+
+  gfc_conv_descriptor_offset_set (block, dest, offset);
+
+  gfc_conv_descriptor_data_set (block, dest, cont_ptr);
 
   if (flag_coarray == GFC_FCOARRAY_LIB
       && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src))
