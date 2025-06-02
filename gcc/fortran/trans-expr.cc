@@ -7588,6 +7588,10 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 
 	      else if (e->expr_type == EXPR_VARIABLE
 		    && is_subref_array (e)
+		    && !(fsym && fsym->as
+			 && (fsym->as->type == AS_ASSUMED_SHAPE
+			     || fsym->as->type == AS_ASSUMED_RANK
+			     || fsym->as->type == AS_DEFERRED))
 		    && !(fsym && fsym->attr.pointer))
 		/* The actual argument is a component reference to an
 		   array of derived types.  In this case, the argument
