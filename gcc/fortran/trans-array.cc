@@ -7606,11 +7606,11 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       substr = info->ref && info->ref->next
 	       && info->ref->next->type == REF_SUBSTRING;
 
-      subref_array_target = (is_subref_array (expr)
-			     && (se->direct_byref
-				 || expr->ts.type == BT_CHARACTER));
+      subref_array_target = is_subref_array (expr);
       need_tmp = (gfc_ref_needs_temporary_p (expr->ref)
-		  && !subref_array_target);
+		  && !(subref_array_target
+		       && (se->direct_byref
+			   || expr->ts.type == BT_CHARACTER)));
 
       if (se->force_tmp)
 	need_tmp = 1;
