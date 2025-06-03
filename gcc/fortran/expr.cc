@@ -1183,9 +1183,6 @@ is_subref_array (gfc_expr * e)
 
   sym = e->symtree->n.sym;
 
-  if (sym->attr.subref_array_pointer)
-    return true;
-
   seen_array = false;
 
   for (ref = e->ref; ref; ref = ref->next)
