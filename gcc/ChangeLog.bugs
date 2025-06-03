@@ -1,3 +1,33 @@
+==================== Branch work210-bugs, patch #111 ====================
+
+PR target/120528 -- Simplify zero extend from memory to VSX register on power10
+
+Previously GCC would zero extend a DImode value in memory to a TImode target in
+a vector register by firt zero extending the DImode value into a GPR TImode
+register pair, and then do a MTVSRDD to move this value to a VSX register.
+
+This patch creates a peephole2 to catch this case, and it eliminates creating
+the TImode variable.  Instead it just does the LXVR{B,H,W,D}x instruction
+directly.
+
+I have built GCC with the patches in this patch set applied on both little and
+big endian PowerPC systems and there were no regressions.  Can I apply this
+patch to GCC 16?
+
+2025-06-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120528
+	* config/rs6000/rs6000.md (zero_extend??ti2 peephole2): Add a peephole2
+	to simplify zero extending a QI/HI/SI/DImode value in memory to a TImode
+	target in a vector register to use the LXVR{B,H,W,D}X instructins.
+
+gcc/testsuite/
+
+	PR target/120528
+	* gcc.target/powerpc/pr120528.c: New test.
+
 ==================== Branch work210-bugs, patch #110 ====================
 
 PR target/108958 -- simplify mtvsrdd to zero extend GPR DImode to VSX TImode
