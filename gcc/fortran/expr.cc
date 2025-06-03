@@ -1176,12 +1176,9 @@ is_subref_array (gfc_expr * e)
 {
   gfc_ref * ref;
   bool seen_array;
-  gfc_symbol *sym;
 
   if (e->expr_type != EXPR_VARIABLE)
     return false;
-
-  sym = e->symtree->n.sym;
 
   seen_array = false;
 
@@ -1205,12 +1202,6 @@ is_subref_array (gfc_expr * e)
 	    && ref->type != REF_ARRAY)
 	return seen_array;
     }
-
-  if (sym->ts.type == BT_CLASS
-      && sym->attr.dummy
-      && CLASS_DATA (sym)->attr.dimension
-      && CLASS_DATA (sym)->attr.class_pointer)
-    return true;
 
   return false;
 }
