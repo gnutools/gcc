@@ -4689,13 +4689,13 @@ exec_context::execute_function (struct function *func)
       bb = e->dest;
     }
 
+  printer.print_function_exit (func);
   if (final_stmt == nullptr)
     return {};
   tree retexpr = gimple_return_retval (final_stmt);
   if (retexpr == NULL_TREE)
     return {};
   data_value result = evaluate (retexpr);
-  printer.print_function_exit (func);
   return result;
 }
 
