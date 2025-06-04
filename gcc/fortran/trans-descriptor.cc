@@ -3086,13 +3086,19 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
 		    tree lowers[GFC_MAX_DIMENSIONS],
 		    tree uppers[GFC_MAX_DIMENSIONS], bool data_needed,
-		    bool subref, bool update_spacing_in_type)
+		    bool subref, bool update_spacing_in_type,
+		    tree elem_len)
 {
   int ndim = info->ref ? info->ref->u.ar.dimen : rank;
 
   /* Set the span field.  */
   tree tmp = NULL_TREE;
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src)))
+  if (subref)
+    {
+      gcc_assert (elem_len != NULL_TREE);
+      tmp = elem_len;
+    }
+  else if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src)))
     tmp = gfc_conv_descriptor_span_get (src);
   else
     tmp = gfc_get_array_span (src, src_expr);
@@ -3122,6 +3128,9 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
   else
     dtype = get_descriptor_dtype (src, &rank);
   gfc_conv_descriptor_dtype_set (block, dest, dtype);
+
+  if (subref)
+    gfc_conv_descriptor_elem_len_set (block, dest, elem_len);
 
   /* The 1st element in the section.  */
   tree base = gfc_index_zero_node;

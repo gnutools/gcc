@@ -7981,9 +7981,40 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 			  gfc_get_array_span (desc, expr)));
 	}
 
+      tree elem_len = NULL_TREE;
+      if (subref_array_target)
+	{
+	  /* In case of subreferences, don't pick element size from the original
+	     descriptor.  */
+	  if (expr->ts.type == BT_CLASS)
+	    {
+	      tree class_container = ss->info->class_container;
+	      tree vptr = gfc_class_vptr_get (class_container);
+	      elem_len = gfc_vptr_size_get (vptr);
+	    }
+	  else if (expr->ts.type == BT_CHARACTER)
+	    {
+	      tree slen = ss->info->string_length;
+	      slen = fold_convert_loc (input_location, gfc_array_index_type,
+				       slen);
+	      tree kind = build_int_cst (gfc_array_index_type,
+					 expr->ts.kind);
+	      elem_len = fold_build2_loc (input_location, MULT_EXPR,
+					  gfc_array_index_type, slen, kind);
+	    }
+	  else 
+	    {
+	      tree elem_type = gfc_get_element_type (TREE_TYPE (parm));
+	      elem_len = TYPE_SIZE_UNIT (elem_type);
+	    }
+
+	  elem_len = fold_convert_loc (input_location, gfc_array_index_type,
+				       elem_len);
+	}
+
       gfc_set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim,
 			  ss, info, loop.from, loop.to, !se->data_not_needed,
-			  subref_array_target, !se->direct_byref);
+			  subref_array_target, !se->direct_byref, elem_len);
 
       desc = parm;
     }
