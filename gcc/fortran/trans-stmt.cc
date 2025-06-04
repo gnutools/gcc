@@ -8009,7 +8009,12 @@ gfc_trans_deallocate (gfc_code *code)
 
 	  if (al->expr->ts.type == BT_CLASS)
 	    {
-	      gfc_reset_vptr (&se.pre, al->expr);
+	      if (is_subref_array (al->expr))
+		/* Finalisation code can create bogus
+		   array subreferences, ignore those.  */
+		;
+	      else
+		gfc_reset_vptr (&se.pre, al->expr);
 	      if (UNLIMITED_POLY (al->expr)
 		  || (al->expr->ts.type == BT_DERIVED
 		      && al->expr->ts.u.derived->attr.unlimited_polymorphic))
