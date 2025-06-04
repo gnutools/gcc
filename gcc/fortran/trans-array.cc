@@ -7994,7 +7994,7 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	    }
 	  else if (expr->ts.type == BT_CHARACTER)
 	    {
-	      tree slen = ss->info->string_length;
+	      tree slen = se->string_length;
 	      slen = fold_convert_loc (input_location, gfc_array_index_type,
 				       slen);
 	      tree kind = build_int_cst (gfc_array_index_type,
