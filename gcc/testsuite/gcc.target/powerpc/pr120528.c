@@ -87,5 +87,5 @@ mem3_to_gpr (TYPE *p, __uint128_t *q)
 
 /* { dg-final { scan-assembler-times {\maddi\M}   1 } } */
 /* { dg-final { scan-assembler-times {\mli\M}     3 } } */
-/* { dg-final { scan-assembler-times {\mlxvrdx\M} 1 } } */
+/* { dg-final { scan-assembler-times {\mlxvrdx\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mstxv\M}   3 } } */
