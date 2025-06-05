@@ -200,14 +200,6 @@ replace_ss (gfc_se *se, gfc_ss *old_ss, gfc_ss *new_ss)
   *sess = new_ss;
   new_ss->next = old_ss->next;
 
-  /* Make sure that trailing references are not lost.  */
-  if (old_ss->info
-      && old_ss->info->data.array.ref
-      && old_ss->info->data.array.ref->next
-      && !(new_ss->info->data.array.ref
-	   && new_ss->info->data.array.ref->next))
-    new_ss->info->data.array.ref = old_ss->info->data.array.ref;
-
   for (loopss = &(se->loop->ss); *loopss != gfc_ss_terminator;
        loopss = &((*loopss)->loop_chain))
     if (*loopss == old_ss)
