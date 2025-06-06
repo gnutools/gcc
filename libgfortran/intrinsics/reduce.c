@@ -160,7 +160,7 @@ reduce (parray *ret,
 	{
 	  off = idx0 * spc0  + idx2 * spc2;
 	  if (mask_present)
-	    maskR = *(mask->base_addr + (size_t) off);
+	    maskR = *((GFC_LOGICAL_4 *) (((char*)mask->base_addr) + (size_t) off));
 
 	  started = (mask_present && maskR) || !mask_present;
 
@@ -175,7 +175,7 @@ reduce (parray *ret,
 		 first element in the reduction.  */
 	      off = idx0 * spc0 + idx1 * spc1 + idx2 * spc2;
 	      if (mask_present)
-		maskR = *(mask->base_addr + (size_t) off);
+		maskR = *((GFC_LOGICAL_4 *) (((char*)mask->base_addr) + (size_t) off));
 
 	      array_ptr = array->base_addr
 			  + (size_t)(idx0 * spc0 + idx1 * spc1 + idx2 * spc2);
