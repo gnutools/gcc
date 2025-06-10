@@ -500,6 +500,10 @@ extern int rs6000_vector_align[];
 #define TARGET_MINMAX	(TARGET_HARD_FLOAT && TARGET_PPC_GFXOPT		\
 			 && (TARGET_P9_MINMAX || !flag_trapping_math))
 
+/* Enable XXEVAL support if we support prefixed instructions and at least
+   power10.  */
+#define TARGET_XXEVAL	(TARGET_POWER10 && TARGET_PREFIXED)
+
 /* In the past we represented the various power cpus (power4, power5, power6,
    etc.) via ISA bits that highlighted a new instruction or we used an extra
    option to represent the hardware (i.e. -mpower8-internal or -mpower10).  Now
