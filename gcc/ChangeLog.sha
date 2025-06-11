@@ -1,3 +1,2313 @@
+==================== Branch work210-sha, patch #345 ====================
+
+PR target/117251: Add tests
+
+This is patch #45 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+This patch adds the tests for generating 'XXEVAL' to the testsuite.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/testsuite/
+
+	PR target/117251
+	* gcc.target/powerpc/p10-vector-fused-1.c: New test.
+	* gcc.target/powerpc/p10-vector-fused-2.c: Likewise.
+
+==================== Branch work210-sha, patch #344 ====================
+
+PR target/117251: Improve vector and to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #44 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c & d) & b);
+
+Generates:
+
+	vand   t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,254
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector and => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #343 ====================
+
+PR target/117251: Improve vector andc to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #43 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c & ~ d) & b);
+
+Generates:
+
+	vandc  t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,253
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector andc => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #342 ====================
+
+PR target/117251: Improve vector xor to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #42 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VXOR' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c ^ d) & b);
+
+Generates:
+
+	vxor   t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,249
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector xor => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #341 ====================
+
+PR target/117251: Improve vector or to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #41 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VOR' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c | d) & b);
+
+Generates:
+
+	vor    t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,248
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector or => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #340 ====================
+
+PR target/117251: Improve vector nor to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #40 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNOR' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c | d)) & b);
+
+Generates:
+
+	vnor   t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,247
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nor => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #339 ====================
+
+PR target/117251: Improve vector eqv to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #39 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VEQV' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c ^ d)) & b);
+
+Generates:
+
+	veqv   t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,246
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector eqv => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #338 ====================
+
+PR target/117251: Improve vector orc to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #38 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c | ~ d) & b);
+
+Generates:
+
+	vorc   t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,244
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #337 ====================
+
+PR target/117251: Improve vector nand to vector nand fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #37 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNAND' instruction feeding into 'VNAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c & d)) & b);
+
+Generates:
+
+	vnand  t,c,d
+	vnand  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,241
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nand => nand fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #336 ====================
+
+PR target/117251: Improve vector nand to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #36 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNAND' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c & d)) | b;
+
+Generates:
+
+	vnand  t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,239
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nand => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #335 ====================
+
+PR target/117251: Improve vector nand to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #35 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNAND' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c & d)) ^ b;
+
+Generates:
+
+	vnand  t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,225
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nand => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #334 ====================
+
+PR target/117251: Improve vector and to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #34 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c & d) | b);
+
+Generates:
+
+	vand   t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,224
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector and => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #333 ====================
+
+PR target/117251: Improve vector andc to vector eqv fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #33 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VEQV'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c & ~ d) ^ b);
+
+Generates:
+
+	vandc  t,c,d
+	veqv   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,210
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector andc => eqv fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #332 ====================
+
+PR target/117251: Improve vector andc to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #32 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c & ~ d) | b);
+
+Generates:
+
+	vandc  t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,208
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector andc => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #331 ====================
+
+PR target/117251: Improve vector orc to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #31 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | ~ d) | b;
+
+Generates:
+
+	vorc   t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,191
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #330 ====================
+
+PR target/117251: Improve vector orc to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #30 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | ~ d) ^ b;
+
+Generates:
+
+	vorc   t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,180
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #329 ====================
+
+PR target/117251: Improve vector eqv to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #29 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VEQV' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c ^ d)) | b;
+
+Generates:
+
+	veqv   t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,159
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector eqv => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #328 ====================
+
+PR target/117251: Improve vector eqv to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #28 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VEQV' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c ^ d)) ^ b;
+
+Generates:
+
+	veqv   t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,150
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector eqv => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #327 ====================
+
+PR target/117251: Improve vector xor to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #27 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VXOR' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c ^ d) | b);
+
+Generates:
+
+	vxor   t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,144
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector xor => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #326 ====================
+
+PR target/117251: Improve vector nor to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #26 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNOR' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c | d)) | b;
+
+Generates:
+
+	vnor   t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,143
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nor => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #325 ====================
+
+PR target/117251: Improve vector nor to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #25 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNOR' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c | d)) ^ b;
+
+Generates:
+
+	vnor   t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,135
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nor => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #324 ====================
+
+PR target/117251: Improve vector or to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #24 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VOR' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c | d) | b);
+
+Generates:
+
+	vor    t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,128
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector or => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #323 ====================
+
+PR target/117251: Improve vector or to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #23 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VOR' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | d) | b;
+
+Generates:
+
+	vor    t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,127
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector or => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #322 ====================
+
+PR target/117251: Improve vector or to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #22 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VOR' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | d) ^ b;
+
+Generates:
+
+	vor    t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,120
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector or => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #321 ====================
+
+PR target/117251: Improve vector nor to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #21 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNOR' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c | d)) | b);
+
+Generates:
+
+	vnor   t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,112
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector nor => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #320 ====================
+
+PR target/117251: Improve vector xor to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #20 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VXOR' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c ^ d) | b;
+
+Generates:
+
+	vxor   t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,111
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector xor => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #319 ====================
+
+PR target/117251: Improve vector xor to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #19 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VXOR' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c ^ d) ^ b;
+
+Generates:
+
+	vxor   t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,105
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector xor => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #318 ====================
+
+PR target/117251: Improve vector eqv to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #18 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VEQV' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c ^ d)) | b);
+
+Generates:
+
+	veqv   t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,96
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector eqv => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #317 ====================
+
+PR target/117251: Improve vector orc to vector orc fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #17 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VORC'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | ~ d) | ~ b;
+
+Generates:
+
+	vorc   t,c,d
+	vorc   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,79
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => orc fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #316 ====================
+
+PR target/117251: Improve vector orc to vector eqv fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #16 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VEQV'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c | ~ d) ^ b);
+
+Generates:
+
+	vorc   t,c,d
+	veqv   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,75
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => eqv fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #315 ====================
+
+PR target/117251: Improve vector orc to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #15 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((c | ~ d) | b);
+
+Generates:
+
+	vorc   t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,64
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector orc => nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #314 ====================
+
+PR target/117251: Improve vector andc to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #14 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & ~ d) | b;
+
+Generates:
+
+	vandc  t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,47
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector andc => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #313 ====================
+
+PR target/117251: Improve vector andc to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #13 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & ~ d) ^ b;
+
+Generates:
+
+	vandc  t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,45
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector andc => xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #312 ====================
+
+PR target/117251: Improve vector and to vector or fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #12 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & d) | b;
+
+Generates:
+
+	vand   t,c,d
+	vor    a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,31
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector and => or fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #311 ====================
+
+PR target/117251: Improve vector and to vector xor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #11 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VXOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & d) ^ b;
+
+Generates:
+
+	vand   t,c,d
+	vxor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,30
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector and/xor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #310 ====================
+
+PR target/117251: Improve vector nand to vector nor fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #10 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNAND' instruction feeding into 'VNOR'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = ~ ((~ (c & d)) | b);
+
+Generates:
+
+	vnand  t,c,d
+	vnor   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,16
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector nand/nor fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #309 ====================
+
+PR target/117251: Improve vector nand to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #9 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNAND' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c & d)) & b;
+
+Generates:
+
+	vnand  t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,14
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector nand/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #308 ====================
+
+PR target/117251: Improve vector andc to vector andc fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #8 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VANDC'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & ~ d) & ~ b;
+
+Generates:
+
+	vandc  t,c,d
+	vandc  a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,13
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector andc/andc fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #307 ====================
+
+PR target/117251: Improve vector orc to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #7 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VORC' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | ~ d) & b;
+
+Generates:
+
+	vorc   t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,11
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector orc/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #306 ====================
+
+PR target/117251: Improve vector eqv to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #6 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VEQV' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c ^ d)) & b;
+
+Generates:
+
+	veqv   t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,9
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector nor/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #305 ====================
+
+PR target/117251: Improve vector nor to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #5 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VNOR' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (~ (c | d)) & b;
+
+Generates:
+
+	vnor   t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,8
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector nor/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #304 ====================
+
+PR target/117251: Improve vector or to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #4 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VOR' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c | d) & b;
+
+Generates:
+
+	vor    t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,7
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector or/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #303 ====================
+
+PR target/117251: Improve vector xor to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #3 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VXOR' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c ^ d) & b;
+
+Generates:
+
+	vxor   t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,6
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector xor/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #302 ====================
+
+PR target/117251: Improve vector andc to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #2 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VANDC' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & ~ d) & b;
+
+Generates:
+
+	vandc  t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,2
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector andc/and fusion if XXEVAL is supported.
+
+==================== Branch work210-sha, patch #301 ====================
+
+PR target/117251: Improve vector and to vector and fusion
+
+See the following post for a complete explanation of what the patches for
+PR target/117251:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2025-June/686474.html
+
+This is patch #1 of 45 to generate the 'XXEVAL' instruction on power10 and
+power11 instead of using the Altivec 'VAND' instruction feeding into 'VAND'.
+The 'XXEVAL' instruction can use all 64 vector registers, instead of the 32
+registers that traditional Altivec vector instructions use.  By allowing all of
+the vector registers to be used, it reduces the amount of spilling that a large
+benchmark generated.
+
+Currently the following code:
+
+	vector int a, b, c, d;
+	a = (c & d) & b;
+
+Generates:
+
+	vand   t,c,d
+	vand   a,t,b
+
+Now in addition with this patch, if the arguments or result is allocated to a
+traditional FPR register, the GCC compiler will now generate the following
+code instead of adding vector move instructions:
+
+	xxeval a,b,c,1
+
+Since fusion using 2 Altivec instructions is slightly faster than using the
+'XXEVAL' instruction we prefer to generate the Altivec instructions if we can.
+In addition, because 'XXEVAL' is a prefixed instruction, it possibly might
+generate an extra NOP instruction to align the 'XXEVAL' instruction.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117251
+	* config/rs6000/fusion.md: Regenerate.
+	* config/rs6000/genfusion.pl (gen_logical_addsubf): Add support to
+	generate vector/vector and/and fusion if XXEVAL is supported.
+	* config/rs6000/predicates.md (vector_fusion_operand): New predicate.
+	* config/rs6000/rs6000.h (TARGET_XXEVAL): New macro.
+	* config/rs6000/rs6000.md (isa attribute): Add xxeval.
+	(enabled attribute): Add support for XXEVAL support.
+
+==================== Branch work210-sha, information ====================
+
+PR target/117251: Add PowerPC XXEVAL support to speed up SHA3 calculations
+
+History: This is version 2 of the patch.  In the original patch, all 44 fusion
+opportunities were lumped together in one patch.  Outside of fusion.md, these
+changes are fairly small, in that it adds one alternative to each of the fusion
+patterns to add xxeval support.  Fusion.md is a generated file (created from
+genfusion.md) that does all of the fusion combinations.  Because of these
+automated changes, fusion.md had 265 lines that were deleted and 397 lines that
+were added.
+
+In version 2 of the patch, I broke the original patch into 45 separate patches.
+The first patch adds the basic support to genfusion.pl, predicates.md, rs6000.h,
+and rs6000.md.  The first patch adds the first fusion case (vector 'AND' fusing
+into vector 'AND'). The next 43 patches each add one more fusion case.  Then the
+last case adds the two test cases.
+
+The multibuff.c benchmark attached to the PR target/117251 compiled for Power10
+PowerPC that implement SHA3 has a slowdown in the current trunk and GCC 14
+compared to GCC 11 - GCC 13, due to excessive amounts of spilling.
+
+The main function for the multibuf.c file has 3,747 lines, all of which are
+using vector unsigned long long.  There are 696 vector rotates (all rotates are
+constant), 1,824 vector xor's and 600 vector andc's.
+
+In looking at it, the main thing that steps out is the reason for either
+spilling or moving variables is the support in fusion.md (generated by
+genfusion.pl) that tries to fuse the vec_andc feeding into vec_xor, and other
+vec_xor's feeding into vec_xor.
+
+On the powerpc for power10, there is a special fusion mode that happens if the
+machine has a VANDC or VXOR instruction that is adjacent to a VXOR instruction
+and the VANDC/VXOR feeds into the 2nd VXOR instruction.
+
+While the Power10 has 64 vector registers (which uses the XXL prefix to do
+logical operations), the fusion only works with the older Altivec instruction
+set (which uses the V prefix).  The Altivec instruction only has 32 vector
+registers (which are overlaid over the VSX vector registers 32-63).
+
+By having the combiner patterns fuse_vandc_vxor and fuse_vxor_vxor to do this
+fusion, it means that the register allocator has more register pressure for the
+traditional Altivec registers instead of the VSX registers.
+
+In addition, since there are vector rotates, these rotates only work on the
+traditional Altivec registers, which adds to the Altivec register pressure.
+
+Finally in addition to doing the explicit xor, andc, and rotates using the
+Altivec registers, we have to also load vector constants for the rotate amount
+and these registers also are allocated as Altivec registers.
+
+Current trunk and GCC 12-14 have more vector spills than GCC 11, but GCC 11 has
+many more vector moves that the later compilers.  Thus even though it has way
+less spills, the vector moves are why GCC 11 have the slowest results.
+
+There is an instruction that was added in power10 (XXEVAL) that does provide
+fusion between VSX vectors that includes ANDC->XOR and XOR->XOR fusion.
+
+The latency of XXEVAL is slightly more than the fused VANDC/VXOR or VXOR/VXOR,
+so I have written the patch to prefer doing the Altivec instructions if they
+don't need a temporary register.
+
+Here are the results for adding support for XXEVAL for the multibuff.c
+benchmark attached to the PR.  Note that we essentially recover the speed with
+this patch that were lost with GCC 14 and the current trunk:
+
+                               XXEVAL   Trunk   GCC15   GCC14    GCC13   GCC12
+                               ------   -----   -----   -----    -----   -----
+Multibuf time in seconds        5.600   6.151   6.129   6.053    5.539   5.598
+XXEVAL improvement percentage     ---   +9.8%   +9.4%   +8.1%    -1.1%      0%
+
+Fuse VANDC -> VXOR                209     600      600    600     600      600
+Fuse VXOR -> VXOR                   0     241      241    240     120      120
+XXEVAL to fuse ANDC -> XOR (#45)  391       0        0      0       0        0
+XXEVAL to fuse XOR -> XOR (#105)  240       0        0      0       0        0
+
+Spill vector to stack             140     417      417     403    226      239
+Load spilled vector from stack    490   1,012    1,012   1,000    766      782
+Vector moves                        8      93      100      70     72       72
+
+XXLANDC or VANDC                  209     600      600     600    600      600
+XXLXOR or VXOR                    953   1,824    1,824   1,824  1,824    1,825
+XXEVAL                            631       0        0       0      0        0
+
+
+Here are the results for adding support for XXEVAL for the singlebuff.c
+benchmark attached to the PR.  Note that adding XXEVAL greatly speeds up this
+particular benchmark:
+
+                               XXEVAL   Trunk   GCC15   GCC14    GCC13   GCC12
+                               ------   -----   -----   -----    -----   -----
+Singlebuf time in seconds       4.429   5.330   5.333   5.315    5.270   5.278
+XXEVAL improvement percentage     ---  +20.3%  +20.4%  +20.0%   +19.0%  +19.2%
+
+Fuse VANDC -> VXOR                210     600     600     600      600     600
+Fuse VXOR -> VXOR                   0     240     240     240      120     120
+XXEVAL to fuse ANDC -> XOR (#45)  390       0       0       0        0       0
+XXEVAL to fuse XOR -> XOR (#105)  240       0       0       0        0       0
+
+Spill vector to stack             134     388     388     388      391     391
+Load spilled vector from stack    357     808     808     808      769     769
+Vector moves                       34      80      80      80      119     119
+
+XXLANDC or VANDC                  210     600     600     600      600     600
+XXLXOR or VXOR                    954   1,824   1,824   1,824    1,824   1,824
+XXEVAL                            630       0       0       0        0       0
+
+
+These patches add the following fusion patterns:
+
+        xxland  => xxland       xxlandc => xxland       xxlxor  => xxland
+        xxlor   => xxland       xxlnor  => xxland       xxleqv  => xxland
+        xxlorc  => xxland       xxlandc => xxlandc      xxlnand => xxland
+        xxlnand => xxlnor       xxland  => xxlxor       xxland  => xxlor
+        xxlandc => xxlxor       xxlandc => xxlor        xxlorc  => xxlnor
+        xxlorc  => xxleqv       xxlorc  => xxlorc       xxleqv  => xxlnor
+        xxlxor  => xxlxor       xxlxor  => xxlor        xxlnor  => xxlnor
+        xxlor   => xxlxor       xxlor   => xxlor        xxlor   => xxlnor
+        xxlnor  => xxlxor       xxlnor  => xxlor        xxlxor  => xxlnor
+        xxleqv  => xxlxor       xxleqv  => xxlor        xxlorc  => xxlxor
+        xxlorc  => xxlor        xxlandc => xxlnor       xxlandc => xxleqv
+        xxland  => xxlnor       xxlnand => xxlxor       xxlnand => xxlor
+        xxlnand => xxlnand      xxlorc  => xxlnand      xxleqv  => xxlnand
+        xxlnor  => xxlnand      xxlor   => xxlnand      xxlxor  => xxlnand
+        xxlandc => xxlnand      xxland  => xxlnand
+
 ==================== Branch work210-sha, baseline ====================
 
 2025-05-29   Michael Meissner  <meissner@linux.ibm.com>
