@@ -2450,6 +2450,7 @@ namespace selftest
   void exec_context_evaluate_unary_tests ();
   void exec_context_evaluate_binary_tests ();
   void exec_context_execute_assign_tests ();
+  void exec_context_print_call_tests ();
   void exec_context_execute_call_tests ();
   void exec_context_allocate_tests ();
   void exec_context_evaluate_condition_tests ();
@@ -2462,7 +2463,7 @@ class data_value
   wide_int constant_mask;
   wide_int address_mask;
   wide_int constant_value;
-  vec<stored_address> addresses;
+  auto_vec<stored_address> addresses;
   void set_cst_at (unsigned dest_offset, unsigned value_width,
 		   const wide_int &val, unsigned src_offset);
   stored_address *find_address (HOST_WIDE_INT offset) const;
@@ -2583,6 +2584,7 @@ class context_printer
   friend void selftest::context_printer_print_tests ();
   friend void selftest::context_printer_print_first_data_ref_part_tests ();
   friend void selftest::context_printer_print_value_update_tests ();
+  friend void selftest::exec_context_print_call_tests ();
 
 public:
   context_printer ();
@@ -2595,7 +2597,9 @@ public:
   void print_function_exit (struct function * func);
   void print_bb_jump (edge e);
   void print_bb_entry (basic_block bb);
-  tree print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset, int * ignored_bits);
+  tree print_first_data_ref_part (exec_context & context, tree data_ref,
+				  unsigned offset, int * ignored_bits,
+				  enum value_type);
   void print_ignored_stmt ();
   void print_value_update (exec_context & context, tree, const data_value &); 
   void end_stmt (gimple *);
@@ -2976,7 +2980,8 @@ context_printer::print_bb_entry (basic_block bb)
 
 
 static tree
-pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
+pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
+		unsigned min_size)
 {
   tree ref = var_ref;
   unsigned remaining_offset = offset;
@@ -2988,11 +2993,15 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
 	  tree elt_type = TREE_TYPE (var_type);
 	  unsigned elt_width;
 	  gcc_assert (get_constant_type_size (elt_type, elt_width));
+	  if (elt_width < min_size)
+	    return NULL_TREE;
 	  unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
 	  tree t_idx = build_int_cst (integer_type_node, hw_idx);
 	  ref = build4 (ARRAY_REF, elt_type, ref,
 			t_idx, NULL_TREE, NULL_TREE);
 	  remaining_offset -= hw_idx * elt_width;
+	  if (elt_width == min_size)
+	    break;
 	}
       else if (TREE_CODE (var_type) == RECORD_TYPE)
 	{
@@ -3029,7 +3038,15 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
 	  gcc_assert (field != NULL_TREE
 		      && field_position >= 0);
 
-	  ref = build3 (COMPONENT_REF, TREE_TYPE (field),
+	  tree field_type = TREE_TYPE (field);
+
+	  unsigned field_width;
+	  if (!get_constant_type_size (field_type, field_width))
+	    gcc_unreachable ();
+	  else if (field_width < min_size)
+	    return NULL_TREE;
+
+	  ref = build3 (COMPONENT_REF, field_type,
 			ref, field, NULL_TREE);
 	  if (field_position > remaining_offset)
 	    {
@@ -3039,6 +3056,9 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
 	    }
 	  else
 	    remaining_offset -= field_position;
+
+	  if (field_width == min_size)
+	    break;
 	}
       else
 	break;
@@ -3057,7 +3077,7 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits)
 
 static tree
 find_mem_ref_replacement (exec_context & context, tree data_ref, 
-			  unsigned offset)
+			  unsigned offset, unsigned min_size)
 {
   tree ptr = TREE_OPERAND (data_ref, 0);
   data_value ptr_val = context.evaluate (ptr);
@@ -3076,42 +3096,76 @@ find_mem_ref_replacement (exec_context & context, tree data_ref,
   if (var_type == access_type)
     return var_ref;
   else
-  {
-    tree access_offset = TREE_OPERAND (data_ref, 1);
-    gcc_assert (TREE_CONSTANT (access_offset));
-    gcc_assert (tree_fits_shwi_p (access_offset));
-    HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
-    gcc_assert (offset < UINT_MAX - shwi_offset);
-    HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT
-				     + offset + ptr_address->offset;
+    {
+      tree access_offset = TREE_OPERAND (data_ref, 1);
+      gcc_assert (TREE_CONSTANT (access_offset));
+      gcc_assert (tree_fits_shwi_p (access_offset));
+      HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
+      gcc_assert (offset < UINT_MAX - shwi_offset);
+      HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT
+				       + offset + ptr_address->offset;
 
-    return pick_subref_at (var_ref, remaining_offset, nullptr);
-  }
+      return pick_subref_at (var_ref, remaining_offset, nullptr, min_size);
+    }
 }
 
 
 tree
-context_printer::print_first_data_ref_part (exec_context & context, tree data_ref, unsigned offset, int * ignored_bits)
+context_printer::print_first_data_ref_part (exec_context & context,
+					    tree data_ref, unsigned offset,
+					    int * ignored_bits,
+					    enum value_type val_type)
 {
+  unsigned min_size;
+  if (val_type == VAL_ADDRESS)
+    min_size = HOST_BITS_PER_PTR;
+  else
+    min_size = CHAR_BIT;
+
+  tree default_ref = NULL_TREE;
   switch (TREE_CODE (data_ref))
     {
     case MEM_REF:
       {
 	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
-							 offset);
+							 offset, min_size);
 	if (mem_replacement != NULL_TREE)
-	  return print_first_data_ref_part (context, mem_replacement, 0, ignored_bits);
+	  return print_first_data_ref_part (context, mem_replacement, 0, ignored_bits,
+					    val_type);
+
+	unsigned orig_type_size;
+	if (!get_constant_type_size (TREE_TYPE (data_ref), orig_type_size))
+	  gcc_unreachable ();
+	else if (min_size < orig_type_size)
+	  {
+	    tree elt_type;
+	    if (val_type == VAL_ADDRESS)
+	      elt_type = ptr_type_node;
+	    else
+	      elt_type = char_type_node;
+
+	    gcc_assert (offset % CHAR_BIT == 0);
+	    tree ptr_type = build_pointer_type (elt_type);
+	    default_ref = build2 (MEM_REF, elt_type,
+				  TREE_OPERAND (data_ref, 0),
+				  build_int_cst (ptr_type, offset / CHAR_BIT));
+	  }
+	else
+	  gcc_assert (min_size == orig_type_size);
       }
 
     /* Fall through.  */
 
     default:
-      tree ref = pick_subref_at (data_ref, offset, ignored_bits);
+      tree ref = pick_subref_at (data_ref, offset, ignored_bits, min_size);
       if (ref == NULL_TREE)
 	{
-	  gcc_assert (ignored_bits != nullptr
-		      && *ignored_bits > 0);
-	  return NULL_TREE;
+	  if (ignored_bits != nullptr && *ignored_bits > 0)
+	    return NULL_TREE;
+
+	  ref = default_ref;
+	  if (ref == NULL_TREE)
+	    ref = data_ref;
 	}
 
       pp_indent (&pp);
@@ -3139,10 +3193,10 @@ context_printer::print_value_update (exec_context & context, tree lhs, const dat
   unsigned width = get_constant_type_size (TREE_TYPE (lhs));
   while (previously_done < width)
     {
+      enum value_type val_type = value.classify (previously_done, 1);
       int ignored_bits = 0;
-      tree type_done = print_first_data_ref_part (context, lhs,
-						  previously_done,
-						  &ignored_bits);
+      tree type_done = print_first_data_ref_part (context, lhs, previously_done,
+						  &ignored_bits, val_type);
       if (type_done == NULL_TREE)
 	{
 	  gcc_assert (ignored_bits > 0);
@@ -3221,7 +3275,7 @@ data_value::data_value (const data_value & other)
   constant_mask (other.constant_mask),
   address_mask (other.address_mask),
   constant_value (other.constant_value),
-  addresses (other.addresses)
+  addresses (other.addresses.copy ())
 {}
 
 
@@ -4442,10 +4496,17 @@ exec_context::execute_call (gcall *g)
       data_storage & storage1 = addr1.storage.get ();
       data_value src = storage1.get_value ();
       wide_int wi_len2 = len2.get_cst ();
+      gcc_assert (wi::fits_shwi_p (wi_len2));
+      HOST_WIDE_INT hwi_len2 = wi_len2.to_shwi ();
+      tree array_len2 = build_array_type_nelts (char_type_node, hwi_len2);
+      tree data_target = build2 (MEM_REF, array_len2, arg0,
+				 build_zero_cst (ptr_type_node));
       wi_len2 *= CHAR_BIT;
       gcc_assert (wi::fits_uhwi_p (wi_len2));
-      dest_val.set_at (0, wi_len2.to_uhwi (),
-		       src, addr1.offset);
+      unsigned HOST_WIDE_INT uhwi_len2 = wi_len2.to_uhwi ();
+      data_value data_src = src.get_at (addr1.offset, uhwi_len2);
+      printer.print_value_update (*this, data_target, data_src);
+      dest_val.set_at (0, uhwi_len2, src, addr1.offset);
       storage0.set (dest_val);
     }
   else if (gimple_call_builtin_p (g, BUILT_IN_MEMSET))
@@ -6079,7 +6140,8 @@ context_printer_print_first_data_ref_part_tests ()
   pretty_printer & pp1 = printer1.pp;
   exec_context ctx1 = context_builder ().build (mem1, printer1);
 
-  tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0, nullptr);
+  tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res1, integer_type_node);
   const char * str1 = pp_formatted_text (&pp1);
@@ -6100,7 +6162,8 @@ context_printer_print_first_data_ref_part_tests ()
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
 			   build_zero_cst (ptr_type_node));
 
-  tree res2 = printer2.print_first_data_ref_part (ctx2, mem_var2i, 0, nullptr);
+  tree res2 = printer2.print_first_data_ref_part (ctx2, mem_var2i, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res2, integer_type_node);
   const char * str2 = pp_formatted_text (&pp2);
@@ -6118,7 +6181,8 @@ context_printer_print_first_data_ref_part_tests ()
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
 			   build_zero_cst (ptr_type_node));
 
-  tree res3 = printer3.print_first_data_ref_part (ctx3, long_var2i, 0, nullptr);
+  tree res3 = printer3.print_first_data_ref_part (ctx3, long_var2i, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res3, integer_type_node);
   const char * str3 = pp_formatted_text (&pp3);
@@ -6168,7 +6232,8 @@ context_printer_print_first_data_ref_part_tests ()
 			     build1 (ADDR_EXPR, ptr_type_node, var1d1i),
 			     build_zero_cst (ptr_type_node));
 
-  tree res4 = printer4.print_first_data_ref_part (ctx4, mem_var1d1i, 0, nullptr);
+  tree res4 = printer4.print_first_data_ref_part (ctx4, mem_var1d1i, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res4, short_integer_type_node);
   const char * str4 = pp_formatted_text (&pp4);
@@ -6187,7 +6252,8 @@ context_printer_print_first_data_ref_part_tests ()
 				build_int_cst (ptr_type_node,
 					       sizeof (short)));
 
-  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0, nullptr);
+  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res5, short_integer_type_node);
   const char * str5 = pp_formatted_text (&pp5);
@@ -6234,7 +6300,8 @@ context_printer_print_first_data_ref_part_tests ()
 			   build1 (ADDR_EXPR, ptr_type_node, var4c),
 			   build_int_cst (ptr_type_node, 2));
 
-  tree res6 = printer6.print_first_data_ref_part (ctx6, mem_var4c, 0, nullptr);
+  tree res6 = printer6.print_first_data_ref_part (ctx6, mem_var4c, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res6, char_type_node);
   const char * str6 = pp_formatted_text (&pp6);
@@ -6272,7 +6339,8 @@ context_printer_print_first_data_ref_part_tests ()
 			     build_int_cst (ptr_type_node,
 					    sizeof (int) + 1));
 
-  tree res7 = printer7.print_first_data_ref_part (ctx7, mem_var1i1d, 0, nullptr);
+  tree res7 = printer7.print_first_data_ref_part (ctx7, mem_var1i1d, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res7, char_type_node);
   const char * str7 = pp_formatted_text (&pp7);
@@ -6298,7 +6366,8 @@ context_printer_print_first_data_ref_part_tests ()
 			    build_int_cst (ptr_type_node,
 					   3 * sizeof (int)));
 
-  tree res8 = printer8.print_first_data_ref_part (ctx8, mem_var_i5, 0, nullptr);
+  tree res8 = printer8.print_first_data_ref_part (ctx8, mem_var_i5, 0, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res8, integer_type_node);
   const char * str8 = pp_formatted_text (&pp8);
@@ -6318,7 +6387,8 @@ context_printer_print_first_data_ref_part_tests ()
 					    sizeof (int)));
 
   tree res9 = printer9.print_first_data_ref_part (ctx9, mem2_var_i5,
-						  HOST_BITS_PER_INT, nullptr);
+						  HOST_BITS_PER_INT, nullptr,
+						  VAL_UNDEFINED);
 
   ASSERT_EQ (res9, integer_type_node);
   const char * str9 = pp_formatted_text (&pp9);
@@ -6358,7 +6428,8 @@ context_printer_print_first_data_ref_part_tests ()
 				 build_int_cst (ptr_type_node,
 						sizeof (int) + 13));
 
-  tree res10 = printer10.print_first_data_ref_part (ctx10, mem_var_d1i1a5d, 0, nullptr);
+  tree res10 = printer10.print_first_data_ref_part (ctx10, mem_var_d1i1a5d, 0,
+						    nullptr, VAL_UNDEFINED);
 
   ASSERT_EQ (res10, char_type_node);
   const char * str10 = pp_formatted_text (&pp10);
@@ -6391,7 +6462,8 @@ context_printer_print_first_data_ref_part_tests ()
   tree ref_ptr = build2 (MEM_REF, integer_type_node, ptr,
 			 build_zero_cst (ptr_type_node));
 
-  tree res11 = printer11.print_first_data_ref_part (ctx11, ref_ptr, 0, nullptr);
+  tree res11 = printer11.print_first_data_ref_part (ctx11, ref_ptr, 0, nullptr,
+						    VAL_UNDEFINED);
 
   ASSERT_EQ (res11, integer_type_node);
   const char * str11 = pp_formatted_text (&pp11);
@@ -6679,6 +6751,53 @@ context_printer_print_value_update_tests ()
   printer8.print_value_update (ctx8, ref8, val8_17);
   const char *str8 = pp_formatted_text (&pp8);
   ASSERT_STREQ (str8, "# v5c[1] = 17\n");
+
+
+  heap_memory mem9;
+  context_printer printer9;
+  pretty_printer & pp9 = printer9.pp;
+  pp_buffer (&pp9)->m_flush_p = false;
+
+  tree a17c_9 = build_array_type_nelts (char_type_node, 17);
+  tree v17c_9 = create_var (a17c_9, "v17c");
+  tree p_9 = create_var (ptr_type_node, "p");
+  tree i_9 = create_var (integer_type_node, "i");
+
+  vec<tree> decls9{};
+  decls9.safe_push (v17c_9);
+  decls9.safe_push (p_9);
+  decls9.safe_push (i_9);
+
+  context_builder builder9;
+  builder9.add_decls (&decls9);
+  exec_context ctx9 = builder9.build (mem9, printer9);
+
+  data_storage *strg9_i = ctx9.find_reachable_var (i_9);
+  gcc_assert (strg9_i != nullptr);
+  storage_address addr9_i (strg9_i->get_ref (), 0);
+
+  data_value val9_addr_i (ptr_type_node);
+  val9_addr_i.set_address (addr9_i);
+
+  data_storage *strg9_v17c = ctx9.find_reachable_var (v17c_9);
+  gcc_assert (strg9_v17c != nullptr);
+  storage_address addr9_v17c (strg9_v17c->get_ref (), HOST_BITS_PER_PTR);
+
+  data_value val9_addr_v17c (ptr_type_node);
+  val9_addr_v17c.set_address (addr9_v17c);
+
+  data_storage *strg9_p = ctx9.find_reachable_var (p_9);
+  gcc_assert (strg9_p != nullptr);
+  strg9_p->set (val9_addr_v17c);
+
+  tree a8c = build_array_type_nelts (char_type_node,
+				     HOST_BITS_PER_PTR / CHAR_BIT);
+  tree ref9 = build2 (MEM_REF, a8c, p_9,
+		      build_zero_cst (build_pointer_type (ptr_type_node)));
+
+  printer9.print_value_update (ctx9, ref9, val9_addr_i);
+  const char *str9 = pp_formatted_text (&pp9);
+  ASSERT_STREQ (str9, "# v17c[8B:+8B] = &i\n");
 }
 
 
@@ -8490,6 +8609,66 @@ exec_context_execute_assign_tests ()
 }
 
 void
+exec_context_print_call_tests ()
+{
+  heap_memory mem1;
+  context_printer printer1;
+  pretty_printer & pp1 = printer1.pp;
+  pp_buffer (&pp1)->m_flush_p = false;
+
+  tree ac5_1 = build_array_type_nelts (char_type_node, 5);
+  tree v5c_1 = create_var (ac5_1, "v5c");
+  tree si_1 = create_var (short_integer_type_node, "s1");
+  tree p_1 = create_var (ptr_type_node, "p");
+
+  vec<tree> decls1{};
+  decls1.safe_push (v5c_1);
+  decls1.safe_push (si_1);
+  decls1.safe_push (p_1);
+
+  context_builder builder1;
+  builder1.add_decls (&decls1);
+  exec_context ctx1 = builder1.build (mem1, printer1);
+
+  wide_int wi3113_1 = wi::shwi (13 * 256 + 31, TYPE_PRECISION (short_integer_type_node));
+
+  data_value val3113_1 (short_integer_type_node);
+  val3113_1.set_cst (wi3113_1);
+
+  data_storage *strg1_si = ctx1.find_reachable_var (si_1);
+  gcc_assert (strg1_si != nullptr);
+  strg1_si->set (val3113_1);
+
+  data_storage *strg1_v5c = ctx1.find_reachable_var (v5c_1);
+  gcc_assert (strg1_v5c != nullptr);
+  storage_address addr1_v5cp1 (strg1_v5c->get_ref (), CHAR_BIT);
+
+  data_value val_v5cp1_1 (ptr_type_node);
+  val_v5cp1_1.set_address (addr1_v5cp1);
+
+  data_storage *strg1_p = ctx1.find_reachable_var (p_1);
+  gcc_assert (strg1_p != nullptr);
+  strg1_p->set (val_v5cp1_1);
+
+  tree addr_si_1 = build1 (ADDR_EXPR, ptr_type_node, si_1);
+
+  tree memcpy_fn = builtin_decl_explicit (BUILT_IN_MEMCPY);
+  set_decl_built_in_function (memcpy_fn, BUILT_IN_NORMAL, BUILT_IN_MEMCPY);
+  gcall * memcpy_call1 = gimple_build_call (memcpy_fn, 3, p_1, addr_si_1,
+					    build_int_cst (size_type_node, 2));
+
+  ctx1.execute (memcpy_call1);
+
+  const char *str1 = pp_formatted_text (&pp1);
+  ASSERT_STR_STARTSWITH (str1, "__builtin_memcpy (");
+  const char *line_end = ");\n";
+  ASSERT_STR_CONTAINS (str1, line_end);
+  const char *sub1 = strstr (str1, line_end);
+  ASSERT_NE (sub1, nullptr);
+  ASSERT_STREQ (sub1 + strlen (line_end), "  # v5c[1] = 31\n  # v5c[2] = 13\n");
+}
+
+void
 exec_context_execute_call_tests ()
 {
   heap_memory mem;
@@ -9007,6 +9186,7 @@ gimple_exec_cc_tests ()
   exec_context_evaluate_binary_tests ();
   exec_context_evaluate_condition_tests ();
   exec_context_execute_assign_tests ();
+  exec_context_print_call_tests ();
   exec_context_execute_call_tests ();
   exec_context_allocate_tests ();
 }
