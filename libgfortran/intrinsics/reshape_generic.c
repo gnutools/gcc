@@ -90,8 +90,6 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 
   if (ret->base_addr == NULL)
     {
-      index_type alloc_size;
-
       spacing = GFC_DESCRIPTOR_SIZE(source);
 
       for (n = 0; n < rdim; n++)
@@ -104,13 +102,10 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 	}
       ret->offset = 0;
 
-      if (unlikely (spacing < 1))
-	alloc_size = 0; /* xmalloc will allocate 1 byte.  */
-      else
-	alloc_size = spacing;
-
-      ret->base_addr = xmalloc (alloc_size);
+      ret->base_addr = xmalloc (spacing);
       ret->dtype.rank = rdim;
+      ret->dtype.elem_len = GFC_DESCRIPTOR_SIZE (source);
+      ret->span = GFC_DESCRIPTOR_SIZE (source);
     }
 
   if (shape_empty)
