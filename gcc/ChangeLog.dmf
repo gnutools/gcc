@@ -1,0 +1,14 @@
+==================== Branch work211-dmf, baseline ====================
+
+2025-06-13   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.dmf and update REVISION.
+
+2025-06-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.dmf: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
