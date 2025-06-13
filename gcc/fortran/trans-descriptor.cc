@@ -522,13 +522,6 @@ conv_dimension_get (tree desc, tree dim)
 
 
 tree
-get_token_field (tree desc)
-{
-  gcc_assert (flag_coarray == GFC_FCOARRAY_LIB);
-  return get_field (desc, CAF_TOKEN_FIELD);
-}
-
-tree
 get_token (tree desc)
 {
   gcc_assert (flag_coarray == GFC_FCOARRAY_LIB);
@@ -833,15 +826,15 @@ gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
 }
 
 tree
-gfc_conv_descriptor_token_get (tree desc)
+gfc_conv_descriptor_token (tree desc)
 {
-  return gfc_descriptor::conv_token_get (desc);
+  return gfc_descriptor::get_token (desc);
 }
 
 tree
-gfc_conv_descriptor_token_field (tree desc)
+gfc_conv_descriptor_token_get (tree desc)
 {
-  return gfc_descriptor::get_token_field (desc);
+  return gfc_descriptor::conv_token_get (desc);
 }
 
 void

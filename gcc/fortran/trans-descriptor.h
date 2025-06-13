@@ -55,8 +55,8 @@ tree gfc_conv_descriptor_lbound_get (tree, tree);
 tree gfc_conv_descriptor_ubound_get (tree, tree);
 tree gfc_conv_descriptor_extent_get (tree, tree);
 tree gfc_conv_descriptor_spacing_get (tree, tree);
+tree gfc_conv_descriptor_token (tree);
 tree gfc_conv_descriptor_token_get (tree);
-tree gfc_conv_descriptor_token_field (tree);
 
 void gfc_conv_descriptor_data_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_token_set (stmtblock_t *, tree, tree);
