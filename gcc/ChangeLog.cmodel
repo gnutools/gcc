@@ -1,3 +1,35 @@
+==================== Branch work211-cmodel, patch #300 ====================
+
+PR target/120681 - allow -mcmodel=large with prefixed addressing
+
+When I implemented the pc-relative support for power10 in GCC, I disabled using
+pc-relative support for -mcmodel=large.  At the time, I didn't want to 	dig into
+the issues.  It is now time to allow -mcmodel=large to generate pc-relative
+code.
+
+This patch allows -mcmodel=large to use prefixed addressing on power10, power11,
+and possibly other future PowerPC processors.
+
+This patch deletes the code that disallows -mprefixed and -mcmodel=large.  By
+deleting the code, it allows the normal pc-relative addressing to be used.  For
+static variables, pc-relative addressing will be used.  For external variables,
+we will generate the normal code that uses '@got@pcrel' addressing to load up
+the external address and use this address as a pointer to do the load or store.
+
+2025-06-16  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120681
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Delete code
+	that forced using TOC addressing for -mcmodel=large instead of
+	pc-relative addressing.
+
+gcc/testsuite/
+
+	PR target/120681
+	* gcc.target/powerpc/pr120681.c: New test.
+
 ==================== Branch work211-cmodel, baseline ====================
 
 2025-06-13   Michael Meissner  <meissner@linux.ibm.com>
