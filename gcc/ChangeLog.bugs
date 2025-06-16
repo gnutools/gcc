@@ -1,3 +1,233 @@
+==================== Branch work211-bugs, patch #100 ====================
+
+PR target/120528 -- Simplify zero extend from memory to VSX register on power10
+
+Previously GCC would zero extend a DImode value in memory to a TImode target in
+a vector register by firt zero extending the DImode value into a GPR TImode
+register pair, and then do a MTVSRDD to move this value to a VSX register.
+
+For example, consider the following code:
+
+	#ifndef TYPE
+	#define TYPE unsigned long long
+	#endif
+
+	void
+	mem_to_vsx (TYPE *p, __uint128_t *q)
+	{
+	  /* lxvrdx 0,0,3
+	     stxv 0,0(4)  */
+
+	  __uint128_t x = *p;
+	  __asm__ (" # %x0" : "+wa" (x));
+	  *q = x;
+}
+
+It currently generates the following code on power10:
+
+	mem_to_vsx:
+		ld 10,0(3)
+		li 11,0
+		mtvsrdd 0,11,10
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+Instead it could generate:
+
+	mem_to_vsx:
+		lxvrdx 0,0,3
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+The lxvr{b,h,w,d}x instructions were added in power10, and they load up a vector
+register with a byte, half-word, word, or double-word value in the right most
+bits, and fill the remaining bits to 0.  I noticed this code when working on PR
+target/108958 (which I just posted the patch).
+
+This patch creates a peephole2 to catch this case, and it eliminates creating
+the TImode variable.  Instead it just does the LXVR{B,H,W,D}x instruction
+directly.
+
+I have built GCC with the patches in this patch set applied on both little and
+big endian PowerPC systems and there were no regressions.  Can I apply this
+patch to GCC 16?
+
+2025-06-16  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120528
+	* config/rs6000/rs6000.md (zero_extend??ti2 peephole2): Add a peephole2
+	to simplify zero extending a QI/HI/SI/DImode value in memory to a TImode
+	target in a vector register to use the LXVR{B,H,W,D}X instructins.
+
+gcc/testsuite/
+
+	PR target/120528
+	* gcc.target/powerpc/pr120528.c: New test.
+
+==================== Branch work211-bugs, patch #100 ====================
+
+PR target/108958 -- simplify mtvsrdd to zero extend GPR DImode to VSX TImode
+
+Before this patch GCC would zero extend a DImode GPR value to TImode by first
+zero extending the DImode value into a GPR TImode register pair, and then do a
+MTVSRDD to move this value to a VSX register.
+
+For example, consider the following code:
+
+	#ifndef TYPE
+	#define TYPE unsigned long long
+	#endif
+
+	void
+	gpr_to_vsx (TYPE x, __uint128_t *p)
+	{
+	  __uint128_t y = x;
+	  __asm__ (" # %x0" : "+wa" (y));
+	  *p = y;
+	}
+
+Currently GCC generates:
+
+	gpr_to_vsx:
+		mr 10,3
+		li 11,0
+		mtvsrdd 0,11,10
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+I.e. the mr and li instructions create the zero extended TImode value in a GPR,
+and then the mtvsrdd instruction moves both registers into a single vector
+register.
+
+Instead, GCC should generate the following code.  Since the mtvsrdd instruction
+will clear the upper 64 bits if the 2nd argument is 0 (non-zero values are a GPR
+to put in the upper 64 bits):
+
+	gpr_to_vsx:
+		mtvsrdd 0,0,3
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+Originally, I posted a patch that added the zero_extendsiti2 insn.  I got some
+pushback about using reload_completed in the split portion of the
+define_insn_and_split.  However, this is a case where you absolutely have to use
+the reload_completed test, because if you split the code before register
+allocation to handle the normal, the split insns will not be compiled to
+generate the appropriate mtvsrdd without creating the TImode value in the GPR
+register.  I can imagine there might be concern about favoring generating code
+using the vector registers instead of using the GPR registers if the code does
+not require the TImode value to be in a vector register.
+
+I completely rewrote the patch.  This patch creates a peephole2 to catch this
+case, and it eliminates creating the TImode variable.  Instead it just does the
+MTVSRDD instruction directly.  That way it will not influence register
+allocation, and the code will only be generated in the specific case where we
+need the TImode value in a vector register.
+
+I have built GCC with the patches in this patch set applied on both little and
+big endian PowerPC systems and there were no regressions.  Can I apply this
+patch to GCC 16?
+
+2025-06-16  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/108958
+	* config/rs6000/rs6000.md (UNSPEC_ZERO_EXTEND): New unspec.
+	(zero_extendsiti2 peephole2): Add a peephole2 to simplify zero extend
+	between DImode value in a GPR to a TImode target in a vector register.
+	(zero_extendsiti2_vsx): New insn.
+
+gcc/testsuite/
+
+	PR target/108958
+	* gcc.target/powerpc/pr108958.c: New test.
+
+==================== Branch work211-bugs, patch #100 ====================
+
+Fix PR 118541, do not generate unordered fp cmoves for IEEE compares.
+
+In bug PR target/118541 on power9, power10, and power11 systems, for the
+function:
+
+        extern double __ieee754_acos (double);
+
+        double
+        __acospi (double x)
+        {
+          double ret = __ieee754_acos (x) / 3.14;
+          return __builtin_isgreater (ret, 1.0) ? 1.0 : ret;
+        }
+
+GCC currently generates the following code:
+
+        Power9                          Power10 and Power11
+        ======                          ===================
+        bl __ieee754_acos               bl __ieee754_acos@notoc
+        nop                             plfd 0,.LC0@pcrel
+        addis 9,2,.LC2@toc@ha           xxspltidp 12,1065353216
+        addi 1,1,32                     addi 1,1,32
+        lfd 0,.LC2@toc@l(9)             ld 0,16(1)
+        addis 9,2,.LC0@toc@ha           fdiv 0,1,0
+        ld 0,16(1)                      mtlr 0
+        lfd 12,.LC0@toc@l(9)            xscmpgtdp 1,0,12
+        fdiv 0,1,0                      xxsel 1,0,12,1
+        mtlr 0                          blr
+        xscmpgtdp 1,0,12
+        xxsel 1,0,12,1
+        blr
+
+This is because ifcvt.c optimizes the conditional floating point move to use the
+XSCMPGTDP instruction.
+
+However, the XSCMPGTDP instruction traps if one of the arguments is a signaling
+NaN.  This patch disables generating XSCMP{EQ,GT,GE}{DP,QP} instructions unless
+-ffinite-math-only is in effect so that we do not get a trap.
+
+2025-06-16  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/118541
+	* config/rs6000/rs6000.cc (have_compare_and_set_mask): Don't do compare
+	and set mask operations unless -ffinite-math-only.
+	* config/rs6000/rs6000.md (mov<SFDF:mode><SFDF2:mode>cc_p9): Disable
+	generating XSCMP{EQ,GT,GE}{DP,QP} unless -ffinite-math-only is in
+	effect.
+	(mov<SFDF:mode><SFDF2:mode>cc_invert_p9): Likewise.
+	(fpmask<mode>, SFDF iterator): Likewise.
+	(xxsel<mode>, SFDF iterator): Likewise.
+	(mov<mode>cc, IEEE128 iterator): Likewise.
+	(mov<mode>cc_p10): Likewise.
+	(mov<mode>cc_invert_p10): Likewise.
+	(fpmask<mode>, IEEE128 iterator): Likewise.
+	(xxsel<mode>, IEEE128 iterator): Likewise.
+
+gcc/testsuite/
+
+	PR target/118541
+	* gcc.target/powerpc/float128-cmove.c: Change optimization flag to
+	-Ofast instead of -O2.
+	* gcc.target/powerpc/float128-minmax-3.: Likewise.
+	* gcc.target/powerpc/p9-minmax-2.c: Delete test, the code is no longer
+	valid unless NaNs are not handled.
+	* gcc.target/powerpc/pr118541-1.c: New test.
+	* gcc.target/powerpc/pr118541-2.c: Likewise.
+
 ==================== Branch work211-bugs, baseline ====================
 
 2025-06-13   Michael Meissner  <meissner@linux.ibm.com>
