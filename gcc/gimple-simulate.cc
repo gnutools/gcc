@@ -22,8 +22,8 @@ along with GCC; see the file COPYING3.  If not see
    standard error a trace of the evolution of variables and memory allocated.
    This is targetted at debugging of medium sized testcases whose behaviour is
    not completely clear by simply starring at the IR.  It's called when the
-   -fgimple-exec argument is passed to the compiler.  It's supposed to be used
-   with the IR produced by the gimple frontend.  */
+   -fgimple-simulate argument is passed to the compiler.  It's supposed to be
+   used with the IR produced by the gimple frontend.  */
 
 
 #include "config.h"
@@ -48,7 +48,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssanames.h"
 
 
-class exec_context;
+class simul_scope;
 class data_storage;
 
 
@@ -128,15 +128,15 @@ struct storage_ref
   enum storage_type type;
   union u
     {
-      u (const exec_context & ctx) : var_context (&ctx) {}
+      u (const simul_scope & ctx) : var_context (&ctx) {}
       u (const heap_memory & m) : alloc_mem (&m) {}
-      const exec_context * var_context;
+      const simul_scope * var_context;
       const heap_memory * alloc_mem;
     }
   u;
   unsigned storage_index;
 
-  storage_ref (const exec_context & ctx, unsigned idx)
+  storage_ref (const simul_scope & ctx, unsigned idx)
     : type (STRG_VARIABLE), u (ctx), storage_index (idx)
   {}
   storage_ref (const heap_memory & mem, unsigned idx)
@@ -199,15 +199,15 @@ namespace selftest
   void context_printer_print_tests ();
   void context_printer_print_first_data_ref_part_tests ();
   void context_printer_print_value_update_tests ();
-  void exec_context_evaluate_tests ();
-  void exec_context_evaluate_literal_tests ();
-  void exec_context_evaluate_unary_tests ();
-  void exec_context_evaluate_binary_tests ();
-  void exec_context_execute_assign_tests ();
-  void exec_context_print_call_tests ();
-  void exec_context_execute_call_tests ();
-  void exec_context_allocate_tests ();
-  void exec_context_evaluate_condition_tests ();
+  void simul_scope_evaluate_tests ();
+  void simul_scope_evaluate_literal_tests ();
+  void simul_scope_evaluate_unary_tests ();
+  void simul_scope_evaluate_binary_tests ();
+  void simul_scope_simulate_assign_tests ();
+  void simul_scope_print_call_tests ();
+  void simul_scope_simulate_call_tests ();
+  void simul_scope_allocate_tests ();
+  void simul_scope_evaluate_condition_tests ();
 }
 
 
@@ -291,7 +291,7 @@ class data_storage
 
   union u
     {
-      u (const exec_context & ctx, tree t) : variable (ctx, t) {}
+      u (const simul_scope & ctx, tree t) : variable (ctx, t) {}
       u (const heap_memory & mem, unsigned alloc_idx, unsigned alloc_amount)
 	: allocated (mem, alloc_idx, alloc_amount)
       {}
@@ -299,8 +299,8 @@ class data_storage
 
       struct v
 	{
-	  v (const exec_context & ctx, tree t) : context (ctx), decl (t) {}
-	  const exec_context & context;
+	  v (const simul_scope & ctx, tree t) : context (ctx), decl (t) {}
+	  const simul_scope & context;
 	  const tree decl;
 	}
       variable;
@@ -319,7 +319,7 @@ class data_storage
   u;
 
 public:
-  data_storage (const exec_context & ctx, tree decl)
+  data_storage (const simul_scope & ctx, tree decl)
     : type (STRG_VARIABLE), value (TREE_TYPE (decl)),
     u (ctx, decl)
   {}
@@ -353,29 +353,29 @@ class context_printer
   dump_flags_t flags;
   unsigned indent;
 
-  friend void selftest::exec_context_evaluate_tests ();
+  friend void selftest::simul_scope_evaluate_tests ();
   friend void selftest::data_value_print_tests ();
   friend void selftest::context_printer_print_tests ();
   friend void selftest::context_printer_print_first_data_ref_part_tests ();
   friend void selftest::context_printer_print_value_update_tests ();
-  friend void selftest::exec_context_print_call_tests ();
+  friend void selftest::simul_scope_print_call_tests ();
 
 public:
   context_printer ();
   context_printer (dump_flags_t f);
   pretty_printer & get_pretty_printer () const { return const_cast <pretty_printer &> (pp); }
   void begin_stmt (gimple *);
-  void print (exec_context *, tree);
+  void print (simul_scope *, tree);
   void print_newline ();
   void print_function_entry (struct function * func);
   void print_function_exit (struct function * func);
   void print_bb_jump (edge e);
   void print_bb_entry (basic_block bb);
-  tree print_first_data_ref_part (exec_context & context, tree data_ref,
+  tree print_first_data_ref_part (simul_scope & context, tree data_ref,
 				  unsigned offset, int * ignored_bits,
 				  enum value_type);
   void print_ignored_stmt ();
-  void print_value_update (exec_context & context, tree, const data_value &); 
+  void print_value_update (simul_scope & context, tree, const data_value &);
   void end_stmt (gimple *);
   void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
   void print_at (const data_value & value, tree type, unsigned offset);
@@ -430,8 +430,8 @@ optional<T>::emplace (T arg)
 
 
 static optional <data_value>
-execute (struct function *func, exec_context &caller,
-	 context_printer & printer, vec<tree> * args);
+simulate (struct function *func, simul_scope &caller,
+	  context_printer & printer, vec<tree> * args);
 
 
 /* Class representing the whole heap, in which dynamic memory is to be
@@ -456,9 +456,9 @@ public:
    caller functions, as well as global variables.  Every context has also
    a pointer to the global heap, providing access to heap-allocated memory.  */
 
-class exec_context
+class simul_scope
 {
-  exec_context * const parent;
+  simul_scope * const parent;
   context_printer & printer;
   heap_memory & alloc_mem;
   vec<data_storage> var_storages;
@@ -472,41 +472,41 @@ class exec_context
   void add_variables (vec<tree, A, vl_ptr> *variables);
   template <typename A>
   void add_variables (vec<tree, A, vl_embed> *variables);
-  void execute_assign (gassign *g);
-  void execute_call (gcall *g);
+  void simulate_assign (gassign *g);
+  void simulate_call (gcall *g);
   data_storage *find_var (tree variable) const;
   data_storage *find_alloc (unsigned index) const;
   data_storage &allocate (unsigned amount);
   void decompose_ref (tree data_ref, data_storage * & storage, int & offset) const;
-  void execute_phi (gphi *phi, edge e);
-  exec_context (exec_context * caller, context_printer & printer,
+  void simulate_phi (gphi *phi, edge e);
+  simul_scope (simul_scope * caller, context_printer & printer,
 		heap_memory & mem, vec<tree> & decls);
 
   friend void selftest::data_value_print_tests ();
   friend void selftest::data_value_set_address_tests ();
   friend void selftest::data_value_set_tests ();
   friend void selftest::context_printer_print_tests ();
-  friend void selftest::exec_context_evaluate_literal_tests ();
-  friend void selftest::exec_context_evaluate_unary_tests ();
-  friend void selftest::exec_context_evaluate_binary_tests ();
-  friend void selftest::exec_context_execute_assign_tests ();
-  friend void selftest::exec_context_execute_call_tests ();
-  friend void selftest::exec_context_allocate_tests ();
-  friend void selftest::exec_context_evaluate_condition_tests ();
+  friend void selftest::simul_scope_evaluate_literal_tests ();
+  friend void selftest::simul_scope_evaluate_unary_tests ();
+  friend void selftest::simul_scope_evaluate_binary_tests ();
+  friend void selftest::simul_scope_simulate_assign_tests ();
+  friend void selftest::simul_scope_simulate_call_tests ();
+  friend void selftest::simul_scope_allocate_tests ();
+  friend void selftest::simul_scope_evaluate_condition_tests ();
 
 public:
-  exec_context (exec_context & caller, context_printer & printer,
+  simul_scope (simul_scope & caller, context_printer & printer,
 		vec<tree> & decls);
-  exec_context (heap_memory & mem, context_printer & printer, vec<tree> & decls);
-  const exec_context & root () const;
+  simul_scope (heap_memory & mem, context_printer & printer, vec<tree> & decls);
+  const simul_scope & root () const;
   int find (const data_storage &storage) const;
   data_storage *find_reachable_var (tree variable) const;
-  void execute (gimple *g);
-  gimple * execute (basic_block bb);
+  void simulate (gimple *g);
+  gimple * simulate (basic_block bb);
   data_storage & get_storage (unsigned idx) const;
   context_printer & get_printer () const { return printer; }
   data_value evaluate (tree expr) const;
-  optional <data_value> execute_function (struct function *);
+  optional <data_value> simulate_function (struct function *);
   edge select_leaving_edge (basic_block bb, gimple *last_stmt);
   void jump (edge e);
 };
@@ -518,8 +518,8 @@ class context_builder
 
 public:
   context_builder ();
-  exec_context build (exec_context & caller, context_printer & printer);
-  exec_context build (heap_memory & mem, context_printer & printer);
+  simul_scope build (simul_scope & caller, context_printer & printer);
+  simul_scope build (heap_memory & mem, context_printer & printer);
   template <typename A, typename L>
   void add_decls (vec<tree, A, L> *additional_decls);
   //void add_decls (vec<tree> *additional_decls);
@@ -547,41 +547,41 @@ context_builder::add_decls (vec<tree, A, L> *additional_decls)
 }
 
 
-exec_context
-context_builder::build (exec_context & caller, context_printer & printer)
+simul_scope
+context_builder::build (simul_scope & caller, context_printer & printer)
 {
-  return exec_context (caller, printer, decls);
+  return simul_scope (caller, printer, decls);
 }
 
 
-exec_context
+simul_scope
 context_builder::build (heap_memory & mem, context_printer & printer)
 {
-  return exec_context (mem, printer, decls);
+  return simul_scope (mem, printer, decls);
 }
 
 
-exec_context::exec_context (exec_context *caller, context_printer & printer,
-			    heap_memory & mem, vec<tree> & decls)
+simul_scope::simul_scope (simul_scope *caller, context_printer & printer,
+			  heap_memory & mem, vec<tree> & decls)
   : parent (caller), printer (printer), alloc_mem (mem), var_storages ()
 {
   add_variables (&decls);
 }
 
-exec_context::exec_context (exec_context & caller, context_printer & printer,
-			    vec<tree> & decls)
-  : exec_context::exec_context (&caller, printer, caller.alloc_mem, decls)
+simul_scope::simul_scope (simul_scope & caller, context_printer & printer,
+			  vec<tree> & decls)
+  : simul_scope::simul_scope (&caller, printer, caller.alloc_mem, decls)
 {}
 
-exec_context::exec_context (heap_memory & mem, context_printer & printer,
-			    vec<tree> & decls)
-  : exec_context::exec_context (nullptr, printer, mem, decls)
+simul_scope::simul_scope (heap_memory & mem, context_printer & printer,
+			  vec<tree> & decls)
+  : simul_scope::simul_scope (nullptr, printer, mem, decls)
 {}
 
 
 template <typename A, typename L>
 void
-exec_context::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
+simul_scope::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
 {
   if (vars_count == 0)
     return;
@@ -598,14 +598,14 @@ exec_context::add_variables (vec<tree, A, L> *variables, unsigned vars_count)
 
 template <typename A>
 void
-exec_context::add_variables (vec<tree, A, vl_ptr> *variables)
+simul_scope::add_variables (vec<tree, A, vl_ptr> *variables)
 {
   add_variables (variables, variables->length ());
 }
 
 template <typename A>
 void
-exec_context::add_variables (vec<tree, A, vl_embed> *variables)
+simul_scope::add_variables (vec<tree, A, vl_embed> *variables)
 {
   add_variables (variables, vec_safe_length (variables));
 }
@@ -661,7 +661,7 @@ context_printer::print_condition_value (bool value)
    point to.  */
 
 void
-context_printer::print (exec_context * ctx, tree expr)
+context_printer::print (simul_scope * ctx, tree expr)
 {
   switch (TREE_CODE (expr))
     {
@@ -877,7 +877,7 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
    otherwise return the reference found.  */
 
 static tree
-find_mem_ref_replacement (exec_context & context, tree data_ref, 
+find_mem_ref_replacement (simul_scope & context, tree data_ref,
 			  unsigned offset, unsigned min_size)
 {
   tree ptr = TREE_OPERAND (data_ref, 0);
@@ -919,7 +919,7 @@ find_mem_ref_replacement (exec_context & context, tree data_ref,
    any type that can guide the decomposition into smaller chunks. */
 
 tree
-context_printer::print_first_data_ref_part (exec_context & context,
+context_printer::print_first_data_ref_part (simul_scope & context,
 					    tree data_ref, unsigned offset,
 					    int * ignored_bits,
 					    enum value_type val_type)
@@ -1002,7 +1002,7 @@ context_printer::print_ignored_stmt ()
    each leaf field.  */
 
 void
-context_printer::print_value_update (exec_context & context, tree lhs, const data_value & value)
+context_printer::print_value_update (simul_scope & context, tree lhs, const data_value & value)
 {
   unsigned previously_done = 0;
   unsigned width = get_constant_type_size (TREE_TYPE (lhs));
@@ -1070,7 +1070,7 @@ data_storage::get_ref () const
     {
     case STRG_VARIABLE:
       {
-	const exec_context & ctx = u.variable.context;
+	const simul_scope & ctx = u.variable.context;
 	int idx = ctx.find (*this);
 	gcc_assert (idx >= 0);
 	return storage_ref (ctx, idx);
@@ -1667,7 +1667,7 @@ heap_memory::find (const data_storage & storage) const
    present in THIS context.  Return -1 if it's not in THIS.  */
 
 int
-exec_context::find (const data_storage & storage) const
+simul_scope::find (const data_storage & storage) const
 {
   data_storage *strgp;
   unsigned i;
@@ -1683,10 +1683,10 @@ exec_context::find (const data_storage & storage) const
 
 /* Return the outermost context.  */
 
-const exec_context &
-exec_context::root () const
+const simul_scope &
+simul_scope::root () const
 {
-  const exec_context * ctx = this;
+  const simul_scope * ctx = this;
 
   while (ctx->parent != nullptr)
     ctx = ctx->parent;
@@ -1699,7 +1699,7 @@ exec_context::root () const
    in THIS context.  Otherwise return NULL.  */
 
 data_storage *
-exec_context::find_var (tree var) const
+simul_scope::find_var (tree var) const
 {
   data_storage *strgp;
   unsigned i;
@@ -1715,7 +1715,7 @@ exec_context::find_var (tree var) const
    context or one of its parents.  Otherwise return NULL.  */
 
 data_storage *
-exec_context::find_reachable_var (tree variable) const
+simul_scope::find_reachable_var (tree variable) const
 {
   data_storage * result = find_var (variable);
   if (result != nullptr)
@@ -1744,7 +1744,7 @@ heap_memory::find_alloc (unsigned index) const
 /* Return the data storage at index INDEX in HEAP associated with THIS.  */
 
 data_storage *
-exec_context::find_alloc (unsigned index) const
+simul_scope::find_alloc (unsigned index) const
 {
   return alloc_mem.find_alloc (index);
 }
@@ -1779,7 +1779,7 @@ heap_memory::allocate (unsigned amount)
    with THIS and return it.  */
 
 data_storage &
-exec_context::allocate (unsigned amount)
+simul_scope::allocate (unsigned amount)
 {
   return alloc_mem.allocate (amount);
 }
@@ -1788,7 +1788,7 @@ exec_context::allocate (unsigned amount)
 /* Return the variable data storage at index INDEX.  */
 
 data_storage &
-exec_context::get_storage (unsigned idx) const
+simul_scope::get_storage (unsigned idx) const
 {
   gcc_assert (idx < var_storages.length ());
   return const_cast <data_storage &> (var_storages[idx]);
@@ -1799,7 +1799,7 @@ exec_context::get_storage (unsigned idx) const
    accessible variables and allocated storages and return the resulting value.
    */
 data_value
-exec_context::evaluate (tree expr) const
+simul_scope::evaluate (tree expr) const
 {
   enum tree_code code = TREE_CODE (expr);
   switch (code)
@@ -1943,7 +1943,7 @@ exec_context::evaluate (tree expr) const
    in variables and allocated storages and return the resulting value.  */
 
 data_value
-exec_context::evaluate_constructor (tree cstr) const
+simul_scope::evaluate_constructor (tree cstr) const
 {
   unsigned bit_width;
   gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE
@@ -2003,7 +2003,7 @@ exec_context::evaluate_constructor (tree cstr) const
    resulting value.  */
 
 data_value
-exec_context::evaluate_unary (enum tree_code code, tree type, tree arg) const
+simul_scope::evaluate_unary (enum tree_code code, tree type, tree arg) const
 {
   switch (code)
     {
@@ -2046,7 +2046,7 @@ exec_context::evaluate_unary (enum tree_code code, tree type, tree arg) const
    return the resulting value.  */
 
 data_value
-exec_context::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
+simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
 {
   gcc_assert (TREE_CODE (type) == INTEGER_TYPE
 	      || TREE_CODE (type) == BOOLEAN_TYPE
@@ -2152,7 +2152,7 @@ is_zero_offset_data_ref (enum tree_code code)
    storage, and write them into STORAGE and OFFSET respectively.  */
 
 void
-exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
+simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
 {
   offset = -1;
   enum tree_code code = TREE_CODE (data_ref);
@@ -2276,7 +2276,7 @@ exec_context::decompose_ref (tree data_ref, data_storage * & storage, int & offs
    accessible from THIS.  */
 
 void
-exec_context::execute_assign (gassign *g)
+simul_scope::simulate_assign (gassign *g)
 {
   tree lhs = gimple_assign_lhs (g);
   tree lhs_type = TREE_TYPE (lhs);
@@ -2347,7 +2347,7 @@ is_ignored_function_call (gcall *g)
    values currently held in any of the data storages accessible from THIS.  */
 
 void
-exec_context::execute_call (gcall *g)
+simul_scope::simulate_call (gcall *g)
 {
   if (is_ignored_function_call (g))
     {
@@ -2483,7 +2483,7 @@ exec_context::execute_call (gcall *g)
       for (unsigned i = 0; i < nargs; i++)
 	arguments.quick_push (gimple_call_arg (g, i));
 
-      result = ::execute (DECL_STRUCT_FUNCTION (fn), *this, printer,
+      result = ::simulate (DECL_STRUCT_FUNCTION (fn), *this, printer,
 			  &arguments);
     }
 
@@ -2501,17 +2501,17 @@ exec_context::execute_call (gcall *g)
    the values currently held in any of the data storages accessible from THIS.
    */
 void
-exec_context::execute (gimple *g)
+simul_scope::simulate (gimple *g)
 {
   printer.begin_stmt (g);
   switch (g->code)
     {
     case GIMPLE_ASSIGN:
-      execute_assign (as_a <gassign *> (g));
+      simulate_assign (as_a <gassign *> (g));
       break;
 
     case GIMPLE_CALL:
-      execute_call (as_a <gcall *> (g));
+      simulate_call (as_a <gcall *> (g));
       break;
 
     case GIMPLE_LABEL:
@@ -2529,7 +2529,7 @@ exec_context::execute (gimple *g)
    using the values held in any of the data storages accessible from THIS.
    */
 gimple *
-exec_context::execute (basic_block bb)
+simul_scope::simulate (basic_block bb)
 {
   printer.print_bb_entry (bb);
 
@@ -2540,7 +2540,7 @@ exec_context::execute (basic_block bb)
 
   while (g && !is_ctrl_stmt (g))
     {
-      execute (g);
+      simulate (g);
       g = g->next;
     }
 
@@ -2553,7 +2553,7 @@ exec_context::execute (basic_block bb)
    data storages accessible from THIS.  */
 
 bool
-exec_context::evaluate_condition (gcond *cond) const
+simul_scope::evaluate_condition (gcond *cond) const
 {
   enum tree_code code = gimple_cond_code (cond);
   tree lhs = gimple_cond_lhs (cond);
@@ -2634,7 +2634,7 @@ exec_context::evaluate_condition (gcond *cond) const
    data storages accessible by THIS to decide which one to return.  */
 
 edge
-exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
+simul_scope::select_leaving_edge (basic_block bb, gimple *last_stmt)
 {
   if (last_stmt != nullptr)
     printer.begin_stmt (last_stmt);
@@ -2680,13 +2680,13 @@ exec_context::select_leaving_edge (basic_block bb, gimple *last_stmt)
    accessible from THIS.  */
 
 void
-exec_context::execute_phi (gphi *phi, edge e)
+simul_scope::simulate_phi (gphi *phi, edge e)
 {
   printer.begin_stmt (phi);
   tree lhs = gimple_phi_result (phi);
   tree phi_val = gimple_phi_arg_def_from_edge (phi, e);
   gassign *assign = gimple_build_assign (lhs, phi_val);
-  execute_assign (assign);
+  simulate_assign (assign);
   printer.end_stmt (phi);
 }
 
@@ -2694,14 +2694,14 @@ exec_context::execute_phi (gphi *phi, edge e)
 /* Evaluate all of the phis at the entry the destination of E.  */
 
 void
-exec_context::jump (edge e)
+simul_scope::jump (edge e)
 {
   printer.print_bb_jump (e);
 
   gphi_iterator gsi;
   for (gsi = gsi_start_nonvirtual_phis (e->dest); !gsi_end_p (gsi);
        gsi_next_nonvirtual_phi (&gsi))
-    execute_phi (*gsi, e);
+    simulate_phi (*gsi, e);
 }
 
 
@@ -2710,7 +2710,7 @@ exec_context::jump (edge e)
    value.  Otherwise return empty.  */
 
 optional <data_value>
-exec_context::execute_function (struct function *func)
+simul_scope::simulate_function (struct function *func)
 {
   printer.print_function_entry (func);
   basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (func);
@@ -2718,7 +2718,7 @@ exec_context::execute_function (struct function *func)
 
   while (true)
     {
-      gimple *last_stmt = execute (bb);
+      gimple *last_stmt = simulate (bb);
 
       if (last_stmt != nullptr
 	  && is_a <greturn *> (last_stmt))
@@ -2751,7 +2751,7 @@ exec_context::execute_function (struct function *func)
    and PRINTER to create the new context.  */
 
 static optional <data_value>
-execute (struct function * func, exec_context & caller,
+simulate (struct function * func, simul_scope & caller,
 	 context_printer & printer, vec<tree> * arg_values)
 {
   tree fndecl = func->decl;
@@ -2770,7 +2770,7 @@ execute (struct function * func, exec_context & caller,
   builder.add_decls (func->local_decls);
   builder.add_decls (&arguments);
 
-  exec_context ctx = builder.build (caller, printer);
+  simul_scope ctx = builder.build (caller, printer);
 
   tree *valp = nullptr;
   unsigned i = 0;
@@ -2788,7 +2788,7 @@ execute (struct function * func, exec_context & caller,
 
   gcc_assert (arg == NULL_TREE && !arg_values->iterate (i, &valp));
 
-  return ctx.execute_function (func);
+  return ctx.simulate_function (func);
 }
 
 
@@ -2836,7 +2836,7 @@ simulate_main_execution (void)
 
   context_builder builder {};
   builder.add_decls (&static_vars);
-  exec_context root_context = builder.build (alloc_mem, printer);
+  simul_scope root_context = builder.build (alloc_mem, printer);
 
   tree *varp = nullptr;
   unsigned i = 0;
@@ -2847,7 +2847,7 @@ simulate_main_execution (void)
       if (initial != NULL_TREE)
 	{
 	  gassign *tmp_assign = gimple_build_assign (var, initial);
-	  root_context.execute (tmp_assign);
+	  root_context.simulate (tmp_assign);
 	}
     }
 
@@ -2856,7 +2856,7 @@ simulate_main_execution (void)
   vec<tree> args{};
   args.safe_push (build_zero_cst (integer_type_node));
   args.safe_push (null_pointer_node);
-  execute (main, root_context, printer, &args);
+  simulate (main, root_context, printer, &args);
 }
 
 
@@ -2903,7 +2903,7 @@ data_value_classify_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_value val(integer_type_node);
 
@@ -2973,7 +2973,7 @@ data_value_classify_tests ()
 }
 
 void
-exec_context_find_reachable_var_tests ()
+simul_scope_find_reachable_var_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -2991,7 +2991,7 @@ exec_context_find_reachable_var_tests ()
   context_builder builder {};
   builder.add_decls (&vars);
   builder.add_decls (&regs);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   ASSERT_EQ (ctx.find_reachable_var (c), nullptr);
   ASSERT_NE (ctx.find_reachable_var (b), nullptr);
@@ -3013,7 +3013,7 @@ exec_context_find_reachable_var_tests ()
   context_builder builder2 {};
   builder.add_decls (&vars2);
   builder.add_decls (&regs2);
-  exec_context ctx2 = builder.build (ctx, printer);
+  simul_scope ctx2 = builder.build (ctx, printer);
 
   ASSERT_NE (ctx2.find_reachable_var (e), nullptr);
   ASSERT_NE (ctx2.find_reachable_var (d), nullptr);
@@ -3022,7 +3022,7 @@ exec_context_find_reachable_var_tests ()
 
   vec<tree> empty{};
 
-  exec_context ctx3 = context_builder ().build (ctx2, printer);
+  simul_scope ctx3 = context_builder ().build (ctx2, printer);
 
   ASSERT_NE (ctx3.find_reachable_var (a), nullptr);
   ASSERT_NE (ctx3.find_reachable_var (b), nullptr);
@@ -3046,7 +3046,7 @@ data_value_set_address_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_value val1(ptr_type_node);
 
@@ -3064,7 +3064,7 @@ data_value_set_address_tests ()
   ASSERT_EQ (val1.classify (), VAL_ADDRESS);
   ASSERT_EQ (&val1.get_address ()->storage.get (), storage_b);
 
-  exec_context ctx2 = context_builder ().build (ctx, printer);
+  simul_scope ctx2 = context_builder ().build (ctx, printer);
 
   data_value val2(ptr_type_node);
 
@@ -3087,7 +3087,7 @@ data_value_set_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_var (a);
   storage_address address_a (storage_a->get_ref (), 0);
@@ -3119,7 +3119,7 @@ data_value_set_at_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
@@ -3256,7 +3256,7 @@ data_value_set_at_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem, printer);
+  simul_scope ctx4 = builder4.build (mem, printer);
 
   data_value mv (mixed);
 
@@ -3311,7 +3311,7 @@ data_value_set_at_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem, printer);
+  simul_scope ctx5 = builder5.build (mem, printer);
 
   data_value z17 (array_char_17);
 
@@ -3365,7 +3365,7 @@ data_value_print_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
@@ -3390,7 +3390,7 @@ data_value_print_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem, printer2);
+  simul_scope ctx2 = builder2.build (mem, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
@@ -3422,7 +3422,7 @@ data_value_print_tests ()
   context_printer printer4;
   pretty_printer & pp4 = printer4.pp;
 
-  exec_context ctx4 = context_builder ().build (mem4, printer4);
+  simul_scope ctx4 = context_builder ().build (mem4, printer4);
 
   data_storage & alloc1 = ctx4.allocate (12);
   storage_address address1 (alloc1.get_ref (), 0);
@@ -3439,7 +3439,7 @@ data_value_print_tests ()
   context_printer printer5;
   pretty_printer & pp5 = printer5.pp;
 
-  exec_context ctx5 = context_builder ().build (mem5, printer5);
+  simul_scope ctx5 = context_builder ().build (mem5, printer5);
 
   ctx5.allocate (12);
   data_storage & alloc2_ctx5 = ctx5.allocate (17);
@@ -3480,7 +3480,7 @@ data_value_print_tests ()
   context_printer printer8;
   pretty_printer & pp8 = printer8.pp;
 
-  exec_context ctx8 = context_builder ().build (mem8, printer8);
+  simul_scope ctx8 = context_builder ().build (mem8, printer8);
   data_storage & strg = ctx8.allocate (10);
 
   data_value v = strg.get_value ();
@@ -3548,7 +3548,7 @@ data_value_get_at_tests ()
 
   context_builder builder1 {};
   builder1.add_decls (&decls1);
-  exec_context ctx1 = builder1.build (mem1, printer);
+  simul_scope ctx1 = builder1.build (mem1, printer);
 
   data_value val1 (mixed1);
   wide_int wi7 = wi::uhwi (7, HOST_BITS_PER_INT);
@@ -3589,7 +3589,7 @@ data_storage_set_at_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_storage *storage_p = ctx.find_reachable_var (p);
   gcc_assert (storage_p != nullptr);
@@ -3639,7 +3639,7 @@ context_printer_print_tests ()
 
   context_builder builder1;
   builder1.add_decls (&decls1);
-  exec_context ctx1 = builder1.build (mem1, printer1);
+  simul_scope ctx1 = builder1.build (mem1, printer1);
 
   data_storage & alloc1 = ctx1.allocate (12);
 
@@ -3672,7 +3672,7 @@ context_printer_print_tests ()
 
   context_builder builder2;
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem2, printer2);
+  simul_scope ctx2 = builder2.build (mem2, printer2);
 
   data_storage & alloc2 = ctx2.allocate (17);
 
@@ -3705,7 +3705,7 @@ context_printer_print_tests ()
 
   context_builder builder3;
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem3, printer3);
+  simul_scope ctx3 = builder3.build (mem3, printer3);
 
   data_storage & alloc3 = ctx3.allocate (19);
 
@@ -3749,7 +3749,7 @@ context_printer_print_first_data_ref_part_tests ()
   heap_memory mem1;
   context_printer printer1;
   pretty_printer & pp1 = printer1.pp;
-  exec_context ctx1 = context_builder ().build (mem1, printer1);
+  simul_scope ctx1 = context_builder ().build (mem1, printer1);
 
   tree res1 = printer1.print_first_data_ref_part (ctx1, var2i, 0, nullptr,
 						  VAL_UNDEFINED);
@@ -3767,7 +3767,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem1, printer2);
+  simul_scope ctx2 = builder2.build (mem1, printer2);
 
   tree mem_var2i = build2 (MEM_REF, der2i,
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
@@ -3786,7 +3786,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (mem1, printer3);
+  simul_scope ctx3 = builder3.build (mem1, printer3);
 
   tree long_var2i = build2 (MEM_REF, long_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var2i),
@@ -3837,7 +3837,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem1, printer4);
+  simul_scope ctx4 = builder4.build (mem1, printer4);
 
   tree mem_var1d1i = build2 (MEM_REF, long_integer_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var1d1i),
@@ -3856,7 +3856,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls4);
-  exec_context ctx5 = builder5.build (mem1, printer5);
+  simul_scope ctx5 = builder5.build (mem1, printer5);
 
   tree mem_var1d1i_s2 = build2 (MEM_REF, short_integer_type_node,
 				build1 (ADDR_EXPR, ptr_type_node, var1d1i),
@@ -3905,7 +3905,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (mem1, printer6);
+  simul_scope ctx6 = builder6.build (mem1, printer6);
 
   tree mem_var4c = build2 (MEM_REF, long_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var4c),
@@ -3943,7 +3943,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder7 {};
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (mem1, printer7);
+  simul_scope ctx7 = builder7.build (mem1, printer7);
 
   tree mem_var1i1d = build2 (MEM_REF, char_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var1i1d),
@@ -3970,7 +3970,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder8 {};
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem1, printer8);
+  simul_scope ctx8 = builder8.build (mem1, printer8);
 
   tree mem_var_i5 = build2 (MEM_REF, char_type_node,
 			    build1 (ADDR_EXPR, ptr_type_node, var_i5),
@@ -3990,7 +3990,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder9 {};
   builder9.add_decls (&decls8);
-  exec_context ctx9 = builder9.build (mem1, printer9);
+  simul_scope ctx9 = builder9.build (mem1, printer9);
 
   tree mem2_var_i5 = build2 (MEM_REF, char_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var_i5),
@@ -4032,7 +4032,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder10 {};
   builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (mem1, printer10);
+  simul_scope ctx10 = builder10.build (mem1, printer10);
 
   tree mem_var_d1i1a5d = build2 (MEM_REF, char_type_node,
 				 build1 (ADDR_EXPR, ptr_type_node, var_d1i1a5d),
@@ -4059,7 +4059,7 @@ context_printer_print_first_data_ref_part_tests ()
 
   context_builder builder11 {};
   builder11.add_decls (&decls11);
-  exec_context ctx11 = builder11.build (mem1, printer11);
+  simul_scope ctx11 = builder11.build (mem1, printer11);
 
   data_storage *var_storage = ctx11.find_reachable_var (var_i);
   storage_address var_address (var_storage->get_ref (), 0);
@@ -4102,7 +4102,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_value val1 (ptr_type_node);
   data_storage *storage = ctx.find_reachable_var (my_var);
@@ -4118,7 +4118,7 @@ context_printer_print_value_update_tests ()
   pretty_printer & pp2 = printer2.pp;
   pp_buffer (&pp2)->m_flush_p = false;
 
-  exec_context ctx2 = builder.build (mem, printer2);
+  simul_scope ctx2 = builder.build (mem, printer2);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
   data_value val2 (vec2ptr);
@@ -4161,7 +4161,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem, printer3);
+  simul_scope ctx3 = builder3.build (mem, printer3);
 
   tree mem_var2c = build2 (MEM_REF, short_integer_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var2c),
@@ -4200,7 +4200,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem, printer4);
+  simul_scope ctx4 = builder4.build (mem, printer4);
 
   tree vec2i = build_vector_type (integer_type_node, 2);
 
@@ -4235,7 +4235,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder5;
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem5, printer5);
+  simul_scope ctx5 = builder5.build (mem5, printer5);
 
   data_storage *strg_v5i = ctx5.find_reachable_var (v5i);
   storage_address addr_v5i (strg_v5i->get_ref (), 24);
@@ -4272,7 +4272,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder6;
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (mem, printer6);
+  simul_scope ctx6 = builder6.build (mem, printer6);
 
   wide_int wi12 = wi::shwi (12, HOST_BITS_PER_INT);
   wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
@@ -4311,7 +4311,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder7;
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (mem, printer7);
+  simul_scope ctx7 = builder7.build (mem, printer7);
 
   wide_int wi3 = wi::shwi (3, CHAR_BIT);
   wide_int wi11 = wi::shwi (11, HOST_BITS_PER_INT);
@@ -4340,7 +4340,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder8;
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem8, printer8);
+  simul_scope ctx8 = builder8.build (mem8, printer8);
 
   data_storage *strg8_v5c = ctx8.find_reachable_var (v5c_8);
   gcc_assert (strg8_v5c != nullptr);
@@ -4381,7 +4381,7 @@ context_printer_print_value_update_tests ()
 
   context_builder builder9;
   builder9.add_decls (&decls9);
-  exec_context ctx9 = builder9.build (mem9, printer9);
+  simul_scope ctx9 = builder9.build (mem9, printer9);
 
   data_storage *strg9_i = ctx9.find_reachable_var (i_9);
   gcc_assert (strg9_i != nullptr);
@@ -4413,7 +4413,7 @@ context_printer_print_value_update_tests ()
 
 
 void
-exec_context_evaluate_tests ()
+simul_scope_evaluate_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -4428,7 +4428,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   tree int_ptr = build_pointer_type (integer_type_node);
   tree var_addr = build1 (ADDR_EXPR,  int_ptr, a);
@@ -4439,7 +4439,7 @@ exec_context_evaluate_tests ()
   data_storage &strg_ptr = ptr_addr->storage.get ();
   ASSERT_PRED1 (strg_ptr.matches, a);
 
-  exec_context ctx2 = context_builder ().build (ctx, printer);
+  simul_scope ctx2 = context_builder ().build (ctx, printer);
 
   data_value val2 = ctx2.evaluate (var_addr);
   storage_address *ptr2_addr = val2.get_address ();
@@ -4535,7 +4535,7 @@ exec_context_evaluate_tests ()
   heap_memory mem3;
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (mem3, printer);
+  simul_scope ctx3 = builder3.build (mem3, printer);
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_INT);
 
@@ -4579,7 +4579,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (mem3, printer);
+  simul_scope ctx4 = builder4.build (mem3, printer);
 
   wide_int cst15 = wi::shwi (15, HOST_BITS_PER_INT);
 
@@ -4629,7 +4629,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem3, printer);
+  simul_scope ctx5 = builder5.build (mem3, printer);
 
   wide_int cst14 = wi::shwi (14, HOST_BITS_PER_INT);
 
@@ -4657,7 +4657,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (mem3, printer);
+  simul_scope ctx6 = builder6.build (mem3, printer);
 
   wide_int cst8 = wi::shwi (8, CHAR_BIT);
 
@@ -4695,7 +4695,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder8;
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem, printer);
+  simul_scope ctx8 = builder8.build (mem, printer);
 
   data_storage * strg29 = ctx8.find_reachable_var (a29);
   gcc_assert (strg29 != nullptr);
@@ -4797,7 +4797,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder9;
   builder9.add_decls (&decls9);
-  exec_context ctx9 = builder9.build (mem, printer);
+  simul_scope ctx9 = builder9.build (mem, printer);
 
   data_storage * strg9 = ctx9.find_reachable_var (v9i);
   gcc_assert (strg9 != nullptr);
@@ -4873,7 +4873,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder10;
   builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (mem, printer);
+  simul_scope ctx10 = builder10.build (mem, printer);
 
   data_storage * strg19 = ctx10.find_reachable_var (a19);
   gcc_assert (strg19 != nullptr);
@@ -4908,7 +4908,7 @@ exec_context_evaluate_tests ()
 
   context_builder builder11;
   builder11.add_decls (&decls11);
-  exec_context ctx11 = builder11.build (mem, printer);
+  simul_scope ctx11 = builder11.build (mem, printer);
 
   data_value val_a11 (integer_type_node);
   wide_int wi_a11 = wi::shwi (7, TYPE_PRECISION (integer_type_node));
@@ -4945,7 +4945,7 @@ exec_context_evaluate_tests ()
 
 
 void
-exec_context_evaluate_literal_tests ()
+simul_scope_evaluate_literal_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -4953,7 +4953,7 @@ exec_context_evaluate_literal_tests ()
   vec<tree> empty{};
   vec<tree> empty2{};
 
-  exec_context ctx = context_builder ().build (mem, printer);
+  simul_scope ctx = context_builder ().build (mem, printer);
 
   tree cst = build_int_cst (integer_type_node, 13);
 
@@ -4986,7 +4986,7 @@ exec_context_evaluate_literal_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem2, printer2);
+  simul_scope ctx2 = builder2.build (mem2, printer2);
 
   tree comp = fold_build3_loc (input_location, COMPONENT_REF,
 			       integer_type_node, d, field2, NULL_TREE);
@@ -5026,7 +5026,7 @@ exec_context_evaluate_literal_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem3, printer3);
+  simul_scope ctx3 = builder3.build (mem3, printer3);
 
   data_storage *strg_d3 = ctx3.find_reachable_var (d3);
   gcc_assert (strg_d3 != nullptr);
@@ -5077,7 +5077,7 @@ exec_context_evaluate_literal_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem4, printer4);
+  simul_scope ctx4 = builder4.build (mem4, printer4);
 
   data_storage *strg_d4 = ctx4.find_reachable_var (d4);
   gcc_assert (strg_d4 != nullptr);
@@ -5106,7 +5106,7 @@ exec_context_evaluate_literal_tests ()
 }
 
 void
-exec_context_evaluate_constructor_tests ()
+simul_scope_evaluate_constructor_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -5121,7 +5121,7 @@ exec_context_evaluate_constructor_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   tree int_ptr = build_pointer_type (integer_type_node);
 
@@ -5146,7 +5146,7 @@ exec_context_evaluate_constructor_tests ()
 
   tree a2i = build_array_type_nelts (integer_type_node, 2);
 
-  exec_context ctx2 = context_builder ().build (mem, printer);
+  simul_scope ctx2 = context_builder ().build (mem, printer);
 
   tree cst3 = build_int_cst (integer_type_node, 3);
   tree cst7 = build_int_cst (integer_type_node, 7);
@@ -5200,7 +5200,7 @@ exec_context_evaluate_constructor_tests ()
 
   context_builder builder3;
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem, printer);
+  simul_scope ctx3 = builder3.build (mem, printer);
 
   data_storage *strg_var3 = ctx3.find_reachable_var (var3);
   gcc_assert (strg_var3 != nullptr);
@@ -5228,7 +5228,7 @@ exec_context_evaluate_constructor_tests ()
   ASSERT_EQ (wi_2.to_uhwi (), 2);
 
 
-  exec_context ctx4 = context_builder ().build (mem, printer);
+  simul_scope ctx4 = context_builder ().build (mem, printer);
 
   tree cstr4 = build_constructor (a2i, nullptr);
 
@@ -5245,7 +5245,7 @@ exec_context_evaluate_constructor_tests ()
 
 
 void
-exec_context_evaluate_unary_tests ()
+simul_scope_evaluate_unary_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -5257,7 +5257,7 @@ exec_context_evaluate_unary_tests ()
 
   context_builder builder1;
   builder1.add_decls (&decls1);
-  exec_context ctx1 = builder1.build (mem, printer);
+  simul_scope ctx1 = builder1.build (mem, printer);
 
   wide_int wi18 = wi::uhwi (18, CHAR_BIT);
   data_value val18 (char_type_node);
@@ -5295,7 +5295,7 @@ exec_context_evaluate_unary_tests ()
 
   context_builder builder2;
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem, printer);
+  simul_scope ctx2 = builder2.build (mem, printer);
 
   wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
   data_value val23 (intSI_type_node);
@@ -5315,7 +5315,7 @@ exec_context_evaluate_unary_tests ()
 
 
 void
-exec_context_evaluate_binary_tests ()
+simul_scope_evaluate_binary_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -5330,7 +5330,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
@@ -5363,7 +5363,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem, printer);
+  simul_scope ctx2 = builder2.build (mem, printer);
 
   data_value val12_bis (HOST_BITS_PER_INT);
   val12_bis.set_cst (wi::shwi (12, HOST_BITS_PER_INT));
@@ -5396,7 +5396,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem, printer);
+  simul_scope ctx3 = builder3.build (mem, printer);
 
   data_storage *v12_storage = ctx3.find_reachable_var (v12c);
   gcc_assert (v12_storage != nullptr);
@@ -5496,7 +5496,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem, printer);
+  simul_scope ctx4 = builder4.build (mem, printer);
 
   machine_mode float_mode = TYPE_MODE (float_type_node);
   REAL_VALUE_TYPE val25 = REAL_VALUE_ATOF ("2.5", float_mode);
@@ -5538,7 +5538,7 @@ exec_context_evaluate_binary_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem, printer);
+  simul_scope ctx5 = builder5.build (mem, printer);
 
   data_storage *strg_i5 = ctx5.find_reachable_var (i5);
   gcc_assert (strg_i5 != nullptr);
@@ -5562,7 +5562,7 @@ exec_context_evaluate_binary_tests ()
 
 
 void
-exec_context_evaluate_condition_tests ()
+simul_scope_evaluate_condition_tests ()
 {
   heap_memory mem1;
   context_printer printer1;
@@ -5577,7 +5577,7 @@ exec_context_evaluate_condition_tests ()
 
   context_builder builder1 {};
   builder1.add_decls (&decls1);
-  exec_context ctx1 = builder1.build (mem1, printer1);
+  simul_scope ctx1 = builder1.build (mem1, printer1);
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
@@ -5612,7 +5612,7 @@ exec_context_evaluate_condition_tests ()
 
   context_builder builder2 {};
   builder2.add_decls (&decls2);
-  exec_context ctx2 = builder2.build (mem2, printer2);
+  simul_scope ctx2 = builder2.build (mem2, printer2);
 
   wide_int wi_null = wi::shwi (0, HOST_BITS_PER_PTR);
   data_value val_null1 (ptr_type_node);
@@ -5661,7 +5661,7 @@ exec_context_evaluate_condition_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls3);
-  exec_context ctx3 = builder3.build (mem3, printer3);
+  simul_scope ctx3 = builder3.build (mem3, printer3);
 
   data_storage *strg3_x1 = ctx3.find_reachable_var (x1);
   gcc_assert (strg3_x1 != nullptr);
@@ -5712,7 +5712,7 @@ exec_context_evaluate_condition_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls4);
-  exec_context ctx4 = builder4.build (mem4, printer4);
+  simul_scope ctx4 = builder4.build (mem4, printer4);
 
   data_storage & m1 = ctx4.allocate (4);
   storage_address addr_m11 (m1.get_ref (), CHAR_BIT);
@@ -5749,7 +5749,7 @@ exec_context_evaluate_condition_tests ()
 }
 
 void
-exec_context_execute_assign_tests ()
+simul_scope_simulate_assign_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -5777,7 +5777,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder {};
   builder.add_decls (&decls);
-  exec_context ctx = builder.build (mem, printer);
+  simul_scope ctx = builder.build (mem, printer);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   data_storage *storage_b = ctx.find_reachable_var (b);
@@ -5789,7 +5789,7 @@ exec_context_execute_assign_tests ()
   data_value val = storage_a->get_value ();
   ASSERT_EQ (val.classify (), VAL_UNDEFINED);
 
-  ctx.execute (gassign1);
+  ctx.simulate (gassign1);
 
   data_value val2 = storage_a->get_value ();
   ASSERT_EQ (val2.classify (), VAL_CONSTANT);
@@ -5805,7 +5805,7 @@ exec_context_execute_assign_tests ()
   data_value val3 = storage_b->get_value ();
   ASSERT_EQ (val3.classify (), VAL_UNDEFINED);
 
-  ctx.execute (gassign2);
+  ctx.simulate (gassign2);
 
   data_value val4 = storage_b->get_value ();
   ASSERT_EQ (val4.classify (), VAL_MIXED);
@@ -5822,7 +5822,7 @@ exec_context_execute_assign_tests ()
   ASSERT_EQ (val5.classify (), VAL_MIXED);
   ASSERT_EQ (val5.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_UNDEFINED);
 
-  ctx.execute (gassign3);
+  ctx.simulate (gassign3);
 
   data_value val6 = storage_b->get_value ();
   ASSERT_EQ (val6.classify (), VAL_CONSTANT);
@@ -5840,7 +5840,7 @@ exec_context_execute_assign_tests ()
   context_builder builder2 {};
   builder2.add_decls (&decls);
   builder2.add_decls (&ssanames);
-  exec_context ctx2 = builder2.build (mem, printer);
+  simul_scope ctx2 = builder2.build (mem, printer);
 
   tree i66 = build_int_cst (integer_type_node, 66);
   gimple *gassign5 = gimple_build_assign (ssa1, i66);
@@ -5851,7 +5851,7 @@ exec_context_execute_assign_tests ()
 
   ASSERT_EQ (ssa1_val.classify (), VAL_UNDEFINED);
 
-  ctx2.execute (gassign5);
+  ctx2.simulate (gassign5);
 
   data_value ssa1_val2 = ssa1_strg->get_value ();
   ASSERT_EQ (ssa1_val2.classify (), VAL_CONSTANT);
@@ -5874,7 +5874,7 @@ exec_context_execute_assign_tests ()
 
   ASSERT_EQ (val_a.classify (), VAL_UNDEFINED);
 
-  ctx2.execute (gassign4);
+  ctx2.simulate (gassign4);
 
   data_value val_a2 = strg_a_ctx2->get_value ();
   ASSERT_EQ (val_a2.classify (), VAL_CONSTANT);
@@ -5891,7 +5891,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (mem, printer);
+  simul_scope ctx3 = builder3.build (mem, printer);
 
   data_storage & alloc1 = ctx3.allocate (12);
   storage_address address1 (alloc1.get_ref (), 0);
@@ -5911,7 +5911,7 @@ exec_context_execute_assign_tests ()
   data_value val_alloc1 = alloc1.get_value ();
   ASSERT_EQ (val_alloc1.classify (), VAL_UNDEFINED);
 
-  ctx3.execute (assign);
+  ctx3.simulate (assign);
 
   data_value val_alloc2 = alloc1.get_value ();
   ASSERT_EQ (val_alloc2.classify (), VAL_MIXED);
@@ -5928,7 +5928,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (mem, printer);
+  simul_scope ctx4 = builder4.build (mem, printer);
 
   data_storage *strg_u = ctx4.find_reachable_var (u);
   gcc_assert (strg_u != nullptr);
@@ -5943,7 +5943,7 @@ exec_context_execute_assign_tests ()
   data_value val_u = strg_u->get_value ();
   ASSERT_EQ (val_u.classify (), VAL_UNDEFINED);
 
-  ctx4.execute (assign44);
+  ctx4.simulate (assign44);
 
   data_value val_u2 = strg_u->get_value ();
   ASSERT_EQ (val_u2.classify (), VAL_CONSTANT);
@@ -5961,7 +5961,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem, printer);
+  simul_scope ctx5 = builder5.build (mem, printer);
 
   wide_int wi8 = wi::shwi (8, HOST_BITS_PER_INT);
   wide_int wi13 = wi::shwi (13, HOST_BITS_PER_INT);
@@ -5984,7 +5984,7 @@ exec_context_execute_assign_tests ()
   data_value before = strg5->get_value ();
   ASSERT_EQ (before.classify (), VAL_UNDEFINED);
 
-  ctx5.execute (assign5);
+  ctx5.simulate (assign5);
 
   gcc_assert (strg5 != nullptr);
   data_value after = strg5->get_value ();
@@ -6002,7 +6002,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder6 {};
   builder6.add_decls (&decls6);
-  exec_context ctx6 = builder6.build (mem, printer);
+  simul_scope ctx6 = builder6.build (mem, printer);
 
   tree c8 = build_int_cst (char_type_node, 8);
 
@@ -6012,7 +6012,7 @@ exec_context_execute_assign_tests ()
 
   gassign *assign2 = gimple_build_assign (ref2, c8);
 
-  ctx6.execute (assign2);
+  ctx6.simulate (assign2);
 
   data_storage *storage = ctx6.find_reachable_var (v5c);
   gcc_assert (storage != nullptr);
@@ -6036,7 +6036,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder7 {};
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (mem, printer);
+  simul_scope ctx7 = builder7.build (mem, printer);
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
@@ -6060,7 +6060,7 @@ exec_context_execute_assign_tests ()
   data_value x_before = strg_x->get_value ();
   ASSERT_EQ (x_before.classify (), VAL_UNDEFINED);
 
-  ctx7.execute (assign7);
+  ctx7.simulate (assign7);
 
   data_value x_after = strg_x->get_value ();
   ASSERT_EQ (x_after.classify (), VAL_CONSTANT);
@@ -6083,7 +6083,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder8;
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem, printer);
+  simul_scope ctx8 = builder8.build (mem, printer);
 
   data_storage * strg29 = ctx8.find_reachable_var (a29);
   gcc_assert (strg29 != nullptr);
@@ -6099,7 +6099,7 @@ exec_context_execute_assign_tests ()
   data_value val0_before = val29_before0.get_at (0, CHAR_BIT);
   ASSERT_EQ (val0_before.classify (), VAL_UNDEFINED);
 
-  ctx8.execute (assign29_0);
+  ctx8.simulate (assign29_0);
 
   data_value val29_after0 = strg29->get_value ();
   data_value val0_after = val29_after0.get_at (0, CHAR_BIT);
@@ -6119,7 +6119,7 @@ exec_context_execute_assign_tests ()
   data_value val3_before = val29_before3.get_at (24, CHAR_BIT);
   ASSERT_EQ (val3_before.classify (), VAL_UNDEFINED);
 
-  ctx8.execute (assign29_3);
+  ctx8.simulate (assign29_3);
 
   data_value val29_after3 = strg29->get_value ();
   data_value val3_after = val29_after3.get_at (24, CHAR_BIT);
@@ -6146,7 +6146,7 @@ exec_context_execute_assign_tests ()
   data_value val12_before = val29_before12.get_at (96, CHAR_BIT);
   ASSERT_EQ (val12_before.classify (), VAL_UNDEFINED);
 
-  ctx8.execute (assign29_12);
+  ctx8.simulate (assign29_12);
 
   data_value val29_after12 = strg29->get_value ();
   data_value val12_after = val29_after12.get_at (96, CHAR_BIT);
@@ -6173,7 +6173,7 @@ exec_context_execute_assign_tests ()
   data_value val27_before = val29_before27.get_at (216, CHAR_BIT);
   ASSERT_EQ (val27_before.classify (), VAL_UNDEFINED);
 
-  ctx8.execute (assign29_27);
+  ctx8.simulate (assign29_27);
 
   data_value val29_after27 = strg29->get_value ();
   data_value val27_after = val29_after27.get_at (216, CHAR_BIT);
@@ -6192,7 +6192,7 @@ exec_context_execute_assign_tests ()
 
   context_builder builder10;
   builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (mem, printer);
+  simul_scope ctx10 = builder10.build (mem, printer);
 
   wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
   data_value val23 (intSI_type_node);
@@ -6209,7 +6209,7 @@ exec_context_execute_assign_tests ()
 
   tree conv10 = build1 (VIEW_CONVERT_EXPR, unsigned_intSI_type_node, i10);
   gimple *g10 = gimple_build_assign (v10, conv10);
-  ctx10.execute (g10);
+  ctx10.simulate (g10);
 
   data_value val10_after = strg_v10->get_value ();
   ASSERT_EQ (val10_after.classify (), VAL_CONSTANT);
@@ -6220,7 +6220,7 @@ exec_context_execute_assign_tests ()
 }
 
 void
-exec_context_print_call_tests ()
+simul_scope_print_call_tests ()
 {
   heap_memory mem1;
   context_printer printer1;
@@ -6239,7 +6239,7 @@ exec_context_print_call_tests ()
 
   context_builder builder1;
   builder1.add_decls (&decls1);
-  exec_context ctx1 = builder1.build (mem1, printer1);
+  simul_scope ctx1 = builder1.build (mem1, printer1);
 
   wide_int wi3113_1 = wi::shwi (13 * 256 + 31, TYPE_PRECISION (short_integer_type_node));
 
@@ -6268,7 +6268,7 @@ exec_context_print_call_tests ()
   gcall * memcpy_call1 = gimple_build_call (memcpy_fn, 3, p_1, addr_si_1,
 					    build_int_cst (size_type_node, 2));
 
-  ctx1.execute (memcpy_call1);
+  ctx1.simulate (memcpy_call1);
 
   const char *str1 = pp_formatted_text (&pp1);
   ASSERT_STR_STARTSWITH (str1, "__builtin_memcpy (");
@@ -6280,7 +6280,7 @@ exec_context_print_call_tests ()
 }
 
 void
-exec_context_execute_call_tests ()
+simul_scope_simulate_call_tests ()
 {
   heap_memory mem;
   context_printer printer;
@@ -6290,7 +6290,7 @@ exec_context_execute_call_tests ()
   tree func_type = build_function_type (void_type_node, NULL_TREE);
   layout_type (func_type);
 
-  exec_context ctx = context_builder ().build (mem, printer);
+  simul_scope ctx = context_builder ().build (mem, printer);
 
   tree set_args_fn = build_decl (input_location, FUNCTION_DECL,
 				 get_identifier ("_gfortran_set_args"),
@@ -6300,7 +6300,7 @@ exec_context_execute_call_tests ()
 
   gcall * set_args_call = gimple_build_call (set_args_fn, 0);
 
-  ctx.execute (set_args_call);
+  ctx.simulate (set_args_call);
 
   tree set_options_fn = build_decl (input_location, FUNCTION_DECL,
 				    get_identifier ("_gfortran_set_options"),
@@ -6310,7 +6310,7 @@ exec_context_execute_call_tests ()
 
   gcall * set_options_call = gimple_build_call (set_options_fn, 0);
 
-  ctx.execute (set_options_call);
+  ctx.simulate (set_options_call);
 
   tree p = create_var (ptr_type_node, "p");
 
@@ -6320,7 +6320,7 @@ exec_context_execute_call_tests ()
   heap_memory mem2;
   context_builder builder2 {};
   builder2.add_decls (&decls);
-  exec_context ctx2 = builder2.build (mem2, printer);
+  simul_scope ctx2 = builder2.build (mem2, printer);
 
   tree malloc_fn = builtin_decl_explicit (BUILT_IN_MALLOC);
   tree cst = build_int_cst (size_type_node, 12);
@@ -6330,7 +6330,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (ctx2.find_alloc (0), nullptr);
 
-  ctx2.execute (malloc_call);
+  ctx2.simulate (malloc_call);
 
   data_storage *alloc_strg = ctx2.find_alloc (0);
   ASSERT_NE (alloc_strg, nullptr);
@@ -6351,7 +6351,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (ctx2.find_alloc (1), nullptr);
 
-  ctx2.execute (malloc_call2);
+  ctx2.simulate (malloc_call2);
 
   data_storage *alloc_strg2 = ctx2.find_alloc (1);
   ASSERT_NE (alloc_strg2, nullptr);
@@ -6389,12 +6389,12 @@ exec_context_execute_call_tests ()
   heap_memory mem3;
   context_builder builder3 {};
   builder3.add_decls (&decls2);
-  exec_context ctx3 = builder3.build (mem3, printer);
+  simul_scope ctx3 = builder3.build (mem3, printer);
 
   data_value ival = ctx3.evaluate (ivar);
   ASSERT_EQ (ival.classify (), VAL_UNDEFINED);
 
-  ctx3.execute (my_call);
+  ctx3.simulate (my_call);
 
   data_value ival2 = ctx3.evaluate (ivar);
   ASSERT_EQ (ival2.classify (), VAL_CONSTANT);
@@ -6441,12 +6441,12 @@ exec_context_execute_call_tests ()
   heap_memory mem4;
   context_builder builder4 {};
   builder4.add_decls (&decls3);
-  exec_context ctx4 = builder4.build (mem4, printer);
+  simul_scope ctx4 = builder4.build (mem4, printer);
 
   data_value ival3 = ctx4.evaluate (ivar2);
   ASSERT_EQ (ival3.classify (), VAL_UNDEFINED);
 
-  ctx4.execute (my_call2);
+  ctx4.simulate (my_call2);
 
   data_value ival4 = ctx4.evaluate (ivar2);
   ASSERT_EQ (ival4.classify (), VAL_CONSTANT);
@@ -6464,7 +6464,7 @@ exec_context_execute_call_tests ()
   heap_memory mem5;
   context_builder builder5 {};
   builder5.add_decls (&decls5);
-  exec_context ctx5 = builder5.build (mem5, printer);
+  simul_scope ctx5 = builder5.build (mem5, printer);
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_LONG);
   data_value val18 (size_type_node);
@@ -6478,7 +6478,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (ctx5.find_alloc (0), nullptr);
 
-  ctx5.execute (malloc_call5);
+  ctx5.simulate (malloc_call5);
 
   data_storage *alloc_strg5 = ctx5.find_alloc (0);
   ASSERT_NE (alloc_strg5, nullptr);
@@ -6496,7 +6496,7 @@ exec_context_execute_call_tests ()
   tree simple_type = build_function_type (void_type_node, NULL_TREE);
   layout_type (simple_type);
 
-  exec_context ctx6 = context_builder ().build (mem, printer);
+  simul_scope ctx6 = context_builder ().build (mem, printer);
 
   tree simple_func = build_decl (input_location, FUNCTION_DECL,
 				 get_identifier ("simple_func"),
@@ -6511,7 +6511,7 @@ exec_context_execute_call_tests ()
 
   gcall * simple_call = gimple_build_call (simple_func, 0);
 
-  ctx6.execute (simple_call);
+  ctx6.simulate (simple_call);
 
 
   vec<tree> decls7{};
@@ -6520,7 +6520,7 @@ exec_context_execute_call_tests ()
   heap_memory mem7;
   context_builder builder7 {};
   builder7.add_decls (&decls7);
-  exec_context ctx7 = builder7.build (mem7, printer);
+  simul_scope ctx7 = builder7.build (mem7, printer);
 
   tree s6 = build_int_cst (size_type_node, 6);
   tree s4 = build_int_cst (size_type_node, 4);
@@ -6531,7 +6531,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (ctx7.find_alloc (0), nullptr);
 
-  ctx7.execute (calloc_call7);
+  ctx7.simulate (calloc_call7);
 
   data_storage *p_strg7 = ctx7.find_reachable_var (p);
   ASSERT_NE (p_strg7, nullptr);
@@ -6562,7 +6562,7 @@ exec_context_execute_call_tests ()
   heap_memory mem8;
   context_builder builder8 {};
   builder8.add_decls (&decls8);
-  exec_context ctx8 = builder8.build (mem8, printer);
+  simul_scope ctx8 = builder8.build (mem8, printer);
 
   tree a81 = build1_loc (UNKNOWN_LOCATION, ADDR_EXPR,
 			 ptr_type_node, v81);
@@ -6588,7 +6588,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (v82_before.classify (), VAL_UNDEFINED);
 
-  ctx8.execute (memcpy_call8);
+  ctx8.simulate (memcpy_call8);
 
   data_value v82_after = storage_v82->get_value ();
 
@@ -6610,7 +6610,7 @@ exec_context_execute_call_tests ()
   heap_memory mem9;
   context_builder builder9 {};
   builder9.add_decls (&decls9);
-  exec_context ctx9 = builder9.build (mem9, printer);
+  simul_scope ctx9 = builder9.build (mem9, printer);
 
   data_storage * storage_i91 = ctx9.find_reachable_var (i91);
   gcc_assert (storage_i91 != nullptr);
@@ -6642,7 +6642,7 @@ exec_context_execute_call_tests ()
 
   ASSERT_EQ (c92_before.classify (), VAL_UNDEFINED);
 
-  ctx9.execute (memcpy_call9);
+  ctx9.simulate (memcpy_call9);
 
   data_value c92_after = storage_c92->get_value ();
 
@@ -6665,7 +6665,7 @@ exec_context_execute_call_tests ()
   heap_memory mem10;
   context_builder builder10 {};
   builder10.add_decls (&decls10);
-  exec_context ctx10 = builder10.build (mem10, printer);
+  simul_scope ctx10 = builder10.build (mem10, printer);
 
   wide_int hwi10_17 = wi::shwi (17, HOST_BITS_PER_INT);
 
@@ -6694,7 +6694,7 @@ exec_context_execute_call_tests ()
   data_value val105_before = storage_ac105->get_value ();
   ASSERT_EQ (val105_before.classify (), VAL_UNDEFINED);
 
-  ctx10.execute (memset_call10);
+  ctx10.simulate (memset_call10);
 
   data_value val105_after = storage_ac105->get_value ();
   ASSERT_EQ (val105_after.classify (), VAL_MIXED);
@@ -6714,11 +6714,11 @@ exec_context_execute_call_tests ()
 }
 
 void
-exec_context_allocate_tests ()
+simul_scope_allocate_tests ()
 {
   heap_memory mem;
   context_printer printer;
-  exec_context ctx1 = context_builder ().build (mem, printer);
+  simul_scope ctx1 = context_builder ().build (mem, printer);
 
   data_storage & storage1 = ctx1.allocate (12);
 
@@ -6733,7 +6733,7 @@ exec_context_allocate_tests ()
 
 
   heap_memory mem3;
-  exec_context ctx3 = context_builder ().build (mem3, printer);
+  simul_scope ctx3 = context_builder ().build (mem3, printer);
 
   ASSERT_EQ (ctx3.find_alloc (0), nullptr);
 
@@ -6744,15 +6744,15 @@ exec_context_allocate_tests ()
   ASSERT_EQ (ctx3.find_alloc (1), nullptr);
 
 
-  exec_context ctx4 = context_builder ().build (ctx3, printer);
+  simul_scope ctx4 = context_builder ().build (ctx3, printer);
 
   ASSERT_NE (ctx3.find_alloc (0), nullptr);
   ASSERT_EQ (ctx4.find_alloc (0), &storage3);
 
 
   heap_memory mem5;
-  exec_context ctx5 = context_builder ().build (mem5, printer);
-  exec_context ctx6 = context_builder ().build (ctx5, printer);
+  simul_scope ctx5 = context_builder ().build (mem5, printer);
+  simul_scope ctx6 = context_builder ().build (ctx5, printer);
 
   data_storage & storage5 = ctx5.allocate (16);
 
@@ -6763,8 +6763,8 @@ exec_context_allocate_tests ()
 
 
   heap_memory mem7;
-  exec_context ctx7 = context_builder ().build (mem7, printer);
-  exec_context ctx8 = context_builder ().build (ctx7, printer);
+  simul_scope ctx7 = context_builder ().build (mem7, printer);
+  simul_scope ctx8 = context_builder ().build (ctx7, printer);
 
   data_storage & storage8 = ctx8.allocate (11);
 
@@ -6776,11 +6776,11 @@ exec_context_allocate_tests ()
 
 
 void
-gimple_exec_cc_tests ()
+gimple_simulate_cc_tests ()
 {
   get_constant_type_size_tests ();
   data_value_classify_tests ();
-  exec_context_find_reachable_var_tests ();
+  simul_scope_find_reachable_var_tests ();
   data_value_set_address_tests ();
   data_value_set_tests ();
   data_value_set_at_tests ();
@@ -6790,16 +6790,16 @@ gimple_exec_cc_tests ()
   context_printer_print_tests ();
   context_printer_print_first_data_ref_part_tests ();
   context_printer_print_value_update_tests ();
-  exec_context_evaluate_tests ();
-  exec_context_evaluate_literal_tests ();
-  exec_context_evaluate_constructor_tests ();
-  exec_context_evaluate_unary_tests ();
-  exec_context_evaluate_binary_tests ();
-  exec_context_evaluate_condition_tests ();
-  exec_context_execute_assign_tests ();
-  exec_context_print_call_tests ();
-  exec_context_execute_call_tests ();
-  exec_context_allocate_tests ();
+  simul_scope_evaluate_tests ();
+  simul_scope_evaluate_literal_tests ();
+  simul_scope_evaluate_constructor_tests ();
+  simul_scope_evaluate_unary_tests ();
+  simul_scope_evaluate_binary_tests ();
+  simul_scope_evaluate_condition_tests ();
+  simul_scope_simulate_assign_tests ();
+  simul_scope_print_call_tests ();
+  simul_scope_simulate_call_tests ();
+  simul_scope_allocate_tests ();
 }
 
 }

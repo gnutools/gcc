@@ -2376,7 +2376,7 @@ symbol_table::compile (void)
     dump_memory_report ("Memory consumption after IPA");
   timevar_pop (TV_CGRAPHOPT);
 
-  if (flag_gimple_exec)
+  if (flag_gimple_simulate)
     simulate_main_execution ();
 
   /* Output everything.  */
