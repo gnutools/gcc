@@ -210,6 +210,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "ipa-inline.h"
 #include "omp-offload.h"
 #include "symtab-thunks.h"
+#include "gimple-simulate.h"
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
    secondary queue used during optimization to accommodate passes that
@@ -2369,6 +2370,9 @@ symbol_table::compile (void)
   if (post_ipa_mem_report)
     dump_memory_report ("Memory consumption after IPA");
   timevar_pop (TV_CGRAPHOPT);
+
+  if (flag_gimple_simulate)
+    simulate_main_execution ();
 
   /* Output everything.  */
   switch_to_section (text_section);
