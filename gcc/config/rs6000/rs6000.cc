@@ -4360,15 +4360,12 @@ rs6000_option_override_internal (bool global_init_p)
       && (rs6000_isa_flags_explicit & OPTION_MASK_PCREL) == 0)
     rs6000_isa_flags |= OPTION_MASK_PCREL;
 
-  /* -mpcrel requires medium or large code models, but we can't check
-      TARGET_CMODEL until after the subtarget override options are done.  */
-  else if (TARGET_PCREL
-	   && TARGET_CMODEL != CMODEL_MEDIUM
-	   && TARGET_CMODEL != CMODEL_LARGE)
+  /* -mpcrel requires -mcmodel=medium, but we can't check TARGET_CMODEL until
+      after the subtarget override options are done.  */
+  else if (TARGET_PCREL && TARGET_CMODEL != CMODEL_MEDIUM)
     {
       if ((rs6000_isa_flags_explicit & OPTION_MASK_PCREL) != 0)
-	error ("%qs requires %qs or %qs", "-mpcrel", "-mcmodel=medium",
-	       "-mcmodel=large");
+	error ("%qs requires %qs", "-mpcrel", "-mcmodel=medium");
 
       rs6000_isa_flags &= ~OPTION_MASK_PCREL;
     }
@@ -21359,7 +21356,7 @@ rs6000_elf_declare_function_name (FILE *file, const char *name, tree decl)
   ASM_OUTPUT_TYPE_DIRECTIVE (file, name, "function");
   ASM_DECLARE_RESULT (file, DECL_RESULT (decl));
 
-  if (TARGET_CMODEL == CMODEL_LARGE && !TARGET_PCREL
+  if (TARGET_CMODEL == CMODEL_LARGE
       && rs6000_global_entry_point_prologue_needed_p ())
     {
       char buf[256];
