@@ -54,9 +54,10 @@ class simul_scope;
 class data_storage;
 
 
-static bool
-get_constant_type_size (tree type, unsigned &result)
+static unsigned
+get_constant_type_size (tree type)
 {
+  unsigned result;
   if (TREE_CODE (type) == INTEGER_TYPE
       || TREE_CODE (type) == BOOLEAN_TYPE)
     result = TYPE_PRECISION (type);
@@ -72,15 +73,6 @@ get_constant_type_size (tree type, unsigned &result)
       gcc_assert (hwi_size <= UINT_MAX);
       result = hwi_size;
     }
-  return true;
-}
-
-
-static unsigned
-get_constant_type_size (tree type)
-{
-  unsigned result;
-  gcc_assert (get_constant_type_size (type, result));
   return result;
 }
 
@@ -687,9 +679,7 @@ context_printer::print (simul_scope * ctx, tree expr)
 	gcc_assert (offset_bits % CHAR_BIT == 0);
 	unsigned offset_bytes = offset_bits / CHAR_BIT;
 
-	unsigned size_bits;
-	if (!get_constant_type_size (TREE_TYPE (expr), size_bits))
-	  gcc_unreachable ();
+	unsigned size_bits = get_constant_type_size (TREE_TYPE (expr));
 	gcc_assert (size_bits % CHAR_BIT == 0);
 	unsigned size_bytes = size_bits / CHAR_BIT;
 
@@ -790,8 +780,7 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
       if (TREE_CODE (var_type) == ARRAY_TYPE)
 	{
 	  tree elt_type = TREE_TYPE (var_type);
-	  unsigned elt_width;
-	  gcc_assert (get_constant_type_size (elt_type, elt_width));
+	  unsigned elt_width = get_constant_type_size (elt_type);
 	  if (elt_width < min_size)
 	    return NULL_TREE;
 	  unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
@@ -818,8 +807,7 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
 		    break;
 
 		  unsigned field_size;
-		  if (!get_constant_type_size (TREE_TYPE (field), field_size))
-		    gcc_unreachable ();
+		  field_size = get_constant_type_size (TREE_TYPE (field));
 
 		  // Continue if the remaining offset is not within
 		  // the current field, even if the next field is
@@ -839,10 +827,8 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
 
 	  tree field_type = TREE_TYPE (field);
 
-	  unsigned field_width;
-	  if (!get_constant_type_size (field_type, field_width))
-	    gcc_unreachable ();
-	  else if (field_width < min_size)
+	  unsigned field_width = get_constant_type_size (field_type);
+	  if (field_width < min_size)
 	    return NULL_TREE;
 
 	  ref = build3 (COMPONENT_REF, field_type,
@@ -919,7 +905,7 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
    value VAL_ADDRESS, otherwise picking a value of minimal size CHAR_BIT.  If
    no partial data reference was found, print DATA_REF itself unmodified.  The
    minimal size is made necessary because heap-allocated memory doesn't have
-   any type that can guide the decomposition into smaller chunks. */
+   any type that can guide the decomposition into smaller subreferences. */
 
 tree
 context_printer::print_first_data_ref_part (simul_scope & context,
@@ -945,9 +931,8 @@ context_printer::print_first_data_ref_part (simul_scope & context,
 					    val_type);
 
 	unsigned orig_type_size;
-	if (!get_constant_type_size (TREE_TYPE (data_ref), orig_type_size))
-	  gcc_unreachable ();
-	else if (min_size < orig_type_size)
+	orig_type_size = get_constant_type_size (TREE_TYPE (data_ref));
+	if (min_size < orig_type_size)
 	  {
 	    tree elt_type;
 	    if (val_type == VAL_ADDRESS)
@@ -1022,9 +1007,7 @@ context_printer::print_value_update (simul_scope & context, tree lhs, const data
 	  continue;
 	}
 
-      unsigned just_done;
-      if (!get_constant_type_size (type_done, just_done))
-	gcc_unreachable ();
+      unsigned just_done = get_constant_type_size (type_done);
       gcc_assert (just_done > 0);
       gcc_assert (just_done + ignored_bits <= width - previously_done);
       pp_space (&pp);
@@ -1516,8 +1499,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
       gcc_assert (width == value.get_bitwidth ());
       gcc_assert (offset == 0);
       tree elt_type = TREE_TYPE (type);
-      unsigned elt_width;
-      gcc_assert (get_constant_type_size (elt_type, elt_width));
+      unsigned elt_width = get_constant_type_size (elt_type);
       gcc_assert (elt_width != 0);
       gcc_assert (width % elt_width == 0);
       pp_left_brace (&pp);
@@ -1589,8 +1571,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 void
 context_printer::print_at (const data_value & value, tree type, unsigned offset)
 {
-  unsigned width;
-  gcc_assert (get_constant_type_size (type, width));
+  unsigned width = get_constant_type_size (type);
   print_at (value, type, offset, width);
 }
 
@@ -1817,9 +1798,7 @@ simul_scope::evaluate (tree expr) const
 	decompose_ref (expr, storage, offset);
 	gcc_assert (storage != nullptr && offset >= 0);
 	data_value var_value = storage->get_value ();
-	unsigned bitwidth;
-	bool cst = get_constant_type_size (TREE_TYPE (expr), bitwidth);
-	gcc_assert (cst);
+	unsigned bitwidth = get_constant_type_size (TREE_TYPE (expr));
 	return var_value.get_at (offset, bitwidth);
       }
       break;
@@ -1906,8 +1885,7 @@ simul_scope::evaluate (tree expr) const
 	tree expr_type = TREE_TYPE (expr);
 	data_value result (expr_type);
 	tree elt_type = TREE_TYPE (expr_type);
-	unsigned elt_size;
-	gcc_assert (get_constant_type_size (elt_type, elt_size));
+	unsigned elt_size = get_constant_type_size (elt_type);
 
 	unsigned HOST_WIDE_INT nunits;
 	gcc_assert (VECTOR_CST_NELTS (expr).is_constant (&nunits));
@@ -1948,12 +1926,11 @@ simul_scope::evaluate (tree expr) const
 data_value
 simul_scope::evaluate_constructor (tree cstr) const
 {
-  unsigned bit_width;
   gcc_assert (TREE_CODE (TREE_TYPE (cstr)) == VECTOR_TYPE
 	      || TREE_CODE (TREE_TYPE (cstr)) == ARRAY_TYPE
 	      || TREE_CODE (TREE_TYPE (cstr)) == RECORD_TYPE);
 
-  gcc_assert (get_constant_type_size (TREE_TYPE (cstr), bit_width));
+  unsigned bit_width = get_constant_type_size (TREE_TYPE (cstr));
 
   data_value result(bit_width);
 
@@ -1982,8 +1959,7 @@ simul_scope::evaluate_constructor (tree cstr) const
 	  else
 	    wi_idx = wi::to_wide (idx);
 
-	  unsigned elt_size;
-	  gcc_assert (get_constant_type_size (TREE_TYPE (elt), elt_size));
+	  unsigned elt_size = get_constant_type_size (TREE_TYPE (elt));
 
 	  wide_int max_idx = wi::uhwi (bit_width / elt_size,
 				       wi_idx.get_precision ());
@@ -2183,9 +2159,7 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offse
 
 	    gcc_assert (TREE_OPERAND (data_ref, 3) == NULL_TREE);
 	    tree elt_type = TREE_TYPE (TREE_TYPE (parent_data_ref));
-	    unsigned size_bits;
-	    bool found_size = get_constant_type_size (elt_type, size_bits);
-	    gcc_assert (found_size);
+	    unsigned size_bits = get_constant_type_size (elt_type);
 	    add_multiplier = wi::uhwi (size_bits, HOST_BITS_PER_WIDE_INT);
 	  }
 	  break;
