@@ -1,4 +1,4 @@
-==================== Branch work211-cmodel, patch #300 ====================
+==================== Branch work211-cmodel, patch #301 ====================
 
 PR target/120681 - allow -mcmodel=large with prefixed addressing
 
@@ -16,7 +16,7 @@ static variables, pc-relative addressing will be used.  For external variables,
 we will generate the normal code that uses '@got@pcrel' addressing to load up
 the external address and use this address as a pointer to do the load or store.
 
-2025-06-16  Michael Meissner  <meissner@linux.ibm.com>
+2025-06-17  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -29,6 +29,8 @@ gcc/testsuite/
 
 	PR target/120681
 	* gcc.target/powerpc/pr120681.c: New test.
+
+==================== Branch work211-cmodel, patch #300 was reverted ====================
 
 ==================== Branch work211-cmodel, baseline ====================
 
