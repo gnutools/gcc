@@ -1516,6 +1516,7 @@ OBJS = \
 	gimple-range-op.o \
 	gimple-range-phi.o \
 	gimple-range-trace.o \
+	gimple-simulate.o \
 	gimple-ssa-backprop.o \
 	gimple-ssa-isolate-paths.o \
 	gimple-ssa-nonnull-compare.o \
