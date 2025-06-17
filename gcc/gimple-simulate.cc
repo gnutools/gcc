@@ -19,11 +19,13 @@ along with GCC; see the file COPYING3.  If not see
 
 
 /* This implements a simulator of the gimple/SSA IR, that produces on the
-   standard error a trace of the evolution of variables and memory allocated.
-   This is targetted at debugging of medium sized testcases whose behaviour is
-   not completely clear by simply starring at the IR.  It's called when the
-   -fgimple-simulate argument is passed to the compiler.  It's supposed to be
-   used with the IR produced by the gimple frontend.  */
+   standard error a trace of the evolution of variables and memory allocated
+   as statements are executed.
+   This is targetted at debugging medium-sized testcases whose behaviour is
+   not completely clear by simply starring at the IR.
+   The simulator is called when the -fgimple-simulate argument is passed to
+   the compiler.  It's supposed to be used with the IR produced by the gimple
+   frontend.  */
 
 
 #include "config.h"
@@ -93,14 +95,14 @@ get_constant_type_size (tree type)
    
 enum value_type
 {
-  /* An invalid value that isn't any of the other cases below.  */
+  /* An invalid value that doesn't represent any meaningful case.  */
   VAL_NONE,
   /* A value that hasn't been initialized.  */
   VAL_UNDEFINED,
   /* An address of a storage.  */
   VAL_ADDRESS,
   /* A known value.  */
-  VAL_CONSTANT,
+  VAL_KNOWN,
   /* A non-uniform value.  There is some of it that is of a different kind
      from the rest of it.  */
   VAL_MIXED
@@ -212,7 +214,7 @@ namespace selftest
 
 
 /* Class representing a value.  A value is a set of bits, some of which may
-   be used to store some known constant, some of which may be used to store
+   be used to store some known value, some of which may be used to store
    addresses.
    Bits storing a known value are represented with two wide_int fields.  One
    is a mask telling which bits store a known value, and the other tells that
@@ -220,21 +222,22 @@ namespace selftest
    Bits storing an address are represented with one wide_int field and a vector
    of addresses.  The wide_int field is a mask like for the known value case.
    Individual bits can't store addresses, so the mask will be set by full
-   chunks of HOST_BITS_PER_PTR bits.  The vector of values represents all the
-   addresses that have ever been written to that value.  Two writes to the
-   same pointer will create two elements in the vector, and the second
-   write will create the second element and invalidate the first.  */
+   chunks of HOST_BITS_PER_PTR bits.  The vector of addresses represents all the
+   addresses that have ever been written at any position in the value.  One
+   write to any position in the value will be represented by appending a new
+   element to the address vector, and a second write at the same position will
+   be represented by appending a different element and invalidating the first
+   one without removing it from the vector.  */
 
 class data_value
 {
-  
   unsigned bit_width;
-  wide_int constant_mask;
+  wide_int known_mask;
   wide_int address_mask;
-  wide_int constant_value;
+  wide_int known_value;
   auto_vec<stored_address> addresses;
-  void set_cst_at (unsigned dest_offset, unsigned value_width,
-		   const wide_int &val, unsigned src_offset);
+  void set_known_at (unsigned dest_offset, unsigned value_width,
+		     const wide_int &val, unsigned src_offset);
   stored_address *find_address (HOST_WIDE_INT offset) const;
 
   friend void selftest::data_value_classify_tests ();
@@ -245,9 +248,9 @@ class data_value
 public:
   data_value (unsigned width)
     : bit_width (width),
-    constant_mask (wi::shwi (HOST_WIDE_INT_0, width)),
+    known_mask (wi::shwi (HOST_WIDE_INT_0, width)),
     address_mask (wi::shwi (HOST_WIDE_INT_0, width)),
-    constant_value (wi::shwi (HOST_WIDE_INT_0, width)),
+    known_value (wi::shwi (HOST_WIDE_INT_0, width)),
     addresses ()
   {}
   data_value (tree type)
@@ -265,14 +268,14 @@ public:
 	       const data_value & value_src, unsigned src_offset);
   void set_at (const data_value & value, unsigned offset);
   void set (const data_value & value);
-  void set_cst_at (const wide_int & val, unsigned offset);
-  void set_cst (const wide_int & val);
-  wide_int get_cst_at (unsigned offset, unsigned width) const;
-  wide_int get_cst () const;
+  void set_known_at (const wide_int & val, unsigned offset);
+  void set_known (const wide_int & val);
+  wide_int get_known_at (unsigned offset, unsigned width) const;
+  wide_int get_known () const;
   storage_address *get_address () const;
   storage_address *get_address_at (unsigned offset) const;
   data_value get_at (unsigned offset, unsigned width) const;
-  bool is_fully_defined () const { return (~(constant_mask | address_mask)) == 0; }
+  bool is_fully_defined () const { return (~(known_mask | address_mask)) == 0; }
   tree to_tree (tree type) const;
 };
 
@@ -674,8 +677,8 @@ context_printer::print (simul_scope * ctx, tree expr)
 	gcc_assert (address != nullptr);
 
 	data_value val_off = ctx->evaluate (TREE_OPERAND (expr, 1));
-	gcc_assert (val_off.classify () == VAL_CONSTANT);
-	wide_int wi_off = val_off.get_cst ();
+	gcc_assert (val_off.classify () == VAL_KNOWN);
+	wide_int wi_off = val_off.get_known ();
 	wi_off = (wi_off * CHAR_BIT) + address->offset;
 
 	if (!wi::fits_uhwi_p (wi_off))
@@ -1092,9 +1095,9 @@ data_storage::get_ref () const
 
 data_value::data_value (const data_value & other)
   : bit_width (other.bit_width),
-  constant_mask (other.constant_mask),
+  known_mask (other.known_mask),
   address_mask (other.address_mask),
-  constant_value (other.constant_value),
+  known_value (other.known_value),
   addresses (other.addresses.copy ())
 {}
 
@@ -1122,15 +1125,15 @@ data_value::classify (unsigned offset, unsigned width) const
 {
   wide_int mask = wi::shifted_mask (offset, width, false, bit_width);
   bool has_address = (address_mask & mask) != 0;
-  bool has_constant = (constant_mask & mask) != 0;
+  bool has_known = (known_mask & mask) != 0;
 
-  int has_count = has_address + has_constant;
+  int has_count = has_address + has_known;
   if (has_count > 1)
     return VAL_MIXED;
   else if (has_count == 0)
     return VAL_UNDEFINED;
-  else if (has_constant && ((~constant_mask) & mask) == 0)
-    return VAL_CONSTANT;
+  else if (has_known && ((~known_mask) & mask) == 0)
+    return VAL_KNOWN;
   else if (has_address && ((~address_mask) & mask) == 0)
     return VAL_ADDRESS;
   else
@@ -1176,7 +1179,7 @@ data_value::set_address_at (storage_address & address, unsigned offset)
       existing_address->invalidate ();
     }
 
-  constant_mask &= ~mask;
+  known_mask &= ~mask;
   address_mask |= mask;
 
   stored_address new_address (address, offset);
@@ -1205,7 +1208,7 @@ data_value::set_undefined_at (unsigned offset, unsigned width)
 					 bit_width);
 
   // TODO: invalidate existing address if any
-  constant_mask &= ~dest_mask;
+  known_mask &= ~dest_mask;
   address_mask &= ~dest_mask;
 }
 
@@ -1215,8 +1218,8 @@ data_value::set_undefined_at (unsigned offset, unsigned width)
    [SRC_OFFSET, SRC_OFFSET+VALUE_WIDTH).  */
 
 void
-data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
-			const wide_int & value_src, unsigned src_offset)
+data_value::set_known_at (unsigned dest_offset, unsigned value_width,
+			  const wide_int & value_src, unsigned src_offset)
 {
   unsigned src_width = value_src.get_precision ();
   gcc_assert (dest_offset < bit_width);
@@ -1234,9 +1237,9 @@ data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
 	existing_address->invalidate ();
     }
 
-  if (orig_type != VAL_CONSTANT)
+  if (orig_type != VAL_KNOWN)
     {
-      constant_mask |= dest_mask;
+      known_mask |= dest_mask;
       address_mask &= ~dest_mask;
     }
 
@@ -1250,8 +1253,8 @@ data_value::set_cst_at (unsigned dest_offset, unsigned value_width,
   if (dest_offset > 0)
     dest_value <<= dest_offset; 
 
-  constant_value &= ~dest_mask;
-  constant_value |= dest_value;
+  known_value &= ~dest_mask;
+  known_value |= dest_value;
 }
 
 
@@ -1273,8 +1276,8 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
       set_undefined_at (dest_offset, value_width);
       break;
 
-    case VAL_CONSTANT:
-      set_cst_at (dest_offset, value_width, value_src.constant_value, src_offset);
+    case VAL_KNOWN:
+      set_known_at (dest_offset, value_width, value_src.known_value, src_offset);
       break;
 
     case VAL_ADDRESS:
@@ -1304,9 +1307,9 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
 
     case VAL_MIXED:
       {
-	gcc_assert ((constant_mask & address_mask) == 0);
+	gcc_assert ((known_mask & address_mask) == 0);
 
-	wide_int cst_part = value_src.constant_mask;
+	wide_int known_part = value_src.known_mask;
 	wide_int address_part = value_src.address_mask;
 
 	unsigned src_width = value_src.bit_width;
@@ -1314,20 +1317,20 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
 	wide_int mask = wi::shifted_mask (src_offset, value_width, false,
 					  value_src.bit_width);
 
-	cst_part &= mask;
+	known_part &= mask;
 	address_part &= mask;
 
-	while (cst_part != 0 || address_part != 0)
+	while (known_part != 0 || address_part != 0)
 	  {
-	    int ctz_cst = wi::ctz (cst_part);
+	    int ctz_known = wi::ctz (known_part);
 	    int ctz_addr = wi::ctz (address_part);
 
 	    int next_offset;
 	    wide_int selected_part;
-	    if (ctz_cst < ctz_addr)
+	    if (ctz_known < ctz_addr)
 	      {
-		next_offset = ctz_cst;
-		selected_part = cst_part;
+		next_offset = ctz_known;
+		selected_part = known_part;
 	      }
 	    else
 	      {
@@ -1344,7 +1347,7 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
 
 	    wide_int mask = wi::shifted_mask (next_offset, width, false, src_width);
 
-	    cst_part &= ~mask;
+	    known_part &= ~mask;
 	    address_part &= ~mask;
 	  }
 	
@@ -1380,33 +1383,33 @@ data_value::set (const data_value & value)
 /* Write the constant to THIS at bits starting at OFFSET as a known value.  */
 
 void
-data_value::set_cst_at (const wide_int & val, unsigned offset)
+data_value::set_known_at (const wide_int & val, unsigned offset)
 {
-  set_cst_at (offset, val.get_precision (), val, 0);
+  set_known_at (offset, val.get_precision (), val, 0);
 }
 
 
 /* Write the constant to THIS as a known value.  */
 
 void
-data_value::set_cst (const wide_int & val)
+data_value::set_known (const wide_int & val)
 {
   gcc_assert (val.get_precision () == bit_width);
-  set_cst_at (val, 0);
+  set_known_at (val, 0);
 }
 
 
 /* Return the known value at bits [OFFSET, OFFSET+WIDTH) of THIS.  */
 
 wide_int
-data_value::get_cst_at (unsigned offset, unsigned width) const
+data_value::get_known_at (unsigned offset, unsigned width) const
 {
   gcc_assert (offset < bit_width);
   gcc_assert (width <= bit_width - offset);
 
   enum value_type val_type = classify (offset, width);
-  gcc_assert (val_type == VAL_CONSTANT);
-  wide_int tmp = wide_int::from (wide_int_ref (constant_value), bit_width, UNSIGNED);
+  gcc_assert (val_type == VAL_KNOWN);
+  wide_int tmp = wide_int::from (wide_int_ref (known_value), bit_width, UNSIGNED);
   if (offset > 0)
     tmp = wi::lrshift (tmp, offset);
   return wide_int::from (tmp, width, UNSIGNED);
@@ -1416,9 +1419,9 @@ data_value::get_cst_at (unsigned offset, unsigned width) const
 /* Return the known value of THIS.  */
 
 wide_int
-data_value::get_cst () const
+data_value::get_known () const
 {
-  return get_cst_at (0, bit_width);
+  return get_known_at (0, bit_width);
 }
 
 
@@ -1457,8 +1460,8 @@ data_value::get_at (unsigned offset, unsigned width) const
   data_value result (width);
   switch (classify (offset, width))
     {
-    case VAL_CONSTANT:
-      result.set_cst (get_cst_at (offset, width));
+    case VAL_KNOWN:
+      result.set_known (get_known_at (offset, width));
       break;
 
     case VAL_ADDRESS:
@@ -1488,8 +1491,8 @@ data_value::get_at (unsigned offset, unsigned width) const
 tree
 data_value::to_tree (tree type) const
 {
-  gcc_assert (classify () == VAL_CONSTANT);
-  wide_int value = get_cst ();
+  gcc_assert (classify () == VAL_KNOWN);
+  wide_int value = get_known ();
   if (TREE_CODE (type) == INTEGER_TYPE)
     return wide_int_to_tree (type, value);
   else
@@ -1554,14 +1557,14 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	  }
 	  break;
 
-	case VAL_CONSTANT:
+	case VAL_KNOWN:
 	  {
-	    const wide_int wi_val = value.get_cst_at (offset, width);
+	    const wide_int wi_val = value.get_known_at (offset, width);
 	    if (TREE_CODE (type) == REAL_TYPE)
 	      {
 		tree int_type = make_signed_type (width);
-		tree cst = wide_int_to_tree (int_type, wi_val);
-		tree real = fold_build1 (VIEW_CONVERT_EXPR, type, cst);
+		tree known = wide_int_to_tree (int_type, wi_val);
+		tree real = fold_build1 (VIEW_CONVERT_EXPR, type, known);
 		print (nullptr, real);
 	      }
 	    else
@@ -1833,7 +1836,7 @@ simul_scope::evaluate (tree expr) const
       {
 	data_value result (TREE_TYPE (expr));
 	wide_int wi_expr = wi::to_wide (expr);
-	result.set_cst (wi_expr);
+	result.set_known (wi_expr);
 	return result;
       }
       break;
@@ -1859,7 +1862,7 @@ simul_scope::evaluate (tree expr) const
 	  {
 	    // Unimplemented, set to NULL and hope that it won't be used.
 	    wide_int zero = wi::zero (result.get_bitwidth ());
-	    result.set_cst (zero);
+	    result.set_known (zero);
 	  }
 	else
 	  {
@@ -1957,7 +1960,7 @@ simul_scope::evaluate_constructor (tree cstr) const
   if (CONSTRUCTOR_NELTS (cstr) == 0)
     {
       wide_int zero = wi::zero (bit_width);
-      result.set_cst (zero);
+      result.set_known (zero);
       return result;
     }
 
@@ -2015,14 +2018,14 @@ simul_scope::evaluate_unary (enum tree_code code, tree type, tree arg) const
 	if (source_width == target_width)
 	  return value;
 
-	gcc_assert (value.classify () == VAL_CONSTANT);
+	gcc_assert (value.classify () == VAL_KNOWN);
 	tree t = value.to_tree (TREE_TYPE (arg));
 	tree r = fold_unary (code, type, t);
 	gcc_assert (TREE_CODE (r) == INTEGER_CST);
 	wide_int wi_r = wi::to_wide (r);
 
 	data_value result (type);
-	result.set_cst (wi_r);
+	result.set_known (wi_r);
 	return result;
       }
       break;
@@ -2056,7 +2059,7 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs
   data_value val_rhs = evaluate (rhs);
   enum value_type lhs_type = val_lhs.classify ();
   enum value_type rhs_type = val_rhs.classify ();
-  if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
+  if (lhs_type == VAL_KNOWN && rhs_type == VAL_KNOWN)
     {
       gcc_assert (TREE_TYPE (lhs) == TREE_TYPE (rhs)
 		  || (TREE_CODE (TREE_TYPE (lhs)) == INTEGER_TYPE
@@ -2071,18 +2074,18 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs
       gcc_assert (t != NULL_TREE);
       return evaluate (t);
     }
-  else if ((lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
-	   || (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS))
+  else if ((lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN)
+	   || (lhs_type == VAL_KNOWN && rhs_type == VAL_ADDRESS))
     {
       if (code == PLUS_EXPR || code == POINTER_PLUS_EXPR)
 	{
 	  data_value *val_address = nullptr, *val_offset = nullptr;
-	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN)
 	    {
 	      val_address = &val_lhs;
 	      val_offset = &val_rhs;
 	    }
-	  else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	  else if (lhs_type == VAL_KNOWN && rhs_type == VAL_ADDRESS)
 	    {
 	      val_address = &val_rhs;
 	      val_offset = &val_lhs;
@@ -2092,7 +2095,7 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs
 
 	  storage_address *address = val_address->get_address ();
 	  gcc_assert (address != nullptr);
-	  wide_int offset = val_offset->get_cst ();
+	  wide_int offset = val_offset->get_known ();
 	  wide_int bit_offset = offset * CHAR_BIT;
 	  wide_int total_offset = address->offset + bit_offset;
 	  gcc_assert (wi::fits_uhwi_p (total_offset));
@@ -2105,21 +2108,21 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs
       else if (code == EQ_EXPR || code == NE_EXPR)
 	{
 	  data_value *val_null = nullptr;
-	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT)
+	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN)
 	    val_null = &val_rhs;
-	  else if (lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
+	  else if (lhs_type == VAL_KNOWN && rhs_type == VAL_ADDRESS)
 	    val_null = &val_lhs;
 	  else
 	    gcc_unreachable ();
 
 	  /* Check that val_null really is the null pointer.  */
-	  wide_int wi_null_val = val_null->get_cst ();
+	  wide_int wi_null_val = val_null->get_known ();
 	  gcc_assert (wi_null_val == 0);
 
 	  data_value result (type);
 	  bool bool_result = code == NE_EXPR;
 	  wide_int wi_result = wi::uhwi (bool_result, result.get_bitwidth ());
-	  result.set_cst (wi_result);
+	  result.set_known (wi_result);
 	  return result;
 	}
       else
@@ -2175,8 +2178,8 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offse
 
 	    tree idx = TREE_OPERAND (data_ref, 1);
 	    data_value val = evaluate (idx);
-	    gcc_assert (val.classify () == VAL_CONSTANT);
-	    add_index = val.get_cst ();
+	    gcc_assert (val.classify () == VAL_KNOWN);
+	    add_index = val.get_known ();
 
 	    gcc_assert (TREE_OPERAND (data_ref, 3) == NULL_TREE);
 	    tree elt_type = TREE_TYPE (TREE_TYPE (parent_data_ref));
@@ -2211,8 +2214,8 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offse
 	    add_offset = wi::uhwi (addr->offset, HOST_BITS_PER_WIDE_INT);
 	    tree off = TREE_OPERAND (data_ref, 1);
 	    data_value off_val = evaluate (off);
-	    gcc_assert (off_val.classify () == VAL_CONSTANT);
-	    add_offset += off_val.get_cst () * CHAR_BIT;
+	    gcc_assert (off_val.classify () == VAL_KNOWN);
+	    add_offset += off_val.get_known () * CHAR_BIT;
 
 	    if (code == TARGET_MEM_REF)
 	      {
@@ -2223,12 +2226,12 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offse
 		    gcc_assert (index && step);
 
 		    data_value idx_val = evaluate (index);
-		    gcc_assert (idx_val.classify () == VAL_CONSTANT);
-		    add_index = idx_val.get_cst ();
+		    gcc_assert (idx_val.classify () == VAL_KNOWN);
+		    add_index = idx_val.get_known ();
 
 		    data_value step_val = evaluate (step);
-		    gcc_assert (step_val.classify () == VAL_CONSTANT);
-		    add_multiplier = step_val.get_cst ();
+		    gcc_assert (step_val.classify () == VAL_KNOWN);
+		    add_multiplier = step_val.get_known ();
 		    add_multiplier *= CHAR_BIT;
 		  }
 	      }
@@ -2365,8 +2368,8 @@ simul_scope::simulate_call (gcall *g)
       gcc_assert (gimple_call_num_args (g) == 1);
       tree arg = gimple_call_arg (g, 0);
       data_value size = evaluate (arg);
-      gcc_assert (size.classify () == VAL_CONSTANT);
-      wide_int wi_size = size.get_cst ();
+      gcc_assert (size.classify () == VAL_KNOWN);
+      wide_int wi_size = size.get_known ();
       gcc_assert (wi::fits_uhwi_p (wi_size));
       HOST_WIDE_INT alloc_amount = wi_size.to_uhwi ();
       data_storage &storage = allocate (alloc_amount);
@@ -2384,10 +2387,10 @@ simul_scope::simulate_call (gcall *g)
       tree arg1 = gimple_call_arg (g, 1);
       data_value size0 = evaluate (arg0);
       data_value size1 = evaluate (arg1);
-      gcc_assert (size0.classify () == VAL_CONSTANT);
-      gcc_assert (size1.classify () == VAL_CONSTANT);
-      wide_int wi_size0 = size0.get_cst ();
-      wide_int wi_size1 = size1.get_cst ();
+      gcc_assert (size0.classify () == VAL_KNOWN);
+      gcc_assert (size1.classify () == VAL_KNOWN);
+      wide_int wi_size0 = size0.get_known ();
+      wide_int wi_size1 = size1.get_known ();
       wi::overflow_type ovf;
       wide_int combined_size = umul (wi_size0, wi_size1, &ovf);
       gcc_assert (ovf == wi::OVF_NONE);
@@ -2401,7 +2404,7 @@ simul_scope::simulate_call (gcall *g)
       gcc_assert (wi::fits_uhwi_p (size_bits));
       unsigned HOST_WIDE_INT hwi_size = size_bits.to_uhwi ();
       data_value val (hwi_size);
-      val.set_cst (wi::zero (hwi_size));
+      val.set_known (wi::zero (hwi_size));
       storage.set (val);
 
       storage_address address (storage.get_ref (), 0);
@@ -2418,14 +2421,14 @@ simul_scope::simulate_call (gcall *g)
       data_value len2 = evaluate (arg2);
       gcc_assert (ptr0.classify () == VAL_ADDRESS);
       gcc_assert (ptr1.classify () == VAL_ADDRESS);
-      gcc_assert (len2.classify () == VAL_CONSTANT);
+      gcc_assert (len2.classify () == VAL_KNOWN);
       storage_address addr0 = *ptr0.get_address ();
       data_storage & storage0 = addr0.storage.get ();
       data_value dest_val = storage0.get_value ();
       storage_address addr1 = *ptr1.get_address ();
       data_storage & storage1 = addr1.storage.get ();
       data_value src = storage1.get_value ();
-      wide_int wi_len2 = len2.get_cst ();
+      wide_int wi_len2 = len2.get_known ();
       gcc_assert (wi::fits_shwi_p (wi_len2));
       HOST_WIDE_INT hwi_len2 = wi_len2.to_shwi ();
       tree array_len2 = build_array_type_nelts (char_type_node, hwi_len2);
@@ -2449,18 +2452,18 @@ simul_scope::simulate_call (gcall *g)
       data_value val1 = evaluate (arg1);
       data_value len2 = evaluate (arg2);
       gcc_assert (ptr0.classify () == VAL_ADDRESS);
-      gcc_assert (val1.classify () == VAL_CONSTANT);
-      gcc_assert (len2.classify () == VAL_CONSTANT);
+      gcc_assert (val1.classify () == VAL_KNOWN);
+      gcc_assert (len2.classify () == VAL_KNOWN);
       storage_address addr0 = *ptr0.get_address ();
       data_storage & storage0 = addr0.storage.get ();
       data_value dest_val = storage0.get_value ();
 
-      wide_int wi_val1 = val1.get_cst ();
+      wide_int wi_val1 = val1.get_known ();
       gcc_assert (wi::fits_uhwi_p (wi_val1));
       data_value byte1 (CHAR_BIT);
-      byte1.set_cst (wi::uhwi (wi_val1.to_uhwi (), CHAR_BIT));
+      byte1.set_known (wi::uhwi (wi_val1.to_uhwi (), CHAR_BIT));
 
-      wide_int wi_len2 = len2.get_cst ();
+      wide_int wi_len2 = len2.get_known ();
       gcc_assert (wi::fits_uhwi_p (wi_len2));
       unsigned HOST_WIDE_INT uhwi_len2 = wi_len2.to_uhwi ();
 
@@ -2565,7 +2568,7 @@ simul_scope::evaluate_condition (gcond *cond) const
   enum value_type lhs_type, rhs_type;
   lhs_type = val_lhs.classify ();
   rhs_type = val_rhs.classify ();
-  if (lhs_type == VAL_CONSTANT && rhs_type == VAL_CONSTANT)
+  if (lhs_type == VAL_KNOWN && rhs_type == VAL_KNOWN)
     {
       tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
       tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
@@ -2602,19 +2605,19 @@ simul_scope::evaluate_condition (gcond *cond) const
 	  gcc_unreachable ();
 	}
     }
-  else if ((lhs_type == VAL_CONSTANT && rhs_type == VAL_ADDRESS)
-	   || (lhs_type == VAL_ADDRESS && rhs_type == VAL_CONSTANT))
+  else if ((lhs_type == VAL_KNOWN && rhs_type == VAL_ADDRESS)
+	   || (lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN))
     {
       /* Comparison of an address against a null pointer.  */
       data_value * null = nullptr;
-      if (lhs_type == VAL_CONSTANT)
+      if (lhs_type == VAL_KNOWN)
 	null = &val_lhs;
-      else if (rhs_type == VAL_CONSTANT)
+      else if (rhs_type == VAL_KNOWN)
 	null = &val_rhs;
       else
 	gcc_unreachable ();
 
-      gcc_assert (null->get_cst () == 0);
+      gcc_assert (null->get_known () == 0);
       if (code == EQ_EXPR)
 	return false;
       else if (code == NE_EXPR)
@@ -2911,9 +2914,9 @@ data_value_classify_tests ()
 
   wide_int i = wi::shwi (17, get_constant_type_size (integer_type_node));
 
-  val.set_cst (i);
+  val.set_known (i);
 
-  ASSERT_EQ (val.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val.classify (), VAL_KNOWN);
 
 
   data_storage *storage_a = ctx.find_reachable_var (a);
@@ -2938,17 +2941,17 @@ data_value_classify_tests ()
 	     VAL_UNDEFINED);
   ASSERT_EQ (val2.classify (), VAL_UNDEFINED);
 
-  val2.set_cst_at (i, HOST_BITS_PER_INT);
+  val2.set_known_at (i, HOST_BITS_PER_INT);
 
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
-  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_KNOWN);
   ASSERT_EQ (val2.classify (), VAL_MIXED);
 
-  val2.set_cst_at (i, 0);
+  val2.set_known_at (i, 0);
 
-  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
-  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
-  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_KNOWN);
+  ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_KNOWN);
+  ASSERT_EQ (val2.classify (), VAL_KNOWN);
 
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
@@ -3176,18 +3179,18 @@ data_value_set_at_tests ()
   ASSERT_EQ (val_derived.classify (), VAL_UNDEFINED);
 
   wide_int cst = wi::shwi (13, HOST_BITS_PER_INT);
-  val_derived.set_cst_at (cst, 0);
+  val_derived.set_known_at (cst, 0);
 
   ASSERT_EQ (val_derived.classify (), VAL_MIXED);
-  ASSERT_EQ (val_derived.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
-  wide_int wi_val = val_derived.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_derived.classify (0, HOST_BITS_PER_INT), VAL_KNOWN);
+  wide_int wi_val = val_derived.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_TRUE (wi::fits_shwi_p (wi_val));
   ASSERT_EQ (wi_val.to_shwi (), 13);
 
 
   data_value vv (integer_type_node);
   wide_int wi23 = wi::shwi (23, HOST_BITS_PER_INT);
-  vv.set_cst (wi23);
+  vv.set_known (wi23);
 
   data_value vv2 (derived);
   vv2.set_at (vv, HOST_BITS_PER_INT);
@@ -3195,8 +3198,8 @@ data_value_set_at_tests ()
   ASSERT_EQ (vv2.classify (), VAL_MIXED);
 
   ASSERT_EQ (vv2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
-  ASSERT_EQ (vv2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_CONSTANT);
-  wide_int wi_field2 = vv2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_EQ (vv2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_KNOWN);
+  wide_int wi_field2 = vv2.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_field2);
   ASSERT_EQ (wi_field2.to_shwi (), 23);
 
@@ -3206,7 +3209,7 @@ data_value_set_at_tests ()
   data_value v (c12);
 
   wide_int wi33 = wi::shwi (33, CHAR_BIT);
-  v.set_cst_at (wi33, 9 * CHAR_BIT);
+  v.set_known_at (wi33, 9 * CHAR_BIT);
 
   data_value v2 (c12);
   v2.set_at (9 * CHAR_BIT, CHAR_BIT, v, 9 * CHAR_BIT);
@@ -3215,8 +3218,8 @@ data_value_set_at_tests ()
 
   ASSERT_EQ (v2.classify (8 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
   ASSERT_EQ (v2.classify (10 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
-  ASSERT_EQ (v2.classify (9 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
-  wide_int wi_c9 = v2.get_cst_at (9 * CHAR_BIT, CHAR_BIT);
+  ASSERT_EQ (v2.classify (9 * CHAR_BIT, CHAR_BIT), VAL_KNOWN);
+  wide_int wi_c9 = v2.get_known_at (9 * CHAR_BIT, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_c9);
   ASSERT_EQ (wi_c9.to_shwi (), 33);
 
@@ -3227,8 +3230,8 @@ data_value_set_at_tests ()
 
   ASSERT_EQ (v3.classify (8 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
   ASSERT_EQ (v3.classify (10 * CHAR_BIT, CHAR_BIT), VAL_UNDEFINED);
-  ASSERT_EQ (v3.classify (9 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
-  wide_int wi_c9_bis = v3.get_cst_at (9 * CHAR_BIT, CHAR_BIT);
+  ASSERT_EQ (v3.classify (9 * CHAR_BIT, CHAR_BIT), VAL_KNOWN);
+  wide_int wi_c9_bis = v3.get_known_at (9 * CHAR_BIT, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_c9_bis);
   ASSERT_EQ (wi_c9_bis.to_shwi (), 33);
 
@@ -3261,7 +3264,7 @@ data_value_set_at_tests ()
   data_value mv (mixed);
 
   wide_int wi4 = wi::shwi (4, HOST_BITS_PER_LONG);
-  mv.set_cst_at (wi4, 0);
+  mv.set_known_at (wi4, 0);
 
   data_storage *storage = ctx4.find_reachable_var (t);
   gcc_assert (storage != nullptr);
@@ -3270,15 +3273,15 @@ data_value_set_at_tests ()
   mv.set_address_at (address, HOST_BITS_PER_LONG);
 
   wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
-  mv.set_cst_at (wi7, HOST_BITS_PER_LONG + HOST_BITS_PER_PTR);
+  mv.set_known_at (wi7, HOST_BITS_PER_LONG + HOST_BITS_PER_PTR);
 
   data_value mv2 (mixed);
   mv2.set (mv);
 
   ASSERT_EQ (mv2.classify (), VAL_MIXED);
 
-  ASSERT_EQ (mv2.classify (0, HOST_BITS_PER_LONG), VAL_CONSTANT);
-  wide_int wi_i1 = mv2.get_cst_at (0, HOST_BITS_PER_LONG);
+  ASSERT_EQ (mv2.classify (0, HOST_BITS_PER_LONG), VAL_KNOWN);
+  wide_int wi_i1 = mv2.get_known_at (0, HOST_BITS_PER_LONG);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_i1);
   ASSERT_EQ (wi_i1.to_shwi (), 4);
 
@@ -3291,8 +3294,8 @@ data_value_set_at_tests ()
 
   ASSERT_EQ (mv2.classify (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
 			   HOST_BITS_PER_INT),
-	     VAL_CONSTANT);
-  wide_int wi_i3 = mv2.get_cst_at (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
+	     VAL_KNOWN);
+  wide_int wi_i3 = mv2.get_known_at (HOST_BITS_PER_LONG + HOST_BITS_PER_PTR,
 				   HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_i3);
   ASSERT_EQ (wi_i3.to_shwi (), 7);
@@ -3316,7 +3319,7 @@ data_value_set_at_tests ()
   data_value z17 (array_char_17);
 
   wide_int wi0 = wi::shwi (0, 17 * CHAR_BIT);
-  z17.set_cst_at (wi0, 0);
+  z17.set_known_at (wi0, 0);
 
   data_storage *strg_c17 = ctx5.find_reachable_var (c17);
   gcc_assert (strg_c17 != nullptr);
@@ -3333,9 +3336,9 @@ data_value_set_at_tests ()
   data_value val17_before = strg_c17->get_value ();
 
   ASSERT_EQ (val17_before.classify (), VAL_MIXED);
-  ASSERT_EQ (val17_before.classify (0, HOST_BITS_PER_PTR), VAL_CONSTANT);
+  ASSERT_EQ (val17_before.classify (0, HOST_BITS_PER_PTR), VAL_KNOWN);
   ASSERT_EQ (val17_before.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val17_before.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT), VAL_CONSTANT);
+  ASSERT_EQ (val17_before.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT), VAL_KNOWN);
 
   data_value undef (5 * CHAR_BIT + HOST_BITS_PER_PTR);
   strg_c17->set_at (undef, 3 * CHAR_BIT);
@@ -3343,11 +3346,11 @@ data_value_set_at_tests ()
   data_value val17_after = strg_c17->get_value ();
 
   ASSERT_EQ (val17_after.classify (), VAL_MIXED);
-  ASSERT_EQ (val17_after.classify (0, 3 * CHAR_BIT), VAL_CONSTANT);
+  ASSERT_EQ (val17_after.classify (0, 3 * CHAR_BIT), VAL_KNOWN);
   ASSERT_EQ (val17_after.classify (3 * CHAR_BIT, 5 * CHAR_BIT + HOST_BITS_PER_PTR),
 	     VAL_UNDEFINED);
   ASSERT_EQ (val17_after.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT),
-	     VAL_CONSTANT);
+	     VAL_KNOWN);
 }
 
 void
@@ -3411,7 +3414,7 @@ data_value_print_tests ()
   data_value val_int (integer_type_node);
 
   wide_int wi_val = wi::shwi (17, HOST_BITS_PER_INT);
-  val_int.set_cst (wi_val);
+  val_int.set_known (wi_val);
 
   printer3.print (val_int, integer_type_node);
 
@@ -3458,7 +3461,7 @@ data_value_print_tests ()
 
   data_value val6_259 (short_integer_type_node);
   wide_int cst259 = wi::shwi (259, HOST_BITS_PER_SHORT);
-  val6_259.set_cst (cst259);
+  val6_259.set_known (cst259);
 
   printer6.print (val6_259, char_type_node);
 
@@ -3469,7 +3472,7 @@ data_value_print_tests ()
   pretty_printer & pp7 = printer7.pp;
 
   data_value val7_259 (short_integer_type_node);
-  val7_259.set_cst (cst259);
+  val7_259.set_known (cst259);
 
   printer7.print_at (val7_259, char_type_node, CHAR_BIT);
 
@@ -3485,7 +3488,7 @@ data_value_print_tests ()
 
   data_value v = strg.get_value ();
   wide_int cst41 = wi::shwi (41, CHAR_BIT);
-  v.set_cst_at (cst41, HOST_BITS_PER_PTR);
+  v.set_known_at (cst41, HOST_BITS_PER_PTR);
 
   printer8.print_at (v, char_type_node, HOST_BITS_PER_PTR, CHAR_BIT);
 
@@ -3501,7 +3504,7 @@ data_value_print_tests ()
   wide_int wi_r2 = wi::to_wide (int_r2);
 
   data_value v9 (float_type_node);
-  v9.set_cst (wi_r2);
+  v9.set_known (wi_r2);
 
   printer9.print (v9, float_type_node);
 
@@ -3552,7 +3555,7 @@ data_value_get_at_tests ()
 
   data_value val1 (mixed1);
   wide_int wi7 = wi::uhwi (7, HOST_BITS_PER_INT);
-  val1.set_cst_at (wi7, tree_to_shwi (bit_position (i1)));
+  val1.set_known_at (wi7, tree_to_shwi (bit_position (i1)));
 
   data_storage * storage1 = ctx1.find_reachable_var (m1);
   storage_address address (storage1->get_ref (), 0);
@@ -3561,7 +3564,7 @@ data_value_get_at_tests ()
   data_value sub_val = val1.get_at (0, tree_to_shwi (bit_position (i3)));
 
   ASSERT_EQ (sub_val.classify (), VAL_MIXED);
-  ASSERT_EQ (sub_val.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
+  ASSERT_EQ (sub_val.classify (0, HOST_BITS_PER_INT), VAL_KNOWN);
   ASSERT_EQ (sub_val.classify (HOST_BITS_PER_INT,
 			       tree_to_shwi (bit_position (p2))
 			       - HOST_BITS_PER_INT),
@@ -4169,7 +4172,7 @@ context_printer_print_value_update_tests ()
 
   data_value val259 (short_integer_type_node);
   wide_int wi259 = wi::shwi (259, HOST_BITS_PER_SHORT);
-  val259.set_cst (wi259);
+  val259.set_known (wi259);
 
   printer3.print_value_update (ctx3, mem_var2c, val259);
 
@@ -4211,8 +4214,8 @@ context_printer_print_value_update_tests ()
   data_value val2i = data_value (vec2i);
   wide_int cst2 = wi::shwi (2, HOST_BITS_PER_INT);
   wide_int cst11 = wi::shwi (11, HOST_BITS_PER_INT);
-  val2i.set_cst_at (cst2, 0);
-  val2i.set_cst_at (cst11, HOST_BITS_PER_INT);
+  val2i.set_known_at (cst2, 0);
+  val2i.set_known_at (cst11, HOST_BITS_PER_INT);
 
   printer4.print_value_update (ctx4, mem_v2i, val2i);
 
@@ -4277,8 +4280,8 @@ context_printer_print_value_update_tests ()
   wide_int wi12 = wi::shwi (12, HOST_BITS_PER_INT);
   wide_int wi7 = wi::shwi (7, HOST_BITS_PER_INT);
   data_value cstr_12_7 (der2i_bis);
-  cstr_12_7.set_cst_at (wi12, 0);
-  cstr_12_7.set_cst_at (wi7, HOST_BITS_PER_INT);
+  cstr_12_7.set_known_at (wi12, 0);
+  cstr_12_7.set_known_at (wi7, HOST_BITS_PER_INT);
 
   printer6.print_value_update (ctx6, var2i, cstr_12_7);
 
@@ -4316,8 +4319,8 @@ context_printer_print_value_update_tests ()
   wide_int wi3 = wi::shwi (3, CHAR_BIT);
   wide_int wi11 = wi::shwi (11, HOST_BITS_PER_INT);
   data_value cstr_3_11 (der1c1i);
-  cstr_3_11.set_cst_at (wi3, 0);
-  cstr_3_11.set_cst_at (wi11, int_bit_position (der1c1i_i2));
+  cstr_3_11.set_known_at (wi3, 0);
+  cstr_3_11.set_known_at (wi11, int_bit_position (der1c1i_i2));
 
   printer7.print_value_update (ctx7, var1c1i, cstr_3_11);
 
@@ -4354,7 +4357,7 @@ context_printer_print_value_update_tests ()
 
   data_value val8_17 (char_type_node);
   wide_int wi8_17 = wi::shwi (17, CHAR_BIT);
-  val8_17.set_cst (wi8_17);
+  val8_17.set_known (wi8_17);
 
   tree ref8 = build2 (MEM_REF, char_type_node, p_8,
 		      build_zero_cst (build_pointer_type (char_type_node)));
@@ -4452,13 +4455,13 @@ simul_scope_evaluate_tests ()
   gcc_assert (strg_a != nullptr);
   data_value tmp22 (integer_type_node);
   wide_int wi22 = wi::shwi (22, HOST_BITS_PER_INT);
-  tmp22.set_cst (wi22);
+  tmp22.set_known (wi22);
   strg_a->set (tmp22);
 
   data_value val_a = ctx.evaluate (a);
 
-  ASSERT_EQ (val_a.classify (), VAL_CONSTANT);
-  wide_int wi_a = val_a.get_cst ();
+  ASSERT_EQ (val_a.classify (), VAL_KNOWN);
+  wide_int wi_a = val_a.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_a);
   ASSERT_EQ (wi_a.to_shwi (), 22);
 
@@ -4468,8 +4471,8 @@ simul_scope_evaluate_tests ()
   data_value val_33 = ctx.evaluate (cst33);
 
   ASSERT_EQ (val_33.get_bitwidth (), HOST_BITS_PER_INT);
-  ASSERT_EQ (val_33.classify (), VAL_CONSTANT);
-  wide_int wi33 = val_33.get_cst ();
+  ASSERT_EQ (val_33.classify (), VAL_KNOWN);
+  wide_int wi33 = val_33.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi33);
   ASSERT_EQ (wi33.to_shwi (), 33);
 
@@ -4486,11 +4489,11 @@ simul_scope_evaluate_tests ()
   data_value val_v = ctx.evaluate (v);
 
   ASSERT_EQ (val_v.get_bitwidth (), 64);
-  ASSERT_EQ (val_v.classify (), VAL_CONSTANT);
-  wide_int low_part = val_v.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_v.classify (), VAL_KNOWN);
+  wide_int low_part = val_v.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, low_part);
   ASSERT_EQ (low_part.to_shwi (), 2);
-  wide_int high_part = val_v.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wide_int high_part = val_v.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, high_part);
   ASSERT_EQ (high_part.to_shwi (), 11);
 
@@ -4507,18 +4510,18 @@ simul_scope_evaluate_tests ()
   data_value val_v2 = ctx.evaluate (v2);
 
   ASSERT_EQ (val_v2.get_bitwidth (), 64);
-  ASSERT_EQ (val_v2.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val_v2.classify (), VAL_KNOWN);
 
   tree sint = make_signed_type (TYPE_PRECISION (float_type_node));
 
 #define HOST_BITS_PER_FLOAT (sizeof (float) * CHAR_BIT)
-  wide_int low_wi = val_v2.get_cst_at (0, HOST_BITS_PER_FLOAT);
+  wide_int low_wi = val_v2.get_known_at (0, HOST_BITS_PER_FLOAT);
   tree low_int = wide_int_to_tree (sint, low_wi);
   tree low_float = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, low_int);
   ASSERT_EQ (TREE_CODE (low_float), REAL_CST);
   ASSERT_TRUE (real_identical (TREE_REAL_CST_PTR (low_float), &dconst2));
 
-  wide_int high_wi = val_v2.get_cst_at (HOST_BITS_PER_FLOAT, HOST_BITS_PER_FLOAT);
+  wide_int high_wi = val_v2.get_known_at (HOST_BITS_PER_FLOAT, HOST_BITS_PER_FLOAT);
   tree high_int = wide_int_to_tree (sint, high_wi);
   tree high_float = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, high_int);
   ASSERT_EQ (TREE_CODE (high_float), REAL_CST);
@@ -4540,7 +4543,7 @@ simul_scope_evaluate_tests ()
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_INT);
 
   data_value value (a5i);
-  value.set_cst_at (cst18, 3 * HOST_BITS_PER_INT);
+  value.set_known_at (cst18, 3 * HOST_BITS_PER_INT);
 
   data_storage *storage = ctx3.find_reachable_var (v5i);
   gcc_assert (storage != nullptr);
@@ -4553,8 +4556,8 @@ simul_scope_evaluate_tests ()
   data_value evaluation = ctx3.evaluate (v5ref);
 
   ASSERT_EQ (evaluation.get_bitwidth(), HOST_BITS_PER_INT);
-  ASSERT_EQ (evaluation.classify (), VAL_CONSTANT);
-  wide_int wi_val = evaluation.get_cst ();
+  ASSERT_EQ (evaluation.classify (), VAL_KNOWN);
+  wide_int wi_val = evaluation.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
   ASSERT_EQ (wi_val.to_shwi (), 18);
 
@@ -4584,7 +4587,7 @@ simul_scope_evaluate_tests ()
   wide_int cst15 = wi::shwi (15, HOST_BITS_PER_INT);
 
   data_value tmp (a3d);
-  tmp.set_cst_at (cst15, 3 * HOST_BITS_PER_INT);
+  tmp.set_known_at (cst15, 3 * HOST_BITS_PER_INT);
 
   data_storage *storage2 = ctx4.find_reachable_var (v3d);
   gcc_assert (storage2 != nullptr);
@@ -4599,8 +4602,8 @@ simul_scope_evaluate_tests ()
   data_value eval2 = ctx4.evaluate (v3cref);
 
   ASSERT_EQ (eval2.get_bitwidth(), HOST_BITS_PER_INT);
-  ASSERT_EQ (eval2.classify (), VAL_CONSTANT);
-  wide_int wi_val2 = eval2.get_cst ();
+  ASSERT_EQ (eval2.classify (), VAL_KNOWN);
+  wide_int wi_val2 = eval2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val2);
   ASSERT_EQ (wi_val2.to_shwi (), 15);
 
@@ -4634,7 +4637,7 @@ simul_scope_evaluate_tests ()
   wide_int cst14 = wi::shwi (14, HOST_BITS_PER_INT);
 
   data_value tmp14 (integer_type_node);
-  tmp14.set_cst (cst14);
+  tmp14.set_known (cst14);
 
   data_storage *storage5 = ctx5.find_reachable_var (def_var);
   gcc_assert (storage5 != nullptr);
@@ -4643,8 +4646,8 @@ simul_scope_evaluate_tests ()
   data_value eval5 = ctx5.evaluate (ssa_var);
 
   ASSERT_EQ (eval5.get_bitwidth(), HOST_BITS_PER_INT);
-  ASSERT_EQ (eval5.classify (), VAL_CONSTANT);
-  wide_int wi_val5 = eval5.get_cst ();
+  ASSERT_EQ (eval5.classify (), VAL_KNOWN);
+  wide_int wi_val5 = eval5.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val5);
   ASSERT_EQ (wi_val5.to_shwi (), 14);
 
@@ -4662,7 +4665,7 @@ simul_scope_evaluate_tests ()
   wide_int cst8 = wi::shwi (8, CHAR_BIT);
 
   data_value tmp8 (a5c);
-  tmp8.set_cst_at (cst8, 3 * CHAR_BIT);
+  tmp8.set_known_at (cst8, 3 * CHAR_BIT);
 
   data_storage *storage6 = ctx6.find_reachable_var (v5c);
   gcc_assert (storage5 != nullptr);
@@ -4675,8 +4678,8 @@ simul_scope_evaluate_tests ()
   data_value eval6 = ctx6.evaluate (ref);
 
   ASSERT_EQ (eval6.get_bitwidth(), CHAR_BIT);
-  ASSERT_EQ (eval6.classify (), VAL_CONSTANT);
-  wide_int wi_val6 = eval6.get_cst ();
+  ASSERT_EQ (eval6.classify (), VAL_KNOWN);
+  wide_int wi_val6 = eval6.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val6);
   ASSERT_EQ (wi_val6.to_shwi (), 8);
 
@@ -4707,14 +4710,14 @@ simul_scope_evaluate_tests ()
 
   wide_int cst21 = wi::shwi (21, CHAR_BIT);
   data_value tmp29_0 (CHAR_BIT);
-  tmp29_0.set_cst (cst21);
+  tmp29_0.set_known (cst21);
   strg29->set_at (tmp29_0, 0);
 
   data_value val29_0 = ctx8.evaluate (ref0);
 
   ASSERT_EQ (val29_0.get_bitwidth (), CHAR_BIT);
-  ASSERT_EQ (val29_0.classify (), VAL_CONSTANT);
-  wide_int wi29_0 = val29_0.get_cst ();
+  ASSERT_EQ (val29_0.classify (), VAL_KNOWN);
+  wide_int wi29_0 = val29_0.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
   ASSERT_EQ  (wi29_0.to_uhwi (), 21);
 
@@ -4725,14 +4728,14 @@ simul_scope_evaluate_tests ()
 
   wide_int cst26 = wi::shwi (26, CHAR_BIT);
   data_value tmp29_3 (CHAR_BIT);
-  tmp29_3.set_cst (cst26);
+  tmp29_3.set_known (cst26);
   strg29->set_at (tmp29_3, 24);
 
   data_value val29_3 = ctx8.evaluate (ref3);
 
   ASSERT_EQ (val29_3.get_bitwidth (), CHAR_BIT);
-  ASSERT_EQ (val29_3.classify (), VAL_CONSTANT);
-  wide_int wi29_3 = val29_3.get_cst ();
+  ASSERT_EQ (val29_3.classify (), VAL_KNOWN);
+  wide_int wi29_3 = val29_3.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
   ASSERT_EQ  (wi29_3.to_uhwi (), 26);
 
@@ -4743,12 +4746,12 @@ simul_scope_evaluate_tests ()
 
   wide_int cst17 = wi::shwi (17, CHAR_BIT);
   data_value tmp29_12 (CHAR_BIT);
-  tmp29_12.set_cst (cst17);
+  tmp29_12.set_known (cst17);
   strg29->set_at (tmp29_12, 96);
 
   wide_int cst3_bis = wi::shwi (3, sizeof (size_t) * CHAR_BIT);
   data_value val3_bis (sizeof (size_t) * CHAR_BIT);
-  val3_bis.set_cst (cst3_bis);
+  val3_bis.set_known (cst3_bis);
   data_storage * ssa8_strg = ctx8.find_reachable_var (ssa8);
   gcc_assert (ssa8_strg != nullptr);
   ssa8_strg->set (val3_bis);
@@ -4756,8 +4759,8 @@ simul_scope_evaluate_tests ()
   data_value val29_12 = ctx8.evaluate (ref12);
 
   ASSERT_EQ (val29_12.get_bitwidth (), CHAR_BIT);
-  ASSERT_EQ (val29_12.classify (), VAL_CONSTANT);
-  wide_int wi29_12 = val29_12.get_cst ();
+  ASSERT_EQ (val29_12.classify (), VAL_KNOWN);
+  wide_int wi29_12 = val29_12.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
   ASSERT_EQ  (wi29_12.to_uhwi (), 17);
 
@@ -4768,12 +4771,12 @@ simul_scope_evaluate_tests ()
 
   wide_int cst14_bis = wi::shwi (14, CHAR_BIT);
   data_value tmp29_27 (CHAR_BIT);
-  tmp29_27.set_cst (cst14_bis);
+  tmp29_27.set_known (cst14_bis);
   strg29->set_at (tmp29_27, 216);
 
   wide_int cst5 = wi::shwi (5, sizeof (size_t) * CHAR_BIT);
   data_value val5_bis (sizeof (size_t) * CHAR_BIT);
-  val5_bis.set_cst (cst5);
+  val5_bis.set_known (cst5);
   data_storage * ssa9_strg = ctx8.find_reachable_var (ssa9);
   gcc_assert (ssa9_strg != nullptr);
   ssa9_strg->set (val5_bis);
@@ -4781,8 +4784,8 @@ simul_scope_evaluate_tests ()
   data_value val29_27 = ctx8.evaluate (ref27);
 
   ASSERT_EQ (val29_27.get_bitwidth (), CHAR_BIT);
-  ASSERT_EQ (val29_27.classify (), VAL_CONSTANT);
-  wide_int wi29_27 = val29_27.get_cst ();
+  ASSERT_EQ (val29_27.classify (), VAL_KNOWN);
+  wide_int wi29_27 = val29_27.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
   ASSERT_EQ  (wi29_27.to_uhwi (), 14);
 
@@ -4803,7 +4806,7 @@ simul_scope_evaluate_tests ()
   gcc_assert (strg9 != nullptr);
   wide_int cst10 = wi::shwi (10, HOST_BITS_PER_INT);
   data_value val10 (integer_type_node);
-  val10.set_cst (cst10);
+  val10.set_known (cst10);
   strg9->set_at (val10, HOST_BITS_PER_INT);
 
   data_storage * strg_p = ctx9.find_reachable_var (p);
@@ -4818,8 +4821,8 @@ simul_scope_evaluate_tests ()
 
   data_value val1 = ctx9.evaluate (ref1);
 
-  ASSERT_EQ (val1.classify (), VAL_CONSTANT);
-  wide_int wi1 = val1.get_cst ();
+  ASSERT_EQ (val1.classify (), VAL_KNOWN);
+  wide_int wi1 = val1.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi1);
   ASSERT_EQ (wi1.to_uhwi (), 10);
 
@@ -4830,7 +4833,7 @@ simul_scope_evaluate_tests ()
 
   wide_int cst16 = wi::shwi (16, HOST_BITS_PER_INT);
   data_value val16 (integer_type_node);
-  val16.set_cst (cst16);
+  val16.set_known (cst16);
   strg9->set_at (val16, 3 * HOST_BITS_PER_INT);
 
   tree ref3_bis = build2 (MEM_REF, integer_type_node,
@@ -4838,14 +4841,14 @@ simul_scope_evaluate_tests ()
 
   data_value val3 = ctx9.evaluate (ref3_bis);
 
-  ASSERT_EQ (val3.classify (), VAL_CONSTANT);
-  wide_int wi3 = val3.get_cst ();
+  ASSERT_EQ (val3.classify (), VAL_KNOWN);
+  wide_int wi3 = val3.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi3);
   ASSERT_EQ (wi3.to_uhwi (), 16);
 
   wide_int cst19 = wi::shwi (19, HOST_BITS_PER_INT);
   data_value val19 (integer_type_node);
-  val19.set_cst (cst19);
+  val19.set_known (cst19);
   strg9->set_at (val19, 5 * HOST_BITS_PER_INT);
 
   tree ref5 = build2 (MEM_REF, integer_type_node,
@@ -4853,8 +4856,8 @@ simul_scope_evaluate_tests ()
 
   data_value val5 = ctx9.evaluate (ref5);
 
-  ASSERT_EQ (val5.classify (), VAL_CONSTANT);
-  wide_int wi5 = val5.get_cst ();
+  ASSERT_EQ (val5.classify (), VAL_KNOWN);
+  wide_int wi5 = val5.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi5);
   ASSERT_EQ (wi5.to_uhwi (), 19);
 
@@ -4885,14 +4888,14 @@ simul_scope_evaluate_tests ()
 
   wide_int cst23 = wi::shwi (23, CHAR_BIT);
   data_value tmp19_0 (CHAR_BIT);
-  tmp19_0.set_cst (cst23);
+  tmp19_0.set_known (cst23);
   strg19->set_at (tmp19_0, 0);
 
   data_value val19_0 = ctx10.evaluate (ref19);
 
   ASSERT_EQ (val19_0.get_bitwidth (), CHAR_BIT);
-  ASSERT_EQ (val19_0.classify (), VAL_CONSTANT);
-  wide_int wi19_0 = val19_0.get_cst ();
+  ASSERT_EQ (val19_0.classify (), VAL_KNOWN);
+  wide_int wi19_0 = val19_0.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi19_0);
   ASSERT_EQ  (wi19_0.to_uhwi (), 23);
 
@@ -4912,7 +4915,7 @@ simul_scope_evaluate_tests ()
 
   data_value val_a11 (integer_type_node);
   wide_int wi_a11 = wi::shwi (7, TYPE_PRECISION (integer_type_node));
-  val_a11.set_cst (wi_a11);
+  val_a11.set_known (wi_a11);
 
   data_storage * strg_a11 = ctx11.find_reachable_var (a11);
   gcc_assert (strg_a11 != nullptr);
@@ -4937,8 +4940,8 @@ simul_scope_evaluate_tests ()
   data_value val_ref11 = ctx11.evaluate (ar11);
 
   ASSERT_EQ (val_ref11.get_bitwidth (), HOST_BITS_PER_INT);
-  ASSERT_EQ (val_ref11.classify (), VAL_CONSTANT);
-  wide_int wi_ref11 = val_ref11.get_cst ();
+  ASSERT_EQ (val_ref11.classify (), VAL_KNOWN);
+  wide_int wi_ref11 = val_ref11.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_ref11);
   ASSERT_EQ  (wi_ref11.to_uhwi (), 7);
 }
@@ -4958,8 +4961,8 @@ simul_scope_evaluate_literal_tests ()
   tree cst = build_int_cst (integer_type_node, 13);
 
   data_value val = ctx.evaluate (cst);
-  ASSERT_EQ (val.classify (), VAL_CONSTANT);
-  wide_int wi_value = val.get_cst ();
+  ASSERT_EQ (val.classify (), VAL_KNOWN);
+  wide_int wi_value = val.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_value);
   int int_value = wi_value.to_shwi ();
   ASSERT_EQ (int_value, 13);
@@ -5157,11 +5160,11 @@ simul_scope_evaluate_constructor_tests ()
 
   data_value val_cstr2 = ctx2.evaluate (cstr2);
 
-  ASSERT_EQ (val_cstr2.classify (), VAL_CONSTANT);
-  wide_int wi_3 = val_cstr2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_cstr2.classify (), VAL_KNOWN);
+  wide_int wi_3 = val_cstr2.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_3);
   ASSERT_EQ (wi_3.to_uhwi (), 3);
-  wide_int wi_7 = val_cstr2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wide_int wi_7 = val_cstr2.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_7);
   ASSERT_EQ (wi_7.to_uhwi (), 7);
 
@@ -5172,11 +5175,11 @@ simul_scope_evaluate_constructor_tests ()
 
   val_cstr2 = ctx2.evaluate (cstr2);
 
-  ASSERT_EQ (val_cstr2.classify (), VAL_CONSTANT);
-  wi_3 = val_cstr2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_cstr2.classify (), VAL_KNOWN);
+  wi_3 = val_cstr2.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_3);
   ASSERT_EQ (wi_3.to_uhwi (), 3);
-  wi_7 = val_cstr2.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wi_7 = val_cstr2.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_7);
   ASSERT_EQ (wi_7.to_uhwi (), 7);
 
@@ -5222,8 +5225,8 @@ simul_scope_evaluate_constructor_tests ()
   ASSERT_EQ (&cstr3_addr0->storage.get (), strg_var3);
 
   ASSERT_EQ (val_cstr3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_INT),
-	     VAL_CONSTANT);
-  wide_int wi_2 = val_cstr3.get_cst_at (HOST_BITS_PER_PTR, HOST_BITS_PER_INT);
+	     VAL_KNOWN);
+  wide_int wi_2 = val_cstr3.get_known_at (HOST_BITS_PER_PTR, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_2);
   ASSERT_EQ (wi_2.to_uhwi (), 2);
 
@@ -5234,11 +5237,11 @@ simul_scope_evaluate_constructor_tests ()
 
   data_value val_cstr4 = ctx4.evaluate (cstr4);
 
-  ASSERT_EQ (val_cstr4.classify (), VAL_CONSTANT);
-  wide_int wi_0 = val_cstr4.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_cstr4.classify (), VAL_KNOWN);
+  wide_int wi_0 = val_cstr4.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_0);
   ASSERT_EQ (wi_0.to_uhwi (), 0);
-  wide_int wi_0_bis = val_cstr4.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wide_int wi_0_bis = val_cstr4.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_0_bis);
   ASSERT_EQ (wi_0_bis.to_uhwi (), 0);
 }
@@ -5261,7 +5264,7 @@ simul_scope_evaluate_unary_tests ()
 
   wide_int wi18 = wi::uhwi (18, CHAR_BIT);
   data_value val18 (char_type_node);
-  val18.set_cst (wi18);
+  val18.set_known (wi18);
   data_storage *strg_c1 = ctx1.find_reachable_var (c1);
   gcc_assert (strg_c1 != nullptr);
   strg_c1->set (val18);
@@ -5269,8 +5272,8 @@ simul_scope_evaluate_unary_tests ()
   data_value val1 = ctx1.evaluate_unary (NOP_EXPR, integer_type_node, c1);
 
   ASSERT_EQ (val1.get_bitwidth (), HOST_BITS_PER_INT);
-  ASSERT_EQ (val1.classify (), VAL_CONSTANT);
-  wide_int wi1 = val1.get_cst ();
+  ASSERT_EQ (val1.classify (), VAL_KNOWN);
+  wide_int wi1 = val1.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi1);
   ASSERT_EQ (wi1.to_uhwi (), 18);
 
@@ -5281,7 +5284,7 @@ simul_scope_evaluate_unary_tests ()
   data_value valfm25 = ctx1.evaluate_unary (NEGATE_EXPR, float_type_node, t25);
 
   ASSERT_EQ (valfm25.get_bitwidth (), TYPE_PRECISION (float_type_node));
-  ASSERT_EQ (valfm25.classify (), VAL_CONSTANT);
+  ASSERT_EQ (valfm25.classify (), VAL_KNOWN);
   tree tfm25 = valfm25.to_tree (float_type_node);
   ASSERT_EQ (TREE_CODE (tfm25), REAL_CST);
   REAL_VALUE_TYPE fm25 = REAL_VALUE_ATOF ("-2.5", TYPE_MODE (float_type_node));
@@ -5299,7 +5302,7 @@ simul_scope_evaluate_unary_tests ()
 
   wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
   data_value val23 (intSI_type_node);
-  val23.set_cst (wi23);
+  val23.set_known (wi23);
   data_storage *strg_i2 = ctx2.find_reachable_var (i2);
   gcc_assert (strg_i2 != nullptr);
   strg_i2->set (val23);
@@ -5307,8 +5310,8 @@ simul_scope_evaluate_unary_tests ()
   data_value val2 = ctx2.evaluate_unary (VIEW_CONVERT_EXPR, unsigned_intSI_type_node, i2);
 
   ASSERT_EQ (val2.get_bitwidth (), HOST_BITS_PER_INT);
-  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
-  wide_int wi2 = val2.get_cst ();
+  ASSERT_EQ (val2.classify (), VAL_KNOWN);
+  wide_int wi2 = val2.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi2);
   ASSERT_EQ (wi2.to_uhwi (), 23);
 }
@@ -5334,22 +5337,22 @@ simul_scope_evaluate_binary_tests ()
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
-  val12.set_cst (cst12);
+  val12.set_known (cst12);
   data_storage *strg_a = ctx.find_reachable_var (a);
   gcc_assert (strg_a != nullptr);
   strg_a->set (val12);
 
   wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
   data_value val7 (HOST_BITS_PER_INT);
-  val7.set_cst (cst7);
+  val7.set_known (cst7);
   data_storage *strg_b = ctx.find_reachable_var (b);
   gcc_assert (strg_b != nullptr);
   strg_b->set (val7);
 
   data_value val = ctx.evaluate_binary (MINUS_EXPR, integer_type_node, a, b);
 
-  ASSERT_EQ (val.classify (), VAL_CONSTANT);
-  wide_int wi_val = val.get_cst ();
+  ASSERT_EQ (val.classify (), VAL_KNOWN);
+  wide_int wi_val = val.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
   ASSERT_EQ (wi_val.to_shwi (), 5);
 
@@ -5366,18 +5369,18 @@ simul_scope_evaluate_binary_tests ()
   simul_scope ctx2 = builder2.build (mem, printer);
 
   data_value val12_bis (HOST_BITS_PER_INT);
-  val12_bis.set_cst (wi::shwi (12, HOST_BITS_PER_INT));
+  val12_bis.set_known (wi::shwi (12, HOST_BITS_PER_INT));
   ctx2.find_reachable_var (a_bis)->set (val12_bis);
 
   data_value val7_bis (HOST_BITS_PER_INT);
-  val7_bis.set_cst (wi::shwi (7, HOST_BITS_PER_INT));
+  val7_bis.set_known (wi::shwi (7, HOST_BITS_PER_INT));
   ctx2.find_reachable_var (b_bis)->set (val7_bis);
 
   data_value val2 = ctx2.evaluate_binary (GT_EXPR, boolean_type_node, a_bis, b_bis);
 
-  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val2.classify (), VAL_KNOWN);
   ASSERT_EQ (val2.get_bitwidth (), 1);
-  wide_int wi_val2 = val2.get_cst ();
+  wide_int wi_val2 = val2.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_val2);
   ASSERT_EQ (wi_val2.to_uhwi (), 1);
 
@@ -5474,7 +5477,7 @@ simul_scope_evaluate_binary_tests ()
 
   wide_int wi1 = wi::shwi (1, HOST_BITS_PER_PTR);
   data_value cst1 (pointer_sized_int_node);
-  cst1.set_cst (wi1);
+  cst1.set_known (wi1);
   data_storage *o_storage = ctx3.find_reachable_var (o);
   gcc_assert (o_storage != nullptr);
   o_storage->set (cst1);
@@ -5508,7 +5511,7 @@ simul_scope_evaluate_binary_tests ()
 
   wide_int wi25 = wi::to_wide (i25);
   data_value data25 (float_type_node);
-  data25.set_cst (wi25);
+  data25.set_known (wi25);
 
   data_storage *f25_storage = ctx4.find_reachable_var (f25);
   gcc_assert (f25_storage != nullptr);
@@ -5520,8 +5523,8 @@ simul_scope_evaluate_binary_tests ()
   data_value val_f = ctx4.evaluate_binary (PLUS_EXPR, float_type_node,
 					   f25, c325);
 
-  ASSERT_EQ (val_f.classify (), VAL_CONSTANT);
-  wide_int wi_f = val_f.get_cst ();
+  ASSERT_EQ (val_f.classify (), VAL_KNOWN);
+  wide_int wi_f = val_f.get_known ();
   tree t_f = wide_int_to_tree (itype, wi_f);
   tree f = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, t_f);
   ASSERT_EQ (TREE_CODE (f), REAL_CST);
@@ -5554,8 +5557,8 @@ simul_scope_evaluate_binary_tests ()
 					     p5,
 					     build_int_cst (ptr_type_node, 0));
 
-  ASSERT_EQ (val_ne5.classify (), VAL_CONSTANT);
-  wide_int wi_ne5 = val_ne5.get_cst ();
+  ASSERT_EQ (val_ne5.classify (), VAL_KNOWN);
+  wide_int wi_ne5 = val_ne5.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_ne5);
   ASSERT_EQ (wi_ne5.to_uhwi (), 1);
 }
@@ -5581,14 +5584,14 @@ simul_scope_evaluate_condition_tests ()
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
-  val12.set_cst (cst12);
+  val12.set_known (cst12);
   data_storage *strg_a = ctx1.find_reachable_var (a);
   gcc_assert (strg_a != nullptr);
   strg_a->set (val12);
 
   wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
   data_value val7 (HOST_BITS_PER_INT);
-  val7.set_cst (cst7);
+  val7.set_known (cst7);
   data_storage *strg_b = ctx1.find_reachable_var (b);
   gcc_assert (strg_b != nullptr);
   strg_b->set (val7);
@@ -5616,7 +5619,7 @@ simul_scope_evaluate_condition_tests ()
 
   wide_int wi_null = wi::shwi (0, HOST_BITS_PER_PTR);
   data_value val_null1 (ptr_type_node);
-  val_null1.set_cst (wi_null);
+  val_null1.set_known (wi_null);
 
   data_storage *strg_p1 = ctx2.find_reachable_var (p1);
   gcc_assert (strg_p1 != nullptr);
@@ -5792,8 +5795,8 @@ simul_scope_simulate_assign_tests ()
   ctx.simulate (gassign1);
 
   data_value val2 = storage_a->get_value ();
-  ASSERT_EQ (val2.classify (), VAL_CONSTANT);
-  wide_int wi_val2 = val2.get_cst ();
+  ASSERT_EQ (val2.classify (), VAL_KNOWN);
+  wide_int wi_val2 = val2.get_known ();
   ASSERT_TRUE (wi::fits_shwi_p (wi_val2));
   ASSERT_EQ (wi_val2.to_shwi (), 13);
 
@@ -5809,8 +5812,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val4 = storage_b->get_value ();
   ASSERT_EQ (val4.classify (), VAL_MIXED);
-  ASSERT_EQ (val4.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
-  wide_int wi_val4 = val4.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val4.classify (0, HOST_BITS_PER_INT), VAL_KNOWN);
+  wide_int wi_val4 = val4.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_TRUE (wi::fits_shwi_p (wi_val4));
   ASSERT_EQ (wi_val4.to_shwi (), 13);
 
@@ -5825,8 +5828,8 @@ simul_scope_simulate_assign_tests ()
   ctx.simulate (gassign3);
 
   data_value val6 = storage_b->get_value ();
-  ASSERT_EQ (val6.classify (), VAL_CONSTANT);
-  wide_int wi_val6 = val6.get_cst_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  ASSERT_EQ (val6.classify (), VAL_KNOWN);
+  wide_int wi_val6 = val6.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
   ASSERT_TRUE (wi::fits_shwi_p (wi_val4));
   ASSERT_EQ (wi_val6.to_shwi (), 17);
 
@@ -5854,15 +5857,15 @@ simul_scope_simulate_assign_tests ()
   ctx2.simulate (gassign5);
 
   data_value ssa1_val2 = ssa1_strg->get_value ();
-  ASSERT_EQ (ssa1_val2.classify (), VAL_CONSTANT);
-  wide_int wi_ssa1_2 = ssa1_val2.get_cst ();
+  ASSERT_EQ (ssa1_val2.classify (), VAL_KNOWN);
+  wide_int wi_ssa1_2 = ssa1_val2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_ssa1_2);
   ASSERT_EQ (wi_ssa1_2.to_shwi (), 66);
 
 
   data_value cst66 (integer_type_node);
   wide_int wi66 = wi::shwi (66, HOST_BITS_PER_INT);
-  cst66.set_cst (wi66);
+  cst66.set_known (wi66);
 
   ssa1_strg->set (cst66);
 
@@ -5877,8 +5880,8 @@ simul_scope_simulate_assign_tests ()
   ctx2.simulate (gassign4);
 
   data_value val_a2 = strg_a_ctx2->get_value ();
-  ASSERT_EQ (val_a2.classify (), VAL_CONSTANT);
-  wide_int wi_a2 = val_a2.get_cst ();
+  ASSERT_EQ (val_a2.classify (), VAL_KNOWN);
+  wide_int wi_a2 = val_a2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_a2);
   HOST_WIDE_INT hwi_a2 = wi_a2.to_shwi ();
   ASSERT_EQ (hwi_a2, 66);
@@ -5915,8 +5918,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val_alloc2 = alloc1.get_value ();
   ASSERT_EQ (val_alloc2.classify (), VAL_MIXED);
-  ASSERT_EQ (val_alloc2.classify (0, HOST_BITS_PER_INT), VAL_CONSTANT);
-  wide_int wi_val_alloc2 = val_alloc2.get_cst_at (0, HOST_BITS_PER_INT);
+  ASSERT_EQ (val_alloc2.classify (0, HOST_BITS_PER_INT), VAL_KNOWN);
+  wide_int wi_val_alloc2 = val_alloc2.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val_alloc2);
   ASSERT_EQ (wi_val_alloc2.to_shwi (), 123);
 
@@ -5946,8 +5949,8 @@ simul_scope_simulate_assign_tests ()
   ctx4.simulate (assign44);
 
   data_value val_u2 = strg_u->get_value ();
-  ASSERT_EQ (val_u2.classify (), VAL_CONSTANT);
-  wide_int wi_u2 = val_u2.get_cst ();
+  ASSERT_EQ (val_u2.classify (), VAL_KNOWN);
+  wide_int wi_u2 = val_u2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_u2);
   ASSERT_EQ (wi_u2.to_shwi (), 44);
 
@@ -5967,8 +5970,8 @@ simul_scope_simulate_assign_tests ()
   wide_int wi13 = wi::shwi (13, HOST_BITS_PER_INT);
 
   data_value val7 (derived);
-  val7.set_cst_at (wi8, 0);
-  val7.set_cst_at (wi13, HOST_BITS_PER_INT);
+  val7.set_known_at (wi8, 0);
+  val7.set_known_at (wi13, HOST_BITS_PER_INT);
 
   data_storage *strg = ctx5.find_reachable_var (var2i);
   gcc_assert (strg != nullptr);
@@ -5988,8 +5991,8 @@ simul_scope_simulate_assign_tests ()
 
   gcc_assert (strg5 != nullptr);
   data_value after = strg5->get_value ();
-  ASSERT_EQ (after.classify (), VAL_CONSTANT);
-  wide_int wi7 = after.get_cst ();
+  ASSERT_EQ (after.classify (), VAL_KNOWN);
+  wide_int wi7 = after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi7);
   ASSERT_EQ (wi7.to_shwi (), 13);
 
@@ -6019,8 +6022,8 @@ simul_scope_simulate_assign_tests ()
   data_value c8val = storage->get_value ();
 
   ASSERT_EQ (c8val.classify(), VAL_MIXED);
-  ASSERT_EQ (c8val.classify (3 * CHAR_BIT, CHAR_BIT), VAL_CONSTANT);
-  wide_int wi_val = c8val.get_cst_at (3 * CHAR_BIT, CHAR_BIT);
+  ASSERT_EQ (c8val.classify (3 * CHAR_BIT, CHAR_BIT), VAL_KNOWN);
+  wide_int wi_val = c8val.get_known_at (3 * CHAR_BIT, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
   ASSERT_EQ (wi_val.to_shwi (), 8);
 
@@ -6040,14 +6043,14 @@ simul_scope_simulate_assign_tests ()
 
   wide_int cst12 = wi::shwi (12, HOST_BITS_PER_INT);
   data_value val12 (HOST_BITS_PER_INT);
-  val12.set_cst (cst12);
+  val12.set_known (cst12);
   data_storage *strg_a = ctx7.find_reachable_var (var_a);
   gcc_assert (strg_a != nullptr);
   strg_a->set (val12);
 
   wide_int cst7 = wi::shwi (7, HOST_BITS_PER_INT);
   data_value val7_bis (HOST_BITS_PER_INT);
-  val7_bis.set_cst (cst7);
+  val7_bis.set_known (cst7);
   data_storage *strg_b = ctx7.find_reachable_var (var_b);
   gcc_assert (strg_b != nullptr);
   strg_b->set (val7_bis);
@@ -6063,8 +6066,8 @@ simul_scope_simulate_assign_tests ()
   ctx7.simulate (assign7);
 
   data_value x_after = strg_x->get_value ();
-  ASSERT_EQ (x_after.classify (), VAL_CONSTANT);
-  wide_int x_val = x_after.get_cst ();
+  ASSERT_EQ (x_after.classify (), VAL_KNOWN);
+  wide_int x_val = x_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, x_val);
   ASSERT_EQ (x_val.to_shwi (), 5);
 
@@ -6103,8 +6106,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val29_after0 = strg29->get_value ();
   data_value val0_after = val29_after0.get_at (0, CHAR_BIT);
-  ASSERT_EQ (val0_after.classify (), VAL_CONSTANT);
-  wide_int wi29_0 = val0_after.get_cst_at (0, CHAR_BIT);
+  ASSERT_EQ (val0_after.classify (), VAL_KNOWN);
+  wide_int wi29_0 = val0_after.get_known_at (0, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
   ASSERT_EQ  (wi29_0.to_uhwi (), 21);
 
@@ -6123,8 +6126,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val29_after3 = strg29->get_value ();
   data_value val3_after = val29_after3.get_at (24, CHAR_BIT);
-  ASSERT_EQ (val3_after.classify (), VAL_CONSTANT);
-  wide_int wi29_3 = val3_after.get_cst ();
+  ASSERT_EQ (val3_after.classify (), VAL_KNOWN);
+  wide_int wi29_3 = val3_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
   ASSERT_EQ  (wi29_3.to_uhwi (), 26);
 
@@ -6137,7 +6140,7 @@ simul_scope_simulate_assign_tests ()
 
   wide_int cst3_bis = wi::shwi (3, sizeof (size_t) * CHAR_BIT);
   data_value val3_bis (sizeof (size_t) * CHAR_BIT);
-  val3_bis.set_cst (cst3_bis);
+  val3_bis.set_known (cst3_bis);
   data_storage * ssa8_strg = ctx8.find_reachable_var (ssa8);
   gcc_assert (ssa8_strg != nullptr);
   ssa8_strg->set (val3_bis);
@@ -6150,8 +6153,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val29_after12 = strg29->get_value ();
   data_value val12_after = val29_after12.get_at (96, CHAR_BIT);
-  ASSERT_EQ (val12_after.classify (), VAL_CONSTANT);
-  wide_int wi29_12 = val12_after.get_cst ();
+  ASSERT_EQ (val12_after.classify (), VAL_KNOWN);
+  wide_int wi29_12 = val12_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
   ASSERT_EQ  (wi29_12.to_uhwi (), 17);
 
@@ -6164,7 +6167,7 @@ simul_scope_simulate_assign_tests ()
 
   wide_int cst5 = wi::shwi (5, sizeof (size_t) * CHAR_BIT);
   data_value val5_bis (sizeof (size_t) * CHAR_BIT);
-  val5_bis.set_cst (cst5);
+  val5_bis.set_known (cst5);
   data_storage * ssa9_strg = ctx8.find_reachable_var (ssa9);
   gcc_assert (ssa9_strg != nullptr);
   ssa9_strg->set (val5_bis);
@@ -6177,8 +6180,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val29_after27 = strg29->get_value ();
   data_value val27_after = val29_after27.get_at (216, CHAR_BIT);
-  ASSERT_EQ (val27_after.classify (), VAL_CONSTANT);
-  wide_int wi29_27 = val27_after.get_cst ();
+  ASSERT_EQ (val27_after.classify (), VAL_KNOWN);
+  wide_int wi29_27 = val27_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
   ASSERT_EQ  (wi29_27.to_uhwi (), 14);
 
@@ -6196,7 +6199,7 @@ simul_scope_simulate_assign_tests ()
 
   wide_int wi23 = wi::uhwi (23, TYPE_PRECISION (intSI_type_node));
   data_value val23 (intSI_type_node);
-  val23.set_cst (wi23);
+  val23.set_known (wi23);
   data_storage *strg_i10 = ctx10.find_reachable_var (i10);
   gcc_assert (strg_i10 != nullptr);
   strg_i10->set (val23);
@@ -6212,9 +6215,9 @@ simul_scope_simulate_assign_tests ()
   ctx10.simulate (g10);
 
   data_value val10_after = strg_v10->get_value ();
-  ASSERT_EQ (val10_after.classify (), VAL_CONSTANT);
+  ASSERT_EQ (val10_after.classify (), VAL_KNOWN);
   ASSERT_EQ (val10_after.get_bitwidth (), TYPE_PRECISION (unsigned_intSI_type_node));
-  wide_int wi10 = val10_after.get_cst ();
+  wide_int wi10 = val10_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi10);
   ASSERT_EQ (wi10.to_shwi (), 23);
 }
@@ -6244,7 +6247,7 @@ simul_scope_print_call_tests ()
   wide_int wi3113_1 = wi::shwi (13 * 256 + 31, TYPE_PRECISION (short_integer_type_node));
 
   data_value val3113_1 (short_integer_type_node);
-  val3113_1.set_cst (wi3113_1);
+  val3113_1.set_known (wi3113_1);
 
   data_storage *strg1_si = ctx1.find_reachable_var (si_1);
   gcc_assert (strg1_si != nullptr);
@@ -6397,8 +6400,8 @@ simul_scope_simulate_call_tests ()
   ctx3.simulate (my_call);
 
   data_value ival2 = ctx3.evaluate (ivar);
-  ASSERT_EQ (ival2.classify (), VAL_CONSTANT);
-  wide_int func_result = ival2.get_cst ();
+  ASSERT_EQ (ival2.classify (), VAL_KNOWN);
+  wide_int func_result = ival2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, func_result);
   ASSERT_EQ (func_result.to_shwi (), 6);
 
@@ -6449,8 +6452,8 @@ simul_scope_simulate_call_tests ()
   ctx4.simulate (my_call2);
 
   data_value ival4 = ctx4.evaluate (ivar2);
-  ASSERT_EQ (ival4.classify (), VAL_CONSTANT);
-  wide_int func_result2 = ival4.get_cst ();
+  ASSERT_EQ (ival4.classify (), VAL_KNOWN);
+  wide_int func_result2 = ival4.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, func_result2);
   ASSERT_EQ (func_result2.to_shwi (), 19);
 
@@ -6468,7 +6471,7 @@ simul_scope_simulate_call_tests ()
 
   wide_int cst18 = wi::shwi (18, HOST_BITS_PER_LONG);
   data_value val18 (size_type_node);
-  val18.set_cst (cst18);
+  val18.set_known (cst18);
   data_storage *i18_strg = ctx5.find_reachable_var (i18);
   gcc_assert (i18_strg != nullptr);
   i18_strg->set (val18);
@@ -6546,8 +6549,8 @@ simul_scope_simulate_call_tests ()
 
   data_value alloc_val7 = alloc_strg7->get_value ();
   ASSERT_EQ (alloc_val7.get_bitwidth (), 192);
-  ASSERT_EQ (alloc_val7.classify (), VAL_CONSTANT);
-  wide_int wi7 = alloc_val7.get_cst ();
+  ASSERT_EQ (alloc_val7.classify (), VAL_KNOWN);
+  wide_int wi7 = alloc_val7.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi7);
   ASSERT_EQ (wi7.to_shwi (), 0);
 
@@ -6575,7 +6578,7 @@ simul_scope_simulate_call_tests ()
 
   data_value val17 (integer_type_node);
   wide_int wi17 = wi::uhwi (17, HOST_BITS_PER_INT);
-  val17.set_cst (wi17);
+  val17.set_known (wi17);
 
   data_storage * storage_v81 = ctx8.find_reachable_var (v81);
   gcc_assert (storage_v81 != nullptr);
@@ -6592,8 +6595,8 @@ simul_scope_simulate_call_tests ()
 
   data_value v82_after = storage_v82->get_value ();
 
-  ASSERT_EQ (v82_after.classify (), VAL_CONSTANT);
-  wide_int wi_v82 = v82_after.get_cst ();
+  ASSERT_EQ (v82_after.classify (), VAL_KNOWN);
+  wide_int wi_v82 = v82_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_v82);
   ASSERT_EQ (wi_v82.to_shwi (), 17);
 
@@ -6631,7 +6634,7 @@ simul_scope_simulate_call_tests ()
 
   data_value val91 (integer_type_node);
   wide_int wi91 = wi::uhwi (5 + 3 * 256 + 1 * 65536, HOST_BITS_PER_INT);
-  val91.set_cst (wi91);
+  val91.set_known (wi91);
 
   storage_i91->set (val91);
   
@@ -6646,8 +6649,8 @@ simul_scope_simulate_call_tests ()
 
   data_value c92_after = storage_c92->get_value ();
 
-  ASSERT_EQ (c92_after.classify (), VAL_CONSTANT);
-  wide_int wi_c92 = c92_after.get_cst ();
+  ASSERT_EQ (c92_after.classify (), VAL_KNOWN);
+  wide_int wi_c92 = c92_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_c92);
   ASSERT_EQ (wi_c92.to_shwi (), 3);
 
@@ -6670,7 +6673,7 @@ simul_scope_simulate_call_tests ()
   wide_int hwi10_17 = wi::shwi (17, HOST_BITS_PER_INT);
 
   data_value val10_17 (integer_type_node);
-  val10_17.set_cst (hwi10_17);
+  val10_17.set_known (hwi10_17);
 
   data_storage * storage_i101 = ctx10.find_reachable_var (i101);
   gcc_assert (storage_i101 != nullptr);
@@ -6700,15 +6703,15 @@ simul_scope_simulate_call_tests ()
   ASSERT_EQ (val105_after.classify (), VAL_MIXED);
   ASSERT_EQ (val105_after.classify (0, CHAR_BIT), VAL_UNDEFINED);
   ASSERT_EQ (val105_after.classify (3 * CHAR_BIT, 2 * CHAR_BIT), VAL_UNDEFINED);
-  ASSERT_EQ (val105_after.classify (CHAR_BIT, 2 * CHAR_BIT), VAL_CONSTANT);
+  ASSERT_EQ (val105_after.classify (CHAR_BIT, 2 * CHAR_BIT), VAL_KNOWN);
 
   data_value val105_after1 = val105_after.get_at (CHAR_BIT, CHAR_BIT);
-  wide_int wi105_after1 = val105_after1.get_cst ();
+  wide_int wi105_after1 = val105_after1.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi105_after1);
   ASSERT_EQ (wi105_after1.to_shwi (), 17);
 
   data_value val105_after2 = val105_after.get_at (2 * CHAR_BIT, CHAR_BIT);
-  wide_int wi105_after2 = val105_after2.get_cst ();
+  wide_int wi105_after2 = val105_after2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi105_after2);
   ASSERT_EQ (wi105_after2.to_shwi (), 17);
 }
