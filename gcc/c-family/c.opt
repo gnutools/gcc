@@ -214,6 +214,10 @@ fgimple
 C Var(flag_gimple) Init(0)
 Enable parsing GIMPLE.
 
+fgimple-simulate
+C Var(flag_gimple_simulate) Init(0)
+Enable simulation of execution of the GIMPLE IR.
+
 H
 C ObjC C++ ObjC++
 Print the name of header files as they are used.
