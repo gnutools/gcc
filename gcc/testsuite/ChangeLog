@@ -1,3 +1,110 @@
+2025-06-13  Georg-Johann Lay  <avr@gjlay.de>
+
+	Backported from master:
+	2025-06-12  Georg-Johann Lay  <avr@gjlay.de>
+
+	PR middle-end/117811
+	PR testsuite/52641
+	* gcc.dg/torture/pr117811.c: Fix for int < 32 bit.
+
+2025-06-13  Richard Earnshaw  <rearnsha@arm.com>
+
+	Backported from master:
+	2025-03-25  Richard Earnshaw  <rearnsha@arm.com>
+
+	PR middle-end/117811
+	* gcc.dg/torture/pr117811.c: New test.
+
+2025-06-13  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-06-12  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/120638
+	* gcc.dg/pr120638.c: New test.
+
+2025-06-13  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-06-05  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/120547
+	* gcc.dg/bitint-123.c: New test.
+
+2025-06-05  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/specs/opt7.ads: New test.
+	* gnat.dg/specs/opt7_pkg.ads: New helper.
+	* gnat.dg/specs/opt7_pkg.adb: Likewise.
+
+2025-06-02  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120123
+	* g++.dg/cpp2a/concepts-lambda24.C: New test.
+
+2025-05-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-05-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/120480
+	* gcc.dg/pr120480.c: New test.
+
+2025-05-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-04-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/119834
+	* g++.target/s390/pr119834.C: New test.
+
+2025-05-27  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-05-15  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/120161
+	* g++.dg/template/unify13.C: New test.
+
+2025-05-26  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-02-05  Jakub Jelinek  <jakub@redhat.com>
+
+	PR rtl-optimization/117239
+	* gcc.dg/pr117239.c: New test.
+
+2025-05-26  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2024-11-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/117358
+	* gcc.c-torture/compile/pr117358.c: New test.
+
+2025-05-25  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2025-05-15  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/85750
+	* gfortran.dg/alloc_comp_auto_array_3.f90: Adjust scan counts.
+	* gfortran.dg/alloc_comp_class_3.f03: Remove bogus warnings.
+	* gfortran.dg/alloc_comp_class_4.f03: Likewise.
+	* gfortran.dg/allocate_with_source_14.f03: Adjust scan count.
+	* gfortran.dg/derived_constructor_comps_6.f90: Likewise.
+	* gfortran.dg/derived_result_5.f90: New test.
+
+2025-05-25  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2024-08-30  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/98454
+	* gfortran.dg/alloc_comp_class_4.f03: Remove bogus pattern.
+	* gfortran.dg/pdt_26.f03: Adjust expected count.
+	* gfortran.dg/derived_result_3.f90: New test.
+
 2025-05-23  Release Manager
 
 	* GCC 14.3.0 released.
