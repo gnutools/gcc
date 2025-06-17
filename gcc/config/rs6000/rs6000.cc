@@ -4360,16 +4360,6 @@ rs6000_option_override_internal (bool global_init_p)
       && (rs6000_isa_flags_explicit & OPTION_MASK_PCREL) == 0)
     rs6000_isa_flags |= OPTION_MASK_PCREL;
 
-  /* -mpcrel requires -mcmodel=medium, but we can't check TARGET_CMODEL until
-      after the subtarget override options are done.  */
-  else if (TARGET_PCREL && TARGET_CMODEL != CMODEL_MEDIUM)
-    {
-      if ((rs6000_isa_flags_explicit & OPTION_MASK_PCREL) != 0)
-	error ("%qs requires %qs", "-mpcrel", "-mcmodel=medium");
-
-      rs6000_isa_flags &= ~OPTION_MASK_PCREL;
-    }
-
   /* Enable -mmma by default on power10 systems.  */
   if (TARGET_POWER10 && (rs6000_isa_flags_explicit & OPTION_MASK_MMA) == 0)
     rs6000_isa_flags |= OPTION_MASK_MMA;
