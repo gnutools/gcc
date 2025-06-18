@@ -84,7 +84,7 @@ get_constant_type_size (tree type)
    the undefined value.  Record types can have different fields that can store
    different kinds of values, they have a mixed value, unless all their fields
    have the same kind.  */
-   
+
 enum value_type
 {
   /* An invalid value that doesn't represent any meaningful case.  */
@@ -290,7 +290,6 @@ class data_storage
       u (const heap_memory & mem, unsigned alloc_idx, unsigned alloc_amount)
 	: allocated (mem, alloc_idx, alloc_amount)
       {}
-      //~u () {}
 
       struct v
 	{
@@ -318,7 +317,8 @@ public:
     : type (STRG_VARIABLE), value (TREE_TYPE (decl)),
     u (ctx, decl)
   {}
-  data_storage (const heap_memory & mem, unsigned alloc_index, unsigned alloc_amount)
+  data_storage (const heap_memory & mem, unsigned alloc_index,
+		unsigned alloc_amount)
     : type (STRG_ALLOC), value (alloc_amount),
     u (mem, alloc_index, alloc_amount)
   {}
@@ -326,15 +326,24 @@ public:
   tree get_variable () const;
 
   bool matches (tree var) const
-  { return type == STRG_VARIABLE && u.variable.decl == var; }
+  {
+    return type == STRG_VARIABLE && u.variable.decl == var;
+  }
 
   bool matches_alloc (unsigned index) const
-  { return type == STRG_ALLOC && u.allocated.index == index; }
+  {
+    return type == STRG_ALLOC && u.allocated.index == index;
+  }
 
   const data_value & get_value () const { return value; }
   data_storage & operator= (const data_storage& other) = default;
   void set (const data_value & val) { return value.set (val); }
-  void set_at (const data_value & val, unsigned offset) { return value.set_at (val, offset); }
+
+  void set_at (const data_value & val, unsigned offset)
+  {
+    return value.set_at (val, offset);
+  }
+
   void print (context_printer & printer) const;
   storage_ref get_ref () const;
 };
@@ -358,7 +367,12 @@ class context_printer
 public:
   context_printer ();
   context_printer (dump_flags_t f);
-  pretty_printer & get_pretty_printer () const { return const_cast <pretty_printer &> (pp); }
+
+  pretty_printer & get_pretty_printer () const
+  {
+    return const_cast <pretty_printer &> (pp);
+  }
+
   void begin_stmt (gimple *);
   void print (simul_scope *, tree);
   void print_newline ();
@@ -372,7 +386,8 @@ public:
   void print_ignored_stmt ();
   void print_value_update (simul_scope & context, tree, const data_value &);
   void end_stmt (gimple *);
-  void print_at (const data_value & value, tree type, unsigned offset, unsigned width);
+  void print_at (const data_value & value, tree type, unsigned offset,
+		 unsigned width);
   void print_at (const data_value & value, tree type, unsigned offset);
   void print (const data_value & value, tree type);
   void print_condition_value (bool value);
@@ -382,13 +397,21 @@ public:
 /* Hackish implementation of optional, missing in pre-c++17.  */
 
 template <typename T>
-class optional 
+class optional
 {
   union u
     {
       u (T arg) : value (arg) {}
       u () : dummy (0) {}
-      u (const u & other, bool present) { if (present) { new (&value) T (other.value); } else { new (&dummy) char (0); } }
+
+      u (const u & other, bool present)
+      {
+	if (present)
+	  new (&value) T (other.value);
+	else
+	  new (&dummy) char (0);
+      }
+
       ~u () {} // TODO
       T value;
       char dummy;
@@ -399,9 +422,19 @@ class optional
 public:
   optional () : u (), present (false) {}
   optional (T arg) : u (arg), present (true) {}
-  optional (const optional & other) : u (other.u, other.present), present (other.present) {}
+
+  optional (const optional & other)
+  : u (other.u, other.present), present (other.present)
+  {}
+
   ~optional () {}  // TODO
-  optional & operator= (const optional & other) { new (this) optional (other); return *this; }
+
+  optional & operator= (const optional & other)
+  {
+    new (this) optional (other);
+    return *this;
+  }
+
   T & operator * () const;
   void emplace (T value);
 };
@@ -459,7 +492,8 @@ class simul_scope
   vec<data_storage> var_storages;
   data_value evaluate_constructor (tree cstr) const;
   data_value evaluate_unary (enum tree_code code, tree type, tree arg) const;
-  data_value evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const;
+  data_value evaluate_binary (enum tree_code code, tree type, tree lhs,
+			      tree rhs) const;
   bool evaluate_condition (gcond *cond) const;
   template <typename A, typename L>
   void add_variables (vec<tree, A, L> *variables, unsigned vars_count);
@@ -472,7 +506,8 @@ class simul_scope
   data_storage *find_var (tree variable) const;
   data_storage *find_alloc (unsigned index) const;
   data_storage &allocate (unsigned amount);
-  void decompose_ref (tree data_ref, data_storage * & storage, int & offset) const;
+  void decompose_ref (tree data_ref, data_storage * & storage,
+		      int & offset) const;
   void simulate_phi (gphi *phi, edge e);
   simul_scope (simul_scope * caller, context_printer & printer,
 		heap_memory & mem, vec<tree> & decls);
@@ -517,7 +552,6 @@ public:
   simul_scope build (heap_memory & mem, context_printer & printer);
   template <typename A, typename L>
   void add_decls (vec<tree, A, L> *additional_decls);
-  //void add_decls (vec<tree> *additional_decls);
 };
 
 
@@ -905,7 +939,7 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
    value VAL_ADDRESS, otherwise picking a value of minimal size CHAR_BIT.  If
    no partial data reference was found, print DATA_REF itself unmodified.  The
    minimal size is made necessary because heap-allocated memory doesn't have
-   any type that can guide the decomposition into smaller subreferences. */
+   any type that can guide the decomposition into smaller subreferences.  */
 
 tree
 context_printer::print_first_data_ref_part (simul_scope & context,
@@ -927,8 +961,8 @@ context_printer::print_first_data_ref_part (simul_scope & context,
 	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
 							 offset, min_size);
 	if (mem_replacement != NULL_TREE)
-	  return print_first_data_ref_part (context, mem_replacement, 0, ignored_bits,
-					    val_type);
+	  return print_first_data_ref_part (context, mem_replacement, 0,
+					    ignored_bits, val_type);
 
 	unsigned orig_type_size;
 	orig_type_size = get_constant_type_size (TREE_TYPE (data_ref));
@@ -990,7 +1024,8 @@ context_printer::print_ignored_stmt ()
    each leaf field.  */
 
 void
-context_printer::print_value_update (simul_scope & context, tree lhs, const data_value & value)
+context_printer::print_value_update (simul_scope & context, tree lhs,
+				     const data_value & value)
 {
   unsigned previously_done = 0;
   unsigned width = get_constant_type_size (TREE_TYPE (lhs));
@@ -1230,11 +1265,12 @@ data_value::set_known_at (unsigned dest_offset, unsigned value_width,
 					src_width);
   wide_int value = value_src & src_mask;
   if (src_offset > 0)
-    value = wi::lrshift (value, src_offset); 
+    value = wi::lrshift (value, src_offset);
 
-  wide_int dest_value = wide_int_storage::from (wide_int_ref (value), bit_width, UNSIGNED);
+  wide_int dest_value = wide_int_storage::from (wide_int_ref (value),
+						bit_width, UNSIGNED);
   if (dest_offset > 0)
-    dest_value <<= dest_offset; 
+    dest_value <<= dest_offset;
 
   known_value &= ~dest_mask;
   known_value |= dest_value;
@@ -1260,7 +1296,8 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
       break;
 
     case VAL_KNOWN:
-      set_known_at (dest_offset, value_width, value_src.known_value, src_offset);
+      set_known_at (dest_offset, value_width, value_src.known_value,
+		    src_offset);
       break;
 
     case VAL_ADDRESS:
@@ -1274,7 +1311,7 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
 	else
 	  {
 	    /* Several addresses side by side in the same area.  Set them one
-	       by one  */
+	       by one.  */
 	    gcc_assert (value_width > HOST_BITS_PER_PTR);
 	    gcc_assert (value_width % HOST_BITS_PER_PTR == 0);
 	    gcc_assert (dest_offset % HOST_BITS_PER_PTR == 0);
@@ -1328,12 +1365,13 @@ data_value::set_at (unsigned dest_offset, unsigned value_width,
 
 	    set_at (offset, width, value_src, next_offset);
 
-	    wide_int mask = wi::shifted_mask (next_offset, width, false, src_width);
+	    wide_int mask = wi::shifted_mask (next_offset, width, false,
+					      src_width);
 
 	    known_part &= ~mask;
 	    address_part &= ~mask;
 	  }
-	
+
       }
       break;
 
@@ -1392,7 +1430,8 @@ data_value::get_known_at (unsigned offset, unsigned width) const
 
   enum value_type val_type = classify (offset, width);
   gcc_assert (val_type == VAL_KNOWN);
-  wide_int tmp = wide_int::from (wide_int_ref (known_value), bit_width, UNSIGNED);
+  wide_int tmp = wide_int::from (wide_int_ref (known_value), bit_width,
+				 UNSIGNED);
   if (offset > 0)
     tmp = wi::lrshift (tmp, offset);
   return wide_int::from (tmp, width, UNSIGNED);
@@ -1550,7 +1589,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 		print (nullptr, real);
 	      }
 	    else
-	      pp_wide_int (&pp, wi_val, SIGNED); 
+	      pp_wide_int (&pp, wi_val, SIGNED);
 	  }
 	  break;
 
@@ -1576,7 +1615,7 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset)
 }
 
 
-/* Print the value of type TYPE held in VALUE.  */ 
+/* Print the value of type TYPE held in VALUE.  */
 
 void
 context_printer::print (const data_value & value, tree type)
@@ -1586,7 +1625,7 @@ context_printer::print (const data_value & value, tree type)
 
 
 /* Return the variable decl associated with the variable storage that THIS
-   represents.  */ 
+   represents.  */
 
 tree
 data_storage::get_variable () const
@@ -1707,7 +1746,7 @@ simul_scope::find_reachable_var (tree variable) const
 
   if (parent != nullptr)
     return root ().find_var (variable);
-  
+
   return nullptr;
 }
 
@@ -1932,7 +1971,7 @@ simul_scope::evaluate_constructor (tree cstr) const
 
   unsigned bit_width = get_constant_type_size (TREE_TYPE (cstr));
 
-  data_value result(bit_width);
+  data_value result (bit_width);
 
   if (CONSTRUCTOR_NELTS (cstr) == 0)
     {
@@ -1978,8 +2017,8 @@ simul_scope::evaluate_constructor (tree cstr) const
 
 
 /* Evaluate the unary expression with code CODE, type TYPE and argument ARG
-   using the values currently stored in variables and allocated storages and return the
-   resulting value.  */
+   using the values currently stored in variables and allocated storages and
+   return the resulting value.  */
 
 data_value
 simul_scope::evaluate_unary (enum tree_code code, tree type, tree arg) const
@@ -2025,7 +2064,8 @@ simul_scope::evaluate_unary (enum tree_code code, tree type, tree arg) const
    return the resulting value.  */
 
 data_value
-simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs, tree rhs) const
+simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
+			      tree rhs) const
 {
   gcc_assert (TREE_CODE (type) == INTEGER_TYPE
 	      || TREE_CODE (type) == BOOLEAN_TYPE
@@ -2131,7 +2171,8 @@ is_zero_offset_data_ref (enum tree_code code)
    storage, and write them into STORAGE and OFFSET respectively.  */
 
 void
-simul_scope::decompose_ref (tree data_ref, data_storage * & storage, int & offset) const
+simul_scope::decompose_ref (tree data_ref, data_storage * & storage,
+			    int & offset) const
 {
   offset = -1;
   enum tree_code code = TREE_CODE (data_ref);
@@ -2453,7 +2494,7 @@ simul_scope::simulate_call (gcall *g)
 	fn = TREE_OPERAND (fn, 0);
       gcc_assert (TREE_CODE (fn) == FUNCTION_DECL);
 
-      unsigned nargs = gimple_call_num_args (g); 
+      unsigned nargs = gimple_call_num_args (g);
       auto_vec <tree> arguments;
       arguments.reserve (nargs);
 
@@ -2683,7 +2724,7 @@ simul_scope::jump (edge e)
 
 
 /* Simulate execution of function FUNC using the values held in any of the data
-   storages accessible from THIS.  Return a value if the function returns a 
+   storages accessible from THIS.  Return a value if the function returns a
    value.  Otherwise return empty.  */
 
 optional <data_value>
@@ -2882,7 +2923,7 @@ data_value_classify_tests ()
   builder.add_decls (&decls);
   simul_scope ctx = builder.build (mem, printer);
 
-  data_value val(integer_type_node);
+  data_value val (integer_type_node);
 
   ASSERT_EQ (val.classify (), VAL_UNDEFINED);
 
@@ -2898,7 +2939,7 @@ data_value_classify_tests ()
 
   storage_address address_a (storage_a->get_ref (), 0);
 
-  data_value ptr(ptr_type_node);
+  data_value ptr (ptr_type_node);
 
   ASSERT_EQ (ptr.classify (), VAL_UNDEFINED);
 
@@ -2908,7 +2949,7 @@ data_value_classify_tests ()
 
 
   tree vec2int = build_vector_type (integer_type_node, 2);
-  data_value val2(vec2int);
+  data_value val2 (vec2int);
 
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_INT), VAL_UNDEFINED);
   ASSERT_EQ (val2.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT),
@@ -2929,7 +2970,7 @@ data_value_classify_tests ()
 
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val3(vec2ptr);
+  data_value val3 (vec2ptr);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_UNDEFINED);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR),
@@ -2954,7 +2995,6 @@ simul_scope_find_reachable_var_tests ()
 {
   heap_memory mem;
   context_printer printer;
-  //printer.pp.set_output_stream (nullptr);
 
   tree a = create_var (integer_type_node, "a");
   tree b = create_var (integer_type_node, "b");
@@ -3025,7 +3065,7 @@ data_value_set_address_tests ()
   builder.add_decls (&decls);
   simul_scope ctx = builder.build (mem, printer);
 
-  data_value val1(ptr_type_node);
+  data_value val1 (ptr_type_node);
 
   data_storage *storage_a = ctx.find_reachable_var (a);
   storage_address address_a (storage_a->get_ref (), 0);
@@ -3043,7 +3083,7 @@ data_value_set_address_tests ()
 
   simul_scope ctx2 = context_builder ().build (ctx, printer);
 
-  data_value val2(ptr_type_node);
+  data_value val2 (ptr_type_node);
 
   ASSERT_EQ (ctx2.find_reachable_var (a), storage_a);
 }
@@ -3069,11 +3109,11 @@ data_value_set_tests ()
   data_storage *storage_a = ctx.find_var (a);
   storage_address address_a (storage_a->get_ref (), 0);
 
-  data_value val1(ptr_type_node);
+  data_value val1 (ptr_type_node);
 
   val1.set_address (address_a);
 
-  data_value val2(ptr_type_node);
+  data_value val2 (ptr_type_node);
 
   val2.set (val1);
   ASSERT_EQ (val2.classify (), VAL_ADDRESS);
@@ -3104,16 +3144,17 @@ data_value_set_at_tests ()
   storage_address address_a (storage_a->get_ref (), 0);
   storage_address address_b (storage_b->get_ref (), 0);
 
-  data_value val1(ptr_type_node);
+  data_value val1 (ptr_type_node);
 
   val1.set_address (address_a);
 
   tree vec2ptr = build_vector_type (ptr_type_node, 2);
-  data_value val2(vec2ptr);
+  data_value val2 (vec2ptr);
 
   val2.set_at (val1, HOST_BITS_PER_PTR);
   ASSERT_EQ (val2.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (&val2.get_address_at (HOST_BITS_PER_PTR)->storage.get (), storage_a);
+  ASSERT_EQ (&val2.get_address_at (HOST_BITS_PER_PTR)->storage.get (),
+	     storage_a);
 
   val1.set_address (address_b);
 
@@ -3121,13 +3162,14 @@ data_value_set_at_tests ()
   ASSERT_EQ (val2.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (&val2.get_address_at (0)->storage.get (), storage_b);
 
-  data_value val3(vec2ptr);
+  data_value val3 (vec2ptr);
   val3.set_at (val2, 0);
 
   ASSERT_EQ (val3.classify (0, HOST_BITS_PER_PTR), VAL_ADDRESS);
   ASSERT_EQ (&val3.get_address_at (0)->storage.get (), storage_b);
   ASSERT_EQ (val3.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (&val3.get_address_at (HOST_BITS_PER_PTR)->storage.get (), storage_a);
+  ASSERT_EQ (&val3.get_address_at (HOST_BITS_PER_PTR)->storage.get (),
+	     storage_a);
 
   tree derived = make_node (RECORD_TYPE);
   tree field2 = build_decl (input_location, FIELD_DECL,
@@ -3148,7 +3190,7 @@ data_value_set_at_tests ()
   vec<tree> decls2{};
   decls2.safe_push (c);
 
-  data_value val_derived(derived);
+  data_value val_derived (derived);
 
   ASSERT_EQ (val_derived.classify (), VAL_UNDEFINED);
 
@@ -3302,7 +3344,7 @@ data_value_set_at_tests ()
   data_storage *strg_i5 = ctx5.find_reachable_var (i5);
   gcc_assert (strg_i5 != nullptr);
 
-  storage_address addr_i5(strg_i5->get_ref (), 0);
+  storage_address addr_i5 (strg_i5->get_ref (), 0);
   data_value val_addr_i5 (ptr_type_node);
   val_addr_i5.set_address (addr_i5);
   strg_c17->set_at (val_addr_i5, HOST_BITS_PER_PTR);
@@ -3311,8 +3353,10 @@ data_value_set_at_tests ()
 
   ASSERT_EQ (val17_before.classify (), VAL_MIXED);
   ASSERT_EQ (val17_before.classify (0, HOST_BITS_PER_PTR), VAL_KNOWN);
-  ASSERT_EQ (val17_before.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR), VAL_ADDRESS);
-  ASSERT_EQ (val17_before.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT), VAL_KNOWN);
+  ASSERT_EQ (val17_before.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR),
+	     VAL_ADDRESS);
+  ASSERT_EQ (val17_before.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT),
+	     VAL_KNOWN);
 
   data_value undef (5 * CHAR_BIT + HOST_BITS_PER_PTR);
   strg_c17->set_at (undef, 3 * CHAR_BIT);
@@ -3321,7 +3365,8 @@ data_value_set_at_tests ()
 
   ASSERT_EQ (val17_after.classify (), VAL_MIXED);
   ASSERT_EQ (val17_after.classify (0, 3 * CHAR_BIT), VAL_KNOWN);
-  ASSERT_EQ (val17_after.classify (3 * CHAR_BIT, 5 * CHAR_BIT + HOST_BITS_PER_PTR),
+  ASSERT_EQ (val17_after.classify (3 * CHAR_BIT,
+				   5 * CHAR_BIT + HOST_BITS_PER_PTR),
 	     VAL_UNDEFINED);
   ASSERT_EQ (val17_after.classify (2 * HOST_BITS_PER_PTR, CHAR_BIT),
 	     VAL_KNOWN);
@@ -3794,7 +3839,8 @@ context_printer_print_first_data_ref_part_tests ()
 
   tree der1d1i = make_node (RECORD_TYPE);
   tree der1d1i_i2 = build_decl (input_location, FIELD_DECL,
-				get_identifier ("der1d1i_i2"), integer_type_node);
+				get_identifier ("der1d1i_i2"),
+				integer_type_node);
   DECL_CONTEXT (der1d1i_i2) = der1d1i;
   DECL_CHAIN (der1d1i_i2) = NULL_TREE;
   tree der1d1i_d1 = build_decl (input_location, FIELD_DECL,
@@ -3840,8 +3886,8 @@ context_printer_print_first_data_ref_part_tests ()
 				build_int_cst (ptr_type_node,
 					       sizeof (short)));
 
-  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0, nullptr,
-						  VAL_UNDEFINED);
+  tree res5 = printer5.print_first_data_ref_part (ctx5, mem_var1d1i_s2, 0,
+						  nullptr, VAL_UNDEFINED);
 
   ASSERT_EQ (res5, short_integer_type_node);
   const char * str5 = pp_formatted_text (&pp5);
@@ -4467,7 +4513,8 @@ simul_scope_evaluate_tests ()
   wide_int low_part = val_v.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, low_part);
   ASSERT_EQ (low_part.to_shwi (), 2);
-  wide_int high_part = val_v.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wide_int high_part = val_v.get_known_at (HOST_BITS_PER_INT,
+					   HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_shwi_p, high_part);
   ASSERT_EQ (high_part.to_shwi (), 11);
 
@@ -4495,7 +4542,8 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (TREE_CODE (low_float), REAL_CST);
   ASSERT_TRUE (real_identical (TREE_REAL_CST_PTR (low_float), &dconst2));
 
-  wide_int high_wi = val_v2.get_known_at (HOST_BITS_PER_FLOAT, HOST_BITS_PER_FLOAT);
+  wide_int high_wi = val_v2.get_known_at (HOST_BITS_PER_FLOAT,
+					  HOST_BITS_PER_FLOAT);
   tree high_int = wide_int_to_tree (sint, high_wi);
   tree high_float = fold_build1 (VIEW_CONVERT_EXPR, float_type_node, high_int);
   ASSERT_EQ (TREE_CODE (high_float), REAL_CST);
@@ -4529,7 +4577,7 @@ simul_scope_evaluate_tests ()
 
   data_value evaluation = ctx3.evaluate (v5ref);
 
-  ASSERT_EQ (evaluation.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (evaluation.get_bitwidth (), HOST_BITS_PER_INT);
   ASSERT_EQ (evaluation.classify (), VAL_KNOWN);
   wide_int wi_val = evaluation.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
@@ -4575,7 +4623,7 @@ simul_scope_evaluate_tests ()
 
   data_value eval2 = ctx4.evaluate (v3cref);
 
-  ASSERT_EQ (eval2.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (eval2.get_bitwidth (), HOST_BITS_PER_INT);
   ASSERT_EQ (eval2.classify (), VAL_KNOWN);
   wide_int wi_val2 = eval2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val2);
@@ -4597,7 +4645,8 @@ simul_scope_evaluate_tests ()
 
   tree def_var = create_var (integer_type_node, "def_var");
   DECL_CONTEXT (def_var) = func;
-  tree ssa_var = make_ssa_name_fn (DECL_STRUCT_FUNCTION (func), def_var, nullptr);
+  tree ssa_var = make_ssa_name_fn (DECL_STRUCT_FUNCTION (func), def_var,
+				   nullptr);
   SSA_NAME_IS_DEFAULT_DEF (ssa_var) = 1;
 
   vec<tree> decls5{};
@@ -4619,7 +4668,7 @@ simul_scope_evaluate_tests ()
 
   data_value eval5 = ctx5.evaluate (ssa_var);
 
-  ASSERT_EQ (eval5.get_bitwidth(), HOST_BITS_PER_INT);
+  ASSERT_EQ (eval5.get_bitwidth (), HOST_BITS_PER_INT);
   ASSERT_EQ (eval5.classify (), VAL_KNOWN);
   wide_int wi_val5 = eval5.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val5);
@@ -4651,7 +4700,7 @@ simul_scope_evaluate_tests ()
 
   data_value eval6 = ctx6.evaluate (ref);
 
-  ASSERT_EQ (eval6.get_bitwidth(), CHAR_BIT);
+  ASSERT_EQ (eval6.get_bitwidth (), CHAR_BIT);
   ASSERT_EQ (eval6.classify (), VAL_KNOWN);
   wide_int wi_val6 = eval6.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val6);
@@ -4693,7 +4742,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val29_0.classify (), VAL_KNOWN);
   wide_int wi29_0 = val29_0.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
-  ASSERT_EQ  (wi29_0.to_uhwi (), 21);
+  ASSERT_EQ (wi29_0.to_uhwi (), 21);
 
   tree ref3 = build5 (TARGET_MEM_REF, char_type_node,
 		     build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -4711,7 +4760,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val29_3.classify (), VAL_KNOWN);
   wide_int wi29_3 = val29_3.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
-  ASSERT_EQ  (wi29_3.to_uhwi (), 26);
+  ASSERT_EQ (wi29_3.to_uhwi (), 26);
 
   tree ref12 = build5 (TARGET_MEM_REF, char_type_node,
 		       build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -4736,7 +4785,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val29_12.classify (), VAL_KNOWN);
   wide_int wi29_12 = val29_12.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
-  ASSERT_EQ  (wi29_12.to_uhwi (), 17);
+  ASSERT_EQ (wi29_12.to_uhwi (), 17);
 
   tree ref27 = build5 (TARGET_MEM_REF, char_type_node,
 		       build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -4761,7 +4810,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val29_27.classify (), VAL_KNOWN);
   wide_int wi29_27 = val29_27.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
-  ASSERT_EQ  (wi29_27.to_uhwi (), 14);
+  ASSERT_EQ (wi29_27.to_uhwi (), 14);
 
 
   tree a9i = build_array_type_nelts (integer_type_node, 9);
@@ -4871,7 +4920,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val19_0.classify (), VAL_KNOWN);
   wide_int wi19_0 = val19_0.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi19_0);
-  ASSERT_EQ  (wi19_0.to_uhwi (), 23);
+  ASSERT_EQ (wi19_0.to_uhwi (), 23);
 
 
   tree ta11 = build_array_type_nelts (integer_type_node, 2);
@@ -4917,7 +4966,7 @@ simul_scope_evaluate_tests ()
   ASSERT_EQ (val_ref11.classify (), VAL_KNOWN);
   wide_int wi_ref11 = val_ref11.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_ref11);
-  ASSERT_EQ  (wi_ref11.to_uhwi (), 7);
+  ASSERT_EQ (wi_ref11.to_uhwi (), 7);
 }
 
 
@@ -5016,7 +5065,7 @@ simul_scope_evaluate_literal_tests ()
 
   tree deref_p3 = build_fold_indirect_ref_loc (input_location, p3);
   tree comp3 = fold_build3_loc (input_location, COMPONENT_REF,
-			        integer_type_node, deref_p3, d3_field2,
+				integer_type_node, deref_p3, d3_field2,
 				NULL_TREE);
   tree int_ptr3 = build_pointer_type (integer_type_node);
   tree comp_addr3 = build1 (ADDR_EXPR, int_ptr3, comp3);
@@ -5068,7 +5117,7 @@ simul_scope_evaluate_literal_tests ()
   tree mem_p4 = fold_build2_loc (input_location, MEM_REF,
 				 derived4, p4, build_int_cst (ptr_d4, 0));
   tree comp4 = fold_build3_loc (input_location, COMPONENT_REF,
-			        integer_type_node, mem_p4, d4_field2,
+				integer_type_node, mem_p4, d4_field2,
 				NULL_TREE);
   tree int_ptr4 = build_pointer_type (integer_type_node);
   tree comp_addr4 = build1 (ADDR_EXPR, int_ptr4, comp4);
@@ -5215,7 +5264,8 @@ simul_scope_evaluate_constructor_tests ()
   wide_int wi_0 = val_cstr4.get_known_at (0, HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_0);
   ASSERT_EQ (wi_0.to_uhwi (), 0);
-  wide_int wi_0_bis = val_cstr4.get_known_at (HOST_BITS_PER_INT, HOST_BITS_PER_INT);
+  wide_int wi_0_bis = val_cstr4.get_known_at (HOST_BITS_PER_INT,
+					      HOST_BITS_PER_INT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_0_bis);
   ASSERT_EQ (wi_0_bis.to_uhwi (), 0);
 }
@@ -5242,7 +5292,7 @@ simul_scope_evaluate_unary_tests ()
   data_storage *strg_c1 = ctx1.find_reachable_var (c1);
   gcc_assert (strg_c1 != nullptr);
   strg_c1->set (val18);
-  
+
   data_value val1 = ctx1.evaluate_unary (NOP_EXPR, integer_type_node, c1);
 
   ASSERT_EQ (val1.get_bitwidth (), HOST_BITS_PER_INT);
@@ -5280,8 +5330,9 @@ simul_scope_evaluate_unary_tests ()
   data_storage *strg_i2 = ctx2.find_reachable_var (i2);
   gcc_assert (strg_i2 != nullptr);
   strg_i2->set (val23);
-  
-  data_value val2 = ctx2.evaluate_unary (VIEW_CONVERT_EXPR, unsigned_intSI_type_node, i2);
+
+  data_value val2 = ctx2.evaluate_unary (VIEW_CONVERT_EXPR,
+					 unsigned_intSI_type_node, i2);
 
   ASSERT_EQ (val2.get_bitwidth (), HOST_BITS_PER_INT);
   ASSERT_EQ (val2.classify (), VAL_KNOWN);
@@ -5350,7 +5401,8 @@ simul_scope_evaluate_binary_tests ()
   val7_bis.set_known (wi::shwi (7, HOST_BITS_PER_INT));
   ctx2.find_reachable_var (b_bis)->set (val7_bis);
 
-  data_value val2 = ctx2.evaluate_binary (GT_EXPR, boolean_type_node, a_bis, b_bis);
+  data_value val2 = ctx2.evaluate_binary (GT_EXPR, boolean_type_node, a_bis,
+					  b_bis);
 
   ASSERT_EQ (val2.classify (), VAL_KNOWN);
   ASSERT_EQ (val2.get_bitwidth (), 1);
@@ -5601,7 +5653,8 @@ simul_scope_evaluate_condition_tests ()
 
   tree tree_null = build_int_cst (ptr_type_node, 0);
 
-  gcond *cond2 = gimple_build_cond (EQ_EXPR, p1, tree_null, NULL_TREE, NULL_TREE);
+  gcond *cond2 = gimple_build_cond (EQ_EXPR, p1, tree_null, NULL_TREE,
+				    NULL_TREE);
 
   ASSERT_TRUE (ctx2.evaluate_condition (cond2));
 
@@ -5613,7 +5666,8 @@ simul_scope_evaluate_condition_tests ()
   gcc_assert (strg_p2 != nullptr);
   strg_p2->set (val_addr3);
 
-  gcond *cond3 = gimple_build_cond (EQ_EXPR, p2, tree_null, NULL_TREE, NULL_TREE);
+  gcond *cond3 = gimple_build_cond (EQ_EXPR, p2, tree_null, NULL_TREE,
+				    NULL_TREE);
 
   ASSERT_FALSE (ctx2.evaluate_condition (cond3));
 
@@ -5797,7 +5851,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val5 = storage_b->get_value ();
   ASSERT_EQ (val5.classify (), VAL_MIXED);
-  ASSERT_EQ (val5.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT), VAL_UNDEFINED);
+  ASSERT_EQ (val5.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT),
+	     VAL_UNDEFINED);
 
   ctx.simulate (gassign3);
 
@@ -5813,7 +5868,7 @@ simul_scope_simulate_assign_tests ()
 
   vec<tree> ssanames{};
   ssanames.safe_push (ssa1);
-  
+
   context_builder builder2 {};
   builder2.add_decls (&decls);
   builder2.add_decls (&ssanames);
@@ -5878,7 +5933,7 @@ simul_scope_simulate_assign_tests ()
   data_value p (ptr_type_node);
   p.set_address (address1);
   pointer->set (p);
-  
+
   tree ref = build2 (MEM_REF, integer_type_node, ptr,
 		     build_int_cst (ptr_type_node, 0));
   tree cst3 = build_int_cst (integer_type_node, 123);
@@ -5909,7 +5964,7 @@ simul_scope_simulate_assign_tests ()
 
   data_storage *strg_u = ctx4.find_reachable_var (u);
   gcc_assert (strg_u != nullptr);
-  
+
   tree addr_u = build1 (ADDR_EXPR, ptr_type_node, u);
   tree ref_u = build2 (MEM_REF, integer_type_node, addr_u,
 		     build_int_cst (ptr_type_node, 0));
@@ -5950,7 +6005,7 @@ simul_scope_simulate_assign_tests ()
   data_storage *strg = ctx5.find_reachable_var (var2i);
   gcc_assert (strg != nullptr);
   strg->set (val7);
-  
+
   tree comp = build3 (COMPONENT_REF, integer_type_node, var2i, field2,
 		      NULL_TREE);
 
@@ -5995,7 +6050,7 @@ simul_scope_simulate_assign_tests ()
   gcc_assert (storage != nullptr);
   data_value c8val = storage->get_value ();
 
-  ASSERT_EQ (c8val.classify(), VAL_MIXED);
+  ASSERT_EQ (c8val.classify (), VAL_MIXED);
   ASSERT_EQ (c8val.classify (3 * CHAR_BIT, CHAR_BIT), VAL_KNOWN);
   wide_int wi_val = c8val.get_known_at (3 * CHAR_BIT, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_shwi_p, wi_val);
@@ -6083,7 +6138,7 @@ simul_scope_simulate_assign_tests ()
   ASSERT_EQ (val0_after.classify (), VAL_KNOWN);
   wide_int wi29_0 = val0_after.get_known_at (0, CHAR_BIT);
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_0);
-  ASSERT_EQ  (wi29_0.to_uhwi (), 21);
+  ASSERT_EQ (wi29_0.to_uhwi (), 21);
 
   tree ref3 = build5 (TARGET_MEM_REF, char_type_node,
 		     build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -6103,7 +6158,7 @@ simul_scope_simulate_assign_tests ()
   ASSERT_EQ (val3_after.classify (), VAL_KNOWN);
   wide_int wi29_3 = val3_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_3);
-  ASSERT_EQ  (wi29_3.to_uhwi (), 26);
+  ASSERT_EQ (wi29_3.to_uhwi (), 26);
 
   tree ref12 = build5 (TARGET_MEM_REF, char_type_node,
 		       build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -6130,7 +6185,7 @@ simul_scope_simulate_assign_tests ()
   ASSERT_EQ (val12_after.classify (), VAL_KNOWN);
   wide_int wi29_12 = val12_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_12);
-  ASSERT_EQ  (wi29_12.to_uhwi (), 17);
+  ASSERT_EQ (wi29_12.to_uhwi (), 17);
 
   tree ref27 = build5 (TARGET_MEM_REF, char_type_node,
 		       build1 (ADDR_EXPR, ptr_type_node, a29),
@@ -6157,7 +6212,7 @@ simul_scope_simulate_assign_tests ()
   ASSERT_EQ (val27_after.classify (), VAL_KNOWN);
   wide_int wi29_27 = val27_after.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi29_27);
-  ASSERT_EQ  (wi29_27.to_uhwi (), 14);
+  ASSERT_EQ (wi29_27.to_uhwi (), 14);
 
 
   tree i10 = create_var (intSI_type_node, "i10");
@@ -6177,7 +6232,7 @@ simul_scope_simulate_assign_tests ()
   data_storage *strg_i10 = ctx10.find_reachable_var (i10);
   gcc_assert (strg_i10 != nullptr);
   strg_i10->set (val23);
-  
+
   data_storage *strg_v10 = ctx10.find_reachable_var (v10);
   gcc_assert (strg_v10 != nullptr);
 
@@ -6190,7 +6245,8 @@ simul_scope_simulate_assign_tests ()
 
   data_value val10_after = strg_v10->get_value ();
   ASSERT_EQ (val10_after.classify (), VAL_KNOWN);
-  ASSERT_EQ (val10_after.get_bitwidth (), TYPE_PRECISION (unsigned_intSI_type_node));
+  ASSERT_EQ (val10_after.get_bitwidth (),
+	     TYPE_PRECISION (unsigned_intSI_type_node));
   wide_int wi10 = val10_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi10);
   ASSERT_EQ (wi10.to_shwi (), 23);
@@ -6218,7 +6274,8 @@ simul_scope_print_call_tests ()
   builder1.add_decls (&decls1);
   simul_scope ctx1 = builder1.build (mem1, printer1);
 
-  wide_int wi3113_1 = wi::shwi (13 * 256 + 31, TYPE_PRECISION (short_integer_type_node));
+  wide_int wi3113_1 = wi::shwi (13 * 256 + 31,
+				TYPE_PRECISION (short_integer_type_node));
 
   data_value val3113_1 (short_integer_type_node);
   val3113_1.set_known (wi3113_1);
@@ -6272,8 +6329,6 @@ simul_scope_simulate_call_tests ()
   tree set_args_fn = build_decl (input_location, FUNCTION_DECL,
 				 get_identifier ("_gfortran_set_args"),
 				 func_type);
-  //DECL_EXTERNAL (set_args_fn) = 1;
-  //TREE_PUBLIC (set_args_fn) = 1;
 
   gcall * set_args_call = gimple_build_call (set_args_fn, 0);
 
@@ -6282,8 +6337,6 @@ simul_scope_simulate_call_tests ()
   tree set_options_fn = build_decl (input_location, FUNCTION_DECL,
 				    get_identifier ("_gfortran_set_options"),
 				    func_type);
-  //DECL_EXTERNAL (set_args) = 1;
-  //TREE_PUBLIC (set_args) = 0;
 
   gcall * set_options_call = gimple_build_call (set_options_fn, 0);
 
@@ -6350,7 +6403,8 @@ simul_scope_simulate_call_tests ()
   DECL_CONTEXT (result) = my_int_func;
   DECL_RESULT (my_int_func) = result;
 
-  basic_block bb = init_lowered_empty_function (my_int_func, true, profile_count::one ());
+  basic_block bb = init_lowered_empty_function (my_int_func, true,
+						profile_count::one ());
   gimple_stmt_iterator gsi = gsi_last_bb (bb);
   greturn *ret_stmt = gimple_build_return (cst6);
   gsi_insert_after (&gsi, ret_stmt, GSI_CONTINUE_LINKING);
@@ -6385,29 +6439,30 @@ simul_scope_simulate_call_tests ()
 						     NULL_TREE);
   layout_type (int_func_arg_type);
 
-  tree my_int_func_with_arg = build_decl (input_location, FUNCTION_DECL,
-					  get_identifier ("my_int_func_with_arg"),
-					  int_func_type);
+  tree int_func_with_arg = build_decl (input_location, FUNCTION_DECL,
+				       get_identifier ("int_func_with_arg"),
+				       int_func_type);
 
   tree fn_result = build_decl (input_location, RESULT_DECL,
 			       get_identifier ("fn_result"), integer_type_node);
-  DECL_CONTEXT (fn_result) = my_int_func_with_arg;
-  DECL_RESULT (my_int_func_with_arg) = fn_result;
+  DECL_CONTEXT (fn_result) = int_func_with_arg;
+  DECL_RESULT (int_func_with_arg) = fn_result;
 
   tree arg = build_decl (input_location, PARM_DECL,
 			 get_identifier ("arg"), integer_type_node);
   DECL_ARG_TYPE (arg) = TREE_VALUE (TYPE_ARG_TYPES (int_func_arg_type));
-  DECL_CONTEXT (arg) = my_int_func_with_arg;
-  DECL_ARGUMENTS (my_int_func_with_arg) = arg;
+  DECL_CONTEXT (arg) = int_func_with_arg;
+  DECL_ARGUMENTS (int_func_with_arg) = arg;
   layout_decl (arg, 0);
 
-  basic_block bb2 = init_lowered_empty_function (my_int_func_with_arg, true, profile_count::one ());
+  basic_block bb2 = init_lowered_empty_function (int_func_with_arg, true,
+						 profile_count::one ());
   gimple_stmt_iterator gsi2 = gsi_last_bb (bb2);
   greturn *ret_stmt2 = gimple_build_return (arg);
   gsi_insert_after (&gsi2, ret_stmt2, GSI_CONTINUE_LINKING);
 
   tree i19 = build_int_cst (integer_type_node, 19);
-  gcall *my_call2 = gimple_build_call (my_int_func_with_arg, 1, i19);
+  gcall *my_call2 = gimple_build_call (int_func_with_arg, 1, i19);
 
   tree ivar2 = create_var (integer_type_node, "ivar2");
   gimple_set_lhs (my_call2, ivar2);
@@ -6557,7 +6612,7 @@ simul_scope_simulate_call_tests ()
   data_storage * storage_v81 = ctx8.find_reachable_var (v81);
   gcc_assert (storage_v81 != nullptr);
   storage_v81->set (val17);
-  
+
   data_storage *storage_v82 = ctx8.find_reachable_var (v82);
   gcc_assert (storage_v82 != nullptr);
 
@@ -6611,7 +6666,7 @@ simul_scope_simulate_call_tests ()
   val91.set_known (wi91);
 
   storage_i91->set (val91);
-  
+
   data_storage *storage_c92 = ctx9.find_reachable_var (c92);
   gcc_assert (storage_c92 != nullptr);
 

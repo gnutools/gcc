@@ -210,10 +210,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "ipa-inline.h"
 #include "omp-offload.h"
 #include "symtab-thunks.h"
-#include "wide-int.h"
-#include "selftest.h"
-#include "tree-ssanames.h"
-#include "tree-dfa.h"
 #include "gimple-simulate.h"
 
 /* Queue of cgraph nodes scheduled to be added into cgraph.  This is a
