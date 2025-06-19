@@ -35,8 +35,8 @@ end subroutine t2
 
 ! { dg-final { scan-tree-dump-times "= a1->dim.0..stride;" 0 "original" } }
 ! { dg-final { scan-tree-dump-times "= b1->dim.0..stride;" 0 "original" } }
-! { dg-final { scan-tree-dump-times "= c2->dim.0..stride;" 1 "original" } }
-! { dg-final { scan-tree-dump-times "= d2->dim.0..stride;" 1 "original" } }
+! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?c2->dim\[0\]\.stride>?;} 1 "original" } }
+! { dg-final { scan-tree-dump-times {= (?:NON_LVALUE_EXPR <)?d2->dim\[0\]\.stride>?;} 1 "original" } }
 
 
 subroutine test3()

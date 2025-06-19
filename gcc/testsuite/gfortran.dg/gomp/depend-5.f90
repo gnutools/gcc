@@ -72,11 +72,11 @@ end
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\*\\*dosa\\)" 1 "original" } }
 
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:aa\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\(\\*\\(integer\\(kind=\[0-9\]+\\)\\\[0:\\\] \\* restrict\\) aaa.data\\)\\\[aaa.offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\*\\(integer\\(kind=\[0-9\]+\\) \\*\\) \\(aap.data \\+ \\(sizetype\\) \\(\\(aap.offset \\+ aap.dim\\\[0\\\].stride \\* 2\\) \\* aap.span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\(\*\(integer\(kind=[0-9]+\)\[0:\] \* restrict\) aaa.data\)\[(?:NON_LVALUE_EXPR <)?aaa.offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\*\(integer\(kind=[0-9]+\) \*\) \(aap\.data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?aap\.offset>? \+ (?:NON_LVALUE_EXPR <)?aap\.dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?aap\.span>?\)\)\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\(\\*daa\\)\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\(\\*\\(integer\\(kind=\[0-9\]+\\)\\\[0:\\\] \\* restrict\\) daaa->data\\)\\\[daaa->offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\*\\(integer\\(kind=\[0-9\]+\\) \\*\\) \\(daap->data \\+ \\(sizetype\\) \\(\\(daap->offset \\+ daap->dim\\\[0\\\].stride \\* 2\\) \\* daap->span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\(\*\(integer\(kind=[0-9]+\)\[0:\] \* restrict\) daaa->data\)\[(?:NON_LVALUE_EXPR <)?daaa->offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\*\(integer\(kind=[0-9]+\) \*\) \(daap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?daap->offset>? \+ (?:NON_LVALUE_EXPR <)?daap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?daap->span>?\)\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\(\\*doaa\\)\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\(\\*\\(integer\\(kind=\[0-9\]+\\)\\\[0:\\\] \\* restrict\\) doaaa->data\\)\\\[doaaa->offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:\\*\\(integer\\(kind=\[0-9\]+\\) \\*\\) \\(doaap->data \\+ \\(sizetype\\) \\(\\(doaap->offset \\+ doaap->dim\\\[0\\\].stride \\* 2\\) \\* doaap->span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\(\*\(integer\(kind=[0-9]+\)\[0:\] \* restrict\) doaaa->data\)\[(?:NON_LVALUE_EXPR <)?doaaa->offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(depobj:\*\(integer\(kind=[0-9]+\) \*\) \(doaap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?doaap->offset>? \+ (?:NON_LVALUE_EXPR <)?doaap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?doaap->span>?\)\)\)} 1 "original" } }
