@@ -5581,6 +5581,7 @@ expand_vx_binary_vec_dup_vec (rtx op_0, rtx op_1, rtx op_2,
     case SMAX:
     case UMAX:
     case SMIN:
+    case UMIN:
       icode = code_for_pred_scalar (code, mode);
       break;
     case MINUS:
@@ -5618,6 +5619,7 @@ expand_vx_binary_vec_vec_dup (rtx op_0, rtx op_1, rtx op_2,
     case SMAX:
     case UMAX:
     case SMIN:
+    case UMIN:
       icode = code_for_pred_scalar (code, mode);
       break;
     default:
