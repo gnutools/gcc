@@ -57,7 +57,6 @@ tree gfc_conv_descriptor_type (tree desc);
 tree gfc_get_descriptor_dimension (tree desc);
 tree gfc_conv_descriptor_dimension (tree desc, tree dim);
 tree gfc_conv_descriptor_token (tree desc);
-tree gfc_conv_descriptor_offset (tree desc);
 
 tree gfc_conv_descriptor_data_get (tree desc);
 tree gfc_conv_descriptor_offset_get (tree desc);
