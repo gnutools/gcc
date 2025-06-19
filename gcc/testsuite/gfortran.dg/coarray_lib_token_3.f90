@@ -8,5 +8,5 @@ allocate(CAF(1)[*])
 allocate(CAF_SCALAR[*])
 end
 
-! { dg-final { scan-tree-dump-times "_gfortran_caf_register \\(4, 1, &caf.token, \\(void \\*\\) &caf, 0B, 0B, 0\\);" 1 "original" } }
-! { dg-final { scan-tree-dump-times "_gfortran_caf_register \\(4, 1, &caf_scalar.token, \\(void \\*\\) &caf_scalar, 0B, 0B, 0\\);" 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_register \(4, 1, &(?:NON_LVALUE_EXPR <)?caf\.token>?, \(void \*\) &caf, 0B, 0B, 0\);} 1 "original" } }
+! { dg-final { scan-tree-dump-times {_gfortran_caf_register \(4, 1, &(?:NON_LVALUE_EXPR <)?caf_scalar\.token>?, \(void \*\) &caf_scalar, 0B, 0B, 0\);} 1 "original" } }

@@ -194,14 +194,14 @@ end
 ! { dg-final { scan-tree-dump-times "&object\\\[19\\\] = &dossv;" 1 "original" } }
 
 ! { dg-final { scan-tree-dump-times "&elem\\\[0\\\] = &aa\\\[1\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[1\\\] = &\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) aaa.data\\)\\\[aaa.offset \\+ 2\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[2\\\] = \\(void \\* \\*\\) \\(aap.data \\+ .sizetype. \\(\\(aap.offset \\+ aap.dim\\\[0\\\].stride \\* 2\\) \\* aap.span\\)\\);" 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[1\]>? = &\(\*\(void \*\[0:\] \* restrict\) aaa.data\)\[(?:NON_LVALUE_EXPR <)?aaa\.offset>? \+ 2\];} 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[2\]>? = \(void \* \*\) \(aap.data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?aap\.offset>? \+ (?:NON_LVALUE_EXPR <)?aap\.dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?aap\.span>?\)\);} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "&elem\\\[3\\\] = &\\(\\*daa\\)\\\[1\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[4\\\] = &\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) daaa->data\\)\\\[daaa->offset \\+ 2\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[5\\\] = \\(void \\* \\*\\) \\(daap->data \\+ .sizetype. \\(\\(daap->offset \\+ daap->dim\\\[0\\\].stride \\* 2\\) \\* daap->span\\)\\);" 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[4\]>? = &\(\*\(void \*\[0:\] \* restrict\) daaa->data\)\[(?:NON_LVALUE_EXPR <)?daaa->offset>? \+ 2\];} 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[5\]>? = \(void \* \*\) \(daap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?daap->offset>? \+ (?:NON_LVALUE_EXPR <)?daap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?daap->span>?\)\);} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "&elem\\\[6\\\] = &\\(\\*doaa\\)\\\[1\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[7\\\] = &\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) doaaa->data\\)\\\[doaaa->offset \\+ 2\\\];" 1 "original" } }
-! { dg-final { scan-tree-dump-times "&elem\\\[8\\\] = \\(void \\* \\*\\) \\(doaap->data \\+ .sizetype. \\(\\(doaap->offset \\+ doaap->dim\\\[0\\\].stride \\* 2\\) \\* doaap->span\\)\\);" 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[7\]>? = &\(\*\(void \*\[0:\] \* restrict\) doaaa->data\)\[(?:NON_LVALUE_EXPR <)?doaaa->offset>? \+ 2\];} 1 "original" } }
+! { dg-final { scan-tree-dump-times {\*(?:SAVE_EXPR <)?\(.*?\) &elem\[8\]>? = \(void \* \*\) \(doaap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?doaap->offset>? \+ (?:NON_LVALUE_EXPR <)?doaap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?doaap->span>?\)\);} 1 "original" } }
 
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:ss\\)" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*sp\\)" 1 "original" } }
@@ -222,14 +222,14 @@ end
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*\\(void \\*\\\[0:\\\] \\* restrict\\) doaaa->data\\)" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*\\(void \\*\\\[0:\\\] \\*\\) doaap->data\\)" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:aa\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) aaa.data\\)\\\[aaa.offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*\\(void \\* \\*\\) \\(aap.data \\+ \\(sizetype\\) \\(\\(aap.offset \\+ aap.dim\\\[0\\\].stride \\* 2\\) \\* aap.span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\(\*\(void \*\[0:\] \* restrict\) aaa.data\)\[(?:NON_LVALUE_EXPR <)?aaa\.offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\*\(void \* \*\) \(aap.data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?aap\.offset>? \+ (?:NON_LVALUE_EXPR <)?aap.dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?aap\.span>?\)\)\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\(\\*daa\\)\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) daaa->data\\)\\\[daaa->offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*\\(void \\* \\*\\) \\(daap->data \\+ \\(sizetype\\) \\(\\(daap->offset \\+ daap->dim\\\[0\\\].stride \\* 2\\) \\* daap->span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\(\*\(void \*\[0:\] \* restrict\) daaa->data\)\[(?:NON_LVALUE_EXPR <)?daaa->offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\*\(void \* \*\) \(daap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?daap->offset>? \+ (?:NON_LVALUE_EXPR <)?daap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?daap->span>?\)\)\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\(\\*doaa\\)\\\[1\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\(\\*\\(void \\*\\\[0:\\\] \\* restrict\\) doaaa->data\\)\\\[doaaa->offset \\+ 2\\\]\\)" 1 "original" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:\\*\\(void \\* \\*\\) \\(doaap->data \\+ \\(sizetype\\) \\(\\(doaap->offset \\+ doaap->dim\\\[0\\\].stride \\* 2\\) \\* doaap->span\\)\\)\\)" 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\(\*\(void \*\[0:\] \* restrict\) doaaa->data\)\[(?:NON_LVALUE_EXPR <)?doaaa->offset>? \+ 2\]\)} 1 "original" } }
+! { dg-final { scan-tree-dump-times {#pragma omp task depend\(out:\*\(void \* \*\) \(doaap->data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?doaap->offset>? \+ (?:NON_LVALUE_EXPR <)?doaap->dim\[0\]\.stride>? \* 2\) \* (?:NON_LVALUE_EXPR <)?doaap->span>?\)\)\)} 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:dossv\\)" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:dssv\\)" 1 "original" } }
 
