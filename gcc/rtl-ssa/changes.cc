@@ -256,16 +256,10 @@ rtl_ssa::changes_are_worthwhile (array_slice<insn_change *const> changes,
 // SET has been deleted.  Clean up all remaining uses.  Such uses are
 // either dead phis or now-redundant live-out uses.
 void
-function_info::process_uses_of_deleted_def (set_info *set, auto_sbitmap &visited_phi_nodes)
+function_info::process_uses_of_deleted_def (set_info *set)
 {
   if (!set->has_any_uses ())
     return;
-
-  insn_info *set_insn = set->insn ();
-  if (set_insn && set_insn->is_phi()) {
-	auto *phi = static_cast<phi_info *> (set);
-	bitmap_set_bit (visited_phi_nodes, phi->uid ());
-  } 
 
   auto *use = *set->all_uses ().begin ();
   do
@@ -273,13 +267,9 @@ function_info::process_uses_of_deleted_def (set_info *set, auto_sbitmap &visited
       auto *next_use = use->next_use ();
       if (use->is_in_phi ())
 	{
-	  phi_info *phi = use->phi ();
-	  if (bitmap_bit_p(visited_phi_nodes, phi->uid ())) {
-		remove_use (use);
-	  } else {
-		process_uses_of_deleted_def (phi, visited_phi_nodes);
-		delete_phi (phi);
-	  }
+	  // This call will not recurse.
+	  process_uses_of_deleted_def (use->phi ());
+	  delete_phi (use->phi ());
 	}
       else
 	{
@@ -870,11 +860,7 @@ function_info::change_insns (array_slice<insn_change *> changes)
 	{
 	  auto *set = dyn_cast<set_info *> (def);
 	  if (set && set->has_any_uses ())
-	    {
-			auto_sbitmap visited_phis(m_next_phi_uid);
-			bitmap_clear(visited_phis);
-			process_uses_of_deleted_def (set, visited_phis);
-		}
+		process_uses_of_deleted_def (set);
 	  remove_def (def);
 	}
 

@@ -7639,7 +7639,7 @@ rest_of_handle_cse2 (void)
      bypassed safely.  */
   cse_condition_code_reg ();
 
-  // delete_trivially_dead_insns (get_insns (), max_reg_num ());
+  delete_trivially_dead_insns (get_insns (), max_reg_num ());
 
   if (tem == 2)
     {

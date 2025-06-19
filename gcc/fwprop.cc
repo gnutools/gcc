@@ -905,7 +905,7 @@ fwprop_done (void)
   delete crtl->ssa;
   crtl->ssa = nullptr;
 
-  delete_trivially_dead_insns (get_insns (), max_reg_num ());
+  // delete_trivially_dead_insns (get_insns (), max_reg_num ());
 
   if (dump_file)
     fprintf (dump_file,
