@@ -8835,9 +8835,8 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	      new_field = gfc_conv_descriptor_dtype (new_desc);
 	      gfc_add_modify (&se->pre, new_field, old_field);
 
-	      old_field = gfc_conv_descriptor_offset (old_desc);
-	      new_field = gfc_conv_descriptor_offset (new_desc);
-	      gfc_add_modify (&se->pre, new_field, old_field);
+	      old_field = gfc_conv_descriptor_offset_get (old_desc);
+	      gfc_conv_descriptor_offset_set (&se->pre, new_desc, old_field);
 
 	      for (int i = 0; i < expr->rank; i++)
 		{
