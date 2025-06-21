@@ -1323,7 +1323,8 @@ make_pass_fast_rtl_dce (gcc::context *ctxt)
   return new pass_fast_rtl_dce (ctxt);
 }
 
-// offset_bitmap is a wrapper around sbitmap which takes care of negative indices
+namespace {
+// offset_bitmap is a wrapper around sbitmap that also handles negative indices from RTL SSA
 struct offset_bitmap
 {
 private:
@@ -1381,7 +1382,7 @@ private:
   void sweep ();
 
   offset_bitmap m_marked;
-  sbitmap mm_marked_phis;
+  sbitmap m_marked_phis;
 };
 
 bool
@@ -1412,7 +1413,7 @@ rtl_ssa_dce::can_delete_call (const_rtx insn)
 bool
 rtl_ssa_dce::is_rtx_prelive (const_rtx insn)
 {
-  gcc_assert (insn != nullptr);
+  gcc_checking_assert (insn != nullptr);
 
   if (CALL_P (insn)
       // We cannot delete pure or const sibling calls because it is
@@ -1481,7 +1482,7 @@ rtl_ssa_dce::is_prelive (insn_info *insn)
       if (def->is_mem ())
 	return true;
 
-      gcc_assert (def->is_reg ());
+      gcc_checking_assert (def->is_reg ());
 
       // We should not delete the frame pointer because of the dward2frame pass
       if (frame_pointer_needed && def->regno () == HARD_FRAME_POINTER_REGNUM)
@@ -1491,7 +1492,7 @@ rtl_ssa_dce::is_prelive (insn_info *insn)
       if (def->kind () == access_kind::CLOBBER)
 	continue;
 
-      gcc_assert (def->kind () == access_kind::SET);
+      gcc_checking_assert (def->kind () == access_kind::SET);
 
       // Needed by gcc.c-torture/execute/pr51447.c
       if (HARD_REGISTER_NUM_P (def->regno ()) && global_regs[def->regno ()])
@@ -1572,10 +1573,10 @@ rtl_ssa_dce::mark ()
 	  phi_info *phi = static_cast<phi_info *> (set);
 	  auto phi_uid = phi->uid ();
 	  // Skip already visited phi node.
-	  if (bitmap_bit_p(mm_marked_phis, phi_uid))
+	  if (bitmap_bit_p(m_marked_phis, phi_uid))
 	    continue;
 
-    bitmap_set_bit (mm_marked_phis, phi_uid);
+    bitmap_set_bit (m_marked_phis, phi_uid);
 	  uses = phi->inputs ();
 	}
 
@@ -1629,7 +1630,7 @@ rtl_ssa_dce::reset_dead_debug ()
     bool is_parent_marked = false;
     if (parent_insn->is_phi ()) {
       auto phi = static_cast<phi_info *> (def);
-      is_parent_marked = bitmap_bit_p(mm_marked_phis, phi->uid ());
+      is_parent_marked = bitmap_bit_p(m_marked_phis, phi->uid ());
     } else {
       is_parent_marked = m_marked.get_bit(parent_insn->uid ());
     }
@@ -1654,7 +1655,8 @@ rtl_ssa_dce::sweep ()
   // Previously created debug instructions won't be visited here
   for (insn_info *insn : crtl->ssa->nondebug_insns ())
     {
-      // Artificial or marked insns should not be deleted.
+      // Artificial (bb_head, bb_end, phi), marked or debug instructions
+      // should not be deleted.
       if (insn->is_artificial () || m_marked.get_bit (insn->uid ()))
 	continue;
 
@@ -1679,6 +1681,7 @@ rtl_ssa_dce::sweep ()
 unsigned int
 rtl_ssa_dce::execute (function *fn)
 {
+  auto_timevar timer(TV_RTL_SSA_DCE);
   calculate_dominance_info (CDI_DOMINATORS);
   crtl->ssa = new rtl_ssa::function_info (fn);
   int real_max = 0, artificial_min = 0;
@@ -1695,10 +1698,10 @@ rtl_ssa_dce::execute (function *fn)
   unsigned int phi_node_max = 0;
   for (ebb_info *ebb : crtl->ssa->ebbs ())
     for (phi_info *phi : ebb->phis ())
-    phi_node_max = std::max (phi_node_max, phi->uid ());
+      phi_node_max = std::max (phi_node_max, phi->uid ());
 
-  mm_marked_phis = sbitmap_alloc(phi_node_max + 1);
-  bitmap_clear(mm_marked_phis);
+  m_marked_phis = sbitmap_alloc(phi_node_max + 1);
+  bitmap_clear(m_marked_phis);
 
   mark ();
   if (MAY_HAVE_DEBUG_BIND_INSNS)
@@ -1709,19 +1712,17 @@ rtl_ssa_dce::execute (function *fn)
   if (crtl->ssa->perform_pending_updates ())
     cleanup_cfg (0);
 
-  sbitmap_free(mm_marked_phis);
+  sbitmap_free(m_marked_phis);
   delete crtl->ssa;
   crtl->ssa = nullptr;
   return 0;
 }
 
-namespace {
-
 const pass_data pass_data_rtl_ssa_dce = {
   RTL_PASS,	  /* type */
   "rtl_ssa_dce",  /* name */
   OPTGROUP_NONE,  /* optinfo_flags */
-  TV_DCE,	  /* tv_id */
+  TV_RTL_SSA_DCE,	  /* tv_id */
   0,		  /* properties_required */
   0,		  /* properties_provided */
   0,		  /* properties_destroyed */
