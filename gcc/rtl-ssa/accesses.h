@@ -19,6 +19,8 @@
 
 namespace rtl_ssa {
 
+#include "coretypes.h"
+
 // Forward declarations.
 class bb_info;
 class clobber_group;
@@ -131,6 +133,8 @@ public:
   // otherwise return MEM_REGNO.
   unsigned int regno () const { return m_regno; }
 
+  const_rtx reg () const { return m_reg; }
+
   // For sets, return the mode of the value to which the resource is being set.
   // For uses, return the mode in which the resource is being used (which for
   // hard registers might be different from the mode in which the resource
@@ -208,6 +212,11 @@ public:
   // an insn that is about to be inserted.
   bool is_temporary () const { return m_is_temp; }
 
+    // User definable uid for use_info
+  unsigned int& uid () { return m_uid; }
+
+  unsigned int uid () const { return m_uid; }
+
 protected:
   access_info (resource_info, access_kind);
 
@@ -245,6 +254,12 @@ protected:
   // True if this access is a use_info for a debug instruction or
   // a phi node.
   unsigned int m_is_in_debug_insn_or_phi : 1;
+
+  // Not null if is_reg is true. In that case it points to the reg.
+  const_rtx m_reg;
+
+  // The value of uid ().
+  unsigned int m_uid;
 
 private:
   // Used as a flag during various update routines; has no long-lasting
@@ -285,7 +300,7 @@ public:
 // resource's value.
 class use_info : public access_info
 {
-  // Overall size: 5 LP64 words.
+  // Overall size: 6 LP64 words.
   friend class set_info;
   friend class function_info;
 

@@ -23,6 +23,9 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef GCC_RTLANAL_H
 #define GCC_RTLANAL_H
 
+#include "coretypes.h"
+#include "rtl.h"
+
 /* A dummy register value that represents the whole of variable memory.
    Using ~0U means that arrays that track both registers and memory can
    be indexed by regno + 1.  */
@@ -53,10 +56,13 @@ class rtx_obj_reference
 public:
   rtx_obj_reference () = default;
   rtx_obj_reference (unsigned int regno, uint16_t flags,
-		     machine_mode mode, unsigned int multireg_offset = 0);
+		     machine_mode mode, unsigned int multireg_offset = 0,
+         const_rtx reg = nullptr);
 
   bool is_reg () const { return regno != MEM_REGNO; }
   bool is_mem () const { return regno == MEM_REGNO; }
+
+  const_rtx reg () const { return m_reg; }
 
   /* True if the reference is a read or a write respectively.
      Both flags are set in a read-modify-write context, such as
@@ -95,6 +101,9 @@ public:
   /* The referenced register, or MEM_REGNO for variable memory.  */
   unsigned int regno;
 
+  /* The referenced the register, subregister or memory */
+  const_rtx m_reg;
+
   /* A bitmask of rtx_obj_flags.  */
   unsigned int flags : 16;
 
@@ -109,9 +118,10 @@ public:
 /* Construct a reference with the given fields.  */
 
 inline rtx_obj_reference::rtx_obj_reference (unsigned int regno, uint16_t flags,
-					     machine_mode mode,
-					     unsigned int multireg_offset)
+					     machine_mode mode, unsigned int multireg_offset,
+               const_rtx reg)
   : regno (regno),
+    m_reg (reg),
     flags (flags),
     mode (mode),
     multireg_offset (multireg_offset)

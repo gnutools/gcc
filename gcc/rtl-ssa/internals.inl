@@ -95,6 +95,8 @@ use_info::record_reference (rtx_obj_reference ref, bool is_first)
       m_includes_multiregs |= ref.is_multireg ();
       m_only_occurs_in_notes &= ref.in_note ();
     }
+
+  m_reg = ref.reg ();
 }
 
 // Change the value of insn () to INSN.
@@ -208,6 +210,8 @@ def_info::record_reference (rtx_obj_reference ref, bool is_first)
       m_includes_subregs |= ref.in_subreg ();
       m_includes_multiregs |= ref.is_multireg ();
     }
+
+  m_reg = ref.reg ();
 }
 
 // Return the last definition in the list.  Only valid when is_first ()

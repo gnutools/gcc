@@ -592,6 +592,7 @@ extern rtl_opt_pass *make_pass_rtl_doloop (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_rtl_loop_done (gcc::context *ctxt);
 
 extern rtl_opt_pass *make_pass_lower_subreg2 (gcc::context *ctxt);
+extern rtl_opt_pass *make_pass_web_ssa (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_web (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_cse2 (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_df_initialize_opt (gcc::context *ctxt);

@@ -29,17 +29,23 @@ along with GCC; see the file COPYING3.  If not see
       we expand only if the induction variable is dead afterward, which
       is often the case).  */
 
+#define INCLUDE_ALGORITHM
+#define INCLUDE_FUNCTIONAL
+#define INCLUDE_ARRAY
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
 #include "backend.h"
 #include "rtl.h"
 #include "df.h"
+#include "rtl-ssa.h"
+#include "cfgcleanup.h"
 #include "insn-config.h"
 #include "recog.h"
 
 #include "tree-pass.h"
 
+using namespace rtl_ssa;
 
 /* Find the root of unionfind tree (the representative of set).  */
 
@@ -426,4 +432,120 @@ rtl_opt_pass *
 make_pass_web (gcc::context *ctxt)
 {
   return new pass_web (ctxt);
+}
+
+namespace {
+
+#include <functional>
+
+static void
+union_match_dups (insn_info *insn, web_entry *def_entry, web_entry *use_entry,
+      std::function<bool(web_entry_base *, web_entry_base *)> unite)
+{
+  rtx_insn *rtl = insn->rtl ();
+  if (insn->is_phi())
+  {
+    // TODO: we should add phi input to the same web
+    return;
+  }
+
+  if (!rtl)
+    return;
+
+  extract_insn (rtl);
+
+  struct web_entry *dup_entry;
+  for (int i = 0; i < recog_data.n_dups; ++i)
+   {
+    int op = recog_data.dup_num[i];
+    enum op_type type = recog_data.operand_type[op];
+
+    dup_entry = use_entry;
+    // TODO: how to obtain loc from rtl ssa?
+    for (use_info *use : insn->uses ())
+        if (use->reg() == *recog_data.dup_loc[i])
+          break;
+
+    
+   }
+}
+
+const pass_data pass_data_web_ssa =
+{
+  RTL_PASS, /* type */
+  "web-ssa", /* name */
+  OPTGROUP_NONE, /* optinfo_flags */
+  TV_WEB, /* tv_id */
+  0, /* properties_required */
+  0, /* properties_provided */
+  0, /* properties_destroyed */
+  0, /* todo_flags_start */
+  TODO_df_finish, /* todo_flags_finish */
+};
+
+class pass_web_ssa : public rtl_opt_pass
+{
+public:
+  pass_web_ssa (gcc::context *ctxt)
+    : rtl_opt_pass (pass_data_web_ssa, ctxt)
+  {}
+
+  /* opt_pass methods: */
+  bool gate (function *) final override { return (optimize > 0 && flag_web); }
+  unsigned int execute (function *) final override;
+
+}; // class pass_web
+
+unsigned int
+pass_web_ssa::execute (function *fun)
+{
+  crtl->ssa = new rtl_ssa::function_info (fun);
+  unsigned int defs_num = 0;
+  unsigned int uses_num = 0;
+
+  for (insn_info* insn : crtl->ssa->nondebug_insns ())
+  {
+    for (def_info *def : insn->defs ())
+      if (def->is_reg () && def->regno () >= FIRST_PSEUDO_REGISTER)
+        def->uid() = defs_num++;
+
+    for (use_info *use : insn->uses ())
+      if (use->is_reg () && use->regno () >= FIRST_PSEUDO_REGISTER)
+        use->uid() = uses_num++;
+
+    // reg notes (aka eq_uses) - already handled - see access_info::only_occurs_in_notes ()
+  }
+
+  web_entry *def_entry = XCNEWVEC(web_entry, defs_num);
+  web_entry *use_entry = XCNEWVEC(web_entry, uses_num);
+
+  const unsigned int max_reg = max_reg_num();
+  unsigned int *used_regs = XCNEWVEC (unsigned, max_reg);
+
+  for (insn_info* insn : crtl->ssa->nondebug_insns ()) 
+  {
+    union_match_dups (insn, def_entry, use_entry, unionfind_union);
+    for (use_info *use : insn->uses ())
+      if (use->regno() >= FIRST_PSEUDO_REGISTER)
+        {}
+  }
+
+  free (def_entry);
+  free (use_entry);
+  free (used_regs);
+
+  free_dominance_info (CDI_DOMINATORS);
+  if (crtl->ssa->perform_pending_updates ())
+    cleanup_cfg (0);
+  
+  delete crtl->ssa;
+  crtl->ssa = nullptr;  
+}
+
+}
+
+rtl_opt_pass *
+make_pass_web_ssa (gcc::context *ctxt)
+{
+  return new pass_web_ssa (ctxt);
 }

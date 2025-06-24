@@ -2102,7 +2102,7 @@ rtx_properties::try_to_add_reg (const_rtx x, unsigned int flags)
   for (unsigned int regno = start_regno; regno < end_regno; ++regno)
     if (ref_iter != ref_end)
       *ref_iter++ = rtx_obj_reference (regno, flags, mode,
-				       regno - start_regno);
+				       regno - start_regno, x);
 }
 
 /* Add a description of destination X to this object.  FLAGS is a bitmask
@@ -2169,7 +2169,7 @@ rtx_properties::try_to_add_dest (const_rtx x, unsigned int flags)
 	     anti-dependent on later deallocations, so both types of
 	     stack operation are akin to a memory write.  */
 	  if (ref_iter != ref_end)
-	    *ref_iter++ = rtx_obj_reference (MEM_REGNO, flags, BLKmode);
+	    *ref_iter++ = rtx_obj_reference (MEM_REGNO, flags, BLKmode, 0, x);
 
 	  /* We want to keep sp alive everywhere - by making all
 	     writes to sp also use sp.  */
