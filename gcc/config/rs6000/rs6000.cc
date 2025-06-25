@@ -4387,8 +4387,7 @@ rs6000_option_override_internal (bool global_init_p)
      generating power10 instructions.  */
   if (!(rs6000_isa_flags_explicit & OPTION_MASK_P10_FUSION))
     {
-      if (rs6000_tune == PROCESSOR_POWER10
-	  || rs6000_tune == PROCESSOR_POWER11)
+      if (power10_tuning_p (rs6000_tune))
 	rs6000_isa_flags |= OPTION_MASK_P10_FUSION;
       else
 	rs6000_isa_flags &= ~OPTION_MASK_P10_FUSION;
@@ -4416,8 +4415,7 @@ rs6000_option_override_internal (bool global_init_p)
 			&& rs6000_tune != PROCESSOR_POWER7
 			&& rs6000_tune != PROCESSOR_POWER8
 			&& rs6000_tune != PROCESSOR_POWER9
-			&& rs6000_tune != PROCESSOR_POWER10
-			&& rs6000_tune != PROCESSOR_POWER11
+			&& !power10_tuning_p (rs6000_tune)
 			&& rs6000_tune != PROCESSOR_PPCA2
 			&& rs6000_tune != PROCESSOR_CELL
 			&& rs6000_tune != PROCESSOR_PPC476);
@@ -4431,8 +4429,7 @@ rs6000_option_override_internal (bool global_init_p)
 				 || rs6000_tune == PROCESSOR_POWER7
 				 || rs6000_tune == PROCESSOR_POWER8
 				 || rs6000_tune == PROCESSOR_POWER9
-				 || rs6000_tune == PROCESSOR_POWER10
-				 || rs6000_tune == PROCESSOR_POWER11
+				 || power10_tuning_p (rs6000_tune)
 				 || rs6000_tune == PROCESSOR_PPCE500MC
 				 || rs6000_tune == PROCESSOR_PPCE500MC64
 				 || rs6000_tune == PROCESSOR_PPCE5500
@@ -4731,8 +4728,7 @@ rs6000_option_override_internal (bool global_init_p)
 	rs6000_cost = &power9_cost;
 	break;
 
-      case PROCESSOR_POWER10:
-      case PROCESSOR_POWER11:
+      CASE_PROCESSOR_POWER10_TUNING:
 	rs6000_cost = &power10_cost;
 	break;
 
@@ -10153,8 +10149,7 @@ rs6000_reassociation_width (unsigned int opc ATTRIBUTE_UNUSED,
     {
     case PROCESSOR_POWER8:
     case PROCESSOR_POWER9:
-    case PROCESSOR_POWER10:
-    case PROCESSOR_POWER11:
+    CASE_PROCESSOR_POWER10_TUNING:
       if (DECIMAL_FLOAT_MODE_P (mode))
 	return 1;
       if (VECTOR_MODE_P (mode))
@@ -18196,8 +18191,7 @@ rs6000_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 
 	/* Separate a load from a narrower, dependent store.  */
 	if ((rs6000_sched_groups || rs6000_tune == PROCESSOR_POWER9
-	     || rs6000_tune == PROCESSOR_POWER10
-	     || rs6000_tune == PROCESSOR_POWER11)
+	     || power10_tuning_p (rs6000_tune))
 	    && GET_CODE (PATTERN (insn)) == SET
 	    && GET_CODE (PATTERN (dep_insn)) == SET
 	    && MEM_P (XEXP (PATTERN (insn), 1))
@@ -18235,8 +18229,7 @@ rs6000_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 		 || rs6000_tune == PROCESSOR_POWER7
 		 || rs6000_tune == PROCESSOR_POWER8
 		 || rs6000_tune == PROCESSOR_POWER9
-		 || rs6000_tune == PROCESSOR_POWER10
-		 || rs6000_tune == PROCESSOR_POWER11
+		 || power10_tuning_p (rs6000_tune)
                  || rs6000_tune == PROCESSOR_CELL)
                 && recog_memoized (dep_insn)
                 && (INSN_CODE (dep_insn) >= 0))
@@ -18810,8 +18803,7 @@ rs6000_issue_rate (void)
     return 7;
   case PROCESSOR_POWER9:
     return 6;
-  case PROCESSOR_POWER10:
-  case PROCESSOR_POWER11:
+  CASE_PROCESSOR_POWER10_TUNING:
     return 8;
   default:
     return 1;
@@ -19527,10 +19519,8 @@ rs6000_sched_reorder (FILE *dump ATTRIBUTE_UNUSED, int sched_verbose,
   if (rs6000_tune == PROCESSOR_POWER6)
     load_store_pendulum = 0;
 
-  /* Do Power10/Power11 dependent reordering.  */
-  if (last_scheduled_insn
-      && (rs6000_tune == PROCESSOR_POWER10
-	  || rs6000_tune == PROCESSOR_POWER11))
+  /* Do Power10 and similar processors dependent reordering.  */
+  if (last_scheduled_insn && power10_tuning_p (rs6000_tune))
     power10_sched_reorder (ready, n_ready - 1);
 
   return rs6000_issue_rate ();
@@ -19554,10 +19544,8 @@ rs6000_sched_reorder2 (FILE *dump, int sched_verbose, rtx_insn **ready,
       && recog_memoized (last_scheduled_insn) >= 0)
     return power9_sched_reorder2 (ready, *pn_ready - 1);
 
-  /* Do Power10/Power11 dependent reordering.  */
-  if (last_scheduled_insn
-      && (rs6000_tune == PROCESSOR_POWER10
-	  || rs6000_tune == PROCESSOR_POWER11))
+  /* Do Power10 and similar processors dependent reordering.  */
+  if (last_scheduled_insn && power10_tuning_p (rs6000_tune))
     return power10_sched_reorder (ready, *pn_ready - 1);
 
   return cached_can_issue_more;
@@ -22779,8 +22767,7 @@ rs6000_register_move_cost (machine_mode mode,
 		 allocation a move within the same class might turn
 		 out to be a nop.  */
 	      if (rs6000_tune == PROCESSOR_POWER9
-		  || rs6000_tune == PROCESSOR_POWER10
-		  || rs6000_tune == PROCESSOR_POWER11)
+		  || power10_tuning_p (rs6000_tune))
 		ret = 3 * hard_regno_nregs (FIRST_GPR_REGNO, mode);
 	      else
 		ret = 4 * hard_regno_nregs (FIRST_GPR_REGNO, mode);

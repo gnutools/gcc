@@ -63,6 +63,7 @@ enum processor_type
    PROCESSOR_POWER9,
    PROCESSOR_POWER10,
    PROCESSOR_POWER11,
+   PROCESSOR_FUTURE,
 
    PROCESSOR_RS64A,
    PROCESSOR_MPCCORE,
@@ -71,6 +72,27 @@ enum processor_type
    PROCESSOR_TITAN
 };
 
+
+/* Processors that tune the same as a power10 in terms of tuning that will be
+   added to switch statements.  */
+#define CASE_PROCESSOR_POWER10_TUNING					\
+  case PROCESSOR_POWER10:							\
+  case PROCESSOR_POWER11:						\
+  case PROCESSOR_FUTURE
+
+/* Return true if the processor uses the same tuning as power10.  */
+static inline bool
+power10_tuning_p (enum processor_type processor)
+{
+  switch (processor)
+    {
+    CASE_PROCESSOR_POWER10_TUNING:
+      return true;
+
+    default:
+      return false;
+    }
+}
 
 /* Types of costly dependences.  */
 enum rs6000_dependence_cost
