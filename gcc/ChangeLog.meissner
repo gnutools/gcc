@@ -1,3 +1,80 @@
+==================== Branch work212, patch #3 ====================
+
+Add -mcpu=future tests.
+
+This is patch #3 of 4 to add -mcpu=future support to the PowerPC.
+
+This patch adds simple tests for -mcpu=future.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
+==================== Branch work212, patch #2 ====================
+
+Add -mcpu=future tuning support.
+
+This is patch #2 of 4 to add -mcpu=future support to the PowerPC.
+
+This patch makes -mtune=future use the same tuning decision as -mtune=power10 or
+-mtune=power11.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/power10.md (all reservations): Add future as an
+	alterntive to power10 and power11.
+
+==================== Branch work212, patch #1 ====================
+
+Add support for -mcpu=future
+
+This is patch #1 of 4 that adds the support that can be used in developing GCC
+support for future PowerPC processors.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-06-13  Michael Meissner  <meissner@linux.ibm.com>
+
+	* config.gcc (powerpc*-*-*): Add support for --with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Add support for -mcpu=future.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/driver-rs6000.cc (asm_names): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): If
+	-mcpu=future, define _ARCH_FUTURE.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	(future cpu): Define.
+	* config/rs6000/rs6000-opts.h (enum processor_type): Add
+	PROCESSOR_FUTURE.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (power10_cost): Update comment.
+	(get_arch_flags): Add support for future processor.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_machine_from_flags): Likewise.
+	(rs6000_reassociation_width): Likewise.
+	(rs6000_adjust_cost): Likewise.
+	(rs6000_issue_rate): Likewise.
+	(rs6000_sched_reorder): Likewise.
+	(rs6000_sched_reorder2): Likewise.
+	(rs6000_register_move_cost): Likewise.
+	(rs6000_opt_masks): Add -mfuture.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000.md (cpu attribute): Likewise.
+	* config/rs6000/rs6000.opt (-mfuture): New internal option.
+
 ==================== Branch work212, baseline ====================
 
 2025-06-24   Michael Meissner  <meissner@linux.ibm.com>
