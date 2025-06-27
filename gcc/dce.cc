@@ -1374,6 +1374,8 @@ private:
   bool can_delete_call (const_rtx);
   bool is_rtx_prelive (const_rtx);
   bool is_prelive (insn_info *);
+  bool mark_if_not_visited (const set_info *);
+  void append_not_visited_sets (auto_vec<set_info *> &, use_array &);
   void mark_prelive_insn (insn_info *, auto_vec<set_info *> &);
   auto_vec<set_info *> mark_prelive ();
   void mark ();
@@ -1507,25 +1509,84 @@ rtl_ssa_dce::is_prelive (insn_info *insn)
   return is_rtx_prelive (insn->rtl ());
 }
 
-// Marks INSN and adds its uses to worklist if INSN is not a debug instruction
+
+// Mark SET as visited and return true if SET->insn() is not nullptr and SET
+// has not been visited. Otherwise return false.
+bool
+rtl_ssa_dce::mark_if_not_visited (const set_info *set)
+{
+  insn_info *insn = set->insn ();
+  if (!insn)
+    return false;
+
+  if (insn->is_phi ())
+  {
+    const phi_info *phi = static_cast<const phi_info *> (set);
+	  auto uid = phi->uid ();
+
+    if (bitmap_bit_p (m_marked_phis, uid))
+	    return false;
+
+    bitmap_set_bit (m_marked_phis, uid);
+    if (dump_file)
+      fprintf (dump_file, "Phi node %d:%d marked as live\n", set->regno () ,insn->uid ());
+  } else
+  {
+    auto uid = insn->uid ();
+    if (m_marked.get_bit (uid))
+      return false;
+
+    m_marked.set_bit (uid);
+    if (dump_file)
+      fprintf (dump_file, "Insn %d marked as live\n", insn->uid ());
+  }
+
+  return true;
+}
+
+// For each use in USES, if use->def () is non-null and has not been visited,
+// mark it as visited and append it to WORKLIST.
+void
+rtl_ssa_dce::append_not_visited_sets (auto_vec<set_info *>& worklist, use_array& uses) {
+  for (use_info *use : uses)
+  {
+    // This seems to be a good idea, however there is a problem is process_uses_of_deleted_def
+    if (use->only_occurs_in_notes())
+      continue;
+
+    set_info *parent_set = use->def ();
+	  if (!parent_set)
+	    continue;
+
+    if (!mark_if_not_visited (parent_set))
+      continue;
+
+    // mark_if_not_visited will return false if insn is nullptr
+    // insn_info *insn = parent_set->insn ();
+    // gcc_checking_assert (insn);
+
+    // if (dump_file)
+	  //   fprintf (dump_file, "Adding insn %d to worklist\n", insn->uid ());
+    worklist.safe_push (parent_set);
+  }
+}
+
+// Mark INSN and add its uses to WORKLIST if INSN is not a debug instruction
 void
 rtl_ssa_dce::mark_prelive_insn (insn_info *insn, auto_vec<set_info *> &worklist)
 {
   if (dump_file)
     fprintf (dump_file, "Insn %d marked as prelive\n", insn->uid ());
 
+  // A phi node will never be prelive.
   m_marked.set_bit(insn->uid ());
   // Debug instruction are not added to worklist. They would wake up possibly dead
   // instructions
   if (insn->is_debug_insn ())
     return;
 
-  for (use_info *use : insn->uses ())
-    {
-      set_info *set = use->def ();
-      if (set)
-	worklist.safe_push (set);
-    }
+  use_array uses = insn->uses ();
+  append_not_visited_sets (worklist, uses);
 }
 
 // Scans all instructions and marks all which are prelive
@@ -1556,41 +1617,18 @@ rtl_ssa_dce::mark ()
     {
       set_info *set = worklist.pop ();
       insn_info *insn = set->insn ();
-      if (!insn)
-	continue;
 
-      // Skip already visited visited instructions.
-      auto uid = insn->uid ();
-      if (m_marked.get_bit(uid) && !insn->is_phi ())
-	continue;
-
-      m_marked.set_bit (uid);
-
+      // a set without an insn will not be added to the worklist
+      gcc_checking_assert (insn);
 
       use_array uses = insn->uses ();
       if (insn->is_phi ())
 	{
 	  phi_info *phi = static_cast<phi_info *> (set);
-	  auto phi_uid = phi->uid ();
-	  // Skip already visited phi node.
-	  if (bitmap_bit_p(m_marked_phis, phi_uid))
-	    continue;
-
-    bitmap_set_bit (m_marked_phis, phi_uid);
 	  uses = phi->inputs ();
 	}
 
-      if (dump_file)
-	fprintf (dump_file, "Adding insn %d to worklist\n", insn->uid ());
-
-      for (use_info *use : uses)
-	{
-	  set_info *parent_set = use->def ();
-	  if (!parent_set)
-	    continue;
-
-	  worklist.safe_push (parent_set);
-	}
+      append_not_visited_sets(worklist, uses);
     }
 }
 
@@ -1630,9 +1668,9 @@ rtl_ssa_dce::reset_dead_debug ()
     bool is_parent_marked = false;
     if (parent_insn->is_phi ()) {
       auto phi = static_cast<phi_info *> (def);
-      is_parent_marked = bitmap_bit_p(m_marked_phis, phi->uid ());
+      is_parent_marked = bitmap_bit_p (m_marked_phis, phi->uid ());
     } else {
-      is_parent_marked = m_marked.get_bit(parent_insn->uid ());
+      is_parent_marked = m_marked.get_bit (parent_insn->uid ());
     }
 
     if (!is_parent_marked) {
