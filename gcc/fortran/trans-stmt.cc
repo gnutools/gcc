@@ -2221,9 +2221,8 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	{
 	  /* Recover the dtype, which has been overwritten by the
 	     assignment from an unlimited polymorphic object.  */
-	  tmp = gfc_conv_descriptor_dtype (sym->backend_decl);
-	  gfc_add_modify (&se.pre, tmp,
-			  gfc_get_dtype (TREE_TYPE (sym->backend_decl)));
+	  tree tmp = gfc_get_dtype (TREE_TYPE (sym->backend_decl));
+	  gfc_conv_descriptor_dtype_set (&se.pre, sym->backend_decl, tmp);
 	}
 
       gfc_add_init_cleanup (block, gfc_finish_block (&se.pre),

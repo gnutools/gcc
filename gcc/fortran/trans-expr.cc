@@ -126,8 +126,8 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
     scalar = gfc_build_addr_expr (NULL_TREE, scalar);
   else if (TREE_TYPE (etype) && TREE_CODE (TREE_TYPE (etype)) == ARRAY_TYPE)
     etype = TREE_TYPE (etype);
-  gfc_add_modify (&se->pre, gfc_conv_descriptor_dtype (desc),
-		  gfc_get_dtype_rank_type (0, etype));
+  gfc_conv_descriptor_dtype_set (&se->pre, desc,
+				 gfc_get_dtype_rank_type (0, etype));
   gfc_conv_descriptor_data_set (&se->pre, desc, scalar);
   gfc_conv_descriptor_span_set (&se->pre, desc,
 				gfc_conv_descriptor_elem_len_get (desc));
@@ -793,8 +793,8 @@ gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
   gfc_conv_descriptor_offset_set (block, lhs_desc,
 				  gfc_conv_descriptor_offset_get (rhs_desc));
 
-  gfc_add_modify (block, gfc_conv_descriptor_dtype (lhs_desc),
-		  gfc_conv_descriptor_dtype (rhs_desc));
+  gfc_conv_descriptor_dtype_set (block, lhs_desc,
+				 gfc_conv_descriptor_dtype_get (rhs_desc));
 
   /* Assign the dimension as range-ref.  */
   tmp = gfc_get_descriptor_dimension (lhs_desc);
@@ -919,8 +919,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	      tree type;
 	      type = get_scalar_to_descriptor_type (parmse->expr,
 						    gfc_expr_attr (e));
-	      gfc_add_modify (&parmse->pre, gfc_conv_descriptor_dtype (ctree),
-			      gfc_get_dtype (type));
+	      gfc_conv_descriptor_dtype_set (&parmse->pre, ctree,
+					     gfc_get_dtype (type));
 	      if (optional)
 		parmse->expr = build3_loc (input_location, COND_EXPR,
 					   TREE_TYPE (parmse->expr),
@@ -1329,8 +1329,8 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
 	{
 	  tree type = get_scalar_to_descriptor_type (parmse->expr,
 						     gfc_expr_attr (e));
-	  gfc_add_modify (&block, gfc_conv_descriptor_dtype (ctree),
-			  gfc_get_dtype (type));
+	  gfc_conv_descriptor_dtype_set (&block, ctree,
+					 gfc_get_dtype (type));
 
 	  tmp = gfc_class_data_get (parmse->expr);
 	  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
@@ -6050,12 +6050,9 @@ set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
   cond = fold_build2_loc (input_location, EQ_EXPR,
 			  logical_type_node, tmp,
 			  build_int_cst (TREE_TYPE (tmp), 0));
-  tmp = gfc_conv_descriptor_dtype (desc);
   type = gfc_get_element_type (TREE_TYPE (desc));
-  tmp = fold_build2_loc (input_location, MODIFY_EXPR,
-			 TREE_TYPE (tmp), tmp,
-			 gfc_get_dtype_rank_type (e->rank, type));
-  gfc_add_expr_to_block (&block, tmp);
+  gfc_conv_descriptor_dtype_set (&block, desc,
+				 gfc_get_dtype_rank_type (e->rank, type));
   cond = build3_v (COND_EXPR, cond,
 		   gfc_finish_block (&block),
 		   build_empty_stmt (input_location));
@@ -11333,9 +11330,8 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
 	  gcc_assert (remap->u.ar.dimen == expr1->rank);
 
 	  /* Always set dtype.  */
-	  tree dtype = gfc_conv_descriptor_dtype (desc);
-	  tmp = gfc_get_dtype (TREE_TYPE (desc));
-	  gfc_add_modify (&block, dtype, tmp);
+	  gfc_conv_descriptor_dtype_set (&block, desc,
+					 gfc_get_dtype (TREE_TYPE (desc)));
 
 	  /* For unlimited polymorphic LHS use elem_len from RHS.  */
 	  if (UNLIMITED_POLY (expr1) && expr2->ts.type != BT_CLASS)
@@ -11968,11 +11964,11 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
     desc = build_fold_indirect_ref_loc (input_location, desc);
 
   /* Unallocated, the descriptor does not have a dtype.  */
-  tmp = gfc_conv_descriptor_dtype (desc);
   if (dtype != NULL_TREE)
-    gfc_add_modify (&se->pre, tmp, dtype);
+    gfc_conv_descriptor_dtype_set (&se->pre, desc, dtype);
   else
-    gfc_add_modify (&se->pre, tmp, gfc_get_dtype (TREE_TYPE (desc)));
+    gfc_conv_descriptor_dtype_set (&se->pre, desc,
+				   gfc_get_dtype (TREE_TYPE (desc)));
 
   res_desc = gfc_evaluate_now (desc, &se->pre);
   gfc_conv_descriptor_data_set (&se->pre, res_desc, null_pointer_node);
