@@ -5135,8 +5135,7 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
 		      se.descriptor_only = 1;
 		      gfc_conv_expr (&se, e);
 		      descriptor = se.expr;
-		      se.expr = gfc_conv_descriptor_data_addr (se.expr);
-		      se.expr = build_fold_indirect_ref_loc (input_location, se.expr);
+		      se.expr = gfc_conv_descriptor_data_get (se.expr);
 		    }
 		  gfc_free_expr (e);
 
@@ -5340,7 +5339,7 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
 	continue;
       /* 'omp allocate( {purpose: allocator, value: align},
 			{purpose: init-stmtlist, value: cleanup-stmtlist},
-			{purpose: size-var, value: last-size-expr}}
+			{purpose: size-var, value: last-size-expr} )
 	  where init-stmt/cleanup-stmt is the STATEMENT list to find the
 	  try-final block; last-size-expr is to find the location after
 	  which to add the code and 'size-var' is for the proper size, cf.
