@@ -48,7 +48,6 @@ tree gfc_get_cfi_dim_extent (tree desc, tree idx);
 tree gfc_get_cfi_dim_sm (tree desc, tree idx);
 
 
-tree gfc_conv_descriptor_dtype (tree desc);
 tree gfc_conv_descriptor_rank (tree desc);
 tree gfc_conv_descriptor_version (tree desc);
 tree gfc_conv_descriptor_elem_len (tree desc);
@@ -60,6 +59,7 @@ tree gfc_conv_descriptor_token (tree desc);
 
 tree gfc_conv_descriptor_data_get (tree desc);
 tree gfc_conv_descriptor_offset_get (tree desc);
+tree gfc_conv_descriptor_dtype_get (tree desc);
 tree gfc_conv_descriptor_span_get (tree desc);
 
 tree gfc_conv_descriptor_stride_get (tree desc, tree dim);
@@ -67,7 +67,9 @@ tree gfc_conv_descriptor_lbound_get (tree desc, tree dim);
 tree gfc_conv_descriptor_ubound_get (tree desc, tree dim);
 
 void gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value);
+void gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value);
 void gfc_conv_descriptor_offset_set (stmtblock_t *block, tree desc, tree value);
+void gfc_conv_descriptor_dtype_set (stmtblock_t *block, tree desc, tree value);
 void gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value);
 void gfc_conv_descriptor_stride_set (stmtblock_t *block, tree desc, tree dim, tree value);
 void gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc, tree dim, tree value);
