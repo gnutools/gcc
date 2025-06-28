@@ -8332,7 +8332,6 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
   tree lower;
   tree upper;
   tree byte_size;
-  tree field;
   int n;
 
   gfc_init_se (&argse, NULL);
@@ -8356,11 +8355,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location, tmp);
 
-      tmp = gfc_conv_descriptor_dtype (tmp);
-      field = gfc_advance_chain (TYPE_FIELDS (get_dtype_type_node ()),
-				 GFC_DTYPE_ELEM_LEN);
-      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
-			     tmp, field, NULL_TREE);
+      tmp = gfc_conv_descriptor_elem_len (tmp);
 
       byte_size = fold_convert (gfc_array_index_type, tmp);
     }
@@ -10099,8 +10094,8 @@ conv_isocbinding_subroutine (gfc_code *code)
   /* Set data value, dtype, and offset.  */
   tmp = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc));
   gfc_conv_descriptor_data_set (&block, desc, fold_convert (tmp, cptrse.expr));
-  gfc_add_modify (&block, gfc_conv_descriptor_dtype (desc),
-		  gfc_get_dtype (TREE_TYPE (desc)));
+  gfc_conv_descriptor_dtype_set (&block, desc,
+				 gfc_get_dtype (TREE_TYPE (desc)));
 
   /* Start scalarization of the bounds, using the shape argument.  */
 

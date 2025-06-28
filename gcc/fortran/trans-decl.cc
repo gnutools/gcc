@@ -42,6 +42,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-types.h"
 #include "trans-array.h"
 #include "trans-const.h"
+#include "trans-descriptor.h"
 /* Only for gfc_trans_code.  Shouldn't need to include this.  */
 #include "trans-stmt.h"
 #include "trans-descriptor.h"
@@ -7324,8 +7325,9 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
     {
       /* gfc->dtype = ... (from declaration, not from cfi).  */
       etype = gfc_get_element_type (TREE_TYPE (gfc_desc));
-      gfc_add_modify (&block, gfc_conv_descriptor_dtype (gfc_desc),
-		      gfc_get_dtype_rank_type (sym->as->rank, etype));
+      gfc_conv_descriptor_dtype_set (&block, gfc_desc,
+				     gfc_get_dtype_rank_type (sym->as->rank,
+							      etype));
       /* gfc->data = cfi->base_addr. */
       gfc_conv_descriptor_data_set (&block, gfc_desc,
 				    gfc_get_cfi_desc_base_addr (cfi));
