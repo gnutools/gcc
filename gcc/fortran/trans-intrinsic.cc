@@ -10119,8 +10119,8 @@ conv_isocbinding_subroutine (gfc_code *code)
   /* Set data value, dtype, and offset.  */
   tmp = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (desc));
   gfc_conv_descriptor_data_set (&block, desc, fold_convert (tmp, cptrse.expr));
-  gfc_add_modify (&block, gfc_conv_descriptor_dtype (desc),
-		  gfc_get_dtype (TREE_TYPE (desc)));
+  gfc_conv_descriptor_dtype_set (&block, desc,
+				 gfc_get_dtype (TREE_TYPE (desc)));
 
   /* Start scalarization of the bounds, using the shape argument.  */
 
