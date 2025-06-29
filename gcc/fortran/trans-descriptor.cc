@@ -316,8 +316,8 @@ gfc_conv_descriptor_version (tree desc)
 
 /* Return the element length from the descriptor dtype field.  */
 
-tree
-gfc_conv_descriptor_elem_len (tree desc)
+static tree
+get_descriptor_elem_len (tree desc)
 {
   tree tmp;
   tree dtype;
@@ -331,6 +331,20 @@ gfc_conv_descriptor_elem_len (tree desc)
 			  dtype, tmp, NULL_TREE);
 }
 
+tree
+gfc_conv_descriptor_elem_len_get (tree desc)
+{
+  return get_descriptor_elem_len (desc);
+}
+
+void
+gfc_conv_descriptor_elem_len_set (stmtblock_t *block, tree desc, tree value)
+{
+  location_t loc = input_location;
+  tree t = get_descriptor_elem_len (desc);
+  gfc_add_modify_loc (loc, block, t,
+		      fold_convert_loc (loc, TREE_TYPE (t), value));
+}
 
 tree
 gfc_conv_descriptor_attribute (tree desc)
