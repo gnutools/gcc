@@ -8355,7 +8355,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location, tmp);
 
-      tmp = gfc_conv_descriptor_elem_len (tmp);
+      tmp = gfc_conv_descriptor_elem_len_get (tmp);
 
       byte_size = fold_convert (gfc_array_index_type, tmp);
     }

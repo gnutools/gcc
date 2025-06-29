@@ -130,7 +130,7 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 				 gfc_get_dtype_rank_type (0, etype));
   gfc_conv_descriptor_data_set (&se->pre, desc, scalar);
   gfc_conv_descriptor_span_set (&se->pre, desc,
-				gfc_conv_descriptor_elem_len (desc));
+				gfc_conv_descriptor_elem_len_get (desc));
 
   /* Copy pointer address back - but only if it could have changed and
      if the actual argument is a pointer and not, e.g., NULL().  */
@@ -6289,7 +6289,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
     }
   else if (e->ts.type == BT_ASSUMED)
     {
-      tmp = gfc_conv_descriptor_elem_len (gfc);
+      tmp = gfc_conv_descriptor_elem_len_get (gfc);
       tmp2 = gfc_get_cfi_desc_elem_len (cfi);
       gfc_add_modify (&block2, tmp2, fold_convert (TREE_TYPE (tmp2), tmp));
     }
@@ -6304,7 +6304,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       tree type = fold_convert (TREE_TYPE (ctype),
 				gfc_conv_descriptor_type (gfc));
       tree kind = fold_convert (TREE_TYPE (ctype),
-				gfc_conv_descriptor_elem_len (gfc));
+				gfc_conv_descriptor_elem_len_get (gfc));
       kind = fold_build2_loc (input_location, LSHIFT_EXPR, TREE_TYPE (type),
 			      kind, build_int_cst (TREE_TYPE (type),
 						   CFI_type_kind_shift));
