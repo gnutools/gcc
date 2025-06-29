@@ -2042,7 +2042,7 @@ gfc_omp_get_array_size (location_t loc, tree desc, gimple_seq *seq)
   tree end;
   if (GFC_TYPE_ARRAY_AKIND (TREE_TYPE (desc)) == GFC_ARRAY_ASSUMED_SHAPE_CONT
       || GFC_TYPE_ARRAY_AKIND (TREE_TYPE (desc)) == GFC_ARRAY_ASSUMED_SHAPE)
-    end = gfc_conv_descriptor_rank (desc);
+    end = gfc_conv_descriptor_rank_get (desc);
   else
     end = build_int_cst (signed_char_type_node,
 			 GFC_TYPE_ARRAY_RANK (TREE_TYPE (desc)));

@@ -3329,7 +3329,7 @@ gfc_conv_variable (gfc_se * se, gfc_expr * expr)
       char *msg;
 
       dim = fold_convert (signed_char_type_node,
-			  gfc_conv_descriptor_rank (se->expr));
+			  gfc_conv_descriptor_rank_get (se->expr));
       dim = fold_build2_loc (input_location, MINUS_EXPR, signed_char_type_node,
 			     dim, build_int_cst (signed_char_type_node, 1));
       lower = gfc_conv_descriptor_lbound_get (se->expr, dim);
@@ -6158,7 +6158,8 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
   gfc_add_modify (&block, tmp,
 		  build_int_cst (TREE_TYPE (tmp), CFI_VERSION));
   if (e->rank < 0)
-    rank = fold_convert (signed_char_type_node, gfc_conv_descriptor_rank (gfc));
+    rank = fold_convert (signed_char_type_node,
+			 gfc_conv_descriptor_rank_get (gfc));
   else
     rank = build_int_cst (signed_char_type_node, e->rank);
   tmp = gfc_get_cfi_desc_rank (cfi);
@@ -6750,12 +6751,9 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	     correct rank.  */
 	  if (fsym->as && fsym->as->type == AS_ASSUMED_RANK)
 	    {
-	      tree rank;
 	      tree tmp = parmse->expr;
 	      tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
-	      rank = gfc_conv_descriptor_rank (tmp);
-	      gfc_add_modify (&parmse->pre, rank,
-			      build_int_cst (TREE_TYPE (rank), e->rank));
+	      gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
 	      parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	    }
 	  else
@@ -6805,13 +6803,10 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	   For an assumed-rank dummy we provide a descriptor that passes
 	   the correct rank.  */
 	{
-	  tree rank;
 	  tree tmp = parmse->expr;
 
 	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, gfc_expr_attr (e));
-	  rank = gfc_conv_descriptor_rank (tmp);
-	  gfc_add_modify (&parmse->pre, rank,
-			  build_int_cst (TREE_TYPE (rank), e->rank));
+	  gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
 	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
@@ -6828,11 +6823,7 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
 	  dummy_rank = fsym->as ? fsym->as->rank : 0;
 	  if (dummy_rank > 0)
-	    {
-	      tree rank = gfc_conv_descriptor_rank (tmp);
-	      gfc_add_modify (&parmse->pre, rank,
-			      build_int_cst (TREE_TYPE (rank), dummy_rank));
-	    }
+	    gfc_conv_descriptor_rank_set (&parmse->pre, tmp, dummy_rank);
 	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
@@ -10279,8 +10270,7 @@ gfc_trans_structure_assign (tree dest, gfc_expr * expr, bool init, bool coarray)
 		rank = 1;
 	      size = build_zero_cst (size_type_node);
 	      desc = field;
-	      gfc_add_modify (&block, gfc_conv_descriptor_rank (desc),
-			      build_int_cst (signed_char_type_node, rank));
+	      gfc_conv_descriptor_rank_set (&block, desc, rank);
 	    }
 	  else
 	    {

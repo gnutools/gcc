@@ -2290,7 +2290,7 @@ gfc_conv_intrinsic_rank (gfc_se *se, gfc_expr *expr)
   gfc_add_block_to_block (&se->pre, &argse.pre);
   gfc_add_block_to_block (&se->post, &argse.post);
 
-  se->expr = gfc_conv_descriptor_rank (argse.expr);
+  se->expr = gfc_conv_descriptor_rank_get (argse.expr);
   se->expr = fold_convert (gfc_get_int_type (gfc_default_integer_kind),
 			   se->expr);
 }
@@ -2479,7 +2479,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
           cond = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 				  bound, build_int_cst (TREE_TYPE (bound), 0));
 	  if (as && as->type == AS_ASSUMED_RANK)
-	    tmp = gfc_conv_descriptor_rank (desc);
+	    tmp = gfc_conv_descriptor_rank_get (desc);
 	  else
 	    tmp = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (TREE_TYPE (desc))];
           tmp = fold_build2_loc (input_location, GE_EXPR, logical_type_node,
@@ -2574,7 +2574,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
 	{
 	  tree minus_one = build_int_cst (gfc_array_index_type, -1);
 	  tree rank = fold_convert (gfc_array_index_type,
-				    gfc_conv_descriptor_rank (desc));
+				    gfc_conv_descriptor_rank_get (desc));
 	  rank = fold_build2_loc (input_location, PLUS_EXPR,
 				  gfc_array_index_type, rank, minus_one);
 
@@ -8440,7 +8440,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
           stmtblock_t body;
 
 	  tmp = fold_convert (gfc_array_index_type,
-			      gfc_conv_descriptor_rank (argse.expr));
+			      gfc_conv_descriptor_rank_get (argse.expr));
 	  loop_var = gfc_create_var (gfc_array_index_type, "i");
 	  gfc_add_modify (&argse.pre, loop_var, gfc_index_zero_node);
           exit_label = gfc_build_label_decl (NULL_TREE);
@@ -9252,7 +9252,7 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
 	  gfc_conv_expr_lhs (&arg1se, arg1->expr);
 	  if (arg1->expr->rank == -1)
 	    {
-	      tmp = gfc_conv_descriptor_rank (arg1se.expr);
+	      tmp = gfc_conv_descriptor_rank_get (arg1se.expr);
 	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
 				     TREE_TYPE (tmp), tmp,
 				     build_int_cst (TREE_TYPE (tmp), 1));
