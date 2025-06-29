@@ -7419,7 +7419,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
     {
       /* Set gfc->dtype.rank, if assumed-rank.  */
       rank = gfc_get_cfi_desc_rank (cfi);
-      gfc_add_modify (&block, gfc_conv_descriptor_rank (gfc_desc), rank);
+      gfc_conv_descriptor_rank_set (&block, gfc_desc, rank);
     }
   else if (!GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
     /* In that case, the CFI rank and the declared rank can differ.  */
