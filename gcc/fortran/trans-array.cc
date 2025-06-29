@@ -9077,11 +9077,10 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 
 	      for (int i = 0; i < expr->rank; i++)
 		{
-		  old_field = gfc_conv_descriptor_dimension (old_desc,
-			gfc_rank_cst[get_array_ref_dim_for_loop_dim (ss, i)]);
-		  new_field = gfc_conv_descriptor_dimension (new_desc,
-			gfc_rank_cst[i]);
-		  gfc_add_modify (&se->pre, new_field, old_field);
+		  int idx = get_array_ref_dim_for_loop_dim (ss, i);
+		  old_field = gfc_conv_descriptor_dimension_get (old_desc, idx);
+		  gfc_conv_descriptor_dimension_set (&se->pre, new_desc, i,
+						     old_field);
 		}
 
 	      if (flag_coarray == GFC_FCOARRAY_LIB
