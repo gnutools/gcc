@@ -1918,7 +1918,7 @@ gfc_deallocate_with_status (tree pointer, tree status, tree errmsg, tree errlen,
 	  tree cond, omp_tmp;
 	  if (descr)
 	    cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-				    gfc_conv_descriptor_version (descr),
+				    gfc_conv_descriptor_version_get (descr),
 				    integer_one_node);
 	  else
 	    cond = gfc_omp_call_is_alloc (pointer);
@@ -1932,8 +1932,7 @@ gfc_deallocate_with_status (tree pointer, tree status, tree errmsg, tree errlen,
       gfc_add_modify (&non_null, pointer, build_int_cst (TREE_TYPE (pointer),
 							 0));
       if (flag_openmp_allocators && descr)
-	gfc_add_modify (&non_null, gfc_conv_descriptor_version (descr),
-			integer_zero_node);
+	gfc_conv_descriptor_version_set (&non_null, descr, integer_zero_node);
 
       if (status != NULL_TREE && !integer_zerop (status))
 	{

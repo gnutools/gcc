@@ -6447,10 +6447,11 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 		     build_tree_list (NULL_TREE, alloc),
 		     DECL_ATTRIBUTES (omp_alt_alloc));
       omp_alt_alloc = build_call_expr (omp_alt_alloc, 3, align, sz, alloc);
-      succ_add_expr = fold_build2_loc (input_location, MODIFY_EXPR,
-				       void_type_node,
-				       gfc_conv_descriptor_version (se->expr),
+      stmtblock_t tmp_block;
+      gfc_init_block (&tmp_block);
+      gfc_conv_descriptor_version_set (&tmp_block, se->expr,
 				       build_int_cst (integer_type_node, 1));
+      succ_add_expr = gfc_finish_block (&tmp_block);
     }
 
   /* The allocatable variant takes the old pointer as first argument.  */
@@ -10817,10 +10818,12 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 		{
 		  tree cd, t;
 		  if (c->attr.pdt_array)
-		    cd = fold_build2_loc (input_location, EQ_EXPR,
-					  boolean_type_node,
-					  gfc_conv_descriptor_version (comp),
-					  build_int_cst (integer_type_node, 1));
+		    {
+		      tree version = gfc_conv_descriptor_version_get (comp);
+		      cd = fold_build2_loc (input_location, EQ_EXPR,
+					    boolean_type_node, version,
+					    build_one_cst (integer_type_node));
+		    }
 		  else
 		    cd = gfc_omp_call_is_alloc (tmp);
 		  t = builtin_decl_explicit (BUILT_IN_GOMP_FREE);
@@ -10830,8 +10833,8 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 		  gfc_init_block (&tblock);
 		  gfc_add_expr_to_block (&tblock, t);
 		  if (c->attr.pdt_array)
-		    gfc_add_modify (&tblock, gfc_conv_descriptor_version (comp),
-				    integer_zero_node);
+		    gfc_conv_descriptor_version_set (&tblock, comp,
+						     integer_zero_node);
 		  tmp = build3_loc (input_location, COND_EXPR, void_type_node,
 				    cd, gfc_finish_block (&tblock),
 				    gfc_call_free (tmp));
@@ -11907,7 +11910,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 	{
 	  tree cond, omp_tmp;
 	  cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-				  gfc_conv_descriptor_version (desc),
+				  gfc_conv_descriptor_version_get (desc),
 				  build_int_cst (integer_type_node, 1));
 	  omp_tmp = builtin_decl_explicit (BUILT_IN_GOMP_REALLOC);
 	  omp_tmp = build_call_expr_loc (input_location, omp_tmp, 4,
