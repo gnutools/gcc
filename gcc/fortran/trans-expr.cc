@@ -6303,7 +6303,7 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       tree cond;
       tree ctype = gfc_get_cfi_desc_type (cfi);
       tree type = fold_convert (TREE_TYPE (ctype),
-				gfc_conv_descriptor_type (gfc));
+				gfc_conv_descriptor_type_get (gfc));
       tree kind = fold_convert (TREE_TYPE (ctype),
 				gfc_conv_descriptor_elem_len_get (gfc));
       kind = fold_build2_loc (input_location, LSHIFT_EXPR, TREE_TYPE (type),

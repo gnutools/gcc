@@ -61,13 +61,28 @@ along with GCC; see the file COPYING3.  If not see
 #define LBOUND_SUBFIELD 1
 #define UBOUND_SUBFIELD 2
 
+
+/* Get FIELD_IDX'th field in struct TYPE.  */
+
+static tree
+get_type_field (tree type, unsigned field_idx)
+{
+  tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
+  gcc_assert (field != NULL_TREE);
+
+  return field;
+}
+
+
+/* Get FIELD_IDX'th field in array descriptor DESC.  */
+
 static tree
 gfc_get_descriptor_field (tree desc, unsigned field_idx)
 {
   tree type = TREE_TYPE (desc);
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
-  tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
+  tree field = get_type_field (type, field_idx);
   gcc_assert (field != NULL_TREE);
 
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
@@ -283,8 +298,11 @@ gfc_conv_descriptor_attribute (tree desc)
 			  dtype, tmp, NULL_TREE);
 }
 
-tree
-gfc_conv_descriptor_type (tree desc)
+
+/* Return a reference to the type discriminator of array descriptor DESC.  */
+
+static tree
+conv_descriptor_type (tree desc)
 {
   tree tmp;
   tree dtype;
@@ -296,6 +314,72 @@ gfc_conv_descriptor_type (tree desc)
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
 			  dtype, tmp, NULL_TREE);
 }
+
+/* Return the value of the type discriminator of the array descriptor DESC.  */
+
+tree
+gfc_conv_descriptor_type_get (tree desc)
+{
+  return conv_descriptor_type (desc);
+}
+
+/* Add code to BLOCK setting to VALUE the type discriminator of the array
+   descriptor DESC.  */
+
+void
+gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, tree value)
+{
+  location_t loc = input_location;
+  tree t = conv_descriptor_type (desc);
+  gfc_add_modify_loc (loc, block, t,
+		      fold_convert_loc (loc, TREE_TYPE (t), value));
+}
+
+/* Add code to BLOCK setting to VALUE the type discriminator of the array
+   descriptor DESC.  */
+
+void
+gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
+{
+  tree type = TREE_TYPE (desc);
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
+
+  tree dtype = get_type_field (type, DTYPE_FIELD);
+  gcc_assert (dtype != NULL_TREE);
+
+  tree field = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_TYPE);
+  gcc_assert (field != NULL_TREE);
+
+  tree type_value = build_int_cst (TREE_TYPE (field), value);
+  gfc_conv_descriptor_type_set (block, desc, type_value);
+}
+
+/* Return some code setting to VALUE the type discriminator of the array
+   descriptor DESC.  */
+
+tree
+gfc_conv_descriptor_type_set (tree desc, tree value)
+{
+  stmtblock_t block;
+
+  gfc_init_block (&block);
+  gfc_conv_descriptor_type_set (&block, desc, value);
+  return gfc_finish_block (&block);
+}
+
+/* Return some code setting to VALUE the type discriminator of the array
+   descriptor DESC.  */
+
+tree
+gfc_conv_descriptor_type_set (tree desc, int value)
+{
+  stmtblock_t block;
+
+  gfc_init_block (&block);
+  gfc_conv_descriptor_type_set (&block, desc, value);
+  return gfc_finish_block (&block);
+}
+
 
 tree
 gfc_get_descriptor_dimension (tree desc)
