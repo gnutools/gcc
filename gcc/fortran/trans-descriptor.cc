@@ -290,8 +290,8 @@ gfc_conv_descriptor_rank (tree desc)
 }
 
 
-tree
-gfc_conv_descriptor_version (tree desc)
+static tree
+get_descriptor_version (tree desc)
 {
   tree tmp;
   tree dtype;
@@ -302,6 +302,20 @@ gfc_conv_descriptor_version (tree desc)
 	      && TREE_TYPE (tmp) == integer_type_node);
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
 			  dtype, tmp, NULL_TREE);
+}
+
+tree
+gfc_conv_descriptor_version_get (tree desc)
+{
+  return get_descriptor_version (desc);
+}
+
+void
+gfc_conv_descriptor_version_set (stmtblock_t *block, tree desc,
+				 tree value)
+{
+  tree t = get_descriptor_version (desc);
+  gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
 
