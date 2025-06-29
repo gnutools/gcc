@@ -150,8 +150,10 @@ gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 }
 
 
-tree
-gfc_conv_descriptor_rank (tree desc)
+/* Return a reference to the rank of array descriptor DESC.  */
+
+static tree
+conv_descriptor_rank (tree desc)
 {
   tree tmp;
   tree dtype;
@@ -162,6 +164,33 @@ gfc_conv_descriptor_rank (tree desc)
 	      && TREE_TYPE (tmp) == signed_char_type_node);
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
 			  dtype, tmp, NULL_TREE);
+}
+
+/* Return the rank of the array descriptor DESC.  */
+
+tree
+gfc_conv_descriptor_rank_get (tree desc)
+{
+  return conv_descriptor_rank (desc);
+}
+
+/* Add code to BLOCK setting to VALUE the rank of the array descriptor DESC.  */
+
+void
+gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, tree value)
+{
+  location_t loc = input_location;
+  tree t = conv_descriptor_rank (desc);
+  gfc_add_modify_loc (loc, block, t,
+		      fold_convert_loc (loc, TREE_TYPE (t), value));
+}
+
+/* Add code to BLOCK setting to VALUE the rank of the array descriptor DESC.  */
+
+void
+gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, int value)
+{
+  gfc_conv_descriptor_rank_set (block, desc, gfc_rank_cst[value]);
 }
 
 
