@@ -468,14 +468,43 @@ gfc_get_descriptor_dimension (tree desc)
 }
 
 
-tree
-gfc_conv_descriptor_dimension (tree desc, tree dim)
+static tree
+get_descriptor_dimension (tree desc, tree dim)
 {
   tree tmp;
 
   tmp = gfc_get_descriptor_dimension (desc);
 
   return gfc_build_array_ref (tmp, dim, NULL_TREE, true);
+}
+
+tree
+gfc_conv_descriptor_dimension_get (tree desc, tree dim)
+{
+  return get_descriptor_dimension (desc, dim);
+}
+
+tree
+gfc_conv_descriptor_dimension_get (tree desc, int dim)
+{
+  return gfc_conv_descriptor_dimension_get (desc, gfc_rank_cst[dim]);
+}
+
+void
+gfc_conv_descriptor_dimension_set (stmtblock_t *block, tree desc, tree dim,
+				   tree value)
+{
+  location_t loc = input_location;
+  tree t = get_descriptor_dimension (desc, dim);
+  gfc_add_modify_loc (loc, block, t,
+		      fold_convert_loc (loc, TREE_TYPE (t), value));
+}
+
+void
+gfc_conv_descriptor_dimension_set (stmtblock_t *block, tree desc, int dim,
+				   tree value)
+{
+  gfc_conv_descriptor_dimension_set (block, desc, gfc_rank_cst[dim], value);
 }
 
 
@@ -493,7 +522,7 @@ gfc_conv_descriptor_token (tree desc)
 static tree
 gfc_conv_descriptor_subfield (tree desc, tree dim, unsigned field_idx)
 {
-  tree tmp = gfc_conv_descriptor_dimension (desc, dim);
+  tree tmp = get_descriptor_dimension (desc, dim);
   tree field = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (tmp)), field_idx);
   gcc_assert (field != NULL_TREE);
 
