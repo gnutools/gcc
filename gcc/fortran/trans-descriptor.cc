@@ -163,13 +163,24 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #define LBOUND_SUBFIELD 1
 #define UBOUND_SUBFIELD 2
 
+
+static tree
+get_type_field (tree type, unsigned field_idx)
+{
+  tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
+  gcc_assert (field != NULL_TREE);
+
+  return field;
+}
+
+
 static tree
 gfc_get_descriptor_field (tree desc, unsigned field_idx)
 {
   tree type = TREE_TYPE (desc);
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
-  tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
+  tree field = get_type_field (type, field_idx);
   gcc_assert (field != NULL_TREE);
 
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
@@ -368,6 +379,7 @@ gfc_conv_descriptor_elem_len_set (stmtblock_t *block, tree desc,
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
+
 tree
 gfc_conv_descriptor_attribute (tree desc)
 {
@@ -383,8 +395,9 @@ gfc_conv_descriptor_attribute (tree desc)
 			  dtype, tmp, NULL_TREE);
 }
 
-tree
-gfc_conv_descriptor_type (tree desc)
+
+static tree
+get_descriptor_type (tree desc)
 {
   tree tmp;
   tree dtype;
@@ -396,6 +409,56 @@ gfc_conv_descriptor_type (tree desc)
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
 			  dtype, tmp, NULL_TREE);
 }
+
+tree
+gfc_conv_descriptor_type_get (tree desc)
+{
+  return get_descriptor_type (desc);
+}
+
+void
+gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, tree value)
+{
+  tree t = get_descriptor_type (desc);
+  gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
+}
+
+void
+gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
+{
+  tree type = TREE_TYPE (desc);
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
+
+  tree dtype = get_type_field (type, DTYPE_FIELD);
+  gcc_assert (dtype != NULL_TREE);
+
+  tree field = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_TYPE);
+  gcc_assert (field != NULL_TREE);
+
+  tree type_value = build_int_cst (TREE_TYPE (field), value);
+  gfc_conv_descriptor_type_set (block, desc, type_value);
+}
+
+tree
+gfc_conv_descriptor_type_set (tree desc, tree value)
+{
+  stmtblock_t block;
+
+  gfc_init_block (&block);
+  gfc_conv_descriptor_type_set (&block, desc, value);
+  return gfc_finish_block (&block);
+}
+
+tree
+gfc_conv_descriptor_type_set (tree desc, int value)
+{
+  stmtblock_t block;
+
+  gfc_init_block (&block);
+  gfc_conv_descriptor_type_set (&block, desc, value);
+  return gfc_finish_block (&block);
+}
+
 
 tree
 gfc_get_descriptor_dimension (tree desc)
