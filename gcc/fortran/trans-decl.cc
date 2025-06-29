@@ -7341,25 +7341,20 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
       ctype = fold_build2_loc (input_location, BIT_AND_EXPR, TREE_TYPE (ctype),
 			       ctype, build_int_cst (TREE_TYPE (ctype),
 						     CFI_type_mask));
-      tree type = gfc_conv_descriptor_type (gfc_desc);
 
       /* if (CFI_type_cptr) BT_VOID else BT_UNKNOWN  */
       /* Note: BT_VOID is could also be CFI_type_funcptr, but assume c_ptr. */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype), CFI_type_cptr));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_VOID));
-      tmp2 = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node,
-			      type,
-			      build_int_cst (TREE_TYPE (type), BT_UNKNOWN));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, BT_VOID);
+      tmp2 = gfc_conv_descriptor_type_set (gfc_desc, BT_UNKNOWN);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       /* if (CFI_type_struct) BT_DERIVED else  < tmp2 >  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 					     CFI_type_struct));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_DERIVED));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, BT_DERIVED);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       /* if (CFI_type_Character) BT_CHARACTER else  < tmp2 >  */
@@ -7368,8 +7363,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 			      CFI_type_Character));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, BT_CHARACTER);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       /* if (CFI_type_ucs4_char) BT_CHARACTER else  < tmp2 >  */
@@ -7381,16 +7375,14 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, tmp,
 			      build_int_cst (TREE_TYPE (tmp),
 					     CFI_type_ucs4_char));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_CHARACTER));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, BT_CHARACTER);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       /* if (CFI_type_Complex) BT_COMPLEX + cfi->elem_len/2 else  < tmp2 >  */
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node, ctype,
 			      build_int_cst (TREE_TYPE (ctype),
 			      CFI_type_Complex));
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node, type,
-			     build_int_cst (TREE_TYPE (type), BT_COMPLEX));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, BT_COMPLEX);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       /* if (CFI_type_Integer || CFI_type_Logical || CFI_type_Real)
@@ -7408,8 +7400,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
 					     CFI_type_Real));
       cond = fold_build2_loc (input_location, TRUTH_OR_EXPR, boolean_type_node,
 			      cond, tmp);
-      tmp = fold_build2_loc (input_location, MODIFY_EXPR, void_type_node,
-			     type, fold_convert (TREE_TYPE (type), ctype));
+      tmp = gfc_conv_descriptor_type_set (gfc_desc, ctype);
       tmp2 = fold_build3_loc (input_location, COND_EXPR, void_type_node, cond,
 			      tmp, tmp2);
       gfc_add_expr_to_block (&block, tmp2);
