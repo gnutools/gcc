@@ -306,22 +306,6 @@ gfc_conv_descriptor_elem_len_set (stmtblock_t *block, tree desc, tree value)
 }
 
 
-tree
-gfc_conv_descriptor_attribute (tree desc)
-{
-  tree tmp;
-  tree dtype;
-
-  dtype = conv_descriptor_dtype (desc);
-  tmp = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (dtype)),
-			   GFC_DTYPE_ATTRIBUTE);
-  gcc_assert (tmp!= NULL_TREE
-	      && TREE_TYPE (tmp) == short_integer_type_node);
-  return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
-			  dtype, tmp, NULL_TREE);
-}
-
-
 /* Return a reference to the type discriminator of array descriptor DESC.  */
 
 static tree
