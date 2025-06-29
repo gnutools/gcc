@@ -22,7 +22,6 @@ along with GCC; see the file COPYING3.  If not see
 
 tree gfc_conv_descriptor_dtype (tree);
 tree gfc_conv_descriptor_attribute (tree);
-tree gfc_conv_descriptor_type (tree);
 tree gfc_get_descriptor_dimension (tree);
 tree gfc_conv_descriptor_dimension (tree, tree);
 tree gfc_conv_descriptor_token (tree);
@@ -32,6 +31,7 @@ tree gfc_conv_descriptor_offset_get (tree);
 tree gfc_conv_descriptor_elem_len_get (tree);
 tree gfc_conv_descriptor_version_get (tree);
 tree gfc_conv_descriptor_rank_get (tree);
+tree gfc_conv_descriptor_type_get (tree);
 tree gfc_conv_descriptor_span_get (tree);
 
 tree gfc_conv_descriptor_stride_get (tree, tree);
@@ -44,6 +44,9 @@ void gfc_conv_descriptor_elem_len_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_version_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_rank_set (stmtblock_t *, tree, int);
+void gfc_conv_descriptor_type_set (stmtblock_t *, tree, tree);
+tree gfc_conv_descriptor_type_set (tree, tree);
+tree gfc_conv_descriptor_type_set (tree, int);
 void gfc_conv_descriptor_span_set (stmtblock_t *, tree, tree);
 void gfc_conv_descriptor_stride_set (stmtblock_t *, tree, tree, tree);
 void gfc_conv_descriptor_lbound_set (stmtblock_t *, tree, tree, tree);
