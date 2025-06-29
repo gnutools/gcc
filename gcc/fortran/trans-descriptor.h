@@ -20,7 +20,6 @@ along with GCC; see the file COPYING3.  If not see
 #define GFC_TRANS_DESCRIPTOR_H
 
 
-tree gfc_conv_descriptor_attribute (tree);
 tree gfc_get_descriptor_dimension (tree);
 tree gfc_conv_descriptor_dimension (tree, tree);
 tree gfc_conv_descriptor_token (tree);
