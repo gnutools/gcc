@@ -48,7 +48,6 @@ tree gfc_get_cfi_dim_extent (tree desc, tree idx);
 tree gfc_get_cfi_dim_sm (tree desc, tree idx);
 
 
-tree gfc_conv_descriptor_attribute (tree desc);
 tree gfc_get_descriptor_dimension (tree desc);
 tree gfc_conv_descriptor_dimension (tree desc, tree dim);
 tree gfc_conv_descriptor_token (tree desc);
