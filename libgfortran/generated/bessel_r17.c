@@ -49,16 +49,16 @@ void
 bessel_jn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2, GFC_REAL_17 x)
 {
   int i;
-  index_type stride;
+  index_type spacing;
 
   GFC_REAL_17 last1, last2, x2rev;
 
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
+  spacing = GFC_DESCRIPTOR_SPACING(ret,0);
 
   if (ret->base_addr == NULL)
     {
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DIMENSION_SET(ret->dim[0], 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, sizeof (GFC_REAL_17));
       ret->base_addr = xmallocarray (size, sizeof (GFC_REAL_17));
       ret->offset = 0;
     }
@@ -72,24 +72,24 @@ bessel_jn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2, GFC_REAL_17 x
 		  "(%ld vs. %ld)", (long int) n2-n1,
 		  (long int) GFC_DESCRIPTOR_EXTENT(ret,0));
 
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
+  spacing = GFC_DESCRIPTOR_SPACING(ret,0);
 
   if (unlikely (x == 0))
     {
       ret->base_addr[0] = 1;
       for (i = 1; i <= n2-n1; i++)
-        ret->base_addr[i*stride] = 0;
+	GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = 0;
       return;
     }
 
   last1 = MATHFUNC(jn) (n2, x);
-  ret->base_addr[(n2-n1)*stride] = last1;
+  GFC_ARRAY_ELEM (GFC_REAL_17, ret->base_addr, (n2-n1)*spacing) = last1;
 
   if (n1 == n2)
     return;
 
   last2 = MATHFUNC(jn) (n2 - 1, x);
-  ret->base_addr[(n2-n1-1)*stride] = last2;
+  GFC_ARRAY_ELEM (GFC_REAL_17, ret->base_addr, (n2-n1-1)*spacing) = last2;
 
   if (n1 + 1 == n2)
     return;
@@ -98,9 +98,9 @@ bessel_jn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2, GFC_REAL_17 x
 
   for (i = n2-n1-2; i >= 0; i--)
     {
-      ret->base_addr[i*stride] = x2rev * (i+1+n1) * last2 - last1;
+      GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = x2rev * (i+1+n1) * last2 - last1;
       last1 = last2;
-      last2 = ret->base_addr[i*stride];
+      last2 = GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i);
     }
 }
 
@@ -116,16 +116,16 @@ bessel_yn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2,
 			 GFC_REAL_17 x)
 {
   int i;
-  index_type stride;
+  index_type spacing;
 
   GFC_REAL_17 last1, last2, x2rev;
 
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
+  spacing = GFC_DESCRIPTOR_SPACING(ret,0);
 
   if (ret->base_addr == NULL)
     {
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DIMENSION_SET(ret->dim[0], 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, sizeof (GFC_REAL_17));
       ret->base_addr = xmallocarray (size, sizeof (GFC_REAL_17));
       ret->offset = 0;
     }
@@ -139,27 +139,27 @@ bessel_yn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2,
 		  "(%ld vs. %ld)", (long int) n2-n1,
 		  (long int) GFC_DESCRIPTOR_EXTENT(ret,0));
 
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
+  spacing = GFC_DESCRIPTOR_SPACING(ret,0);
 
   if (unlikely (x == 0))
     {
       for (i = 0; i <= n2-n1; i++)
 #if defined(GFC_REAL_17_INFINITY)
-        ret->base_addr[i*stride] = -GFC_REAL_17_INFINITY;
+	GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = -GFC_REAL_17_INFINITY;
 #else
-        ret->base_addr[i*stride] = -GFC_REAL_17_HUGE;
+	GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = -GFC_REAL_17_HUGE;
 #endif
       return;
     }
 
   last1 = MATHFUNC(yn) (n1, x);
-  ret->base_addr[0] = last1;
+  GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, 0) = last1;
 
   if (n1 == n2)
     return;
 
   last2 = MATHFUNC(yn) (n1 + 1, x);
-  ret->base_addr[1*stride] = last2;
+  GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, 1) = last2;
 
   if (n1 + 1 == n2)
     return;
@@ -171,14 +171,14 @@ bessel_yn_r17 (gfc_array_r17 * const restrict ret, int n1, int n2,
 #if defined(GFC_REAL_17_INFINITY)
       if (unlikely (last2 == -GFC_REAL_17_INFINITY))
 	{
-	  ret->base_addr[i*stride] = -GFC_REAL_17_INFINITY;
+	  GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = -GFC_REAL_17_INFINITY;
 	}
       else
 #endif
 	{
-	  ret->base_addr[i*stride] = x2rev * (i-1+n1) * last2 - last1;
+	  GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i) = x2rev * (i-1+n1) * last2 - last1;
 	  last1 = last2;
-	  last2 = ret->base_addr[i*stride];
+	  last2 = GFC_DESCRIPTOR1_ELEM (GFC_REAL_17, ret, i);
 	}
     }
 }

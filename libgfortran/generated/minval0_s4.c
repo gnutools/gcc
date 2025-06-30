@@ -56,7 +56,7 @@ minval0_s4 (GFC_UINTEGER_4 * restrict ret,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
+  index_type sspacing[GFC_MAX_DIMENSIONS];
   const GFC_UINTEGER_4 *base;
   index_type rank;
   index_type n;
@@ -72,7 +72,7 @@ minval0_s4 (GFC_UINTEGER_4 * restrict ret,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -98,7 +98,7 @@ minval0_s4 (GFC_UINTEGER_4 * restrict ret,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  base = (GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -109,7 +109,7 @@ minval0_s4 (GFC_UINTEGER_4 * restrict ret,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  base = (GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -120,7 +120,7 @@ minval0_s4 (GFC_UINTEGER_4 * restrict ret,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      base = (GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -142,8 +142,8 @@ mminval0_s4 (GFC_UINTEGER_4 * const restrict ret,
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type mstride[GFC_MAX_DIMENSIONS];
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing[GFC_MAX_DIMENSIONS];
   const GFC_UINTEGER_4 *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
@@ -180,8 +180,8 @@ mminval0_s4 (GFC_UINTEGER_4 * const restrict ret,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -207,8 +207,8 @@ mminval0_s4 (GFC_UINTEGER_4 * const restrict ret,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
-	  mbase += mstride[0];
+	  base = (GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
+	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -219,8 +219,8 @@ mminval0_s4 (GFC_UINTEGER_4 * const restrict ret,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  mbase -= mstride[n] * extent[n];
+	  base = (GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
+	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -231,8 +231,8 @@ mminval0_s4 (GFC_UINTEGER_4 * const restrict ret,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      mbase += mstride[n];
+	      base = (GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
+	      mbase += mspacing[n];
 	    }
 	}
       while (count[n] == extent[n]);

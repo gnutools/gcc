@@ -35,18 +35,18 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 		 const gfc_array_l1 *mask, const GFC_INTEGER_1 *fptr)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type rs;
   GFC_INTEGER_1 * restrict rptr;
   /* v.* indicates the vector array.  */
-  index_type vstride0;
+  index_type vspacing0;
   GFC_INTEGER_1 *vptr;
   /* Value for field, this is constant.  */
   const GFC_INTEGER_1 fval = *fptr;
   /* m.* indicates the mask array.  */
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type mstride0;
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing0;
   const GFC_LOGICAL_1 *mptr;
 
   index_type count[GFC_MAX_DIMENSIONS];
@@ -80,22 +80,22 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
     runtime_error ("Funny sized logical array");
 
   /* Initialize to avoid -Wmaybe-uninitialized complaints.  */
-  rstride[0] = 1;
+  rspacing[0] = 1;
   if (ret->base_addr == NULL)
     {
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
-      rs = 1;
+      rs = sizeof (GFC_INTEGER_1);
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
+	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	  rs *= extent[n];
 	}
       ret->offset = 0;
@@ -109,24 +109,17 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
+	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
-      if (rstride[0] == 0)
-	rstride[0] = 1;
     }
 
   if (empty)
     return;
 
-  if (mstride[0] == 0)
-    mstride[0] = 1;
-
-  vstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
-  if (vstride0 == 0)
-    vstride0 = 1;
-  rstride0 = rstride[0];
-  mstride0 = mstride[0];
+  vspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
+  rspacing0 = rspacing[0];
+  mspacing0 = mspacing[0];
   rptr = ret->base_addr;
   vptr = vector->base_addr;
 
@@ -136,7 +129,7 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
         {
 	  /* From vector.  */
 	  *rptr = *vptr;
-	  vptr += vstride0;
+	  vptr = (GFC_INTEGER_1*) (((char*)vptr) + vspacing0);
         }
       else
         {
@@ -144,8 +137,8 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 	  *rptr = fval;
         }
       /* Advance to the next element.  */
-      rptr += rstride0;
-      mptr += mstride0;
+      rptr = (GFC_INTEGER_1*) (((char*)rptr) + rspacing0);
+      mptr += mspacing0;
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -155,8 +148,8 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          mptr -= mstride[n] * extent[n];
+          rptr = (GFC_INTEGER_1*) (((char*)rptr) - rspacing[n] * extent[n]);
+          mptr -= mspacing[n] * extent[n];
           n++;
           if (n >= dim)
             {
@@ -167,8 +160,8 @@ unpack0_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              mptr += mstride[n];
+              rptr = (GFC_INTEGER_1*) (((char*)rptr) + rspacing[n]);
+              mptr += mspacing[n];
             }
         }
     }
@@ -179,20 +172,20 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 		 const gfc_array_l1 *mask, const gfc_array_i1 *field)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type rs;
   GFC_INTEGER_1 * restrict rptr;
   /* v.* indicates the vector array.  */
-  index_type vstride0;
+  index_type vspacing0;
   GFC_INTEGER_1 *vptr;
   /* f.* indicates the field array.  */
-  index_type fstride[GFC_MAX_DIMENSIONS];
-  index_type fstride0;
+  index_type fspacing[GFC_MAX_DIMENSIONS];
+  index_type fspacing0;
   const GFC_INTEGER_1 *fptr;
   /* m.* indicates the mask array.  */
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type mstride0;
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing0;
   const GFC_LOGICAL_1 *mptr;
 
   index_type count[GFC_MAX_DIMENSIONS];
@@ -226,23 +219,23 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
     runtime_error ("Funny sized logical array");
 
   /* Initialize to avoid -Wmaybe-uninitialized complaints.  */
-  rstride[0] = 1;
+  rspacing[0] = 1;
   if (ret->base_addr == NULL)
     {
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
-      rs = 1;
+      rs = sizeof (GFC_INTEGER_1);
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
+	  fspacing[n] = GFC_DESCRIPTOR_SPACING(field,n);
+	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	  rs *= extent[n];
 	}
       ret->offset = 0;
@@ -256,28 +249,19 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+	  rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,n);
+	  fspacing[n] = GFC_DESCRIPTOR_SPACING(field,n);
+	  mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
 	}
-      if (rstride[0] == 0)
-	rstride[0] = 1;
     }
 
   if (empty)
     return;
 
-  if (fstride[0] == 0)
-    fstride[0] = 1;
-  if (mstride[0] == 0)
-    mstride[0] = 1;
-
-  vstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
-  if (vstride0 == 0)
-    vstride0 = 1;
-  rstride0 = rstride[0];
-  fstride0 = fstride[0];
-  mstride0 = mstride[0];
+  vspacing0 = GFC_DESCRIPTOR_SPACING(vector,0);
+  rspacing0 = rspacing[0];
+  fspacing0 = fspacing[0];
+  mspacing0 = mspacing[0];
   rptr = ret->base_addr;
   fptr = field->base_addr;
   vptr = vector->base_addr;
@@ -288,7 +272,7 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
         {
           /* From vector.  */
 	  *rptr = *vptr;
-          vptr += vstride0;
+          vptr = (GFC_INTEGER_1*) (((char*)vptr) + vspacing0);
         }
       else
         {
@@ -296,9 +280,9 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
 	  *rptr = *fptr;
         }
       /* Advance to the next element.  */
-      rptr += rstride0;
-      fptr += fstride0;
-      mptr += mstride0;
+      rptr = (GFC_INTEGER_1*) (((char*)rptr) + rspacing0);
+      fptr = (GFC_INTEGER_1*) (((char*)fptr) + fspacing0);
+      mptr = ((char*)mptr) + mspacing0;
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -308,9 +292,9 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          fptr -= fstride[n] * extent[n];
-          mptr -= mstride[n] * extent[n];
+          rptr = (GFC_INTEGER_1*) (((char*)rptr) - rspacing[n] * extent[n]);
+          fptr = (GFC_INTEGER_1*) (((char*)fptr) - fspacing[n] * extent[n]);
+          mptr = ((char*)mptr) - mspacing[n] * extent[n];
           n++;
           if (n >= dim)
             {
@@ -321,9 +305,9 @@ unpack1_i1 (gfc_array_i1 *ret, const gfc_array_i1 *vector,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              fptr += fstride[n];
-              mptr += mstride[n];
+              rptr = (GFC_INTEGER_1*) (((char*)rptr) + rspacing[n]);
+              fptr = (GFC_INTEGER_1*) (((char*)fptr) + fspacing[n]);
+              mptr = ((char*)mptr) + mspacing[n];
             }
         }
     }

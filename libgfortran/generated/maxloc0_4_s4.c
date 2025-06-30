@@ -44,18 +44,18 @@ compare_fcn (const GFC_UINTEGER_4 *a, const GFC_UINTEGER_4 *b, gfc_charlen_type 
 
 }
 
-extern void maxloc0_4_s4 (gfc_array_i4 * const restrict retarray, 
+extern void maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len);
 export_proto(maxloc0_4_s4);
 
 void
-maxloc0_4_s4 (gfc_array_i4 * const restrict retarray, 
+maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   const GFC_UINTEGER_4 *base;
   GFC_INTEGER_4 * restrict dest;
   index_type rank;
@@ -67,7 +67,7 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (GFC_INTEGER_4));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
@@ -79,18 +79,18 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 				"MAXLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -99,7 +99,7 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 1;
+    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = 1;
   {
 
   const GFC_UINTEGER_4 *maxval;
@@ -116,11 +116,11 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        dest[n * dstride] = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -131,7 +131,7 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  base = (const GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -142,7 +142,7 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -151,22 +151,22 @@ maxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 }
 
 
-extern void mmaxloc0_4_s4 (gfc_array_i4 * const restrict, 
+extern void mmaxloc0_4_s4 (gfc_array_i4 * const restrict,
 	gfc_array_s4 * const restrict, gfc_array_l1 * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(mmaxloc0_4_s4);
 
 void
-mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray, 
+mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	gfc_array_s4 * const restrict array,
 	gfc_array_l1 * const restrict mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing[GFC_MAX_DIMENSIONS];
+  index_type dspacing;
   GFC_INTEGER_4 *dest;
   const GFC_UINTEGER_4 *base;
   GFC_LOGICAL_1 *mbase;
@@ -176,7 +176,7 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   if (mask == NULL)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       maxloc0_4_s4 (retarray, array, back, len);
 #else
       maxloc0_4_s4 (retarray, array, len);
@@ -190,7 +190,7 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, sizeof (GFC_INTEGER_4));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
@@ -220,19 +220,19 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = 0;
 	  return;
 	}
     }
@@ -241,7 +241,7 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = 0;
   {
 
   const GFC_UINTEGER_4 *maxval;
@@ -260,12 +260,12 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
     {
       maxval = base;
       for (n = 0; n < rank; n++)
-        dest[n * dstride] = count[n] + 1;
+	GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = count[n] + 1;
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
-	  mbase += mstride[0];
+	  base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[0]);
+	  mbase += mspacing[0];
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -276,8 +276,8 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  mbase -= mstride[n] * extent[n];
+	  base = (const GFC_UINTEGER_4*) (((char*)base) - sspacing[n] * extent[n]);
+	  mbase -= mspacing[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -288,8 +288,8 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      mbase += mstride[n];
+	      base = (const GFC_UINTEGER_4*) (((char*)base) + sspacing[n]);
+	      mbase += mspacing[n];
 	    }
 	}
       while (count[n] == extent[n]);
@@ -298,25 +298,25 @@ mmaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 }
 
 
-extern void smaxloc0_4_s4 (gfc_array_i4 * const restrict, 
+extern void smaxloc0_4_s4 (gfc_array_i4 * const restrict,
 	gfc_array_s4 * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(smaxloc0_4_s4);
 
 void
-smaxloc0_4_s4 (gfc_array_i4 * const restrict retarray, 
+smaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 	gfc_array_s4 * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
 {
   index_type rank;
-  index_type dstride;
+  index_type dspacing;
   index_type n;
   GFC_INTEGER_4 *dest;
 
   if (mask == NULL || *mask)
     {
-#ifdef HAVE_BACK_ARG    
+#ifdef HAVE_BACK_ARG
       maxloc0_4_s4 (retarray, array, back, len);
 #else
       maxloc0_4_s4 (retarray, array, len);
@@ -331,7 +331,7 @@ smaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (GFC_INTEGER_4));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
@@ -342,9 +342,9 @@ smaxloc0_4_s4 (gfc_array_i4 * const restrict retarray,
 			       "MAXLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+  dspacing = GFC_DESCRIPTOR_SPACING(retarray,0);
   dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    GFC_ARRAY_ELEM (GFC_INTEGER_4, dest, n * dspacing) = 0 ;
 }
 #endif
