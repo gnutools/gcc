@@ -1176,15 +1176,9 @@ is_subref_array (gfc_expr * e)
 {
   gfc_ref * ref;
   bool seen_array;
-  gfc_symbol *sym;
 
   if (e->expr_type != EXPR_VARIABLE)
     return false;
-
-  sym = e->symtree->n.sym;
-
-  if (sym->attr.subref_array_pointer)
-    return true;
 
   seen_array = false;
 
@@ -1208,12 +1202,6 @@ is_subref_array (gfc_expr * e)
 	    && ref->type != REF_ARRAY)
 	return seen_array;
     }
-
-  if (sym->ts.type == BT_CLASS
-      && sym->attr.dummy
-      && CLASS_DATA (sym)->attr.dimension
-      && CLASS_DATA (sym)->attr.class_pointer)
-    return true;
 
   return false;
 }
@@ -5530,27 +5518,38 @@ gfc_get_full_arrayspec_from_expr (gfc_expr *expr)
   gfc_ref *ref;
 
   if (expr->rank == 0)
-    return NULL;
+    return nullptr;
 
   /* Follow any component references.  */
   if (expr->expr_type == EXPR_VARIABLE
       || expr->expr_type == EXPR_CONSTANT)
     {
-      if (expr->symtree)
-	as = expr->symtree->n.sym->as;
+      gfc_symbol *sym = expr->symtree ? expr->symtree->n.sym : nullptr;
+      if (sym
+	  && sym->ts.type == BT_CLASS)
+	as = CLASS_DATA (sym)->as;
+      else if (sym)
+	as = sym->as;
       else
-	as = NULL;
+	as = nullptr;
 
       for (ref = expr->ref; ref; ref = ref->next)
 	{
 	  switch (ref->type)
 	    {
 	    case REF_COMPONENT:
-	      as = ref->u.c.component->as;
+	      {
+		gfc_component *comp = ref->u.c.component;
+		if (comp->ts.type == BT_CLASS)
+		  as = CLASS_DATA (comp)->as;
+		else
+		  as = comp->as;
+	      }
 	      continue;
 
 	    case REF_SUBSTRING:
 	    case REF_INQUIRY:
+	      as = nullptr;
 	      continue;
 
 	    case REF_ARRAY:
@@ -5560,7 +5559,7 @@ gfc_get_full_arrayspec_from_expr (gfc_expr *expr)
 		  case AR_ELEMENT:
 		  case AR_SECTION:
 		  case AR_UNKNOWN:
-		    as = NULL;
+		    as = nullptr;
 		    continue;
 
 		  case AR_FULL:
@@ -5572,7 +5571,7 @@ gfc_get_full_arrayspec_from_expr (gfc_expr *expr)
 	}
     }
   else
-    as = NULL;
+    as = nullptr;
 
   return as;
 }

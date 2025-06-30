@@ -87,8 +87,8 @@ cfi_desc_to_gfc_desc (gfc_array_void *d, CFI_cdesc_t **s_ptr)
 
 	GFC_DESCRIPTOR_LBOUND(d, n) = (index_type)lb;
 	GFC_DESCRIPTOR_UBOUND(d, n) = (index_type)(s->dim[n].extent + lb - 1);
-	GFC_DESCRIPTOR_STRIDE(d, n) = (index_type)(s->dim[n].sm / s->elem_len);
-	d->offset -= GFC_DESCRIPTOR_STRIDE(d, n) * GFC_DESCRIPTOR_LBOUND(d, n);
+	GFC_DESCRIPTOR_SPACING(d, n) = (index_type)s->dim[n].sm;
+	d->offset -= GFC_DESCRIPTOR_SPACING(d, n) * GFC_DESCRIPTOR_LBOUND(d, n);
       }
 }
 
@@ -146,7 +146,7 @@ gfc_desc_to_cfi_desc (CFI_cdesc_t **d_ptr, const gfc_array_void *s)
 	else
 	  d->dim[n].extent = (CFI_index_t)GFC_DESCRIPTOR_UBOUND(s, n)
 			     - (CFI_index_t)GFC_DESCRIPTOR_LBOUND(s, n) + 1;
-	d->dim[n].sm = (CFI_index_t)(GFC_DESCRIPTOR_STRIDE(s, n) * s->span);
+	d->dim[n].sm = (CFI_index_t)GFC_DESCRIPTOR_SPACING(s, n);
       }
 
   if (*d_ptr == NULL)

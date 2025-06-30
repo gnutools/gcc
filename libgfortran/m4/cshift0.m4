@@ -67,8 +67,8 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
   soffset = 1;
   len = 0;
 
-  r_ex = 1;
-  a_ex = 1;
+  r_ex = sizeof ('rtype_name`);
+  a_ex = sizeof ('rtype_name`);
 
   if (which > 0)
     {
@@ -78,13 +78,13 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_SPACING (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_SPACING (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -112,10 +112,10 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	 bn = cshift(a,sh*n1*n2,1)
 
 	 we can used a more blocked algorithm for dim>1.  */
-      sstride[0] = 1;
-      rstride[0] = 1;
-      roffset = 1;
-      soffset = 1;
+      sstride[0] = 0;
+      rstride[0] = 0;
+      roffset = sizeof ('rtype_name`);
+      soffset = sizeof ('rtype_name`);
       len = GFC_DESCRIPTOR_STRIDE(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);      
       shift *= GFC_DESCRIPTOR_STRIDE(array, which);
@@ -123,10 +123,11 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	{
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	  sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	  rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	  sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	  n++;
 	}
+
       dim = GFC_DESCRIPTOR_RANK (array) - which;
     }
   else
@@ -135,27 +136,19 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	{
 	  if (dim == which)
 	    {
-	      roffset = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	      if (roffset == 0)
-		roffset = 1;
-	      soffset = GFC_DESCRIPTOR_STRIDE(array,dim);
-	      if (soffset == 0)
-		soffset = 1;
+	      roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
+	      soffset = GFC_DESCRIPTOR_SPACING(array,dim);
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
 	    }
 	  else
 	    {
 	      count[n] = 0;
 	      extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	      rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	      rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+	      sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
 	      n++;
 	    }
 	}
-      if (sstride[0] == 0)
-	sstride[0] = 1;
-      if (rstride[0] == 0)
-	rstride[0] = 1;
 
       dim = GFC_DESCRIPTOR_RANK (array);
     }
@@ -179,7 +172,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 
       /* If elements are contiguous, perform the operation
 	 in two block moves.  */
-      if (soffset == 1 && roffset == 1)
+      if (soffset == sizeof ('rtype_name`) && roffset == sizeof ('rtype_name`))
 	{
 	  size_t len1 = shift * sizeof ('rtype_name`);
 	  size_t len2 = (len - shift) * sizeof ('rtype_name`);
@@ -191,25 +184,25 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  'rtype_name` *dest = rptr;
-	  const 'rtype_name` *src = &sptr[shift * soffset];
+	  const 'rtype_name` *src = ('rtype_name`*) (((char*)sptr) + shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest  =  ('rtype_name`*) (((char*)dest)  + roffset);
+	      src = ('rtype_name`*) (((char*)src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest = ('rtype_name`*) (((char*)dest) + roffset);
+	      src = ('rtype_name`*) (((char*)src) + soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
+      rptr = ('rtype_name`*) (((char*)rptr) + rstride0);
+      sptr = ('rtype_name`*) (((char*)sptr) + sstride0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -219,8 +212,8 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          sptr -= sstride[n] * extent[n];
+          rptr = ('rtype_name`*) (((char*)rptr) - rstride[n] * extent[n]);
+          sptr = ('rtype_name`*) (((char*)sptr) - sstride[n] * extent[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -231,8 +224,8 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
+              rptr = ('rtype_name`*) (((char*)rptr) + rstride[n]);
+              sptr = ('rtype_name`*) (((char*)sptr) + sstride[n]);
             }
         }
     }

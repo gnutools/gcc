@@ -13103,7 +13103,27 @@ array_ref_up_bound (tree exp)
   /* If there is a domain type and it has an upper bound, use it, substituting
      for a PLACEHOLDER_EXPR as needed.  */
   if (domain_type && TYPE_MAX_VALUE (domain_type))
-    return SUBSTITUTE_PLACEHOLDER_IN_EXPR (TYPE_MAX_VALUE (domain_type), exp);
+    {
+      tree val = SUBSTITUTE_PLACEHOLDER_IN_EXPR (TYPE_MAX_VALUE (domain_type), exp);
+      tree low_bnd = TREE_OPERAND (exp, 2);
+      if (low_bnd)
+	{
+	  tree dom_min = TYPE_MIN_VALUE (domain_type);
+	  tree off = fold_build2_loc (EXPR_LOCATION (exp), MINUS_EXPR,
+				      TREE_TYPE (val),
+				      fold_convert_loc (EXPR_LOCATION (low_bnd),
+							TREE_TYPE (val),
+							low_bnd),
+				      fold_convert_loc (EXPR_LOCATION (dom_min),
+							TREE_TYPE (val),
+							dom_min));
+
+	  return fold_build2_loc (EXPR_LOCATION (exp), PLUS_EXPR,
+				  TREE_TYPE (val), val, off);
+	}
+      else
+	return val;
+    }
 
   /* Otherwise fail.  */
   return NULL_TREE;

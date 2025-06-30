@@ -31,13 +31,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
   const 'atype_name` *base;
-  index_type * restrict dest;
   index_type rank;
   index_type n;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -45,7 +42,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof (index_type));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -57,29 +54,26 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 				"FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
 
-    for (n = 0; n < rank; n++)
-      count[n] = 0;
+  for (n = 0; n < rank; n++)
+    count[n] = 0;
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`'`;
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	base = ('atype_name`*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
 
       while (1)
         {
@@ -88,11 +82,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely('comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
-	      base -= sstride[0] * 'base_mult`'`;
+	      base = ('atype_name`*) (((char*)base) - sspacing[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -103,14 +97,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 'base_mult`'`;
+	      base = ('atype_name`*) (((char*)base) + sspacing[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 'base_mult`'`;
+		  base = ('atype_name`*) (((char*)base) - sspacing[n]);
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -125,11 +119,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely('comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = count[n] + 1;
 
 		  return;
 		}
-	      base += sstride[0] * 'base_mult`'`;
+	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -140,14 +134,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 'base_mult`'`;
+	      base = ('atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n] * 'base_mult`'`;
+		  base = ('atype_name`*) (((char*)base) + sspacing[n]);
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -159,16 +153,13 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type mspacing[GFC_MAX_DIMENSIONS];
   const 'atype_name` *base;
-  index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
   index_type rank;
   index_type n;
   int mask_kind;
-  index_type sz;
 
   rank = GFC_DESCRIPTOR_RANK (array);
   if (rank <= 0)
@@ -176,7 +167,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof ('index_type`));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -205,31 +196,31 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   else
     internal_error (NULL, "Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0;
 
-  sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
-      mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+      sspacing[n] = GFC_DESCRIPTOR_SPACING(array,n);
+      mspacing[n] = GFC_DESCRIPTOR_SPACING(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
-      sz *= extent[n];
       if (extent[n] <= 0)
 	return;
     }
 
-    for (n = 0; n < rank; n++)
-      count[n] = 0;
+  for (n = 0; n < rank; n++)
+    count[n] = 0;
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`'`;
-      mbase = mbase + (sz - 1) * mask_kind;
+      base = array->base_addr;
+      for (n = 0; n < rank; n++)
+	{
+	  base = ('atype_name`*) (((char*)base) + (extent[n] - 1) * sspacing[n]);
+	  mbase = mbase + (extent[n] - 1) * mspacing[n];
+	}
+
       while (1)
         {
 	  do
@@ -237,12 +228,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely(*mbase && 'comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
-	      base -= sstride[0] * 'base_mult`'`;
-	      mbase -= mstride[0];
+	      base = ('atype_name`*) (((char*)base) - sspacing[0]);
+	      mbase -= mspacing[0];
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -253,16 +244,16 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 'base_mult`'`;
-	      mbase -= mstride[n] * extent[n];
+	      base = ('atype_name`*) (((char*)base) + sspacing[n] * extent[n]);
+	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
 		return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 'base_mult`'`;
-		  mbase += mstride[n];
+		  base = ('atype_name`*) (((char*)base) - sspacing[n]);
+		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -277,12 +268,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely(*mbase && 'comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = count[n] + 1;
 
 		  return;
 		}
-	      base += sstride[0] * 'base_mult`'`;
-	      mbase += mstride[0];
+	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
+	      mbase += mspacing[0];
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -293,16 +284,16 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 'base_mult`'`;
-	      mbase -= mstride[n] * extent[n];
+	      base = ('atype_name`*) (((char*)base) - sspacing[n] * extent[n]);
+	      mbase -= mspacing[n] * extent[n];
 	      n++;
 	      if (n >= rank)
 		return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n]* 'base_mult`'`;
-		  mbase += mstride[n];
+		  base = ('atype_name`*) (((char*)base) + sspacing[n]);
+		  mbase += mspacing[n];
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -313,8 +304,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 'header3`
 {
   index_type rank;
-  index_type dstride;
-  index_type * restrict dest;
   index_type n;
 
   if (mask == NULL || *mask)
@@ -330,7 +319,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, sizeof ('index_type`));
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -341,10 +330,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 			       "FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    GFC_DESCRIPTOR1_ELEM (index_type, retarray, n) = 0 ;
 }
 
 #endif'

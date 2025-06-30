@@ -367,7 +367,7 @@ typedef GFC_UINTEGER_4 gfc_char4_t;
 
 typedef struct descriptor_dimension
 {
-  index_type _stride;
+  index_type spacing;
   index_type lower_bound;
   index_type _ubound;
 }
@@ -464,29 +464,21 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_DTYPE(desc) ((desc)->dtype)
 #define GFC_DESCRIPTOR_SPAN(desc) ((desc)->span)
 
-#define GFC_DIMENSION_LBOUND(dim) ((dim).lower_bound)
-#define GFC_DIMENSION_UBOUND(dim) ((dim)._ubound)
-#define GFC_DIMENSION_STRIDE(dim) ((dim)._stride)
-#define GFC_DIMENSION_EXTENT(dim) ((dim)._ubound + 1 - (dim).lower_bound)
-#define GFC_DIMENSION_SET(dim,lb,ub,str) \
+#define GFC_DESCRIPTOR_DIMENSION_SET(desc,i,lb,ub,sp) \
   do \
     { \
-      (dim).lower_bound = lb;			\
-      (dim)._ubound = ub;			\
-      (dim)._stride = str;			\
+      (desc)->dim[i].lower_bound = lb;			\
+      (desc)->dim[i]._ubound = ub;			\
+      (desc)->dim[i].spacing = sp;			\
     } while (0)
 	    
 
 #define GFC_DESCRIPTOR_LBOUND(desc,i) ((desc)->dim[i].lower_bound)
 #define GFC_DESCRIPTOR_UBOUND(desc,i) ((desc)->dim[i]._ubound)
-#define GFC_DESCRIPTOR_EXTENT(desc,i) ((desc)->dim[i]._ubound + 1 \
-				      - (desc)->dim[i].lower_bound)
-#define GFC_DESCRIPTOR_EXTENT_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_EXTENT(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
+#define GFC_DESCRIPTOR_SPACING(desc,i) ((desc)->dim[i].spacing)
+#define GFC_DESCRIPTOR_EXTENT(desc,i) (GFC_DESCRIPTOR_UBOUND(desc,i) - (GFC_DESCRIPTOR_LBOUND(desc,i) - 1))
 
-#define GFC_DESCRIPTOR_STRIDE(desc,i) ((desc)->dim[i]._stride)
-#define GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_STRIDE(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
+#define GFC_DESCRIPTOR_STRIDE(desc,i) (GFC_DESCRIPTOR_SPACING(desc,i) / GFC_DESCRIPTOR_SIZE(desc))
 
 /* Macros to get both the size and the type with a single masking operation  */
 
@@ -566,6 +558,19 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DTYPE_COMPLEX_17 ((BT_COMPLEX << GFC_DTYPE_TYPE_SHIFT) \
    | (sizeof(GFC_COMPLEX_17) << GFC_DTYPE_SIZE_SHIFT))
 #endif
+
+#define GFC_ARRAY_ELEM_ADDRESS(type, array_ptr, offset) \
+    ((type) (((char *)(array_ptr)) + (offset)))
+#define GFC_ARRAY_ELEM(type, array_ptr, offset) \
+    (*(GFC_ARRAY_ELEM_ADDRESS (type *, (array_ptr), (offset))))
+#define GFC_DESCRIPTOR_DIM_ELEM_ADDRESS(type, descr, dim, idx) \
+    GFC_ARRAY_ELEM_ADDRESS (type, (descr)->base_addr, (idx) * GFC_DESCRIPTOR_SPACING((descr), (dim)))
+#define GFC_DESCRIPTOR_DIM_ELEM(type, descr, dim, idx) \
+    (*(GFC_DESCRIPTOR_DIM_ELEM_ADDRESS (type *, (descr), (dim), (idx))))
+#define GFC_DESCRIPTOR1_ELEM(type, descr, idx) \
+    GFC_DESCRIPTOR_DIM_ELEM (type, (descr), 0, (idx))
+#define GFC_INCREMENT_PTR(type, ptr, incr) \
+    ptr = (type*) (((char*)ptr) incr)
 
 /* Macros to determine the alignment of pointers.  */
 

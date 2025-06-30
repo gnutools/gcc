@@ -43,11 +43,11 @@ internal_pack_class (gfc_class_array_t *dest_class,
 
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type ssize;
-  index_type dest_stride;
+  index_type dest_spacing;
   index_type n;
   const void *src;
   void *dest;
@@ -68,12 +68,12 @@ internal_pack_class (gfc_class_array_t *dest_class,
   source_arr = (gfc_array_void *) &(source_class->_data);
   size = GFC_DESCRIPTOR_SIZE (source_arr);
   dim = GFC_DESCRIPTOR_RANK (source_arr);
-  ssize = 1;
+  ssize = size;
   packed = 1;
   for (n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE (source_arr, n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING (source_arr, n);
       extent[n] = GFC_DESCRIPTOR_EXTENT (source_arr, n);
       if (extent[n] <= 0)
 	{
@@ -82,7 +82,7 @@ internal_pack_class (gfc_class_array_t *dest_class,
 	  break;
 	}
 
-      if (ssize != stride[n])
+      if (ssize != spacing[n])
 	packed = 0;
 
       ssize *= extent[n];
@@ -96,21 +96,21 @@ internal_pack_class (gfc_class_array_t *dest_class,
 
   /* Allocate storage for the destination.  */
   dest_arr = (gfc_array_void *) &dest_class->_data;
-  dest_stride = 1;
+  dest_spacing = size;
   dest_offset = 0;
   for (n = 0; n < dim; ++n)
     {
       GFC_DESCRIPTOR_LBOUND (dest_arr, n) = 1;
       GFC_DESCRIPTOR_UBOUND (dest_arr, n) = extent[n];
-      GFC_DESCRIPTOR_STRIDE (dest_arr, n) = dest_stride;
-      dest_offset -= dest_stride * 1 /* GFC_DESCRIPTOR_LBOUND (dest_arr, n) */;
-      dest_stride *= GFC_DESCRIPTOR_EXTENT (dest_arr, n);
+      GFC_DESCRIPTOR_SPACING (dest_arr, n) = dest_spacing;
+      dest_offset -= dest_spacing * 1 /* GFC_DESCRIPTOR_LBOUND (dest_arr, n) */;
+      dest_spacing *= GFC_DESCRIPTOR_EXTENT (dest_arr, n);
     }
   dest_arr->offset = dest_offset;
-  dest_arr->base_addr = xmallocarray (ssize, size);
+  dest_arr->base_addr = xmalloc (ssize);
   dest = (void *) dest_arr->base_addr;
   src = source_arr->base_addr;
-  stride0 = stride[0] * size;
+  spacing0 = spacing[0];
   /* Can not use the dimension here, because the class may be allocated for
      a higher dimensional array, but only a smaller amount is present.  */
   vtab = *(gfc_vtype_generic_t **) (((void *) source_class) + size_class
@@ -124,7 +124,7 @@ internal_pack_class (gfc_class_array_t *dest_class,
       copyfn (src, dest);
       /* Advance to the next element.  */
       dest += size;
-      src += stride0;
+      src += spacing0;
       count[0]++;
       /* Advance to the next source element.  */
       n = 0;
@@ -135,7 +135,7 @@ internal_pack_class (gfc_class_array_t *dest_class,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  src -= stride[n] * extent[n] * size;
+	  src -= spacing[n] * extent[n];
 	  n++;
 	  if (n == dim)
 	    {
@@ -145,7 +145,7 @@ internal_pack_class (gfc_class_array_t *dest_class,
 	  else
 	    {
 	      count[n]++;
-	      src += stride[n] * size;
+	      src += spacing[n];
 	    }
 	}
     }

@@ -34,8 +34,8 @@ internal_unpack (gfc_array_char * d, const void * s)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type dsize;
   char *dest;
@@ -188,16 +188,16 @@ internal_unpack (gfc_array_char * d, const void * s)
   size = GFC_DESCRIPTOR_SIZE (d);
 
   dim = GFC_DESCRIPTOR_RANK (d);
-  dsize = 1;
+  dsize = size;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(d,n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING(d,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(d,n);
       if (extent[n] <= 0)
 	return;
 
-      if (dsize == stride[n])
+      if (dsize == spacing[n])
 	dsize *= extent[n];
       else
 	dsize = 0;
@@ -207,11 +207,11 @@ internal_unpack (gfc_array_char * d, const void * s)
 
   if (dsize != 0)
     {
-      memcpy (dest, src, dsize * size);
+      memcpy (dest, src, dsize);
       return;
     }
 
-  stride0 = stride[0] * size;
+  spacing0 = spacing[0];
 
   while (dest)
     {
@@ -219,7 +219,7 @@ internal_unpack (gfc_array_char * d, const void * s)
       memcpy (dest, src, size);
       /* Advance to the next element.  */
       src += size;
-      dest += stride0;
+      dest += spacing0;
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -230,7 +230,7 @@ internal_unpack (gfc_array_char * d, const void * s)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n] * size;
+          dest -= spacing[n] * extent[n];
           n++;
           if (n == dim)
             {
@@ -240,7 +240,7 @@ internal_unpack (gfc_array_char * d, const void * s)
           else
             {
               count[n]++;
-              dest += stride[n] * size;
+              dest += spacing[n];
             }
         }
     }

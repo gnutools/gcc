@@ -33,24 +33,24 @@ include(ifunction-s.m4)dnl
 #define HAVE_BACK_ARG 1
 
 ARRAY_FUNCTION(0,
-`	const atype_name *minval;
+`	const 'atype_name` *minval;
 	minval = NULL;
 	result = 0;',
 `		if (minval == NULL || (back ? compare_fcn (src, minval, string_len) <= 0 :
 		   	      	      	      compare_fcn (src, minval, string_len) < 0))
 		  {
 		    minval = src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		  }', `')
 
 MASKED_ARRAY_FUNCTION(0,
-`	const atype_name *minval;
+`	const 'atype_name` *minval;
 	minval = base;
 	result = 0;',
 `		if (*msrc)
 		      {
 			minval = src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
             }
@@ -60,7 +60,7 @@ MASKED_ARRAY_FUNCTION(0,
 		   	     	     compare_fcn (src, minval, string_len) < 0))
 		  {
 		    minval = src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		  }
 	      ')
 

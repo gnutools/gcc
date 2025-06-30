@@ -100,8 +100,8 @@ tree gfc_build_uint_type (int);
 
 tree gfc_get_element_type (tree);
 tree gfc_get_array_type_bounds (tree, int, int, tree *, tree *, int,
-				enum gfc_array_kind, bool);
-tree gfc_get_nodesc_array_type (tree, gfc_array_spec *, gfc_packed, bool);
+				enum gfc_array_kind, bool, bt);
+tree gfc_get_nodesc_array_type (tree, gfc_array_spec *, gfc_packed, bool, bt);
 
 /* Add a field of given name and type to a UNION_TYPE or RECORD_TYPE.  */
 tree gfc_add_field_to_struct (tree, tree, tree, tree **);
@@ -116,10 +116,18 @@ bool gfc_return_by_reference (gfc_symbol *);
 bool gfc_is_nodesc_array (gfc_symbol *);
 
 /* Return the DTYPE for an array.  */
+void gfc_get_type_info (tree, bt *, tree *);
 tree gfc_get_dtype_rank_type (int, tree);
 tree gfc_get_dtype (tree, int *rank = NULL);
 
 tree gfc_get_caf_vector_type (int dim);
 tree gfc_get_caf_reference_type ();
+
+tree gfc_build_incomplete_array_type (tree, tree);
+
+tree gfc_get_unbounded_array_type (tree);
+
+bool gfc_type_contains_placeholder_p (tree);
+tree gfc_substitute_placeholder_in_type (tree, tree, stmtblock_t *);
 
 #endif

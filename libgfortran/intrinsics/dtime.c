@@ -67,7 +67,7 @@ dtime_sub (gfc_array_r4 *t, GFC_REAL_4 *result)
   tp = t->base_addr;
 
   *tp = tu;
-  tp += GFC_DESCRIPTOR_STRIDE(t,0);
+  tp = (GFC_REAL_4 *) (((char*)tp) + GFC_DESCRIPTOR_SPACING(t,0));
   *tp = ts;
   *result = tt;
   __gthread_mutex_unlock (&dtime_update_lock);

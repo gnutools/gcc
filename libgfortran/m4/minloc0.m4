@@ -32,15 +32,15 @@ include(iforeach.m4)dnl
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 FOREACH_FUNCTION(
-`    atype_name minval;
+`    'atype_name` minval;
 #if defined('atype_nan`)
     int fast = 0;
 #endif
 
 #if defined('atype_inf`)
-    minval = atype_inf;
+    minval = 'atype_inf`;
 #else
-    minval = atype_max;
+    minval = 'atype_max`;
 #endif',
 `#if defined('atype_nan`)
       if (unlikely (!fast))
@@ -52,10 +52,10 @@ FOREACH_FUNCTION(
 		  fast = 1;
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		  break;
 		}
-	      base += sstride[0];
+	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -70,9 +70,9 @@ FOREACH_FUNCTION(
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	      }
-	    base += sstride[0];
+	    base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	  }
 	while (++count[0] != extent[0]);
       else
@@ -82,16 +82,16 @@ FOREACH_FUNCTION(
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	      }')
 MASKED_FOREACH_FUNCTION(
-`  atype_name minval;
+`  'atype_name` minval;
    int fast = 0;
 
 #if defined('atype_inf`)
-    minval = atype_inf;
+    minval = 'atype_inf`;
 #else
-    minval = atype_max;
+    minval = 'atype_max`;
 #endif',
 `      if (unlikely (!fast))
 	{
@@ -102,19 +102,19 @@ MASKED_FOREACH_FUNCTION(
 #if defined('atype_nan`)
 		  if (unlikely (dest[0] == 0))
 		    for (n = 0; n < rank; n++)
-		      dest[n * dstride] = count[n] + 1;
+		      GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		  if (*base <= minval)
 #endif
 		    {
 		      fast = 1;
 		      minval = *base;
 		      for (n = 0; n < rank; n++)
-			dest[n * dstride] = count[n] + 1;
+			GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		      break;
 		    }
 		}
-	      base += sstride[0];
-	      mbase += mstride[0];
+	      base = ('atype_name`*) (((char*)base) + sspacing[0]);
+	      mbase += mspacing[0];
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -128,9 +128,9 @@ MASKED_FOREACH_FUNCTION(
 	        {
 	      	  minval = *base;
 	      	  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 	    	}
-		base += sstride[0];
+		base = ('atype_name`*) (((char*)base) + sspacing[0]);
 	    }
 	    while (++count[0] != extent[0]);
 	else
@@ -140,7 +140,7 @@ MASKED_FOREACH_FUNCTION(
 		{
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_ARRAY_ELEM ('rtype_name`, dest, n * dspacing) = count[n] + 1;
 		}')
 SCALAR_FOREACH_FUNCTION(`0')
 #endif

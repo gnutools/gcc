@@ -2321,6 +2321,7 @@ symbol_table::output_weakrefs (void)
       }
 }
 
+
 /* Perform simple optimizations based on callgraph.  */
 
 void

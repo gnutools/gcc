@@ -36,20 +36,20 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 		const 'rtype_name` * const restrict pwhich)
 {
   /* r.* indicates the return array.  */
-  index_type rstride[GFC_MAX_DIMENSIONS];
-  index_type rstride0;
+  index_type rspacing[GFC_MAX_DIMENSIONS];
+  index_type rspacing0;
   index_type roffset;
   'atype_name` *rptr;
   'atype_name` *dest;
   /* s.* indicates the source array.  */
-  index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type sstride0;
+  index_type sspacing[GFC_MAX_DIMENSIONS];
+  index_type sspacing0;
   index_type soffset;
   const 'atype_name` *sptr;
   const 'atype_name` *src;
   /* h.* indicates the shift array.  */
-  index_type hstride[GFC_MAX_DIMENSIONS];
-  index_type hstride0;
+  index_type hspacing[GFC_MAX_DIMENSIONS];
+  index_type hspacing0;
   const 'rtype_name` *hptr;
 
   index_type count[GFC_MAX_DIMENSIONS];
@@ -76,46 +76,36 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
   n = 0;
 
   /* Initialized for avoiding compiler warnings.  */
-  roffset = 1;
-  soffset = 1;
+  roffset = 0;
+  soffset = 0;
   len = 0;
 
   for (dim = 0; dim < GFC_DESCRIPTOR_RANK (array); dim++)
     {
       if (dim == which)
         {
-          roffset = GFC_DESCRIPTOR_STRIDE(ret,dim);
-          if (roffset == 0)
-            roffset = 1;
-          soffset = GFC_DESCRIPTOR_STRIDE(array,dim);
-          if (soffset == 0)
-            soffset = 1;
+          roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
+          soffset = GFC_DESCRIPTOR_SPACING(array,dim);
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
         }
       else
         {
           count[n] = 0;
           extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-          rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-          sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
-          hstride[n] = GFC_DESCRIPTOR_STRIDE(h,n);
-	  rs_ex[n] = rstride[n] * extent[n];
-	  ss_ex[n] = sstride[n] * extent[n];
-	  hs_ex[n] = hstride[n] * extent[n];
+          rspacing[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+          sspacing[n] = GFC_DESCRIPTOR_SPACING(array,dim);
+          hspacing[n] = GFC_DESCRIPTOR_SPACING(h,n);
+	  rs_ex[n] = rspacing[n] * extent[n];
+	  ss_ex[n] = sspacing[n] * extent[n];
+	  hs_ex[n] = hspacing[n] * extent[n];
           n++;
         }
     }
-  if (sstride[0] == 0)
-    sstride[0] = 1;
-  if (rstride[0] == 0)
-    rstride[0] = 1;
-  if (hstride[0] == 0)
-    hstride[0] = 1;
 
   dim = GFC_DESCRIPTOR_RANK (array);
-  rstride0 = rstride[0];
-  sstride0 = sstride[0];
-  hstride0 = hstride[0];
+  rspacing0 = rspacing[0];
+  sspacing0 = sspacing[0];
+  hspacing0 = hspacing[0];
   rptr = ret->base_addr;
   sptr = array->base_addr;
   hptr = h->base_addr;
@@ -134,9 +124,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 	  if (sh < 0)
             sh += len;
 	}
-      src = &sptr[sh * soffset];
+      src = (const 'atype_name`*) (((char*)sptr) + sh * soffset);
       dest = rptr;
-      if (soffset == 1 && roffset == 1)
+      if (soffset == sizeof ('atype_name`) && roffset == sizeof ('atype_name`))
 	{
 	  size_t len1 = sh * sizeof ('atype_name`);
 	  size_t len2 = (len - sh) * sizeof ('atype_name`);
@@ -148,21 +138,21 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 	  for (n = 0; n < len - sh; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest = ('atype_name`*) (((char*)dest) + roffset);
+	      src = ('atype_name`*) (((char*)src) + soffset);
 	    }
 	  for (src = sptr, n = 0; n < sh; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      dest = ('atype_name`*) (((char*)dest) + roffset);
+	      src = ('atype_name`*) (((char*)src) + soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
-      hptr += hstride0;
+      rptr = ('atype_name`*) (((char*)rptr) + rspacing0);
+      sptr = (const 'atype_name`*) (((const char*)sptr) + sspacing0);
+      hptr = (const 'rtype_name`*) (((const char*)hptr) + hspacing0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -170,9 +160,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
           /* When we get to the end of a dimension, reset it and increment
              the next dimension.  */
           count[n] = 0;
-          rptr -= rs_ex[n];
-          sptr -= ss_ex[n];
-	  hptr -= hs_ex[n];
+          rptr = ('atype_name`*) (((char*)rptr) - rs_ex[n]);
+          sptr = (const 'atype_name`*) (((const char*)sptr) - ss_ex[n]);
+	  hptr = (const 'rtype_name`*) (((const char*)hptr) - hs_ex[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -183,9 +173,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
-	      hptr += hstride[n];
+              rptr = ('atype_name`*) (((char*)rptr) + rspacing[n]);
+              sptr = (const 'atype_name`*) (((const char*)sptr) + sspacing[n]);
+	      hptr = (const 'rtype_name`*) (((const char*)hptr) + hspacing[n]);
             }
         }
     }

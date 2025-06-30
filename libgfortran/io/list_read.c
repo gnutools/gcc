@@ -251,7 +251,18 @@ next_char_internal (st_parameter_dt *dtp)
 	      goto done;
 	    }
 
-	  record *= dtp->u.p.current_unit->recl;
+	  if (unlikely (is_char4_unit(dtp)))
+	    {
+	      if (unlikely (record % sizeof (gfc_char4_t) != 0))
+		{
+		  generate_error (&dtp->common,
+				  LIBERROR_MISALIGNED_INTERNAL_UNIT, NULL);
+		  return '\0';
+		}
+	      else
+		record /= sizeof (gfc_char4_t);
+	    }
+
 	  if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 	    return EOF;
 
@@ -2358,7 +2369,7 @@ list_formatted_read_scalar (st_parameter_dt *dtp, bt type, void *p,
 	  gfc_full_array_i4 vlist;
 
 	  GFC_DESCRIPTOR_DATA(&vlist) = NULL;
-	  GFC_DIMENSION_SET(vlist.dim[0],1, 0, 0);
+	  GFC_DESCRIPTOR_DIMENSION_SET(&vlist, 0, 1, 0, 0);
 
 	  /* Set iostat, intent(out).  */
 	  noiostat = 0;
@@ -2776,10 +2787,10 @@ nml_parse_qualifier (st_parameter_dt *dtp, descriptor_dimension *ad,
 	}
 
       /* Check the values of the triplet indices.  */
-      if ((ls[dim].start > GFC_DIMENSION_UBOUND(ad[dim]))
-	   || (ls[dim].start < GFC_DIMENSION_LBOUND(ad[dim]))
-	   || (ls[dim].end > GFC_DIMENSION_UBOUND(ad[dim]))
-	   || (ls[dim].end < GFC_DIMENSION_LBOUND(ad[dim])))
+      if ((ls[dim].start > ad[dim]._ubound)
+	   || (ls[dim].start < ad[dim].lower_bound)
+	   || (ls[dim].end > ad[dim]._ubound)
+	   || (ls[dim].end < ad[dim].lower_bound))
 	{
 	  if (is_char)
 	    snprintf (parse_err_msg, parse_err_msg_size,
@@ -3102,7 +3113,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    list_obj.data = list_obj.data + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_STRIDE(nl,dim) * nl->size;
+	      * GFC_DESCRIPTOR_SPACING(nl,dim);
 	}
       else
 	{
@@ -3110,7 +3121,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 	  for (dim = 0; dim < nl->var_rank; dim++)
 	    pdata = (void*)(pdata + (nl->ls[dim].idx
 	      - GFC_DESCRIPTOR_LBOUND(nl,dim))
-	      * GFC_DESCRIPTOR_STRIDE(nl,dim) * nl->size);
+	      * GFC_DESCRIPTOR_SPACING(nl,dim));
 	}
 
       /* If we are finished with the repeat count, try to read next value.  */
@@ -3173,7 +3184,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 		formatted_dtio dtio_ptr = (formatted_dtio)nl->dtio_sub;
 
 		GFC_DESCRIPTOR_DATA(&vlist) = NULL;
-		GFC_DIMENSION_SET(vlist.dim[0],1, 0, 0);
+		GFC_DESCRIPTOR_DIMENSION_SET(&vlist, 0, 1, 0, 0);
 
 		list_obj.vptr = nl->vtable;
 		list_obj.len = 0;

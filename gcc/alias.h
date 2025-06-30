@@ -42,6 +42,7 @@ int compare_base_decls (tree, tree);
 bool refs_same_for_tbaa_p (tree, tree);
 bool mems_same_for_tbaa_p (rtx, rtx);
 bool view_converted_memref_p (tree);
+alias_set_type get_default_alias_set (tree);
 
 /* This alias set can be used to force a memory to conflict with all
    other memories, creating a barrier across which no memory reference

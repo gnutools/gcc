@@ -61,7 +61,7 @@ PROGRAM Main
     ! This should not create a temporary
     array = Charles(array)
     If (any (array .ne. index)) STOP 2
-    ! { dg-final { scan-tree-dump-times "array\\\[\[^\\\]\]*\\\]\\s*=\\s*charles\\s*\\(&array\\\[\[^\\\]\]*\\\]\\);" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {array\[[^\]]*\](?:{lb: . sz: 4})?\s*=\s*charles\s*\(&array\[[^\]]*\](?:{lb: . sz: 4})?\);} 1 "original" } }
 
     ! Check use association of the function works correctly.
     arraym = Bill(index,arraym)
@@ -75,7 +75,7 @@ PROGRAM Main
     array = (/ (i+0.0, i = 1,5) /)
     ! This should not create a temporary
     array = index + Henry2(0) - array
-    ! { dg-final { scan-tree-dump-times "array\\\[\[^\\\]\]*\\\]\\s*=\\s*\\(\\(real\\(kind=4\\)\\)\\s*index\\\[\[^\\\]\]*\\\]\\s*\\+\\s*D.\\d*\\)\\s*-\\s*array\\\[\[^\\\]\]*\\\];" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {array\[[^\]]*\](?:{lb: . sz: 4})?\s*=\s*\(\(real\(kind=4\)\)\s*index\[[^\]]*\](?:{lb: . sz: 4})?\s*\+\s*D.\d*\)\s*-\s*array\[[^\]]*\](?:{lb: . sz: 4})?;} 1 "original" } }
     if (any (array .ne. 15.0)) STOP 5
 
     arraym = (/ (i+0.0, i = 1,5) /)

@@ -21,7 +21,7 @@ contains
      real, pointer :: argp(:,:)
      integer :: i
 
-     if (size (arg) .lt. 0) return
+     if (size (arg) .le. 0) return
 
      if (size (arg) .ne. 8) stop 10
 

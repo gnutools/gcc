@@ -62,6 +62,7 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
   index_type rstride[GFC_MAX_DIMENSIONS];
   index_type rstride0;
   index_type rs;
+  index_type spacing;
   char * restrict rptr;
   /* v.* indicates the vector array.  */
   index_type vstride0;
@@ -111,17 +112,17 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
       rs = 1;
+      spacing = size;
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1,
+				       spacing);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n);
 	  rs *= extent[n];
+	  spacing *= extent[n];
 	}
       ret->offset = 0;
       ret->base_addr = xmallocarray (rs, size);
@@ -134,10 +135,15 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret, n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(field, n);
-	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n);
 	}
+    }
+
+  bool scalar_field = GFC_DESCRIPTOR_RANK (field) == 0;
+  for (n = 0; n < dim; n++)
+    {
+      rstride[n] = GFC_DESCRIPTOR_SPACING(ret, n);
+      mstride[n] = GFC_DESCRIPTOR_SPACING(mask, n);
+      fstride[n] = scalar_field ? 0 : GFC_DESCRIPTOR_SPACING(field, n);
     }
 
   if (empty)
@@ -146,7 +152,7 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
   /* This assert makes sure GCC knows we can access *stride[0] later.  */
   assert (dim > 0);
 
-  vstride0 = GFC_DESCRIPTOR_STRIDE_BYTES(vector,0);
+  vstride0 = GFC_DESCRIPTOR_SPACING(vector,0);
   rstride0 = rstride[0];
   fstride0 = fstride[0];
   mstride0 = mstride[0];

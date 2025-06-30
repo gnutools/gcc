@@ -214,6 +214,56 @@ proc scan-dump-not { args } {
     }
 }
 
+# Utility for scanning compiler result, invoked via dg-final.
+# Call pass if pattern is present, otherwise fail.
+#
+# Argument 0 is the type of dump we are searching (rtl, tree, ipa)
+# Argument 1 is the regexp to match.
+# Argument 2 is the suffix for the dump file
+# Argument 3 is the suffix of the dump base
+# Argument 4 is the variable name to store the matched content
+# Argument 5 handles expected failures and the like
+proc scan-dump-var { args } {
+
+    if { [llength $args] >= 6 } {
+        switch [dg-process-target [lindex $args 5]] {
+            "S" { }
+            "N" { return }
+            "F" { setup_xfail "*-*-*" }
+            "P" { }
+        }
+    }
+
+    set testcase [testname-for-summary]
+    # The name might include a list of options; extract the file name.
+    set filename [lindex $testcase 0]
+
+    set printable_pattern [make_pattern_printable [lindex $args 1]]
+    set suf [dump-suffix [lindex $args 2]]
+    set testname "$testcase scan-[lindex $args 0]-dump $suf \"$printable_pattern\""
+    set src [file tail $filename]
+    set dumpbase [dump-base $src [lindex $args 3]]
+
+    set pattern "$dumpbase.[lindex $args 2]"
+    set output_file "[glob-dump-file $testcase $pattern]"
+    if { $output_file == "" } {
+	unresolved "$testname"
+	return
+    }
+
+    set fd [open $output_file r]
+    set text [read $fd]
+    close $fd
+
+    global [lindex $args 4]
+    set [lindex $args 4] {}
+    if [regexp -- [lindex $args 1] $text scratch [lindex $args 4]] {
+	pass "$testname"
+    } else {
+	fail "$testname"
+    }
+}
+
 # Utility for scanning demangled compiler result, invoked via dg-final.
 # Call pass if pattern is present, otherwise fail.
 #
