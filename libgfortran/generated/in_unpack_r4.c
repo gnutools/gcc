@@ -34,8 +34,8 @@ internal_unpack_r4 (gfc_array_r4 * d, const GFC_REAL_4 * src)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type dsize;
   GFC_REAL_4 * restrict dest;
@@ -45,16 +45,16 @@ internal_unpack_r4 (gfc_array_r4 * d, const GFC_REAL_4 * src)
     return;
 
   dim = GFC_DESCRIPTOR_RANK (d);
-  dsize = 1;
+  dsize = sizeof (GFC_REAL_4);
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(d,n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING(d,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(d,n);
       if (extent[n] <= 0)
 	return;
 
-      if (dsize == stride[n])
+      if (dsize == spacing[n])
 	dsize *= extent[n];
       else
 	dsize = 0;
@@ -62,18 +62,18 @@ internal_unpack_r4 (gfc_array_r4 * d, const GFC_REAL_4 * src)
 
   if (dsize != 0)
     {
-      memcpy (dest, src, dsize * sizeof (GFC_REAL_4));
+      memcpy (dest, src, dsize);
       return;
     }
 
-  stride0 = stride[0];
+  spacing0 = spacing[0];
 
   while (dest)
     {
       /* Copy the data.  */
       *dest = *(src++);
       /* Advance to the next element.  */
-      dest += stride0;
+      dest = (GFC_REAL_4*) (((char*)dest) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -84,7 +84,7 @@ internal_unpack_r4 (gfc_array_r4 * d, const GFC_REAL_4 * src)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+          dest = (GFC_REAL_4*) (((char*)dest) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -94,7 +94,7 @@ internal_unpack_r4 (gfc_array_r4 * d, const GFC_REAL_4 * src)
           else
             {
               count[n]++;
-              dest += stride[n];
+              dest = (GFC_REAL_4*) (((char*)dest) + spacing[n]);
             }
         }
     }

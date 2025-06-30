@@ -36,8 +36,8 @@ internal_pack_c8 (gfc_array_c8 * source)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type ssize;
   const GFC_COMPLEX_8 *src;
@@ -46,15 +46,15 @@ internal_pack_c8 (gfc_array_c8 * source)
   int packed;
 
   /* TODO: Investigate how we can figure out if this is a temporary
-     since the stride=0 thing has been removed from the frontend.  */
+     since the spacing=0 thing has been removed from the frontend.  */
 
   dim = GFC_DESCRIPTOR_RANK (source);
-  ssize = 1;
+  ssize = sizeof (GFC_COMPLEX_8);
   packed = 1;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING(source,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (extent[n] <= 0)
         {
@@ -63,7 +63,7 @@ internal_pack_c8 (gfc_array_c8 * source)
           break;
         }
 
-      if (ssize != stride[n])
+      if (ssize != spacing[n])
         packed = 0;
 
       ssize *= extent[n];
@@ -76,7 +76,7 @@ internal_pack_c8 (gfc_array_c8 * source)
   destptr = xmallocarray (ssize, sizeof (GFC_COMPLEX_8));
   dest = destptr;
   src = source->base_addr;
-  stride0 = stride[0];
+  spacing0 = spacing[0];
 
 
   while (src)
@@ -84,7 +84,7 @@ internal_pack_c8 (gfc_array_c8 * source)
       /* Copy the data.  */
       *(dest++) = *src;
       /* Advance to the next element.  */
-      src += stride0;
+      src = (const GFC_COMPLEX_8*) (((char*)src) + spacing0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -95,7 +95,7 @@ internal_pack_c8 (gfc_array_c8 * source)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= stride[n] * extent[n];
+          src = (const GFC_COMPLEX_8*) (((char*)src) - spacing[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -105,7 +105,7 @@ internal_pack_c8 (gfc_array_c8 * source)
           else
             {
               count[n]++;
-              src += stride[n];
+              src = (const GFC_COMPLEX_8*) (((char*)src) + spacing[n]);
             }
         }
     }

@@ -36,19 +36,16 @@ void
 shape_8 (gfc_array_i8 * const restrict ret, 
 	const array_t * const restrict array)
 {
-  index_type stride;
   index_type extent;
 
   int rank = GFC_DESCRIPTOR_RANK (array);
 
   if (ret->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(ret->dim[0], 0, rank - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, rank - 1, 1);
       ret->offset = 0;
       ret->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_8));
     }
-
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
 
   if (GFC_DESCRIPTOR_EXTENT(ret,0) < 1)
     return;
@@ -56,7 +53,7 @@ shape_8 (gfc_array_i8 * const restrict ret,
   for (index_type n = 0; n < rank; n++)
     {
       extent = GFC_DESCRIPTOR_EXTENT(array,n);
-      ret->base_addr[n * stride] = extent > 0 ? extent : 0 ;
+      GFC_DESCRIPTOR1_ELEM(GFC_INTEGER_8,ret, n) = extent > 0 ? extent : 0 ;
     }
 }
 
