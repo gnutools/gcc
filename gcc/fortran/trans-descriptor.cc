@@ -28,6 +28,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-types.h"
 
 
+/******************************************************************************/
+/* BIND(C) array descriptor (AKA CFI array descriptor) access routines        */
+/******************************************************************************/
+
 /* Build expressions to access members of the CFI descriptor.  */
 #define CFI_FIELD_BASE_ADDR 0
 #define CFI_FIELD_ELEM_LEN 1
@@ -133,6 +137,11 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #undef CFI_DIM_FIELD_LOWER_BOUND
 #undef CFI_DIM_FIELD_EXTENT
 #undef CFI_DIM_FIELD_SM
+
+
+/******************************************************************************/
+/* Array descriptor low level access routines.                                */
+/******************************************************************************/
 
 /* Build expressions to access the members of an array descriptor.
    It's surprisingly easy to mess up here, so never access
@@ -599,6 +608,10 @@ gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
+
+/*******************************************************************************
+ * Array descriptor higher level routines.                                     *
+ ******************************************************************************/
 
 /* Build a null array descriptor constructor.  */
 
