@@ -88,8 +88,7 @@ get_ref_comp (tree ref, unsigned field_idx, tree type = NULL_TREE)
 
 
 static tree
-gfc_get_descriptor_field (tree desc, unsigned field_idx,
-			  tree type = NULL_TREE)
+get_descr_comp (tree desc, unsigned field_idx, tree type = NULL_TREE)
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)));
 
@@ -102,7 +101,7 @@ gfc_get_descriptor_field (tree desc, unsigned field_idx,
 static tree
 conv_descriptor_data (tree desc)
 {
-  return gfc_get_descriptor_field (desc, DATA_FIELD);
+  return get_descr_comp (desc, DATA_FIELD);
 }
 
 /* This provides READ-ONLY access to the data field.  The field itself
@@ -133,7 +132,7 @@ gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value)
 static tree
 conv_descriptor_offset (tree desc)
 {
-  return gfc_get_descriptor_field (desc, OFFSET_FIELD, gfc_array_index_type);
+  return get_descr_comp (desc, OFFSET_FIELD, gfc_array_index_type);
 }
 
 tree
@@ -155,7 +154,7 @@ gfc_conv_descriptor_offset_set (stmtblock_t *block, tree desc, tree value)
 static tree
 conv_descriptor_dtype (tree desc)
 {
-  return gfc_get_descriptor_field (desc, DTYPE_FIELD, get_dtype_type_node ());
+  return get_descr_comp (desc, DTYPE_FIELD, get_dtype_type_node ());
 }
 
 /* Return the value of the dtype field of the array descriptor DESC.  */
@@ -182,7 +181,7 @@ gfc_conv_descriptor_dtype_set (stmtblock_t *block, tree desc, tree value)
 static tree
 gfc_conv_descriptor_span (tree desc)
 {
-  return gfc_get_descriptor_field (desc, SPAN_FIELD, gfc_array_index_type);
+  return get_descr_comp (desc, SPAN_FIELD, gfc_array_index_type);
 }
 
 tree
@@ -375,7 +374,7 @@ gfc_conv_descriptor_type_set (tree desc, int value)
 tree
 gfc_get_descriptor_dimension (tree desc)
 {
-  tree field = gfc_get_descriptor_field (desc, DIMENSION_FIELD);
+  tree field = get_descr_comp (desc, DIMENSION_FIELD);
   gcc_assert (TREE_CODE (TREE_TYPE (field)) == ARRAY_TYPE
 	      && TREE_CODE (TREE_TYPE (TREE_TYPE (field))) == RECORD_TYPE);
   return field;
@@ -441,7 +440,7 @@ tree
 gfc_conv_descriptor_token (tree desc)
 {
   gcc_assert (flag_coarray == GFC_FCOARRAY_LIB);
-  tree field = gfc_get_descriptor_field (desc, CAF_TOKEN_FIELD);
+  tree field = get_descr_comp (desc, CAF_TOKEN_FIELD);
   /* Should be a restricted pointer - except in the finalization wrapper.  */
   gcc_assert (TREE_TYPE (field) == prvoid_type_node
 	      || TREE_TYPE (field) == pvoid_type_node);
