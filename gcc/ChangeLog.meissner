@@ -1,3 +1,44 @@
+==================== Branch work214, patch #1 ====================
+
+Add -mcpu=future support
+
+This patch adds the support that can be used in developing GCC support
+for potential future PowerPC processors.
+
+These changes are being added so that hardware designers can evaluate
+potential new features to be added to the PowerPC processors in the
+future.  It may be these features will be incorporated into real
+hardware using a different name in the future. Or it may be these
+features will not be incoporated into actual PowerPC hardware in the
+future.
+
+At the moment, I have not added a new processor, and I'm using the
+power11 for tuning defaults and such.  When we are ready to add new
+tuning rules a potential future processor, we will add the support for
+the new processor.
+
+I have tested these patches on both big endian and little endian
+PowerPC servers, with no regressions.  Can I check these patchs into
+the trunk?
+
+2025-06-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): If
+	-mcpu=future, define _ARCH_FUTURE.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	(future cpu): Add 'future' cpu.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.opt (-mfuture-internal): New internal option to
+	indicate the user used -mcpu=future.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
 ==================== Branch work214, baseline ====================
 
 2025-07-02   Michael Meissner  <meissner@linux.ibm.com>
