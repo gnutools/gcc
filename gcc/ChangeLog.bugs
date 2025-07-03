@@ -1,3 +1,34 @@
+==================== Branch work214-bugs, patch #110 ====================
+
+PR target/120681 - allow -mcmodel=large with PC relative addressing
+
+When I implemented the pc-relative support for power10 in GCC, I
+disabled using pc-relative support for -mcmodel=large.  At the time, I
+didn't want to dig into the issues.  It is now time to allow
+-mcmodel=large to generate pc-relative code.
+
+This patch allows -mcmodel=large to use prefixed addressing on power10,
+power11, and possibly other future PowerPC processors in addition to
+the current -mcmodel=medium support.
+
+2025-07-02  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120681
+	* config/rs6000/linux64.h (PCREL_SUPPORTED_BY_OS): Allow large
+	code model as well as medium code model.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Likewise.
+	(rs6000_elf_declare_function_name): Don't create the
+	local/non-local labels for large code model if we are using
+	PC-relative addressing.
+
+gcc/testsuite/
+
+	PR target/120681
+	* gcc.target/powerpc/pr120681.c: New test.
+
 ==================== Branch work214-bugs, patch #102 ====================
 
 PR target/120528 -- Simplify zero extend from memory to VSX register on power10
