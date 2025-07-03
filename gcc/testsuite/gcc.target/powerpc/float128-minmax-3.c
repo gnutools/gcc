@@ -1,6 +1,10 @@
 /* { dg-require-effective-target ppc_float128_hw } */
 /* { dg-require-effective-target power10_ok } */
-/* { dg-options "-mdejagnu-cpu=power10 -O2" } */
+/* { dg-options "-mdejagnu-cpu=power10 -Ofast" } */
+
+/* The XS{MAX,MIN}}CQP instructions will trap if a signaling NaN is one of the
+   arguments, so this code is now only generated if -Ofast or
+   -ffinite-math-only is used.  */
 
 #ifndef TYPE
 #define TYPE _Float128
