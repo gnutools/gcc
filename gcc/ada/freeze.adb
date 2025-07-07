@@ -764,6 +764,9 @@ package body Freeze is
       --  in fact constrained by non-static discriminant values. Could be made
       --  more precise ???
 
+      function Value_Known (Exp : Node_Id) return Boolean;
+      --  Return True if the value of expression Exp is known at compile time
+
       --------------------
       -- Set_Small_Size --
       --------------------
@@ -879,13 +882,13 @@ package body Freeze is
                      High := Type_High_Bound (Etype (Index));
                   end if;
 
-                  if not Compile_Time_Known_Value (Low)
-                    or else not Compile_Time_Known_Value (High)
-                    or else Etype (Index) = Any_Type
-                  then
+                  if Etype (Index) = Any_Type then
                      return False;
 
-                  else
+                  elsif Compile_Time_Known_Value (Low)
+                    and then Compile_Time_Known_Value (High)
+                  then
+
                      Dim := Expr_Value (High) - Expr_Value (Low) + 1;
 
                      if Dim > Uint_0 then
@@ -893,6 +896,12 @@ package body Freeze is
                      else
                         Size := Uint_0;
                      end if;
+
+                  elsif Value_Known (Low) and then Value_Known (High) then
+                     Size := Uint_0;
+
+                  else
+                     return False;
                   end if;
 
                   Next_Index (Index);
@@ -1158,6 +1167,70 @@ package body Freeze is
 
          return True;
       end Static_Discriminated_Components;
+
+      -----------------
+      -- Value_Known --
+      -----------------
+
+      function Value_Known (Exp : Node_Id) return Boolean is
+      begin
+         --  This is the immediate case
+
+         if Compile_Time_Known_Value (Exp) then
+            return True;
+         end if;
+
+         --  The value may be known only to the back end, the typical example
+         --  being the alignment or the various sizes of composite types; in
+         --  the latter case, we may mutually recurse with Size_Known.
+
+         case Nkind (Exp) is
+            when N_Attribute_Reference =>
+               declare
+                  P : constant Node_Id := Prefix (Exp);
+
+               begin
+                  if not Is_Entity_Name (P)
+                    or else not Is_Type (Entity (P))
+                  then
+                     return False;
+                  end if;
+
+                  case Get_Attribute_Id (Attribute_Name (Exp)) is
+                     when Attribute_Alignment =>
+                        return True;
+
+                     when Attribute_Component_Size =>
+                        return Size_Known (Component_Type (Entity (P)));
+
+                     when Attribute_Object_Size
+                        | Attribute_Size
+                        | Attribute_Value_Size
+                     =>
+                        return Size_Known (Entity (P));
+
+                     when others =>
+                        return False;
+                  end case;
+               end;
+
+            when N_Binary_Op =>
+               return Value_Known (Left_Opnd (Exp))
+                 and then Value_Known (Right_Opnd (Exp));
+
+            when N_Qualified_Expression
+               | N_Type_Conversion
+               | N_Unchecked_Type_Conversion
+            =>
+               return Value_Known (Expression (Exp));
+
+            when N_Unary_Op =>
+               return Value_Known (Right_Opnd (Exp));
+
+            when others =>
+               return False;
+         end case;
+      end Value_Known;
 
    --  Start of processing for Check_Compile_Time_Size
 
@@ -6869,9 +6942,10 @@ package body Freeze is
                end if;
             end if;
 
-            --  Static objects require special handling
+            --  Statically allocated objects require special handling
 
             if (Ekind (E) = E_Constant or else Ekind (E) = E_Variable)
+              and then No (Renamed_Object (E))
               and then Is_Statically_Allocated (E)
             then
                Freeze_Static_Object (E);
@@ -10230,10 +10304,16 @@ package body Freeze is
          --  issue an error message saying that this object cannot be imported
          --  or exported. If it has an address clause it is an overlay in the
          --  current partition and the static requirement is not relevant.
-         --  Do not issue any error message when ignoring rep clauses.
+         --  Do not issue any error message when ignoring rep clauses or for
+         --  compiler-generated entities.
 
          if Ignore_Rep_Clauses then
             null;
+
+         elsif not Comes_From_Source (E) then
+            pragma
+              Assert (Nkind (Parent (Declaration_Node (E))) in N_Case_Statement
+                                                             | N_If_Statement);
 
          elsif Is_Imported (E) then
             if No (Address_Clause (E)) then

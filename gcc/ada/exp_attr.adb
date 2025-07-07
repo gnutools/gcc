@@ -88,8 +88,10 @@ package body Exp_Attr is
       function Attribute_Op_Hash (Id : Entity_Id) return Header_Num is
         (Header_Num (Id mod Map_Size));
 
-      --  Cache used to avoid building duplicate subprograms for a single
-      --  type/streaming-attribute pair.
+      --  Caches used to avoid building duplicate subprograms for a single
+      --  type/attribute pair (where the attribute is either Put_Image or
+      --  one of the four streaming attributes). The type used as a key in
+      --  in accessing these maps should not be the entity of a subtype.
 
       package Read_Map is new GNAT.HTable.Simple_HTable
         (Header_Num => Header_Num,
@@ -282,8 +284,8 @@ package body Exp_Attr is
        (In_Same_Extended_Unit (Subp_Unit, Attr_Ref_Unit)
          --  If subp declared in unit body, then we don't want to refer
          --  to it from within unit spec so return False in that case.
-         and then not (Body_Required (Attr_Ref_Unit)
-                       and not Body_Required (Subp_Unit)));
+         and then not (not Is_Body (Unit (Attr_Ref_Unit))
+                       and Is_Body (Unit (Subp_Unit))));
    --  Returns True if it is ok to refer to a cached subprogram declared in
    --  Subp_Unit from the point of an attribute reference occurring in
    --  Attr_Ref_Unit. Both arguments are usually N_Compilation_Nodes,
@@ -4669,7 +4671,7 @@ package body Exp_Attr is
          end if;
 
          if not Is_Tagged_Type (P_Type) then
-            Cached_Attribute_Ops.Input_Map.Set (P_Type, Fname);
+            Cached_Attribute_Ops.Input_Map.Set (U_Type, Fname);
          end if;
       end Input;
 
@@ -5040,22 +5042,42 @@ package body Exp_Attr is
          Typ : constant Entity_Id := Etype (N);
 
       begin
-         --  If the prefix is X'Class, we transform it into a direct reference
-         --  to the class-wide type, because the back end must not see a 'Class
-         --  reference. See also 'Size.
+         --  Tranform T'Class'Max_Size_In_Storage_Elements (for any T) into
+         --  Storage_Count'Pos (Storage_Count'Last), because it must include
+         --  all descendants, which can be arbitrarily large. Note that the
+         --  back end must not see any 'Class attribute references.
+         --  The 'Pos is to make it be of type universal_integer.
+         --
+         --  ???If T'Class'Size is specified, it should probably affect
+         --  T'Class'Max_Size_In_Storage_Elements accordingly.
 
          if Is_Entity_Name (Pref)
            and then Is_Class_Wide_Type (Entity (Pref))
          then
-            Rewrite (Prefix (N), New_Occurrence_Of (Entity (Pref), Loc));
-            return;
-         end if;
+            declare
+               Storage_Count_Type : constant Entity_Id :=
+                 RTE (RE_Storage_Count);
+               Attr : constant Node_Id :=
+                 Make_Attribute_Reference (Loc,
+                   Prefix => New_Occurrence_Of (Storage_Count_Type, Loc),
+                   Attribute_Name => Name_Pos,
+                   Expressions => New_List (
+                     Make_Attribute_Reference (Loc,
+                       Prefix => New_Occurrence_Of (Storage_Count_Type, Loc),
+                       Attribute_Name => Name_Last)));
+            begin
+               Rewrite (N, Attr);
+               Analyze_And_Resolve (N, Typ);
+               return;
+            end;
 
          --  Heap-allocated controlled objects contain two extra pointers which
          --  are not part of the actual type. Transform the attribute reference
          --  into a runtime expression to add the size of the hidden header.
 
-         if Needs_Finalization (Ptyp) and then not Header_Size_Added (N) then
+         elsif Needs_Finalization (Ptyp)
+           and then not Header_Size_Added (N)
+         then
             Set_Header_Size_Added (N);
 
             --  Generate:
@@ -5750,7 +5772,7 @@ package body Exp_Attr is
          Rewrite_Attribute_Proc_Call (Pname);
 
          if not Is_Tagged_Type (P_Type) then
-            Cached_Attribute_Ops.Output_Map.Set (P_Type, Pname);
+            Cached_Attribute_Ops.Output_Map.Set (U_Type, Pname);
          end if;
       end Output;
 
@@ -6669,7 +6691,7 @@ package body Exp_Attr is
          Rewrite_Attribute_Proc_Call (Pname);
 
          if not Is_Tagged_Type (P_Type) then
-            Cached_Attribute_Ops.Read_Map.Set (P_Type, Pname);
+            Cached_Attribute_Ops.Read_Map.Set (U_Type, Pname);
          end if;
       end Read;
 
@@ -7870,9 +7892,8 @@ package body Exp_Attr is
          else
             declare
                Uns  : constant Boolean :=
-                        Is_Unsigned_Type (Ptyp)
-                          or else (Is_Private_Type (Ptyp)
-                                    and then Is_Unsigned_Type (PBtyp));
+                 Is_Unsigned_Type (Validated_View (Ptyp));
+
                Size : Uint;
                P    : Node_Id := Pref;
 
@@ -8349,7 +8370,7 @@ package body Exp_Attr is
          Rewrite_Attribute_Proc_Call (Pname);
 
          if not Is_Tagged_Type (P_Type) then
-            Cached_Attribute_Ops.Write_Map.Set (P_Type, Pname);
+            Cached_Attribute_Ops.Write_Map.Set (U_Type, Pname);
          end if;
       end Write;
 
@@ -8600,10 +8621,10 @@ package body Exp_Attr is
             Rewrite (N,
               Make_Op_Multiply (Loc,
                 Make_Attribute_Reference (Loc,
-                  Prefix         => Duplicate_Subexpr (Pref, True),
+                  Prefix         => Duplicate_Subexpr (Pref, Name_Req => True),
                   Attribute_Name => Name_Length),
                 Make_Attribute_Reference (Loc,
-                  Prefix         => Duplicate_Subexpr (Pref, True),
+                  Prefix         => Duplicate_Subexpr (Pref, Name_Req => True),
                   Attribute_Name => Name_Component_Size)));
             Analyze_And_Resolve (N, Typ);
          end if;
@@ -8951,15 +8972,22 @@ package body Exp_Attr is
          return Empty;
       end if;
 
-      if Nam = TSS_Stream_Read then
-         Ent := Cached_Attribute_Ops.Read_Map.Get (Typ);
-      elsif Nam = TSS_Stream_Write then
-         Ent := Cached_Attribute_Ops.Write_Map.Get (Typ);
-      elsif Nam = TSS_Stream_Input then
-         Ent := Cached_Attribute_Ops.Input_Map.Get (Typ);
-      elsif Nam = TSS_Stream_Output then
-         Ent := Cached_Attribute_Ops.Output_Map.Get (Typ);
-      end if;
+      declare
+         function U_Base return Entity_Id is
+           (Underlying_Type (Base_Type (Typ)));
+         --  Return the right type node for use in a C_A_O map lookup.
+         --  In particular, we do not want the entity for a subtype.
+      begin
+         if Nam = TSS_Stream_Read then
+            Ent := Cached_Attribute_Ops.Read_Map.Get (U_Base);
+         elsif Nam = TSS_Stream_Write then
+            Ent := Cached_Attribute_Ops.Write_Map.Get (U_Base);
+         elsif Nam = TSS_Stream_Input then
+            Ent := Cached_Attribute_Ops.Input_Map.Get (U_Base);
+         elsif Nam = TSS_Stream_Output then
+            Ent := Cached_Attribute_Ops.Output_Map.Get (U_Base);
+         end if;
+      end;
 
       Cached_Attribute_Ops.Validate_Cached_Candidate
         (Subp => Ent, Attr_Ref => Attr_Ref);

@@ -2,7 +2,7 @@
 # Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2016, 2017, 2018, 2019, 2020 Free Software Foundation, Inc.
 # This file is distributed under the same license as the gcc package.
 # Cristian Othón Martínez Vera <cfuga@cfuga.mx>, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
-# Antonio Ceballos Roa <aceballos@gmail.com>, 2016, 2017, 2018, 2019, 2020
+# Antonio Ceballos Roa <aceballos@gmail.com>, 2016, 2017, 2018, 2019, 2020, 2025
 #
 # Agradezco a Juan Cuquejo Mira por sus comentarios sobre esta traducción
 #
@@ -40,10 +40,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: gcc 10.1-b20200209\n"
+"Project-Id-Version: gcc 15.1.0\n"
 "Report-Msgid-Bugs-To: https://gcc.gnu.org/bugs/\n"
 "POT-Creation-Date: 2025-04-23 19:27+0000\n"
-"PO-Revision-Date: 2020-03-22 16:48+0100\n"
+"PO-Revision-Date: 2025-06-12 23:08+0200\n"
 "Last-Translator: Antonio Ceballos Roa <aceballos@gmail.com>\n"
 "Language-Team: Spanish <es@tp.org.es>\n"
 "Language: es\n"
@@ -15533,12 +15533,12 @@ msgstr "Activa las opciones comunes para generar información de análisis de pe
 #: common.opt:2648
 #, no-c-format
 msgid "Register the profile information in the .gcov_info section instead of using a constructor/destructor."
-msgstr ""
+msgstr "Registra la información de análisis de perfil en la sección .gcov_info en lugar de utilizar un constructor/destructor."
 
 #: common.opt:2652
 #, no-c-format
 msgid "Register the profile information in the specified section instead of using a constructor/destructor."
-msgstr ""
+msgstr "Registra la información de análisis de perfil en la sección especificada en lugar de utilizar un constructor/destructor."
 
 #: common.opt:2656
 #, no-c-format
@@ -18902,7 +18902,7 @@ msgstr ""
 #: gcov-tool.cc:157 gcov-tool.cc:300
 #, c-format
 msgid "no profile files were merged\n"
-msgstr ""
+msgstr "no se han mezclado ficheros de perfil\n"
 
 #: gcov-tool.cc:169
 #, c-format
@@ -18925,26 +18925,22 @@ msgid "    -w, --weight <w1,w2>                Set weights (float point values)\
 msgstr "    -w, --weight <p1,p2>                Establece los pesos (valores de coma flotante)\n"
 
 #: gcov-tool.cc:188
-#, fuzzy, c-format
-#| msgid "Merge subcomand usage:"
+#, c-format
 msgid "Merge subcommand usage:"
 msgstr "Modo de empleo de la suborden de mezcla:"
 
 #: gcov-tool.cc:240
-#, fuzzy, c-format
-#| msgid ""
-#| "  -l, --long-file-names           Use long output file names for included\n"
-#| "                                    source files\n"
+#, c-format
 msgid ""
 "  merge-stream [options] [<file>]       Merge coverage stream file (or stdin)\n"
 "                                        and coverage file contents\n"
 msgstr ""
-"  -l, --long-file-names           Usa nombres largos de ficheros para los\n"
-"                                    ficheros fuentes incluidos\n"
+"  merge-stream [options] [<fich>]       Mezcla el fichero de flujo de cobertura\n"
+"                                        (o stdin) y el contenido del fichero de\n"
+"                                        cobertura\n"
 
 #: gcov-tool.cc:258
-#, fuzzy, c-format
-#| msgid "Merge subcomand usage:"
+#, c-format
 msgid "Merge-stream subcommand usage:"
 msgstr "Modo de empleo de la suborden de mezcla:"
 
@@ -19014,8 +19010,7 @@ msgid "    -t <float>, --hot_threshold <float> Set the threshold for hotness\n"
 msgstr "    -t <float>, --hot_threshold <float> Establece el umbral de calentura\n"
 
 #: gcov-tool.cc:510
-#, fuzzy, c-format
-#| msgid "Overlap subcomand usage:"
+#, c-format
 msgid "Overlap subcommand usage:"
 msgstr "Modo de empleo de la suborden de solapamiento:"
 
@@ -19059,10 +19054,9 @@ msgstr ""
 "%s.\n"
 
 #: gcov-tool.cc:595
-#, fuzzy, c-format
-#| msgid "Copyright %s 2019 Free Software Foundation, Inc.\n"
+#, c-format
 msgid "Copyright %s 2025 Free Software Foundation, Inc.\n"
-msgstr "Copyright %s 2019 Free Software Foundation, Inc.\n"
+msgstr "Copyright %s 2025 Free Software Foundation, Inc.\n"
 
 #: gcov.cc:1096
 #, c-format
@@ -19102,22 +19096,21 @@ msgstr ""
 "                                    en lugar de los porcentajes\n"
 
 #: gcov.cc:1102
-#, fuzzy, c-format
-#| msgid ""
-#| "  -c, --branch-counts             Output counts of branches taken\n"
-#| "                                    rather than percentages\n"
+#, c-format
 msgid ""
 "  -g, --conditions                Include modified condition/decision\n"
 "                                    coverage (masking MC/DC) in output\n"
 msgstr ""
-"  -c, --branch-counts             Se muestra el número de ramificaciones\n"
-"                                    en lugar de los porcentajes\n"
+"  -g, --conditions                Incluye la cobertura de condición/decisión\n"
+"                                    modificada (enmascarando MC/DC) en la\n"
+"                                    salida\n"
 
 #: gcov.cc:1104
-#, fuzzy, c-format
-#| msgid "  -p, --preserve-paths            Preserve all pathname components\n"
+#, c-format
 msgid "  -e, --prime-paths               Show prime path coverage summary\n"
-msgstr "  -p, --preserve-paths            Preserva todos los nombres de ruta de los componentes\n"
+msgstr ""
+"  -e, --prime-paths               Muestra el resumen de la cobertura de camino\n"
+"                                    primario\n"
 
 #: gcov.cc:1105
 #, c-format
@@ -19127,6 +19120,10 @@ msgid ""
 "                                    TYPE is 'covered', 'uncovered', or 'both'\n"
 "                                    and defaults to 'uncovered'\n"
 msgstr ""
+"      --prime-paths-lines[=TIPO]  Incluye los caminos en la salida\n"
+"                                    modo de traza de línea - no afecta a json\n"
+"                                    TIPO es 'covered', 'uncovered' o 'both'\n"
+"                                    y el predefinido es 'uncovered'\n"
 
 #: gcov.cc:1109
 #, c-format
@@ -19136,6 +19133,10 @@ msgid ""
 "                                    TYPE is 'covered', 'uncovered', or 'both'\n"
 "                                    and defaults to 'uncovered'\n"
 msgstr ""
+"      --prime-paths-source[=TIPO] Incluye los caminos en la salida\n"
+"                                    modo de traza de fuente - no afecta a json\n"
+"                                    TIPO es 'covered', 'uncovered' o 'both'\n"
+"                                    y el predefinido es 'uncovered'\n"
 
 #: gcov.cc:1113
 #, c-format
@@ -19145,7 +19146,7 @@ msgstr "  -d, --display-progress          Muestra información de progreso\n"
 #: gcov.cc:1114
 #, c-format
 msgid "  -D, --debug\t\t\t    Display debugging dumps\n"
-msgstr ""
+msgstr "  -D, --debug\t\t\t    Muestra volcados de depuración\n"
 
 #: gcov.cc:1115
 #, c-format
@@ -19153,16 +19154,14 @@ msgid "  -f, --function-summaries        Output summaries for each function\n"
 msgstr "  -f, --function-summaries        Muestra sumarios para cada función\n"
 
 #: gcov.cc:1116
-#, fuzzy, c-format
-#| msgid "    -f, --function                      Print function level info\n"
+#, c-format
 msgid "      --include                   Include functions matching this regex\n"
-msgstr "    -f, --function                      Imprime información sobre el nivel de funciones\n"
+msgstr "      --include                   Incluye funciones coincidentes con esta regex\n"
 
 #: gcov.cc:1117
-#, fuzzy, c-format
-#| msgid "  -h, --help                      Print this help, then exit\n"
+#, c-format
 msgid "      --exclude                   Exclude functions matching this regex\n"
-msgstr "  -h, --help                      Muestra esta información, y finaliza\n"
+msgstr "      --exclude                   Excluye funciones coincidentes con esta regex\n"
 
 #: gcov.cc:1118
 #, c-format
@@ -19170,18 +19169,18 @@ msgid "  -h, --help                      Print this help, then exit\n"
 msgstr "  -h, --help                      Muestra esta información, y finaliza\n"
 
 #: gcov.cc:1119
-#, fuzzy, c-format
-#| msgid "  -i, --json-format               Output JSON intermediate format into .gcov.json.gz file\n"
+#, c-format
 msgid ""
 "  -j, --json-format               Output JSON intermediate format\n"
 "                                    into .gcov.json.gz file\n"
-msgstr "  -i, --json-format               Salida con formato JSON intermedia en el fichero .gcov.json.gz\n"
+msgstr ""
+"  -j, --json-format               Envía el formato intermedio JSON\n"
+"                                    al fichero .gcov.json.gz\n"
 
 #: gcov.cc:1121
-#, fuzzy, c-format
-#| msgid "  -j, --human-readable            Output human readable numbers\n"
+#, c-format
 msgid "  -H, --human-readable            Output human readable numbers\n"
-msgstr "  -j, --human-readable            Salida con números legibles para humanos\n"
+msgstr "  -H, --human-readable            Salida con números legibles para humanos\n"
 
 #: gcov.cc:1122
 #, c-format
@@ -19200,19 +19199,16 @@ msgstr ""
 #: gcov.cc:1125
 #, c-format
 msgid "  -m, --demangled-names           Output demangled function names\n"
-msgstr "  -m, --demangled-names           Nombres de función mutilados de salida\n"
+msgstr "  -m, --demangled-names           Saca nombres de función desofuscados\n"
 
 #: gcov.cc:1126
-#, fuzzy, c-format
-#| msgid ""
-#| "  -l, --long-file-names           Use long output file names for included\n"
-#| "                                    source files\n"
+#, c-format
 msgid ""
 "  -M, --filter-on-demangled       Make --include/--exclude match on demangled\n"
 "                                    names. This does not imply -m\n"
 msgstr ""
-"  -l, --long-file-names           Usa nombres largos de ficheros para los\n"
-"                                    ficheros fuentes incluidos\n"
+"  -M, --filter-on-demangled       Aplica --include/--exclude a los nombres\n"
+"                                    desofuscados. No implica -m\n"
 
 #: gcov.cc:1128
 #, c-format
@@ -19270,24 +19266,23 @@ msgid "  -x, --hash-filenames            Hash long pathnames\n"
 msgstr "  -x, --hash-filenames            Nombres de ruta largos de Hash\n"
 
 #: gcov.cc:1139
-#, fuzzy, c-format
-#| msgid "Options:\n"
+#, c-format
 msgid ""
 "\n"
 "Obsolete options:\n"
-msgstr "Opciones:\n"
+msgstr ""
+"\n"
+"Opciones obsoletas:\n"
 
 #: gcov.cc:1140
-#, fuzzy, c-format
-#| msgid "  -i, --json-format               Output JSON intermediate format into .gcov.json.gz file\n"
+#, c-format
 msgid "  -i, --json-format               Replaced with -j, --json-format\n"
-msgstr "  -i, --json-format               Salida con formato JSON intermedia en el fichero .gcov.json.gz\n"
+msgstr "  -i, --json-format               Reemplazado por -j, --json-format\n"
 
 #: gcov.cc:1141
-#, fuzzy, c-format
-#| msgid "  -j, --human-readable            Output human readable numbers\n"
+#, c-format
 msgid "  -j, --human-readable            Replaced with -H, --human-readable\n"
-msgstr "  -j, --human-readable            Salida con números legibles para humanos\n"
+msgstr "  -j, --human-readable            Reemplazado por -H, --human-readable\n"
 
 #: gcov.cc:1152
 #, c-format
@@ -19295,20 +19290,19 @@ msgid "gcov %s%s\n"
 msgstr "gcov %s%s\n"
 
 #: gcov.cc:1153
-#, fuzzy, c-format
-#| msgid "collect2 version %s\n"
+#, c-format
 msgid "JSON format version: %s\n"
-msgstr "collect2 versión %s\n"
+msgstr "versión del formato JSON: %s\n"
 
 #: gcov.cc:1237
 #, c-format
 msgid "invalid argument '%s' for '--prime-paths-lines'. Valid arguments are: 'covered', 'uncovered', 'both'\n"
-msgstr ""
+msgstr "argumento no válido '%s' para --prime-paths-lines'. Argumentos válidos: 'covered', 'uncovered', 'both'\n"
 
 #: gcov.cc:1258
 #, c-format
 msgid "invalid argument '%s' for '--prime-paths-source'. Valid arguments are: 'covered', 'uncovered', 'both'\n"
-msgstr ""
+msgstr "argumento no válido '%s' para --prime-paths-source'. Argumentos válidos: 'covered', 'uncovered', 'both'\n"
 
 #: gcov.cc:1726
 #, c-format
@@ -19376,10 +19370,9 @@ msgid "%s:already seen blocks for '%s'\n"
 msgstr "%s:ya se vieron bloques para '%s'\n"
 
 #: gcov.cc:2391
-#, fuzzy, c-format
-#| msgid "%s:already seen blocks for '%s'\n"
+#, c-format
 msgid "%s:already seen conditions for '%s'\n"
-msgstr "%s:ya se vieron bloques para '%s'\n"
+msgstr "%s:condiciones ya vistas para '%s'\n"
 
 #: gcov.cc:2449 gcov.cc:2589
 #, c-format
@@ -19482,28 +19475,24 @@ msgid "No calls\n"
 msgstr "No hay llamadas\n"
 
 #: gcov.cc:3090 gcov.cc:3144
-#, fuzzy, c-format
-#| msgid "Lines executed:%s of %d\n"
+#, c-format
 msgid "Condition outcomes covered:%s of %d\n"
-msgstr "Líneas ejecutadas:%s de %d\n"
+msgstr "Salidas de condiciones cubiertas:%s de %d\n"
 
 #: gcov.cc:3095 gcov.cc:3149
-#, fuzzy, c-format
-#| msgid "bad condition code"
+#, c-format
 msgid "No conditions\n"
-msgstr "código de condición erróneo"
+msgstr "No hay condiciones\n"
 
 #: gcov.cc:3101 gcov.cc:3155
-#, fuzzy, c-format
-#| msgid "Branches executed:%s of %d\n"
+#, c-format
 msgid "Prime paths covered:%s of %d\n"
-msgstr "Ramificaciones ejecutadas:%s de %d\n"
+msgstr "Caminos primarios cubiertos:%s de %d\n"
 
 #: gcov.cc:3105 gcov.cc:3159
-#, fuzzy, c-format
-#| msgid "Display this information."
+#, c-format
 msgid "No path information\n"
-msgstr "Muestra esta información."
+msgstr "No hay información de caminos\n"
 
 #: gcov.cc:3379
 #, c-format
@@ -19513,13 +19502,12 @@ msgstr "%s:no hay líneas para '%s'\n"
 #: gcov.cc:3515
 #, c-format
 msgid "condition outcomes covered %d/%d\n"
-msgstr ""
+msgstr "salidas de condiciones cubiertas %d/%d\n"
 
 #: gcov.cc:3528
-#, fuzzy, c-format
-#| msgid "unconditional %2d taken %s\n"
+#, c-format
 msgid "condition %2u not covered (%s%s)\n"
-msgstr "el incondicional %2d tomado %s\n"
+msgstr "condición %2u no cubierta (%s%s)\n"
 
 #: gcov.cc:3542
 #, c-format
@@ -19537,10 +19525,9 @@ msgid "branch %2d taken %s%s"
 msgstr "ramificación %2d tomada %s%s"
 
 #: gcov.cc:3557
-#, fuzzy, c-format
-#| msgid "branch %2d never executed"
+#, c-format
 msgid "branch %2d never executed%s"
-msgstr "la ramificacion %2d nunca se ejecuta"
+msgstr "la ramificacion %2d nunca se ejecuta%s"
 
 #: gcov.cc:3562
 #, c-format
@@ -19558,15 +19545,14 @@ msgid "unconditional %2d never executed\n"
 msgstr "el incondicional %2d nunca se ejecuta\n"
 
 #: gcov.cc:3729
-#, fuzzy, c-format
-#| msgid "parameter name omitted"
+#, c-format
 msgid "path coverage omitted\n"
-msgstr "se omitió el nombre del parámetro"
+msgstr "cobertura de caminos omitida\n"
 
 #: gcov.cc:3731
 #, c-format
 msgid "paths covered %u of %zu\n"
-msgstr ""
+msgstr "caminos cubiertos %u de %zu\n"
 
 #: gcov.cc:3806
 #, c-format
@@ -19612,16 +19598,14 @@ msgid "End of search list.\n"
 msgstr "Fin de la lista de búsqueda.\n"
 
 #: incpath.cc:408
-#, fuzzy, c-format
-#| msgid "#include <...> search starts here:\n"
+#, c-format
 msgid "#embed <...> search starts here:\n"
-msgstr "la búsqueda de #include <...> inicia aquí:\n"
+msgstr "la búsqueda de #embed <...> comienza aquí:\n"
 
 #: incpath.cc:411
-#, fuzzy, c-format
-#| msgid "End of search list.\n"
+#, c-format
 msgid "End of #embed search list.\n"
-msgstr "Fin de la lista de búsqueda.\n"
+msgstr "Fin de la lista de búsqueda de #embed.\n"
 
 #: input.cc:35
 msgid "<built-in>"
@@ -27144,10 +27128,9 @@ msgid "wrong number of arguments to %%:dwarf-version-gt"
 msgstr "número erróneo de argumentos para %%:debug-level-gt"
 
 #: gcov-tool.cc:75
-#, fuzzy, gcc-internal-format, gfc-internal-format
-#| msgid "error in removing %s\n"
+#, gcc-internal-format, gfc-internal-format
 msgid "error in removing %s"
-msgstr "error al quitar %s\n"
+msgstr "error al quitar %s"
 
 #: gcov-tool.cc:106
 #, gcc-internal-format, gfc-internal-format
@@ -27167,19 +27150,17 @@ msgstr "No se puede cambiar al directorio %s"
 #: gcov-tool.cc:125
 #, gcc-internal-format, gfc-internal-format
 msgid "output file %s already exists in folder %s"
-msgstr ""
+msgstr "el fichero de salida %s ya existe en la carpeta %s"
 
 #: gcov-tool.cc:217 gcov-tool.cc:285
-#, fuzzy, gcc-internal-format
-#| msgid "weights need to be non-negative\n"
+#, gcc-internal-format
 msgid "weights need to be non-negative"
-msgstr "los pesos tienen que ser no negativos\n"
+msgstr "los pesos han de ser no negativos"
 
 #: gcov-tool.cc:424
-#, fuzzy, gcc-internal-format
-#| msgid "scale needs to be non-negative\n"
+#, gcc-internal-format
 msgid "scale needs to be non-negative"
-msgstr "la escala tiene que ser no negativa\n"
+msgstr "la escala ha de ser no negativa"
 
 #: gcse.cc:4194
 #, gcc-internal-format, gfc-internal-format

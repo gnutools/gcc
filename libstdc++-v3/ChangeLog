@@ -1,3 +1,152 @@
+2025-07-03  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-07-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/120934
+	* include/std/ranges (concat_view::end): Refine condition
+	for returning an iterator instead of default_sentinel as
+	per the updated P/R for LWG 4166.
+	* testsuite/std/ranges/concat/1.cc (test05): New test.
+
+2025-07-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-07-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120931
+	* include/bits/stl_uninitialized.h (__uninitialized_fill<true>):
+	Fix typo resulting in call to __do_uninit_copy instead of
+	__do_uninit_fill.
+	* testsuite/20_util/specialized_algorithms/uninitialized_fill/120931.cc:
+	New test.
+
+2025-07-01  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-06-13  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/120648
+	* include/bits/chrono_io.h (__formatter_chrono::_M_format_to):
+	Handle %c, %r, %x and %X by passing them to _M_c_r_x_X.
+	(__formatter_chrono::_M_c_r_x_X): Reworked from _M_c.
+	(__formatter_chrono::_M_c): Renamed into above.
+	(__formatter_chrono::_M_r, __formatter_chrono::_M_x)
+	(__formatter_chrono::_M_X): Removed.
+	* testsuite/std/time/format/pr117214.cc: New tests for %r, %x,
+	%X with date, time and durations.
+
+2025-06-30  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-06-25  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/120650
+	* include/bits/chrono_io.h
+	(formatter<chrono::month_day_last,_CharT>::parse): Call _M_parse with
+	only Month being available.
+
+2025-06-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-06-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120625
+	* include/std/format (__format::__disabled): Remove.
+	(__formatter_disabled): New type.
+	(formatter<char*, wchar_t>, formatter<const char*, wchar_t>)
+	(formatter<char[N], wchar_t>, formatter<string, wchar_t>)
+	(formatter<string_view, wchar_t>): Use __formatter_disabled as
+	base class instead of formatter<__disabled, wchar_t>.
+	* testsuite/std/format/formatter/120625.cc: New test.
+
+2025-06-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/99832
+	* include/bits/chrono.h (system_clock::to_time_t): Add
+	always_inline attribute to be agnostic to the underlying type of
+	time_t.
+	(system_clock::from_time_t): Add always_inline for consistency
+	with to_time_t.
+	* testsuite/20_util/system_clock/99832.cc: New test.
+
+2025-06-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-06-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120548
+	* include/std/format (__formatter_fp::_M_localize): Do not
+	include a leading sign character in the string to be grouped.
+	* testsuite/std/format/functions/format.cc: Check grouping when
+	sign is present in the output.
+
+2025-06-06  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-06-06  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/120432
+	* include/std/flat_map (flat_map::operator[]): Make the
+	non-template overloads call try_emplace directly.  Remove
+	non-standard same_as constraint on the template overload.
+	* testsuite/23_containers/flat_map/1.cc (test08): New test.
+
+2025-06-06  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-06-04  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/bits/chrono_io.h (__formatter_chrono:_M_s): Add missing
+	__out argument to format_to call.
+
+2025-06-01  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-05-29  Patrick Palka  <ppalka@redhat.com>
+
+	* include/std/flat_map (_Flat_map_impl::operator==): Compare
+	keys and values separately.
+
+2025-06-01  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-05-29  Patrick Palka  <ppalka@redhat.com>
+		    Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120465
+	* include/std/flat_map (_Flat_map_impl::_M_erase_if): Use a
+	projection with ranges::remove_if to pass a pair instead of
+	a tuple to the predicate.
+	* testsuite/23_containers/flat_map/1.cc (test07): Strengthen
+	to expect the argument passed to the predicate is a pair.
+	* testsuite/23_containers/flat_multimap/1.cc (test07): Likewise.
+
+2025-05-27  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-05-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/util/pstl/test_utils.h (ForwardIterator::operator++):
+	Fix return type.
+	(BidirectionalIterator::operator++): Likewise.
+	(BidirectionalIterator::operator--): Likewise.
+
+2025-05-27  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-05-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120367
+	* include/bits/stl_vector.h (_M_range_initialize): Initialize
+	_M_impl._M_finish.
+	* testsuite/23_containers/vector/cons/from_range.cc: Check with
+	a type that throws on construction.
+	exceptions during construction.
+
 2025-05-20  Jonathan Wakely  <jwakely@redhat.com>
 
 	Backported from master:

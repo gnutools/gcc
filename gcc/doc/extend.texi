@@ -7336,7 +7336,7 @@ truncate the copy without appending the terminating @code{NUL} character.
 Using the attribute makes it possible to suppress the warning.  However,
 when the array is declared with the attribute the call to @code{strlen} is
 diagnosed because when the array doesn't contain a @code{NUL}-terminated
-string the call is undefined.  To copy, compare, of search non-string
+string the call is undefined.  To copy, compare, or search non-string
 character arrays use the @code{memcpy}, @code{memcmp}, @code{memchr},
 and other functions that operate on arrays of bytes.  In addition,
 calling @code{strnlen} and @code{strndup} with such arrays is safe
@@ -10679,7 +10679,7 @@ and @samp{[[omp::sequence(...)]]} in C and C++,
 GCC needs to be invoked with the @option{-fopenmp} option.
 This option also arranges for automatic linking of the OpenMP
 runtime library.
-@xref{,,,libgomp,GNU Offloading and Multi Processing Runtime Library}.
+@xref{Top,,,libgomp,GNU Offloading and Multi Processing Runtime Library}.
 
 @xref{OpenMP and OpenACC Options}, for additional options useful with
 @option{-fopenmp}.
@@ -10701,7 +10701,7 @@ To enable the processing of OpenACC directives @samp{#pragma acc}
 in C and C++, GCC needs to be invoked with the @option{-fopenacc} option.
 This option also arranges for automatic linking of the OpenACC runtime
 library.
-@xref{,,,libgomp,GNU Offloading and Multi Processing Runtime Library}.
+@xref{Top,,,libgomp,GNU Offloading and Multi Processing Runtime Library}.
 
 @xref{OpenMP and OpenACC Options}, for additional options useful with
 @option{-fopenacc}.

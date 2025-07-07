@@ -14696,19 +14696,18 @@ package body Sem_Prag is
 
             D := Declaration_Node (E);
 
-            if (Nkind (D) = N_Full_Type_Declaration and then Is_Array_Type (E))
+            if (Nkind (D) in N_Full_Type_Declaration
+                           | N_Formal_Type_Declaration
+                  and then Is_Array_Type (E))
               or else
                 (Nkind (D) = N_Object_Declaration
                    and then Ekind (E) in E_Constant | E_Variable
                    and then Nkind (Object_Definition (D)) =
                                        N_Constrained_Array_Definition)
-              or else
-                 (Ada_Version >= Ada_2022
-                   and then Nkind (D) = N_Formal_Type_Declaration)
             then
                --  The flag is set on the base type, or on the object
 
-               if Nkind (D) = N_Full_Type_Declaration then
+               if Is_Array_Type (E) then
                   E := Base_Type (E);
                end if;
 
@@ -21374,8 +21373,8 @@ package body Sem_Prag is
          --  pragma No_Component_Reordering [([Entity =>] type_LOCAL_NAME)];
 
          when Pragma_No_Component_Reordering => No_Comp_Reordering : declare
-            E    : Entity_Id;
-            E_Id : Node_Id;
+            Typ     : Entity_Id;
+            Type_Id : Node_Id;
 
          begin
             GNAT_Pragma;
@@ -21388,19 +21387,20 @@ package body Sem_Prag is
             else
                Check_Optional_Identifier (Arg2, Name_Entity);
                Check_Arg_Is_Local_Name (Arg1);
-               E_Id := Get_Pragma_Arg (Arg1);
+               Type_Id := Get_Pragma_Arg (Arg1);
 
-               if Etype (E_Id) = Any_Type then
+               Find_Type (Type_Id);
+               Typ := Entity (Type_Id);
+
+               if Typ = Any_Type then
                   return;
                end if;
 
-               E := Entity (E_Id);
-
-               if not Is_Record_Type (E) then
+               if not Is_Record_Type (Typ) then
                   Error_Pragma_Arg ("pragma% requires record type", Arg1);
                end if;
 
-               Set_No_Reordering (Base_Type (E));
+               Set_No_Reordering (Base_Type (Typ));
             end if;
          end No_Comp_Reordering;
 
