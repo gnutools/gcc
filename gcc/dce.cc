@@ -1402,14 +1402,22 @@ rtl_ssa_dce::is_rtx_pattern_prelive (const_rtx insn)
     }
 }
 
+// Return true if an call INSN can be deleted
 bool
 rtl_ssa_dce::can_delete_call (const_rtx insn)
 {
   gcc_checking_assert (CALL_P (insn));
 
-  if (cfun->can_delete_dead_exceptions)
-    return true;
-  return insn_nothrow_p (insn);
+  // We cannot delete pure or const sibling calls because it is
+  // hard to see the result.
+  return !SIBLING_CALL_P (insn)
+    // We can delete dead const or pure calls as long as they do not
+    // infinite loop.
+    && (RTL_CONST_OR_PURE_CALL_P (insn)
+      && !RTL_LOOPING_CONST_OR_PURE_CALL_P (insn))
+    // Don't delete calls that may throw if we cannot do so.
+    && cfun->can_delete_dead_exceptions 
+    && insn_nothrow_p (insn);
 }
 
 bool
@@ -1417,16 +1425,7 @@ rtl_ssa_dce::is_rtx_prelive (const_rtx insn)
 {
   gcc_checking_assert (insn != nullptr);
 
-  if (CALL_P (insn)
-      // We cannot delete pure or const sibling calls because it is
-      // hard to see the result.
-      && (!SIBLING_CALL_P (insn))
-      // We can delete dead const or pure calls as long as they do not
-      // infinite loop.
-      && (RTL_CONST_OR_PURE_CALL_P (insn)
-	  && !RTL_LOOPING_CONST_OR_PURE_CALL_P (insn))
-      // Don't delete calls that may throw if we cannot do so.
-      && can_delete_call (insn))
+  if (CALL_P (insn) && can_delete_call (insn))
     return false;
 
   if (!NONJUMP_INSN_P (insn))
@@ -1690,7 +1689,6 @@ rtl_ssa_dce::sweep ()
 
   auto_vec<insn_change> to_delete;
 
-  // Previously created debug instructions won't be visited here
   for (insn_info *insn : crtl->ssa->nondebug_insns ())
     {
       // Artificial (bb_head, bb_end, phi), marked or debug instructions

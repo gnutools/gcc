@@ -287,7 +287,17 @@ function_info::process_uses_of_deleted_def (set_info *set)
 	{
 	  // following assert causes crash when running rtl_ssa_dce with
 	  // deleting eq_notes on testsuite
-	  // gcc_assert (use->is_live_out_use ());
+	  if (use->only_occurs_in_notes ())
+	  {
+		insn_info *insn =  use->insn ();
+		rtx_insn *rtl = insn->rtl ();
+		// TODO: remove note from rtl
+	  }
+	  else
+	  {
+		gcc_assert (use->is_live_out_use ());
+	  }
+
 	  remove_use (use);
 	}
       // The phi handling above might have removed multiple uses of this_set.
