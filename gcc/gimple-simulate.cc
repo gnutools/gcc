@@ -903,6 +903,9 @@ static tree
 find_mem_ref_replacement (simul_scope & context, tree data_ref,
 			  unsigned offset, unsigned min_size)
 {
+  gcc_assert (TREE_CODE (data_ref) == MEM_REF
+	      || TREE_CODE (data_ref) == TARGET_MEM_REF);
+
   tree ptr = TREE_OPERAND (data_ref, 0);
   data_value ptr_val = context.evaluate (ptr);
   if (ptr_val.classify () != VAL_ADDRESS)
@@ -923,11 +926,29 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
     {
       tree access_offset = TREE_OPERAND (data_ref, 1);
       gcc_assert (TREE_CONSTANT (access_offset));
-      gcc_assert (tree_fits_shwi_p (access_offset));
-      HOST_WIDE_INT shwi_offset = tree_to_shwi (access_offset);
-      gcc_assert (offset < UINT_MAX - shwi_offset);
-      HOST_WIDE_INT remaining_offset = shwi_offset * CHAR_BIT
+      gcc_assert (tree_fits_uhwi_p (access_offset));
+      HOST_WIDE_INT uhwi_offset = tree_to_uhwi (access_offset);
+      gcc_assert (offset < UINT_MAX - uhwi_offset);
+      HOST_WIDE_INT remaining_offset = uhwi_offset * CHAR_BIT
 				       + offset + ptr_address->offset;
+
+      if (TREE_CODE (data_ref) == TARGET_MEM_REF)
+	{
+	  tree idx = TREE_OPERAND (data_ref, 2);
+	  data_value idx_val = context.evaluate (idx);
+	  gcc_assert (idx_val.classify () == VAL_KNOWN);
+	  wide_int wi_idx = idx_val.get_known ();
+
+	  tree step = TREE_OPERAND (data_ref, 3);
+	  data_value step_val = context.evaluate (step);
+	  gcc_assert (step_val.classify () == VAL_KNOWN);
+	  wide_int wi_step = step_val.get_known ();
+
+	  wi_idx *= wi_step;
+	  gcc_assert (wi::fits_uhwi_p (wi_idx));
+	  HOST_WIDE_INT idx_offset = wi_idx.to_uhwi ();
+	  remaining_offset += idx_offset * CHAR_BIT;
+	}
 
       return pick_subref_at (var_ref, remaining_offset, nullptr, min_size);
     }
@@ -957,6 +978,7 @@ context_printer::print_first_data_ref_part (simul_scope & context,
   switch (TREE_CODE (data_ref))
     {
     case MEM_REF:
+    case TARGET_MEM_REF:
       {
 	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
 							 offset, min_size);
@@ -4432,6 +4454,63 @@ context_printer_print_value_update_tests ()
   printer9.print_value_update (ctx9, ref9, val9_addr_i);
   const char *str9 = pp_formatted_text (&pp9);
   ASSERT_STREQ (str9, "# v17c[8B:+8B] = &i\n");
+
+
+  heap_memory mem10;
+  context_printer printer10;
+  pretty_printer & pp10 = printer10.pp;
+  pp_buffer (&pp10)->m_flush_p = false;
+
+  tree a11c_10 = build_array_type_nelts (char_type_node, 11);
+  tree v11c_10 = create_var (a11c_10, "v11c");
+  tree p_10 = create_var (ptr_type_node, "p");
+  tree i_10 = create_var (size_type_node, "i");
+
+  vec<tree> decls10{};
+  decls10.safe_push (v11c_10);
+  decls10.safe_push (p_10);
+  decls10.safe_push (i_10);
+
+  context_builder builder10;
+  builder10.add_decls (&decls10);
+  simul_scope ctx10 = builder10.build (mem10, printer10);
+
+  data_storage *strg10_v11 = ctx10.find_reachable_var (v11c_10);
+  gcc_assert (strg10_v11 != nullptr);
+  storage_address addr10_v11 (strg10_v11->get_ref (), 0);
+
+  data_value val10_addr_v11 (ptr_type_node);
+  val10_addr_v11.set_address (addr10_v11);
+
+  data_storage *strg10_p = ctx10.find_reachable_var (p_10);
+  gcc_assert (strg10_p != nullptr);
+  strg10_p->set (val10_addr_v11);
+
+  data_value val10_cst_2 (size_type_node);
+  wide_int cst2_10 = wi::uhwi (2, TYPE_PRECISION (size_type_node));
+  val10_cst_2.set_known (cst2_10);
+
+  data_storage *strg10_i = ctx10.find_reachable_var (i_10);
+  gcc_assert (strg10_i != nullptr);
+  strg10_i->set (val10_cst_2);
+
+  tree int_ptr_10 = build_pointer_type (integer_type_node);
+
+  tree ref10 = build5 (TARGET_MEM_REF, integer_type_node, p_10,
+		       build_int_cst (int_ptr_10, -4), i_10,
+		       build_int_cst (size_type_node, 4), NULL_TREE);
+
+  data_value val10_cst_13 (integer_type_node);
+  wide_int wi10_13 = wi::shwi (13, TYPE_PRECISION (integer_type_node));
+  val10_cst_13.set_known (wi10_13);
+
+  printer10.print_value_update (ctx10, ref10, val10_cst_13);
+  const char *str10 = pp_formatted_text (&pp10);
+  ASSERT_STREQ (str10,
+		"# v11c[4] = 13\n"
+		"# v11c[5] = 0\n"
+		"# v11c[6] = 0\n"
+		"# v11c[7] = 0\n");
 }
 
 
