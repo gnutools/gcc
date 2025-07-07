@@ -199,6 +199,23 @@ struct string_property_value
   ValueType m_value;
 };
 
+/* A class for recording annotations seen in locations (§3.28.6) that
+   should be emitted as secondary locations on diagnostics.  */
+
+class annotation
+{
+public:
+  annotation (libgdiagnostics::physical_location phys_loc,
+	      label_text label)
+  : m_phys_loc (phys_loc),
+    m_label (std::move (label))
+  {
+  }
+
+  libgdiagnostics::physical_location m_phys_loc;
+  label_text m_label;
+};
+
 class sarif_replayer
 {
 public:
@@ -255,12 +272,14 @@ private:
   const char *
   lookup_plain_text_within_result_message (const json::object *tool_component_obj,
 					   const json::object &message_obj,
-					   const json::object *rule_obj);
+					   const json::object *rule_obj,
+					   const json::string *&out_js_str);
 
   // "multiformatMessageString" object (§3.12).
   const char *
   get_plain_text_from_mfms (json::value &mfms_val,
-			    const property_spec_ref &prop);
+			    const property_spec_ref &prop,
+			    const json::string *&out_js_str);
 
   // "run" object (§3.14)
   enum status
@@ -277,6 +296,7 @@ private:
   // "result" object (§3.27)
   enum status
   handle_result_obj (const json::object &result_obj,
+		     const json::object &run_obj,
 		     const json::object &tool_obj);
   json::result<enum diagnostic_level, enum status>
   get_level_from_level_str (const json::string &level_str);
@@ -284,8 +304,10 @@ private:
   // "location" object (§3.28)
   enum status
   handle_location_object (const json::object &location_obj,
+			  const json::object &run_obj,
 			  libgdiagnostics::physical_location &out_physical_loc,
-			  libgdiagnostics::logical_location &out_logical_loc);
+			  libgdiagnostics::logical_location &out_logical_loc,
+			  std::vector<annotation> *out_annotations);
 
   // "physicalLocation" object (§3.29)
   enum status
@@ -301,16 +323,19 @@ private:
   // "logicalLocation" object (§3.33)
   enum status
   handle_logical_location_object (const json::object &logical_loc_obj,
+				  const json::object *run_obj,
 				  libgdiagnostics::logical_location &out);
 
   // "threadFlow" object (§3.37)
   enum status
   handle_thread_flow_object (const json::object &thread_flow_obj,
+			     const json::object &run_obj,
 			     libgdiagnostics::execution_path &out);
 
   // "threadFlowLocation" object (§3.38)
   enum status
   handle_thread_flow_location_object (const json::object &tflow_loc_obj,
+				      const json::object &run_obj,
 				      libgdiagnostics::execution_path &out);
 
   // reportingDescriptor lookup (§3.52.3)
@@ -322,6 +347,16 @@ private:
   const json::object *
   lookup_rule_by_id_in_component (const char *rule_id,
 				  const json::object &tool_component_obj);
+
+  // "fix" object (§3.55)
+  enum status
+  handle_fix_object (libgdiagnostics::diagnostic &diag,
+		     const json::object &fix_obj);
+
+  // "artifactChange" object (§3.56)
+  enum status
+  handle_artifact_change_object (libgdiagnostics::diagnostic &diag,
+				 const json::object &change_obj);
 
   /* Support functions.  */
 
@@ -806,7 +841,9 @@ sarif_replayer::handle_run_obj (const json::object &run_obj)
 		= require_object_for_element (*element, prop_results);
 	      if (!result_obj)
 		return status::err_invalid_sarif;
-	      enum status s = handle_result_obj (*result_obj, *tool_obj);
+	      enum status s = handle_result_obj (*result_obj,
+						 run_obj,
+						 *tool_obj);
 	      if (s != status::ok)
 		return s;
 	    }
@@ -955,14 +992,38 @@ sarif_replayer::get_level_from_level_str (const json::string &level_str)
      level_values, ARRAY_SIZE (level_values));
 }
 
+static void
+add_any_annotations (libgdiagnostics::diagnostic &diag,
+		     const std::vector<annotation> &annotations)
+{
+  for (auto &annotation : annotations)
+    if (annotation.m_label.get ())
+      diag.add_location_with_label (annotation.m_phys_loc,
+				    annotation.m_label.get ());
+    else
+      diag.add_location (annotation.m_phys_loc);
+}
+
+static bool
+should_add_rule_p (const char *rule_id_str, const char *url)
+{
+  if (url)
+    return true;
+
+  /* GCC's sarif output uses "error" for "ruleId", which is already
+     captured in the "level", so don't add a rule for that.  */
+  if (!strcmp (rule_id_str, "error"))
+    return false;
+
+  return true;
+}
+
 /* Process a result object (SARIF v2.1.0 section 3.27).
    Known limitations:
    - doesn't yet handle "ruleIndex" property (§3.27.6)
    - doesn't yet handle "taxa" property (§3.27.8)
    - handling of "level" property (§3.27.10) doesn't yet support the
      full logic for when "level" is absent.
-   - doesn't yet handle "relatedLocations" property (§3.27.22)
-   - doesn't yet handle "fixes" property (§3.27.30)
    - doesn't yet support multithreaded flows (§3.36.3)
 */
 
@@ -974,6 +1035,7 @@ sarif_replayer::get_level_from_level_str (const json::string &level_str)
 
 enum status
 sarif_replayer::handle_result_obj (const json::object &result_obj,
+				   const json::object &run_obj,
 				   const json::object &tool_obj)
 {
   const json::object *rule_obj = nullptr;
@@ -1017,6 +1079,7 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
     = get_required_property<json::array> (result_obj, locations_prop);
   if (!locations_arr)
     return status::err_invalid_sarif;
+  std::vector<annotation> annotations;
   if (locations_arr->length () > 0)
     {
       /* Only look at the first, if there's more than one.  */
@@ -1025,9 +1088,10 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
 	= require_object_for_element (*locations_arr->get (0), locations_prop);
       if (!location_obj)
 	return status::err_invalid_sarif;
-      enum status s = handle_location_object (*location_obj,
+      enum status s = handle_location_object (*location_obj, run_obj,
 					      physical_loc,
-					      logical_loc);
+					      logical_loc,
+					      &annotations);
       if (s != status::ok)
 	return s;
     }
@@ -1059,7 +1123,7 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
 						  prop_thread_flows);
 		  if (!thread_flow_obj)
 		    return status::err_invalid_sarif;
-		  handle_thread_flow_object (*thread_flow_obj, path);
+		  handle_thread_flow_object (*thread_flow_obj, run_obj, path);
 		}
 	    }
 	}
@@ -1080,15 +1144,19 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
 								 prop_help_uri))
 	    url = url_val->get_string ();
 	}
-      err.add_rule (rule_id->get_string (), url);
+
+      const char *rule_id_str = rule_id->get_string ();
+      if (should_add_rule_p (rule_id_str, url))
+	err.add_rule (rule_id_str, url);
     }
   err.set_location (physical_loc);
   err.set_logical_location (logical_loc);
+  add_any_annotations (err, annotations);
   if (path.m_inner)
     err.take_execution_path (std::move (path));
-  err.finish ("%s", text.get ());
 
   // §3.27.22 relatedLocations property
+  std::vector<std::pair<libgdiagnostics::diagnostic, label_text>> notes;
   const property_spec_ref prop_related_locations
     ("result", "relatedLocations", "3.27.22");
   if (auto related_locations_arr
@@ -1104,9 +1172,11 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
 					  prop_related_locations);
 	  if (!location_obj)
 	    return status::err_invalid_sarif;
-	  enum status s = handle_location_object (*location_obj,
+	  std::vector<annotation> annotations;
+	  enum status s = handle_location_object (*location_obj, run_obj,
 						  physical_loc,
-						  logical_loc);
+						  logical_loc,
+						  &annotations);
 	  if (s != status::ok)
 	    return s;
 
@@ -1128,13 +1198,41 @@ sarif_replayer::handle_result_obj (const json::object &result_obj,
 	      auto note (m_output_mgr.begin_diagnostic (DIAGNOSTIC_LEVEL_NOTE));
 	      note.set_location (physical_loc);
 	      note.set_logical_location (logical_loc);
-	      note.finish ("%s", text.get ());
+	      add_any_annotations (note, annotations);
+	      notes.push_back ({std::move (note), std::move (text)});
+	    }
+	  else
+	    {
+	      /* Treat related locations without a message as a secondary
+		 range.  */
+	      if (physical_loc.m_inner)
+		err.add_location (physical_loc);
 	    }
 	}
     }
 
-  return status::ok;
+  // §3.27.30 "fixes" property
+  const property_spec_ref prop_fixes ("result", "fixes", "3.27.30");
+  if (auto fixes_arr
+      = get_optional_property<json::array> (result_obj, prop_fixes))
+    {
+      // We only support a single fix
+      if (fixes_arr->length () == 1)
+	if (auto fix_obj = require_object (*fixes_arr->get (0), prop_fixes))
+	  handle_fix_object (err, *fix_obj);
+    }
 
+  err.finish ("%s", text.get ());
+
+  // Flush any notes
+  for (auto &iter : notes)
+    {
+      auto &note = iter.first;
+      auto &text = iter.second;
+      note.finish ("%s", text.get ());
+    }
+
+  return status::ok;
 }
 
 /*  If ITER_SRC starts with a placeholder as per §3.11.5, advance ITER_SRC
@@ -1271,12 +1369,16 @@ make_plain_text_within_result_message (const json::object *tool_component_obj,
 				       const json::object &message_obj,
 				       const json::object *rule_obj)
 {
+  const json::string *js_str = nullptr;
   const char *original_text
     = lookup_plain_text_within_result_message (tool_component_obj,
 					       message_obj,
-					       rule_obj);
+					       rule_obj,
+					       js_str);
   if (!original_text)
     return label_text::borrow (nullptr);
+
+  gcc_assert (js_str);
 
   /* Look up any arguments for substituting into placeholders.  */
   const property_spec_ref arguments_prop ("message", "arguments", "3.11.11");
@@ -1329,7 +1431,9 @@ make_plain_text_within_result_message (const json::object *tool_component_obj,
 	    }
 	  else
 	    {
-	      report_invalid_sarif (message_obj, arguments_prop,
+	      const spec_ref msgs_with_placeholders ("3.11.5");
+	      gcc_assert (js_str);
+	      report_invalid_sarif (*js_str, msgs_with_placeholders,
 				    "unescaped '%c' within message string",
 				    ch);
 	      return label_text::borrow (nullptr);
@@ -1354,11 +1458,14 @@ make_plain_text_within_result_message (const json::object *tool_component_obj,
 
 /* Handle a value that should be a multiformatMessageString object (§3.12).
    Complain using prop if MFMS_VAL is not an object.
-   Return get the "text" value (or nullptr, and complain).  */
+   Return get the "text" value (or nullptr, and complain).
+   If the result is non-null, write the json::string that was actually used
+   to OUT_JS_STR.  */
 
 const char *
 sarif_replayer::get_plain_text_from_mfms (json::value &mfms_val,
-					  const property_spec_ref &prop)
+					  const property_spec_ref &prop,
+					  const json::string *&out_js_str)
 {
   auto mfms_obj = require_object (mfms_val, prop);
   if (!mfms_obj)
@@ -1369,6 +1476,7 @@ sarif_replayer::get_plain_text_from_mfms (json::value &mfms_val,
   auto text_jstr = get_required_property<json::string> (*mfms_obj, text_prop);
   if (!text_jstr)
     return nullptr;
+  out_js_str = text_jstr;
   return text_jstr->get_string ();
 }
 
@@ -1383,13 +1491,17 @@ sarif_replayer::get_plain_text_from_mfms (json::value &mfms_val,
    is the value of result.message (§3.27.11).
 
    MESSAGE_OBJ is "theMessage"
-   RULE_OBJ is "theRule".  */
+   RULE_OBJ is "theRule".
+
+   If the result is non-null, write the json::string that was actually used
+   to OUT_JS_STR.  */
 
 const char *
 sarif_replayer::
 lookup_plain_text_within_result_message (const json::object *tool_component_obj,
 					 const json::object &message_obj,
-					 const json::object *rule_obj)
+					 const json::object *rule_obj,
+					 const json::string *&out_js_str)
 {
   // rule_obj can be NULL
 
@@ -1397,8 +1509,11 @@ lookup_plain_text_within_result_message (const json::object *tool_component_obj,
        Use the text or markdown property of theMessage as appropriate.  */
   if (const json::string *str
       = get_optional_property<json::string> (message_obj, PROP_message_text))
-    // TODO: check language
-    return str->get_string ();
+    {
+      // TODO: check language
+      out_js_str = str;
+      return str->get_string ();
+    }
 
   if (rule_obj)
     if (auto message_id_jstr
@@ -1411,7 +1526,7 @@ lookup_plain_text_within_result_message (const json::object *tool_component_obj,
 	    = get_optional_property<json::object> (*rule_obj,
 						   message_strings))
 	  if (json::value *mfms = message_strings_obj->get (message_id))
-	    return get_plain_text_from_mfms (*mfms, message_strings);
+	    return get_plain_text_from_mfms (*mfms, message_strings, out_js_str);
 
 	/* Look up by theMessage.id within theComponent.globalMessageStrings
 	   (§3.19.22).  */
@@ -1423,7 +1538,7 @@ lookup_plain_text_within_result_message (const json::object *tool_component_obj,
 		= get_optional_property<json::object> (*tool_component_obj,
 						       prop_gms))
 	      if (auto mfms = global_message_strings->get (message_id))
-		return get_plain_text_from_mfms (*mfms, prop_gms);
+		return get_plain_text_from_mfms (*mfms, prop_gms, out_js_str);
 	  }
       }
 
@@ -1438,6 +1553,7 @@ lookup_plain_text_within_result_message (const json::object *tool_component_obj,
 
 enum status
 sarif_replayer::handle_thread_flow_object (const json::object &thread_flow_obj,
+					   const json::object &run_obj,
 					   libgdiagnostics::execution_path &out)
 {
   const property_spec_ref locations ("threadFlow", "locations", "3.37.6");
@@ -1454,7 +1570,7 @@ sarif_replayer::handle_thread_flow_object (const json::object &thread_flow_obj,
 	= require_object_for_element (*location, locations);
       if (!tflow_loc_obj)
 	return status::err_invalid_sarif;
-      handle_thread_flow_location_object (*tflow_loc_obj, out);
+      handle_thread_flow_location_object (*tflow_loc_obj, run_obj, out);
     }
 
   return status::ok;
@@ -1466,6 +1582,7 @@ sarif_replayer::handle_thread_flow_object (const json::object &thread_flow_obj,
 enum status
 sarif_replayer::
 handle_thread_flow_location_object (const json::object &tflow_loc_obj,
+				    const json::object &run_obj,
 				    libgdiagnostics::execution_path &path)
 {
   libgdiagnostics::physical_location physical_loc;
@@ -1479,8 +1596,9 @@ handle_thread_flow_location_object (const json::object &tflow_loc_obj,
 							       location_prop))
     {
       /* location object (§3.28).  */
-      enum status s
-	= handle_location_object (*location_obj, physical_loc, logical_loc);
+      enum status s = handle_location_object (*location_obj, run_obj,
+					      physical_loc, logical_loc,
+					      nullptr);
       if (s != status::ok)
 	return s;
 
@@ -1552,8 +1670,10 @@ handle_thread_flow_location_object (const json::object &tflow_loc_obj,
 enum status
 sarif_replayer::
 handle_location_object (const json::object &location_obj,
+			const json::object &run_obj,
 			libgdiagnostics::physical_location &out_physical_loc,
-			libgdiagnostics::logical_location &out_logical_loc)
+			libgdiagnostics::logical_location &out_logical_loc,
+			std::vector<annotation> *out_annotations)
 {
   // §3.28.3 "physicalLocation" property
   {
@@ -1586,9 +1706,56 @@ handle_location_object (const json::object &location_obj,
 	  if (!logical_loc_obj)
 	    return status::err_invalid_sarif;
 	  enum status s = handle_logical_location_object (*logical_loc_obj,
+							  &run_obj,
 							  out_logical_loc);
 	  if (s != status::ok)
 	    return s;
+	}
+  }
+
+  // §3.28.6 "annotations" property
+  {
+    const property_spec_ref annotations_prop
+      ("location", "annotations", "3.28.6");
+    if (const json::array *annotations_arr
+	= get_optional_property<json::array> (location_obj,
+					      annotations_prop))
+      for (auto element : *annotations_arr)
+	{
+	  const json::object *annotation_obj
+	    = require_object_for_element (*element, annotations_prop);
+	  if (!annotation_obj)
+	    return status::err_invalid_sarif;
+	  libgdiagnostics::file file = out_physical_loc.get_file ();
+	  if (!file.m_inner)
+	    return report_invalid_sarif
+	      (*annotation_obj, annotations_prop,
+	       "cannot find artifact for %qs property",
+	       annotations_prop.get_property_name ());
+	  libgdiagnostics::physical_location phys_loc;
+	  enum status s = handle_region_object (*annotation_obj,
+						file,
+						phys_loc);
+	  if (s != status::ok)
+	    return s;
+
+	  label_text label;
+
+	  // §3.30.14 message property
+	  {
+	    const property_spec_ref message_prop
+	      ("region", "message", "3.30.14");
+
+	    if (const json::object *message_obj
+		  = get_optional_property<json::object> (*annotation_obj,
+							 message_prop))
+	      label = make_plain_text_within_result_message (nullptr,
+							     *message_obj,
+							     nullptr);
+	  }
+
+	  if (out_annotations)
+	    out_annotations->push_back ({phys_loc, std::move (label)});
 	}
   }
 
@@ -1727,7 +1894,7 @@ handle_region_object (const json::object &region_obj,
 	  /* SARIF's endColumn is 1 beyond the final column in the region,
 	     whereas GCC's end columns are inclusive.  */
 	  end = m_output_mgr.new_location_from_file_line_column
-	    (file, end_line, end_column_jnum->get ());
+	    (file, end_line, end_column_jnum->get () - 1);
 	}
       else
 	{
@@ -1743,6 +1910,10 @@ handle_region_object (const json::object &region_obj,
 }
 
 /* Handle a "logicalLocation" object (§3.33), using it to populate OUT.
+
+   If RUN_OBJ is non-null, and has "logicalLocations", then use it if we
+   see an "index" property.
+
    Known limitations:
    - doesn't yet handle "parentIndex" property (§3.33.8)
 */
@@ -1750,8 +1921,48 @@ handle_region_object (const json::object &region_obj,
 enum status
 sarif_replayer::
 handle_logical_location_object (const json::object &logical_loc_obj,
+				const json::object *run_obj,
 				libgdiagnostics::logical_location &out)
 {
+  if (run_obj)
+    {
+      const property_spec_ref name_prop ("logicalLocation", "index", "3.33.3");
+      if (auto index_js_int
+	    = get_optional_property<json::integer_number> (logical_loc_obj,
+							   name_prop))
+	{
+	  const long index = index_js_int->get ();
+	  /* If "index" is present, then there must be theRun.logicalLocations
+	     and it must have a cached object at that index.  */
+	  const property_spec_ref run_logical_locs_prop
+	    ("run", "logicalLocations", "3.14.17");
+	  if (auto logical_locs_arr
+		= get_required_property<json::array> (*run_obj,
+						      run_logical_locs_prop))
+	    {
+	      /* "index" must be in range */
+	      if (index < 0 || index >= (long)logical_locs_arr->length ())
+		return report_invalid_sarif (*index_js_int, name_prop,
+					     "index value %li is out of range"
+					     " for theRun.logicalLocations",
+					     index);
+
+	      json::value *element = logical_locs_arr->get (index);
+
+	      if (const json::object *obj
+		    = require_object (*element,run_logical_locs_prop))
+		{
+		  /* Use this "cached" object instead.
+		     Pass nullptr for the run object so that we
+		     don't recurse.  */
+		  return handle_logical_location_object (*obj, nullptr, out);
+		}
+	    }
+	}
+    }
+
+  // Otherwise use the properties from LOGICAL_LOC_OBJ.
+
   const property_spec_ref name_prop ("logicalLocation", "name", "3.33.4");
   const char *short_name = nullptr;
   if (auto name_jstr = get_optional_property<json::string> (logical_loc_obj,
@@ -1874,6 +2085,100 @@ lookup_rule_by_id_in_component (const char *rule_id,
 
   /* Not found.  */
   return nullptr;
+}
+
+// "fix" object (§3.55)
+
+enum status
+sarif_replayer::handle_fix_object (libgdiagnostics::diagnostic &diag,
+				   const json::object &fix_obj)
+{
+  const property_spec_ref changes ("fix", "artifactChanges", "3.55.3");
+  auto changes_arr = get_required_property<json::array> (fix_obj, changes);
+  if (!changes_arr)
+    return status::err_invalid_sarif;
+
+  for (auto element : *changes_arr)
+    {
+      const json::object *change_obj
+	= require_object_for_element (*element, changes);
+      if (!change_obj)
+	return status::err_invalid_sarif;
+      enum status s = handle_artifact_change_object (diag, *change_obj);
+      if (s != status::ok)
+	return s;
+    }
+  return status::ok;
+}
+
+// "artifactChange" object (§3.56)
+
+enum status
+sarif_replayer::
+handle_artifact_change_object (libgdiagnostics::diagnostic &diag,
+			       const json::object &change_obj)
+{
+  const property_spec_ref location
+    ("artifactChange", "artifactLocation", "3.56.2");
+  auto artifact_loc_obj
+    = get_required_property<json::object> (change_obj, location);
+  if (!artifact_loc_obj)
+    return status::err_invalid_sarif;
+
+  libgdiagnostics::file file;
+  enum status s = handle_artifact_location_object (*artifact_loc_obj, file);
+  if (s != status::ok)
+    return s;
+
+  const property_spec_ref replacements
+    ("artifactChange", "replacements", "3.56.3");
+  auto replacements_arr
+    = get_required_property<json::array> (change_obj, replacements);
+  if (!replacements_arr)
+    return status::err_invalid_sarif;
+  for (auto element : *replacements_arr)
+    {
+      // 3.57 replacement object
+      const json::object *replacement_obj
+	= require_object_for_element (*element, replacements);
+      if (!replacement_obj)
+	return status::err_invalid_sarif;
+
+      // 3.57.3 deletedRegion property
+      const property_spec_ref deleted_region
+	("replacement", "deletedRegion", "3.57.3");
+      auto deleted_region_obj
+	= get_required_property<json::object> (*replacement_obj,
+					       deleted_region);
+      if (!deleted_region_obj)
+	return status::err_invalid_sarif;
+
+      libgdiagnostics::physical_location phys_loc;
+      enum status s = handle_region_object (*deleted_region_obj,
+					    file,
+					    phys_loc);
+      if (s != status::ok)
+	return s;
+
+      // 3.57.4 insertedContent property
+      const property_spec_ref inserted_content
+	("replacement", "insertedContent", "3.57.4");
+      const char *inserted_text = "";
+      if (auto inserted_content_obj
+	    = get_optional_property<json::object> (*replacement_obj,
+						   inserted_content))
+	{
+	  const property_spec_ref prop_text
+	    ("artifactContent", "text", "3.3.2");
+	  if (auto text_jstr
+	      = get_optional_property<json::string> (*inserted_content_obj,
+						     prop_text))
+	    inserted_text = text_jstr->get_string ();
+	}
+
+      diag.add_fix_it_hint_replace (phys_loc, inserted_text);
+    }
+  return status::ok;
 }
 
 } // anonymous namespace

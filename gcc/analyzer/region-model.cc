@@ -753,6 +753,19 @@ public:
     return true;
   }
 
+  void
+  maybe_add_sarif_properties (sarif_object &result_obj) const final override
+  {
+    sarif_property_bag &props = result_obj.get_or_create_properties ();
+#define PROPERTY_PREFIX "gcc/analyzer/poisoned_value_diagnostic/"
+    props.set (PROPERTY_PREFIX "expr", tree_to_json (m_expr));
+    props.set_string (PROPERTY_PREFIX "kind", poison_kind_to_str (m_pkind));
+    if (m_src_region)
+      props.set (PROPERTY_PREFIX "src_region", m_src_region->to_json ());
+    props.set (PROPERTY_PREFIX "check_expr", tree_to_json (m_check_expr));
+#undef PROPERTY_PREFIX
+  }
+
 private:
   tree m_expr;
   enum poison_kind m_pkind;
@@ -2788,6 +2801,7 @@ region_model::get_rvalue_1 (path_var pv, region_model_context *ctxt) const
     case COMPLEX_CST:
     case VECTOR_CST:
     case STRING_CST:
+    case RAW_DATA_CST:
       return m_mgr->get_or_create_constant_svalue (pv.m_tree);
 
     case POINTER_PLUS_EXPR:

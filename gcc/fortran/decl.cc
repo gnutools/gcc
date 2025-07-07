@@ -1889,12 +1889,20 @@ gfc_set_constant_character_len (gfc_charlen_t len, gfc_expr *expr,
 
       /* Apply the standard by 'hand' otherwise it gets cleared for
 	 initializers.  */
-      if (check_len != -1 && slen != check_len
-          && !(gfc_option.allow_std & GFC_STD_GNU))
-	gfc_error_now ("The CHARACTER elements of the array constructor "
-		       "at %L must have the same length (%ld/%ld)",
-		       &expr->where, (long) slen,
-		       (long) check_len);
+      if (check_len != -1 && slen != check_len)
+	{
+	  if (!(gfc_option.allow_std & GFC_STD_GNU))
+	    gfc_error_now ("The CHARACTER elements of the array constructor "
+			   "at %L must have the same length (%ld/%ld)",
+			   &expr->where, (long) slen,
+			   (long) check_len);
+	  else
+	    gfc_notify_std (GFC_STD_LEGACY,
+			    "The CHARACTER elements of the array constructor "
+			    "at %L must have the same length (%ld/%ld)",
+			    &expr->where, (long) slen,
+			    (long) check_len);
+	}
 
       s[len] = '\0';
       free (expr->value.character.string);
@@ -8457,11 +8465,34 @@ gfc_match_end (gfc_statement *st)
 
     case COMP_CONTAINS:
     case COMP_DERIVED_CONTAINS:
+    case COMP_OMP_BEGIN_METADIRECTIVE:
       state = gfc_state_stack->previous->state;
       block_name = gfc_state_stack->previous->sym == NULL
 		 ? NULL : gfc_state_stack->previous->sym->name;
       abbreviated_modproc_decl = gfc_state_stack->previous->sym
 		&& gfc_state_stack->previous->sym->abr_modproc_decl;
+      break;
+
+    case COMP_OMP_METADIRECTIVE:
+      {
+	/* Metadirectives can be nested, so we need to drill down to the
+	   first state that is not COMP_OMP_METADIRECTIVE.  */
+	gfc_state_data *state_data = gfc_state_stack;
+
+	do
+	  {
+	    state_data = state_data->previous;
+	    state = state_data->state;
+	    block_name = (state_data->sym == NULL
+			  ? NULL : state_data->sym->name);
+	    abbreviated_modproc_decl = (state_data->sym
+					&& state_data->sym->abr_modproc_decl);
+	  }
+	while (state == COMP_OMP_METADIRECTIVE);
+
+	if (block_name && startswith (block_name, "block@"))
+	  block_name = NULL;
+      }
       break;
 
     default:
@@ -8607,6 +8638,12 @@ gfc_match_end (gfc_statement *st)
       last_initializer = NULL;
       set_enum_kind ();
       gfc_free_enum_history ();
+      break;
+
+    case COMP_OMP_BEGIN_METADIRECTIVE:
+      *st = ST_OMP_END_METADIRECTIVE;
+      target = " metadirective";
+      eos_ok = 0;
       break;
 
     default:
@@ -9757,6 +9794,15 @@ gfc_match_save (void)
 	return MATCH_ERROR;
       if (m == MATCH_NO)
 	goto syntax;
+
+      /* F2023:C1108: A SAVE statement in a BLOCK construct shall contain a
+	 saved-entity-list that does not specify a common-block-name.  */
+      if (gfc_current_state () == COMP_BLOCK)
+	{
+	  gfc_error ("SAVE of COMMON block %qs at %C is not allowed "
+		     "in a BLOCK construct", n);
+	  return MATCH_ERROR;
+	}
 
       c = gfc_get_common (n, 0);
       c->saved = 1;

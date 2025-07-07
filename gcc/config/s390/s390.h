@@ -45,12 +45,12 @@ enum processor_flags
   PF_NNPA = 32768,
   PF_Z16 = 65536,
   PF_VXE3 = 131072,
-  PF_ARCH15 = 262144
+  PF_Z17 = 262144
 };
 
 /* This is necessary to avoid a warning about comparing different enum
    types.  */
-#define s390_tune_attr ((enum attr_cpu)(s390_tune > PROCESSOR_3931_Z16 ? PROCESSOR_3931_Z16 : s390_tune ))
+#define s390_tune_attr ((enum attr_cpu)(s390_tune > PROCESSOR_9175_Z17 ? PROCESSOR_9175_Z17 : s390_tune ))
 
 /* These flags indicate that the generated code should run on a cpu
    providing the respective hardware facility regardless of the
@@ -124,10 +124,10 @@ enum processor_flags
 	(s390_arch_flags & PF_VXE3)
 #define TARGET_CPU_VXE3_P(opts) \
 	(opts->x_s390_arch_flags & PF_VXE3)
-#define TARGET_CPU_ARCH15 \
-	(s390_arch_flags & PF_ARCH15)
-#define TARGET_CPU_ARCH15_P(opts) \
-	(opts->x_s390_arch_flags & PF_ARCH15)
+#define TARGET_CPU_Z17 \
+	(s390_arch_flags & PF_Z17)
+#define TARGET_CPU_Z17_P(opts) \
+	(opts->x_s390_arch_flags & PF_Z17)
 
 #define TARGET_HARD_FLOAT_P(opts) (!TARGET_SOFT_FLOAT_P(opts))
 
@@ -198,9 +198,9 @@ enum processor_flags
 	(TARGET_VX && TARGET_CPU_VXE3)
 #define TARGET_VXE3_P(opts)						\
 	(TARGET_VX_P (opts) && TARGET_CPU_VXE3_P (opts))
-#define TARGET_ARCH15 (TARGET_ZARCH && TARGET_CPU_ARCH15)
-#define TARGET_ARCH15_P(opts)						\
-	(TARGET_ZARCH_P (opts->x_target_flags) && TARGET_CPU_ARCH15_P (opts))
+#define TARGET_Z17 (TARGET_ZARCH && TARGET_CPU_Z17)
+#define TARGET_Z17_P(opts)						\
+	(TARGET_ZARCH_P (opts->x_target_flags) && TARGET_CPU_Z17_P (opts))
 
 #if defined(HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS_ON_Z13)
 #define TARGET_VECTOR_LOADSTORE_ALIGNMENT_HINTS TARGET_Z13
@@ -304,37 +304,6 @@ extern const char *s390_host_detect_local_cpu (int argc, const char **argv);
   "%{!m31:%{!m64:-m" S390_TARGET_BITS_STRING "}}",		\
   "%{!mesa:%{!mzarch:%{m31:-mesa}%{m64:-mzarch}}}",		\
   "%{!march=*:-march=z900}"
-
-/* Constants needed to control the TEST DATA CLASS (TDC) instruction.  */
-#define S390_TDC_POSITIVE_ZERO                     (1 << 11)
-#define S390_TDC_NEGATIVE_ZERO                     (1 << 10)
-#define S390_TDC_POSITIVE_NORMALIZED_BFP_NUMBER    (1 << 9)
-#define S390_TDC_NEGATIVE_NORMALIZED_BFP_NUMBER    (1 << 8)
-#define S390_TDC_POSITIVE_DENORMALIZED_BFP_NUMBER  (1 << 7)
-#define S390_TDC_NEGATIVE_DENORMALIZED_BFP_NUMBER  (1 << 6)
-#define S390_TDC_POSITIVE_INFINITY                 (1 << 5)
-#define S390_TDC_NEGATIVE_INFINITY                 (1 << 4)
-#define S390_TDC_POSITIVE_QUIET_NAN                (1 << 3)
-#define S390_TDC_NEGATIVE_QUIET_NAN                (1 << 2)
-#define S390_TDC_POSITIVE_SIGNALING_NAN            (1 << 1)
-#define S390_TDC_NEGATIVE_SIGNALING_NAN            (1 << 0)
-
-/* The following values are different for DFP.  */
-#define S390_TDC_POSITIVE_DENORMALIZED_DFP_NUMBER (1 << 9)
-#define S390_TDC_NEGATIVE_DENORMALIZED_DFP_NUMBER (1 << 8)
-#define S390_TDC_POSITIVE_NORMALIZED_DFP_NUMBER   (1 << 7)
-#define S390_TDC_NEGATIVE_NORMALIZED_DFP_NUMBER   (1 << 6)
-
-/* For signbit, the BFP-DFP-difference makes no difference. */
-#define S390_TDC_SIGNBIT_SET (S390_TDC_NEGATIVE_ZERO \
-			  | S390_TDC_NEGATIVE_NORMALIZED_BFP_NUMBER \
-			  | S390_TDC_NEGATIVE_DENORMALIZED_BFP_NUMBER\
-			  | S390_TDC_NEGATIVE_INFINITY \
-			  | S390_TDC_NEGATIVE_QUIET_NAN \
-			  | S390_TDC_NEGATIVE_SIGNALING_NAN )
-
-#define S390_TDC_INFINITY (S390_TDC_POSITIVE_INFINITY \
-			  | S390_TDC_NEGATIVE_INFINITY )
 
 /* Target machine storage layout.  */
 

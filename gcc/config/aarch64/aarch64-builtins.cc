@@ -43,6 +43,7 @@
 #include "langhooks.h"
 #include "gimple-iterator.h"
 #include "case-cfn-macros.h"
+#include "regs.h"
 #include "emit-rtl.h"
 #include "stringpool.h"
 #include "attribs.h"
@@ -1877,23 +1878,42 @@ aarch64_scalar_builtin_type_p (aarch64_simd_type t)
   return (t == Poly8_t || t == Poly16_t || t == Poly64_t || t == Poly128_t);
 }
 
-/* Enable AARCH64_FL_* flags EXTRA_FLAGS on top of the base Advanced SIMD
-   set.  */
-aarch64_simd_switcher::aarch64_simd_switcher (aarch64_feature_flags extra_flags)
+/* Temporarily set FLAGS as the enabled target features.  */
+aarch64_target_switcher::aarch64_target_switcher (aarch64_feature_flags flags)
   : m_old_asm_isa_flags (aarch64_asm_isa_flags),
-    m_old_general_regs_only (TARGET_GENERAL_REGS_ONLY)
+    m_old_general_regs_only (TARGET_GENERAL_REGS_ONLY),
+    m_old_target_pragma (current_target_pragma)
 {
-  /* Changing the ISA flags should be enough here.  We shouldn't need to
-     pay the compile-time cost of a full target switch.  */
-  global_options.x_target_flags &= ~MASK_GENERAL_REGS_ONLY;
-  aarch64_set_asm_isa_flags (AARCH64_FL_FP | AARCH64_FL_SIMD | extra_flags);
+  /* Include all dependencies.  */
+  flags = aarch64_get_required_features (flags);
+
+  /* Changing the ISA flags and have_regs_of_mode should be enough here.  We
+     shouldn't need to pay the compile-time cost of a full target switch.  */
+  if (flags & AARCH64_FL_FP)
+    global_options.x_target_flags &= ~MASK_GENERAL_REGS_ONLY;
+  aarch64_set_asm_isa_flags (flags);
+
+  /* Target pragmas are irrelevant when defining intrinsics artificially.  */
+  current_target_pragma = NULL_TREE;
+
+  /* Ensure SVE regs are available if SVE or SME is enabled.  */
+  memcpy (m_old_have_regs_of_mode, have_regs_of_mode, sizeof
+	  (have_regs_of_mode));
+  if (flags & (AARCH64_FL_SVE | AARCH64_FL_SME))
+    for (int i = 0; i < NUM_MACHINE_MODES; ++i)
+      if (aarch64_sve_mode_p ((machine_mode) i))
+	have_regs_of_mode[i] = true;
 }
 
-aarch64_simd_switcher::~aarch64_simd_switcher ()
+aarch64_target_switcher::~aarch64_target_switcher ()
 {
   if (m_old_general_regs_only)
     global_options.x_target_flags |= MASK_GENERAL_REGS_ONLY;
   aarch64_set_asm_isa_flags (m_old_asm_isa_flags);
+  current_target_pragma = m_old_target_pragma;
+
+  memcpy (have_regs_of_mode, m_old_have_regs_of_mode,
+	  sizeof (have_regs_of_mode));
 }
 
 /* Implement #pragma GCC aarch64 "arm_neon.h".
@@ -1903,7 +1923,7 @@ aarch64_simd_switcher::~aarch64_simd_switcher ()
 void
 handle_arm_neon_h (void)
 {
-  aarch64_simd_switcher simd;
+  aarch64_target_switcher switcher (AARCH64_FL_SIMD);
 
   /* Register the AdvSIMD vector tuple types.  */
   for (unsigned int i = 0; i < ARM_NEON_H_TYPES_LAST; i++)
@@ -2353,6 +2373,8 @@ aarch64_init_data_intrinsics (void)
 void
 handle_arm_acle_h (void)
 {
+  aarch64_target_switcher switcher;
+
   aarch64_init_ls64_builtins ();
   aarch64_init_tme_builtins ();
   aarch64_init_memtag_builtins ();
@@ -2446,7 +2468,7 @@ aarch64_general_init_builtins (void)
   aarch64_init_bf16_types ();
 
   {
-    aarch64_simd_switcher simd;
+    aarch64_target_switcher switcher (AARCH64_FL_SIMD);
     aarch64_init_simd_builtins ();
   }
 
@@ -4722,6 +4744,30 @@ aarch64_fold_combine (gcall *stmt)
   return gimple_build_assign (gimple_call_lhs (stmt), ctor);
 }
 
+/* Fold a call to vaeseq_u8 and vaesdq_u8.
+   That is `vaeseq_u8 (x ^ y, 0)` gets folded
+   into `vaeseq_u8 (x, y)`.*/
+static gimple *
+aarch64_fold_aes_op (gcall *stmt)
+{
+  tree arg0 = gimple_call_arg (stmt, 0);
+  tree arg1 = gimple_call_arg (stmt, 1);
+  if (integer_zerop (arg0))
+    arg0 = arg1;
+  else if (!integer_zerop (arg1))
+    return nullptr;
+  if (TREE_CODE (arg0) != SSA_NAME)
+    return nullptr;
+  if (!has_single_use (arg0))
+    return nullptr;
+  auto *s = dyn_cast<gassign *> (SSA_NAME_DEF_STMT (arg0));
+  if (!s || gimple_assign_rhs_code (s) != BIT_XOR_EXPR)
+    return nullptr;
+  gimple_call_set_arg (stmt, 0, gimple_assign_rhs1 (s));
+  gimple_call_set_arg (stmt, 1, gimple_assign_rhs2 (s));
+  return stmt;
+}
+
 /* Fold a call to vld1, given that it loads something of type TYPE.  */
 static gimple *
 aarch64_fold_load (gcall *stmt, tree type)
@@ -4981,6 +5027,11 @@ aarch64_general_gimple_fold_builtin (unsigned int fcode, gcall *stmt,
 	new_stmt = gimple_build_call_internal (IFN_REDUC_PLUS,
 					       1, args[0]);
 	gimple_call_set_lhs (new_stmt, gimple_call_lhs (stmt));
+	break;
+
+      VAR1 (BINOPU, crypto_aese, 0, DEFAULT, v16qi)
+      VAR1 (BINOPU, crypto_aesd, 0, DEFAULT, v16qi)
+	new_stmt = aarch64_fold_aes_op (stmt);
 	break;
 
       /* Lower sqrt builtins to gimple/internal function sqrt. */

@@ -1762,8 +1762,7 @@
 	      && aarch64_float_const_zero_rtx_p (operands[1])))
       operands[1] = force_reg (<MODE>mode, operands[1]);
 
-    if (!DECIMAL_FLOAT_MODE_P (<MODE>mode)
-	&& GET_CODE (operands[1]) == CONST_DOUBLE
+    if (GET_CODE (operands[1]) == CONST_DOUBLE
 	&& can_create_pseudo_p ()
 	&& !aarch64_can_const_movi_rtx_p (operands[1], <MODE>mode)
 	&& !aarch64_float_const_representable_p (operands[1])
@@ -6194,10 +6193,11 @@
 
 (define_insn "*extr<mode>5_insn"
   [(set (match_operand:GPI 0 "register_operand" "=r")
-	(ior:GPI (ashift:GPI (match_operand:GPI 1 "register_operand" "r")
-			     (match_operand 3 "const_int_operand" "n"))
-		 (lshiftrt:GPI (match_operand:GPI 2 "register_operand" "r")
-			       (match_operand 4 "const_int_operand" "n"))))]
+	(any_or_plus:GPI
+	  (ashift:GPI (match_operand:GPI 1 "register_operand" "r")
+		      (match_operand 3 "const_int_operand" "n"))
+	  (lshiftrt:GPI (match_operand:GPI 2 "register_operand" "r")
+		      (match_operand 4 "const_int_operand" "n"))))]
   "UINTVAL (operands[3]) < GET_MODE_BITSIZE (<MODE>mode) &&
    (UINTVAL (operands[3]) + UINTVAL (operands[4]) == GET_MODE_BITSIZE (<MODE>mode))"
   "extr\\t%<w>0, %<w>1, %<w>2, %4"
@@ -6208,10 +6208,11 @@
 ;; so we have to match both orderings.
 (define_insn "*extr<mode>5_insn_alt"
   [(set (match_operand:GPI 0 "register_operand" "=r")
-	(ior:GPI  (lshiftrt:GPI (match_operand:GPI 2 "register_operand" "r")
-			        (match_operand 4 "const_int_operand" "n"))
-		  (ashift:GPI (match_operand:GPI 1 "register_operand" "r")
-			      (match_operand 3 "const_int_operand" "n"))))]
+	(any_or_plus:GPI
+	  (lshiftrt:GPI (match_operand:GPI 2 "register_operand" "r")
+		        (match_operand 4 "const_int_operand" "n"))
+	  (ashift:GPI (match_operand:GPI 1 "register_operand" "r")
+		      (match_operand 3 "const_int_operand" "n"))))]
   "UINTVAL (operands[3]) < GET_MODE_BITSIZE (<MODE>mode)
    && (UINTVAL (operands[3]) + UINTVAL (operands[4])
        == GET_MODE_BITSIZE (<MODE>mode))"
@@ -6223,10 +6224,11 @@
 (define_insn "*extrsi5_insn_uxtw"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(zero_extend:DI
-	 (ior:SI (ashift:SI (match_operand:SI 1 "register_operand" "r")
-			    (match_operand 3 "const_int_operand" "n"))
-		 (lshiftrt:SI (match_operand:SI 2 "register_operand" "r")
-			      (match_operand 4 "const_int_operand" "n")))))]
+	 (any_or_plus:SI
+	   (ashift:SI (match_operand:SI 1 "register_operand" "r")
+		      (match_operand 3 "const_int_operand" "n"))
+	   (lshiftrt:SI (match_operand:SI 2 "register_operand" "r")
+		      (match_operand 4 "const_int_operand" "n")))))]
   "UINTVAL (operands[3]) < 32 &&
    (UINTVAL (operands[3]) + UINTVAL (operands[4]) == 32)"
   "extr\\t%w0, %w1, %w2, %4"
@@ -6236,10 +6238,11 @@
 (define_insn "*extrsi5_insn_uxtw_alt"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(zero_extend:DI
-	 (ior:SI (lshiftrt:SI (match_operand:SI 2 "register_operand" "r")
-			       (match_operand 4 "const_int_operand" "n"))
-		 (ashift:SI (match_operand:SI 1 "register_operand" "r")
-			    (match_operand 3 "const_int_operand" "n")))))]
+	 (any_or_plus:SI
+	   (lshiftrt:SI (match_operand:SI 2 "register_operand" "r")
+			(match_operand 4 "const_int_operand" "n"))
+	   (ashift:SI (match_operand:SI 1 "register_operand" "r")
+		      (match_operand 3 "const_int_operand" "n")))))]
   "UINTVAL (operands[3]) < 32 &&
    (UINTVAL (operands[3]) + UINTVAL (operands[4]) == 32)"
   "extr\\t%w0, %w1, %w2, %4"
@@ -6248,13 +6251,13 @@
 
 (define_insn "*extrsi5_insn_di"
   [(set (match_operand:SI 0 "register_operand" "=r")
-	(ior:SI (ashift:SI (match_operand:SI 1 "register_operand" "r")
-			   (match_operand 3 "const_int_operand" "n"))
-		(match_operator:SI 6 "subreg_lowpart_operator"
-		  [(zero_extract:DI
-		     (match_operand:DI 2 "register_operand" "r")
-		     (match_operand 5 "const_int_operand" "n")
-		     (match_operand 4 "const_int_operand" "n"))])))]
+	(any_or_plus:SI (ashift:SI (match_operand:SI 1 "register_operand" "r")
+				    (match_operand 3 "const_int_operand" "n"))
+			 (match_operator:SI 6 "subreg_lowpart_operator"
+			  [(zero_extract:DI
+			     (match_operand:DI 2 "register_operand" "r")
+			     (match_operand 5 "const_int_operand" "n")
+			     (match_operand 4 "const_int_operand" "n"))])))]
   "UINTVAL (operands[3]) < 32
    && UINTVAL (operands[3]) + UINTVAL (operands[4]) == 32
    && INTVAL (operands[3]) == INTVAL (operands[5])"
@@ -6431,8 +6434,8 @@
 			  (match_dup 1))
 	(match_dup 2))]
   {
-    operands[2] = lowpart_subreg (<GPI:MODE>mode, operands[2],
-				  <ALLX:MODE>mode);
+    operands[2] = force_lowpart_subreg (<GPI:MODE>mode, operands[2],
+					<ALLX:MODE>mode);
   }
   [(set_attr "type" "bfm,neon_ins_q,neon_ins_q")
    (set_attr "arch" "*,simd,simd")]
@@ -7476,7 +7479,7 @@
     {
       emit_insn (gen_ior<vq_int_equiv>3 (
 	lowpart_subreg (<VQ_INT_EQUIV>mode, operands[0], <MODE>mode),
-	lowpart_subreg (<VQ_INT_EQUIV>mode, operands[1], <MODE>mode),
+	force_lowpart_subreg (<VQ_INT_EQUIV>mode, operands[1], <MODE>mode),
 	v_bitmask));
       DONE;
     }

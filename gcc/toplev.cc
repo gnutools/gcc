@@ -1099,7 +1099,7 @@ general_init (const char *argv0, bool init_signals, unique_argv original_argv)
 							lang_mask,
 							&global_options),
      lang_mask);
-  global_dc->set_urlifier (make_gcc_urlifier (lang_mask));
+  global_dc->push_owned_urlifier (make_gcc_urlifier (lang_mask));
 
   if (init_signals)
     {
@@ -2332,6 +2332,9 @@ toplev::main (int argc, char **argv)
 		  save_decoded_options, save_decoded_options_count,
 		  UNKNOWN_LOCATION, global_dc,
 		  targetm.target_option.override);
+
+  global_dc->get_file_cache ().tune (param_file_cache_files,
+				     param_file_cache_lines);
 
   handle_common_deferred_options ();
 

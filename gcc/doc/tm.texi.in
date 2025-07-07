@@ -4582,6 +4582,10 @@ These macros are obsolete, new ports should use the target hook
 
 @hook TARGET_MEMORY_MOVE_COST
 
+@hook TARGET_CALLEE_SAVE_COST
+
+@hook TARGET_FRAME_ALLOCATION_COST
+
 @defmac BRANCH_COST (@var{speed_p}, @var{predictable_p})
 A C expression for the cost of a branch instruction.  A value of 1 is
 the default; other values are interpreted relative to that. Parameter

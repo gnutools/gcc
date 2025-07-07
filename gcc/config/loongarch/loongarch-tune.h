@@ -38,6 +38,7 @@ struct loongarch_rtx_cost_data
   unsigned short movcf2gr;
   unsigned short movgr2cf;
   unsigned short branch_cost;
+  unsigned short addr_reg_reg_cost;
   unsigned short memory_latency;
 
   /* Default RTX cost initializer, implemented in loongarch-def.cc.  */
@@ -115,6 +116,12 @@ struct loongarch_rtx_cost_data
     return *this;
   }
 
+  loongarch_rtx_cost_data addr_reg_reg_cost_ (unsigned short _addr_reg_reg_cost)
+  {
+    addr_reg_reg_cost = _addr_reg_reg_cost;
+    return *this;
+  }
+
   loongarch_rtx_cost_data memory_latency_ (unsigned short _memory_latency)
   {
     memory_latency = _memory_latency;
@@ -170,8 +177,9 @@ struct loongarch_align {
   const char *function;	/* default value for -falign-functions */
   const char *loop;	/* default value for -falign-loops */
   const char *jump;	/* default value for -falign-jumps */
+  const char *label;	/* default value for -falign-labels */
 
-  loongarch_align () : function (nullptr), loop (nullptr), jump (nullptr) {}
+  loongarch_align () : function (nullptr), loop (nullptr), jump (nullptr), label (nullptr) {}
 
   loongarch_align function_ (const char *_function)
   {
@@ -188,6 +196,12 @@ struct loongarch_align {
   loongarch_align jump_ (const char *_jump)
   {
     jump = _jump;
+    return *this;
+  }
+
+  loongarch_align label_ (const char *_label)
+  {
+    label = _label;
     return *this;
   }
 };

@@ -21,6 +21,7 @@
 
 #include "rust-ast-full.h"
 #include "rust-default-resolver.h"
+#include "rust-expr.h"
 
 namespace Rust {
 namespace Resolver2_0 {
@@ -41,17 +42,33 @@ public:
   // TODO: Do we need this?
   // void visit (AST::Method &) override;
   void visit (AST::IdentifierPattern &) override;
+  void visit (AST::SelfParam &) override;
 
   // resolutions
   void visit (AST::IdentifierExpr &) override;
+  void visit (AST::StructExprFieldIdentifier &) override;
+  void visit (AST::BreakExpr &) override;
+  void visit (AST::ContinueExpr &) override;
+  void visit (AST::LoopLabel &) override;
   void visit (AST::PathInExpression &) override;
   void visit (AST::TypePath &) override;
+  void visit (AST::Trait &) override;
+  void visit (AST::StructExprStruct &) override;
   void visit (AST::StructExprStructBase &) override;
   void visit (AST::StructExprStructFields &) override;
+  void visit (AST::StructStruct &) override;
+  void visit (AST::GenericArgs &) override;
+  void visit (AST::GenericArg &);
+  void visit (AST::ClosureExprInner &) override;
+  void visit (AST::ClosureExprInnerTyped &) override;
 
 private:
+  void resolve_label (AST::Lifetime &lifetime);
+
   /* Setup Rust's builtin types (u8, i32, !...) in the resolver */
   void setup_builtin_types ();
+
+  bool funny_error;
 };
 
 // TODO: Add missing mappings and data structures

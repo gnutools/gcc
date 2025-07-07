@@ -1014,6 +1014,15 @@
   [(set_attr "type" "sopp")
    (set_attr "length" "4")])
 
+(define_expand "exception_receiver"
+  [(const_int 0)]
+  ""
+{
+  if (!fake_exceptions)
+    sorry ("exception handling not supported");
+  DONE;
+})
+
 ;; }}}
 ;; {{{ Conditionals
 

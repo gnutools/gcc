@@ -37,7 +37,7 @@ volatile __mmask16 m3;
 
 
 void extern
-avx512movrs_test (void)
+avx10_movrs_test (void)
 {
   x1 = _mm256_loadrs_epi8(px1);
   x1 = _mm256_mask_loadrs_epi8(x1, m1, px1);

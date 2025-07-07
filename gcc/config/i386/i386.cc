@@ -458,6 +458,9 @@ int ix86_arch_specified;
    indirect thunk pushes the return address onto stack, destroying
    red-zone.
 
+   NB: Don't use red-zone for functions with no_caller_saved_registers
+   and 32 GPRs since 128-byte red-zone is too small for 31 GPRs.
+
    TODO: If we can reserve the first 2 WORDs, for PUSH and, another
    for CALL, in red-zone, we can allow local indirect jumps with
    indirect thunk.  */
@@ -467,6 +470,9 @@ ix86_using_red_zone (void)
 {
   return (TARGET_RED_ZONE
 	  && !TARGET_64BIT_MS_ABI
+	  && (!TARGET_APX_EGPR
+	      || (cfun->machine->call_saved_registers
+		  != TYPE_NO_CALLER_SAVED_REGISTERS))
 	  && (!cfun->machine->has_local_indirect_jump
 	      || cfun->machine->indirect_branch_type == indirect_branch_keep));
 }
@@ -16668,7 +16674,7 @@ ix86_fp_compare_code_to_integer (enum rtx_code code)
       return NE;
     case EQ:
     case NE:
-      if (TARGET_AVX10_2_256)
+      if (TARGET_AVX10_2)
 	return code;
       /* FALLTHRU.  */
     default:
@@ -16724,7 +16730,7 @@ ix86_ifunc_ref_local_ok (void)
    This is currently used only with 64-bit or 32-bit GOT32X ELF targets
    to call the function marked "noplt" indirectly.  */
 
-static bool
+bool
 ix86_nopic_noplt_attribute_p (rtx call_op)
 {
   if (flag_pic || ix86_cmodel == CM_LARGE
@@ -20600,6 +20606,28 @@ ix86_class_likely_spilled_p (reg_class_t rclass)
   return false;
 }
 
+/* Implement TARGET_CALLEE_SAVE_COST.  */
+
+static int
+ix86_callee_save_cost (spill_cost_type, unsigned int hard_regno, machine_mode,
+		       unsigned int, int mem_cost, const HARD_REG_SET &, bool)
+{
+  /* Account for the fact that push and pop are shorter and do their
+     own allocation and deallocation.  */
+  if (GENERAL_REGNO_P (hard_regno))
+    {
+      /* push is 1 byte while typical spill is 4-5 bytes.
+	 ??? We probably should adjust size costs accordingly.
+	 Costs are relative to reg-reg move that has 2 bytes for 32bit
+	 and 3 bytes otherwise.	 Be sure that no cost table sets cost
+	 to 2, so we end up with 0.  */
+      if (mem_cost <= 2 || optimize_function_for_size_p (cfun))
+	return 1;
+      return mem_cost - 2;
+    }
+  return mem_cost;
+}
+
 /* Return true if a set of DST by the expression SRC should be allowed.
    This prevents complex sets of likely_spilled hard regs before split1.  */
 
@@ -21861,7 +21889,11 @@ ix86_rtx_costs (rtx x, machine_mode mode, int outer_code_i, int opno,
     case SYMBOL_REF:
       if (x86_64_immediate_operand (x, VOIDmode))
 	*total = 0;
-     else
+      else if (TARGET_64BIT && x86_64_zext_immediate_operand (x, VOIDmode))
+	/* Consider the zext constants slightly more expensive, as they
+	   can't appear in most instructions.  */
+	*total = 1;
+      else
 	/* movabsq is slightly more expensive than a simple instruction. */
 	*total = COSTS_N_INSNS (1) + 1;
       return true;
@@ -23132,6 +23164,12 @@ x86_print_call_or_nop (FILE *file, const char *target)
   if (flag_nop_mcount || !strcmp (target, "nop"))
     /* 5 byte nop: nopl 0(%[re]ax,%[re]ax,1) */
     fprintf (file, "1:" ASM_BYTE "0x0f, 0x1f, 0x44, 0x00, 0x00\n");
+  else if (!TARGET_PECOFF && flag_pic)
+    {
+      gcc_assert (flag_plt);
+
+      fprintf (file, "1:\tcall\t%s@PLT\n", target);
+    }
   else
     fprintf (file, "1:\tcall\t%s\n", target);
 }
@@ -23295,7 +23333,7 @@ x86_function_profiler (FILE *file, int labelno ATTRIBUTE_UNUSED)
 	      break;
 	    case CM_SMALL_PIC:
 	    case CM_MEDIUM_PIC:
-	      if (!ix86_direct_extern_access)
+	      if (!flag_plt)
 		{
 		  if (ASSEMBLER_DIALECT == ASM_INTEL)
 		    fprintf (file, "1:\tcall\t[QWORD PTR %s@GOTPCREL[rip]]\n",
@@ -23326,7 +23364,9 @@ x86_function_profiler (FILE *file, int labelno ATTRIBUTE_UNUSED)
 		 "\tleal\t%sP%d@GOTOFF(%%ebx), %%" PROFILE_COUNT_REGISTER "\n",
 		 LPREFIX, labelno);
 #endif
-      if (ASSEMBLER_DIALECT == ASM_INTEL)
+      if (flag_plt)
+	x86_print_call_or_nop (file, mcount_name);
+      else if (ASSEMBLER_DIALECT == ASM_INTEL)
 	fprintf (file, "1:\tcall\t[DWORD PTR %s@GOT[ebx]]\n", mcount_name);
       else
 	fprintf (file, "1:\tcall\t*%s@GOT(%%ebx)\n", mcount_name);
@@ -25033,7 +25073,7 @@ ix86_get_mask_mode (machine_mode data_mode)
 	 to kmask for _Float16.  */
       || (TARGET_AVX512VL && TARGET_AVX512FP16
 	  && GET_MODE_INNER (data_mode) == E_HFmode)
-      || (TARGET_AVX10_2_256 && GET_MODE_INNER (data_mode) == E_BFmode))
+      || (TARGET_AVX10_2 && GET_MODE_INNER (data_mode) == E_BFmode))
     {
       if (elem_size == 4
 	  || elem_size == 8
@@ -26443,8 +26483,7 @@ ix86_redzone_clobber ()
   cfun->machine->asm_redzone_clobber_seen = true;
   if (ix86_using_red_zone ())
     {
-      rtx base = plus_constant (Pmode, stack_pointer_rtx,
-				GEN_INT (-RED_ZONE_SIZE));
+      rtx base = plus_constant (Pmode, stack_pointer_rtx, -RED_ZONE_SIZE);
       rtx mem = gen_rtx_MEM (BLKmode, base);
       set_mem_size (mem, RED_ZONE_SIZE);
       return mem;
@@ -27076,8 +27115,16 @@ ix86_libgcc_floating_mode_supported_p
 #define TARGET_PREFERRED_RELOAD_CLASS ix86_preferred_reload_class
 #undef TARGET_PREFERRED_OUTPUT_RELOAD_CLASS
 #define TARGET_PREFERRED_OUTPUT_RELOAD_CLASS ix86_preferred_output_reload_class
+/* When this hook returns true for MODE, the compiler allows
+   registers explicitly used in the rtl to be used as spill registers
+   but prevents the compiler from extending the lifetime of these
+   registers.  */
+#undef TARGET_SMALL_REGISTER_CLASSES_FOR_MODE_P
+#define TARGET_SMALL_REGISTER_CLASSES_FOR_MODE_P hook_bool_mode_true
 #undef TARGET_CLASS_LIKELY_SPILLED_P
 #define TARGET_CLASS_LIKELY_SPILLED_P ix86_class_likely_spilled_p
+#undef TARGET_CALLEE_SAVE_COST
+#define TARGET_CALLEE_SAVE_COST ix86_callee_save_cost
 
 #undef TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST
 #define TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST \

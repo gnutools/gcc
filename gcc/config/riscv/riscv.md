@@ -99,6 +99,10 @@
   ;; CRC unspecs
   UNSPEC_CRC
   UNSPEC_CRC_REV
+
+  ;; Stack Smash Protector
+  UNSPEC_SSP_SET
+  UNSPEC_SSP_TEST
 ])
 
 (define_c_enum "unspecv" [
@@ -122,10 +126,6 @@
   UNSPECV_BLOCKAGE
   UNSPECV_FENCE
   UNSPECV_FENCE_I
-
-  ;; Stack Smash Protector
-  UNSPEC_SSP_SET
-  UNSPEC_SSP_TEST
 
   ;; CMO instructions.
   UNSPECV_CLEAN
@@ -2470,7 +2470,8 @@
         (match_operand:GPR 1 "splittable_const_int_operand" "i"))]
   "!ira_in_progress
    && !(p2m1_shift_operand (operands[1], <MODE>mode)
-        || high_mask_shift_operand (operands[1], <MODE>mode))"
+	|| high_mask_shift_operand (operands[1], <MODE>mode)
+	|| exact_log2 (INTVAL (operands[1])) >= 0)"
   "#"
   "&& 1"
   [(const_int 0)]
@@ -3197,7 +3198,7 @@
   "#"
   "&& reload_completed"
   [(set (match_dup 4) (ashiftrt:X (match_dup 1) (match_dup 7)))
-   (set (match_dup 4) (and:X (match_dup 4) (match_dup 8)))
+   (set (match_dup 4) (match_dup 10))
    (set (match_dup 5) (match_dup 9))
    (set (pc) (if_then_else (any_eq (match_dup 4) (match_dup 5))
 			   (label_ref (match_dup 0)) (pc)))]
@@ -3209,6 +3210,16 @@
   operands[7] = GEN_INT (trailing_shift);
   operands[8] = GEN_INT (mask1 >> trailing_shift);
   operands[9] = GEN_INT (mask2 >> trailing_shift);
+
+  /* This splits after reload, so there's little chance to clean things
+     up.  Rather than emit a ton of RTL here, we can just make a new
+     operand for that RHS and use it.  For the case where the AND would
+     have been redundant, we can make it a NOP move, which does get
+     cleaned up.  */
+  if (operands[8] == CONSTM1_RTX (word_mode))
+    operands[10] = operands[4];
+  else
+    operands[10] = gen_rtx_AND (word_mode, operands[4], operands[8]);
 }
 [(set_attr "type" "branch")])
 
@@ -3251,7 +3262,7 @@
   "!TARGET_XCVBI"
 {
   if (get_attr_length (insn) == 12)
-    return "b%n1\t%2,%z3,1f; jump\t%l0,ra; 1:";
+    return "b%r1\t%2,%z3,1f; jump\t%l0,ra; 1:";
 
   return "b%C1\t%2,%z3,%l0";
 }
@@ -4683,10 +4694,22 @@
   "(TARGET_64BIT && riscv_const_insns (operands[3], false) == 1)"
   "#"
   "&& reload_completed"
-  [(set (match_dup 0) (ashift:DI (match_dup 1) (match_dup 2)))
-   (set (match_dup 4) (match_dup 3))
-   (set (match_dup 0) (plus:DI (match_dup 0) (match_dup 4)))]
-  ""
+  [(const_int 0)]
+  "{
+     rtx x = gen_rtx_ASHIFT (DImode, operands[1], operands[2]);
+     emit_insn (gen_rtx_SET (operands[0], x));
+
+     /* If the constant fits in a simm12, use it directly as we do not
+	get another good chance to optimize things again.  */
+     if (!SMALL_OPERAND (INTVAL (operands[3])))
+       emit_move_insn (operands[4], operands[3]);
+     else
+       operands[4] = operands[3];
+
+     x = gen_rtx_PLUS (DImode, operands[0], operands[4]);
+     emit_insn (gen_rtx_SET (operands[0], x));
+     DONE;
+   }"
   [(set_attr "type" "arith")])
 
 (define_insn_and_split ""
@@ -4699,13 +4722,26 @@
   "(TARGET_64BIT && riscv_const_insns (operands[3], false) == 1)"
   "#"
   "&& reload_completed"
-  [(set (match_dup 0) (ashift:DI (match_dup 1) (match_dup 2)))
-   (set (match_dup 4) (match_dup 3))
-   (set (match_dup 0) (sign_extend:DI (plus:SI (match_dup 5) (match_dup 6))))]
+  [(const_int 0)]
   "{
      operands[1] = gen_lowpart (DImode, operands[1]);
      operands[5] = gen_lowpart (SImode, operands[0]);
      operands[6] = gen_lowpart (SImode, operands[4]);
+
+     rtx x = gen_rtx_ASHIFT (DImode, operands[1], operands[2]);
+     emit_insn (gen_rtx_SET (operands[0], x));
+
+     /* If the constant fits in a simm12, use it directly as we do not
+	get another good chance to optimize things again.  */
+     if (!SMALL_OPERAND (INTVAL (operands[3])))
+       emit_move_insn (operands[4], operands[3]);
+     else
+       operands[6] = operands[3];
+
+     x = gen_rtx_PLUS (SImode, operands[5], operands[6]);
+     x = gen_rtx_SIGN_EXTEND (DImode, x);
+     emit_insn (gen_rtx_SET (operands[0], x));
+     DONE;
    }"
   [(set_attr "type" "arith")])
 

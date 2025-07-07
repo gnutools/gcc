@@ -94,6 +94,9 @@ The @code{libffi} library, used as part of the Go runtime library.
 @item libgcc
 The GCC runtime library.
 
+@item libgcobol
+The COBOL runtime library.
+
 @item libgfortran
 The Fortran runtime library.
 
@@ -1128,6 +1131,11 @@ by the specified floating-point factor.
 @subsubsection Skip a test for some targets
 
 @table @code
+@item @{ dg-do-if @var{action} @{ @var{selector} @} @}
+Same as dg-do if the selector matches and the test hasn't already been
+marked as unsupported.  Use it to override an action on a target while
+leaving the default action alone for other targets.
+
 @item @{ dg-skip-if @var{comment} @{ @var{selector} @} [@{ @var{include-opts} @} [@{ @var{exclude-opts} @}]] @}
 Arguments @var{include-opts} and @var{exclude-opts} are lists in which
 each element is a string of zero or more GCC options.
@@ -1307,6 +1315,10 @@ Prune messages matching @var{regexp} from the test output.
 @item @{ dg-output @var{regexp} [@{ target/xfail @var{selector} @}] @}
 This DejaGnu directive compares @var{regexp} to the combined output
 that the test executable writes to @file{stdout} and @file{stderr}.
+
+@item @{ dg-output-file @var{file} [@{ target/xfail @var{selector} @}] @}
+Compares the content of @var{file} against the combined output that the
+test executable writes to @file{stdout} and @file{stderr}.
 @end table
 
 @subsubsection Specify environment variables for a test
@@ -2611,10 +2623,10 @@ Target supports compiling @code{avx} instructions.
 @item avx_runtime
 Target supports the execution of @code{avx} instructions.
 
-@item avx10.1
-Target supports the execution of @code{avx10.1} instructions.
-
 @item avx10.1-256
+Target supports the execution of @code{avx10.1-256} instructions.
+
+@item avx10.1
 Target supports the execution of @code{avx10.1} instructions.
 
 @item avx10.1-512
@@ -2622,12 +2634,6 @@ Target supports the execution of @code{avx10.1-512} instructions.
 
 @item avx10.2
 Target supports the execution of @code{avx10.2} instructions.
-
-@item avx10.2-256
-Target supports the execution of @code{avx10.2} instructions.
-
-@item avx10.2-512
-Target supports the execution of @code{avx10.2-512} instructions.
 
 @item avx2
 Target supports compiling @code{avx2} instructions.
@@ -2795,6 +2801,9 @@ Target supports the execution of @code{user_msr} instructions.
 
 @item vect_cmdline_needed
 Target requires a command line argument to enable a SIMD instruction set.
+
+@item x86
+Target is ia32 or x86_64.
 
 @item xorsign
 Target supports the xorsign optab expansion.
@@ -2996,11 +3005,12 @@ Target uses @code{__cxa_atexit}.
 Target has packed layout of structure members by default.
 
 @item exceptions
-Target supports exceptions.
+Target supports exception handling.
+Note that this is orthogonal to effective-target @code{exceptions_enabled}.
 
 @item exceptions_enabled
-Target supports exceptions and they are enabled in the current
-testing configuration.
+Testing configuration has exception handling enabled.
+Note that this is orthogonal to effective-target @code{exceptions}.
 
 @item fgraphite
 Target supports Graphite optimizations.

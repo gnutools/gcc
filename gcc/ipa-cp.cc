@@ -307,14 +307,31 @@ ipcp_lattice<valtype>::print (FILE * f, bool dump_sources, bool dump_benefits)
     fprintf (f, "\n");
 }
 
-/* If VALUE has all bits set to one, print "-1" to F, otherwise simply print it
-   hexadecimally to F. */
+/* Print VALUE to F in a form which in usual cases does not take thousands of
+   characters. */
 
 static void
 ipcp_print_widest_int (FILE *f, const widest_int &value)
 {
-  if (wi::eq_p (wi::bit_not (value), 0))
+  if (value == -1)
     fprintf (f, "-1");
+  else if (wi::arshift (value, 128) == -1)
+    {
+      char buf[35], *p = buf + 2;
+      widest_int v = wi::zext (value, 128);
+      size_t len;
+      print_hex (v, buf);
+      len = strlen (p);
+      if (len == 32)
+	{
+	  fprintf (f, "0xf..f");
+	  while (*p == 'f')
+	    ++p;
+	}
+      else
+	fprintf (f, "0xf..f%0*d", (int) (32 - len), 0);
+      fputs (p, f);
+    }
   else
     print_hex (value, f);
 }
@@ -331,7 +348,7 @@ ipcp_bits_lattice::print (FILE *f)
       fprintf (f, "         Bits: value = ");
       ipcp_print_widest_int (f, get_value ());
       fprintf (f, ", mask = ");
-      print_hex (get_mask (), f);
+      ipcp_print_widest_int (f, get_mask ());
       fprintf (f, "\n");
     }
 }
@@ -916,11 +933,13 @@ ipcp_bits_lattice::meet_with_1 (widest_int value, widest_int mask,
   m_mask = (m_mask | mask) | (m_value ^ value);
   if (drop_all_ones)
     m_mask |= m_value;
-  m_value &= ~m_mask;
 
+  widest_int cap_mask = wi::shifted_mask <widest_int> (0, precision, true);
+  m_mask |= cap_mask;
   if (wi::sext (m_mask, precision) == -1)
     return set_to_bottom ();
 
+  m_value &= ~m_mask;
   return m_mask != old_mask;
 }
 
@@ -996,6 +1015,8 @@ ipcp_bits_lattice::meet_with (ipcp_bits_lattice& other, unsigned precision,
 	  adjusted_mask |= adjusted_value;
 	  adjusted_value &= ~adjusted_mask;
 	}
+      widest_int cap_mask = wi::shifted_mask <widest_int> (0, precision, true);
+      adjusted_mask |= cap_mask;
       if (wi::sext (adjusted_mask, precision) == -1)
 	return set_to_bottom ();
       return set_to_constant (adjusted_value, adjusted_mask);
@@ -1467,11 +1488,12 @@ ipacp_value_safe_for_type (tree param_type, tree value)
     return NULL_TREE;
 }
 
-/* Return the result of a (possibly arithmetic) operation on the constant
-   value INPUT.  OPERAND is 2nd operand for binary operation.  RES_TYPE is
-   the type of the parameter to which the result is passed.  Return
-   NULL_TREE if that cannot be determined or be considered an
-   interprocedural invariant.  */
+/* Return the result of a (possibly arithmetic) operation determined by OPCODE
+   on the constant value INPUT.  OPERAND is 2nd operand for binary operation
+   and is required for binary operations.  RES_TYPE, required when opcode is
+   not NOP_EXPR, is the type in which any operation is to be performed.  Return
+   NULL_TREE if that cannot be determined or be considered an interprocedural
+   invariant.  */
 
 static tree
 ipa_get_jf_arith_result (enum tree_code opcode, tree input, tree operand,
@@ -1492,16 +1514,6 @@ ipa_get_jf_arith_result (enum tree_code opcode, tree input, tree operand,
 	return NULL_TREE;
     }
 
-  if (!res_type)
-    {
-      if (TREE_CODE_CLASS (opcode) == tcc_comparison)
-	res_type = boolean_type_node;
-      else if (expr_type_first_operand_type_p (opcode))
-	res_type = TREE_TYPE (input);
-      else
-	return NULL_TREE;
-    }
-
   if (TREE_CODE_CLASS (opcode) == tcc_unary)
     res = fold_unary (opcode, res_type, input);
   else
@@ -1511,21 +1523,6 @@ ipa_get_jf_arith_result (enum tree_code opcode, tree input, tree operand,
     return NULL_TREE;
 
   return res;
-}
-
-/* Return the result of a (possibly arithmetic) pass through jump function
-   JFUNC on the constant value INPUT.  RES_TYPE is the type of the parameter
-   to which the result is passed.  Return NULL_TREE if that cannot be
-   determined or be considered an interprocedural invariant.  */
-
-static tree
-ipa_get_jf_pass_through_result (struct ipa_jump_func *jfunc, tree input,
-				tree res_type)
-{
-  return ipa_get_jf_arith_result (ipa_get_jf_pass_through_operation (jfunc),
-				  input,
-				  ipa_get_jf_pass_through_operand (jfunc),
-				  res_type);
 }
 
 /* Return the result of an ancestor jump function JFUNC on the constant value
@@ -1595,7 +1592,17 @@ ipa_value_from_jfunc (class ipa_node_params *info, struct ipa_jump_func *jfunc,
 	return NULL_TREE;
 
       if (jfunc->type == IPA_JF_PASS_THROUGH)
-	return ipa_get_jf_pass_through_result (jfunc, input, parm_type);
+	{
+	  if (!parm_type)
+	    return NULL_TREE;
+	  enum tree_code opcode = ipa_get_jf_pass_through_operation (jfunc);
+	  tree op2 = ipa_get_jf_pass_through_operand (jfunc);
+	  tree op_type
+	    = (opcode == NOP_EXPR) ? NULL_TREE
+	    : ipa_get_jf_pass_through_op_type (jfunc);
+	  tree cstval = ipa_get_jf_arith_result (opcode, input, op2, op_type);
+	  return ipacp_value_safe_for_type (parm_type, cstval);
+	}
       else
 	return ipa_get_jf_ancestor_result (jfunc, input);
     }
@@ -1729,8 +1736,28 @@ ipa_vr_intersect_with_arith_jfunc (vrange &vr,
   enum tree_code operation = ipa_get_jf_pass_through_operation (jfunc);
   if (TREE_CODE_CLASS (operation) == tcc_unary)
     {
+      value_range op_res;
+      const value_range *inter_vr;
+      if (operation != NOP_EXPR)
+	{
+	  tree operation_type = ipa_get_jf_pass_through_op_type (jfunc);
+	  op_res.set_varying (operation_type);
+	  if (!ipa_vr_operation_and_type_effects (op_res, src_vr, operation,
+						  operation_type, src_type))
+	    return;
+	  if (src_type == dst_type)
+	    {
+	      vr.intersect (op_res);
+	      return;
+	    }
+	  inter_vr = &op_res;
+	  src_type = operation_type;
+	}
+      else
+	inter_vr = &src_vr;
+
       value_range tmp_res (dst_type);
-      if (ipa_vr_operation_and_type_effects (tmp_res, src_vr, operation,
+      if (ipa_vr_operation_and_type_effects (tmp_res, *inter_vr, NOP_EXPR,
 					     dst_type, src_type))
 	vr.intersect (tmp_res);
       return;
@@ -1743,13 +1770,8 @@ ipa_vr_intersect_with_arith_jfunc (vrange &vr,
   value_range op_vr (TREE_TYPE (operand));
   ipa_get_range_from_ip_invariant (op_vr, operand, context_node);
 
-  tree operation_type;
-  if (TREE_CODE_CLASS (operation) == tcc_comparison)
-    operation_type = boolean_type_node;
-  else
-    operation_type = src_type;
-
-  value_range op_res (dst_type);
+  tree operation_type = ipa_get_jf_pass_through_op_type (jfunc);
+  value_range op_res (operation_type);
   if (!ipa_vr_supported_type_p (operation_type)
       || !handler.operand_check_p (operation_type, src_type, op_vr.type ())
       || !handler.fold_range (op_res, operation_type, src_vr, op_vr))
@@ -1888,10 +1910,11 @@ ipa_agg_value_from_jfunc (ipa_node_params *info, cgraph_node *node,
 	return NULL_TREE;
     }
 
-  return ipa_get_jf_arith_result (item->value.pass_through.operation,
-				  value,
-				  item->value.pass_through.operand,
-				  item->type);
+  tree cstval = ipa_get_jf_arith_result (item->value.pass_through.operation,
+					 value,
+					 item->value.pass_through.operand,
+					 item->value.pass_through.op_type);
+  return ipacp_value_safe_for_type (item->type, cstval);
 }
 
 /* Process all items in AGG_JFUNC relative to caller (or the node the original
@@ -2120,15 +2143,15 @@ ipcp_lattice<valtype>::add_value (valtype newval, cgraph_edge *cs,
 /* A helper function that returns result of operation specified by OPCODE on
    the value of SRC_VAL.  If non-NULL, OPND1_TYPE is expected type for the
    value of SRC_VAL.  If the operation is binary, OPND2 is a constant value
-   acting as its second operand.  If non-NULL, RES_TYPE is expected type of
-   the result.  */
+   acting as its second operand.  OP_TYPE is the type in which the operation is
+   performed.  */
 
 static tree
 get_val_across_arith_op (enum tree_code opcode,
 			 tree opnd1_type,
 			 tree opnd2,
 			 ipcp_value<tree> *src_val,
-			 tree res_type)
+			 tree op_type)
 {
   tree opnd1 = src_val->value;
 
@@ -2137,17 +2160,19 @@ get_val_across_arith_op (enum tree_code opcode,
       && !useless_type_conversion_p (opnd1_type, TREE_TYPE (opnd1)))
     return NULL_TREE;
 
-  return ipa_get_jf_arith_result (opcode, opnd1, opnd2, res_type);
+  return ipa_get_jf_arith_result (opcode, opnd1, opnd2, op_type);
 }
 
 /* Propagate values through an arithmetic transformation described by a jump
    function associated with edge CS, taking values from SRC_LAT and putting
-   them into DEST_LAT.  OPND1_TYPE is expected type for the values in SRC_LAT.
-   OPND2 is a constant value if transformation is a binary operation.
-   SRC_OFFSET specifies offset in an aggregate if SRC_LAT describes lattice of
-   a part of the aggregate.  SRC_IDX is the index of the source parameter.
-   RES_TYPE is the value type of result being propagated into.  Return true if
-   DEST_LAT changed.  */
+   them into DEST_LAT.  OPND1_TYPE, if non-NULL, is the expected type for the
+   values in SRC_LAT.  OPND2 is a constant value if transformation is a binary
+   operation.  SRC_OFFSET specifies offset in an aggregate if SRC_LAT describes
+   lattice of a part of an aggregate, otherwise it should be -1.  SRC_IDX is
+   the index of the source parameter.  OP_TYPE is the type in which the
+   operation is performed and can be NULL when OPCODE is NOP_EXPR.  RES_TYPE is
+   the value type of result being propagated into.  Return true if DEST_LAT
+   changed.  */
 
 static bool
 propagate_vals_across_arith_jfunc (cgraph_edge *cs,
@@ -2158,6 +2183,7 @@ propagate_vals_across_arith_jfunc (cgraph_edge *cs,
 				   ipcp_lattice<tree> *dest_lat,
 				   HOST_WIDE_INT src_offset,
 				   int src_idx,
+				   tree op_type,
 				   tree res_type)
 {
   ipcp_value<tree> *src_val;
@@ -2213,7 +2239,7 @@ propagate_vals_across_arith_jfunc (cgraph_edge *cs,
 	  for (int j = 1; j < max_recursive_depth; j++)
 	    {
 	      tree cstval = get_val_across_arith_op (opcode, opnd1_type, opnd2,
-						     src_val, res_type);
+						     src_val, op_type);
 	      cstval = ipacp_value_safe_for_type (res_type, cstval);
 	      if (!cstval)
 		break;
@@ -2238,7 +2264,7 @@ propagate_vals_across_arith_jfunc (cgraph_edge *cs,
 	  }
 
 	tree cstval = get_val_across_arith_op (opcode, opnd1_type, opnd2,
-					       src_val, res_type);
+					       src_val, op_type);
 	cstval = ipacp_value_safe_for_type (res_type, cstval);
 	if (cstval)
 	  ret |= dest_lat->add_value (cstval, cs, src_val, src_idx,
@@ -2261,11 +2287,14 @@ propagate_vals_across_pass_through (cgraph_edge *cs, ipa_jump_func *jfunc,
 				    ipcp_lattice<tree> *dest_lat, int src_idx,
 				    tree parm_type)
 {
-  return propagate_vals_across_arith_jfunc (cs,
-				ipa_get_jf_pass_through_operation (jfunc),
-				NULL_TREE,
+  gcc_checking_assert (parm_type);
+  enum tree_code opcode = ipa_get_jf_pass_through_operation (jfunc);
+  tree op_type = (opcode == NOP_EXPR) ? NULL_TREE
+    : ipa_get_jf_pass_through_op_type (jfunc);
+  return propagate_vals_across_arith_jfunc (cs, opcode, NULL_TREE,
 				ipa_get_jf_pass_through_operand (jfunc),
-				src_lat, dest_lat, -1, src_idx, parm_type);
+				src_lat, dest_lat, -1, src_idx, op_type,
+				parm_type);
 }
 
 /* Propagate values through an ancestor jump function JFUNC associated with
@@ -2478,14 +2507,12 @@ propagate_bits_across_jump_function (cgraph_edge *cs, int idx,
       return dest_lattice->set_to_bottom ();
     }
 
-  unsigned precision = TYPE_PRECISION (parm_type);
-  signop sgn = TYPE_SIGN (parm_type);
-
   if (jfunc->type == IPA_JF_PASS_THROUGH
       || jfunc->type == IPA_JF_ANCESTOR)
     {
       ipa_node_params *caller_info = ipa_node_params_sum->get (cs->caller);
       tree operand = NULL_TREE;
+      tree op_type = NULL_TREE;
       enum tree_code code;
       unsigned src_idx;
       bool keep_null = false;
@@ -2495,7 +2522,10 @@ propagate_bits_across_jump_function (cgraph_edge *cs, int idx,
 	  code = ipa_get_jf_pass_through_operation (jfunc);
 	  src_idx = ipa_get_jf_pass_through_formal_id (jfunc);
 	  if (code != NOP_EXPR)
-	    operand = ipa_get_jf_pass_through_operand (jfunc);
+	    {
+	      operand = ipa_get_jf_pass_through_operand (jfunc);
+	      op_type = ipa_get_jf_pass_through_op_type (jfunc);
+	    }
 	}
       else
 	{
@@ -2522,6 +2552,11 @@ propagate_bits_across_jump_function (cgraph_edge *cs, int idx,
 
       if (!src_lats->bits_lattice.bottom_p ())
 	{
+	  if (!op_type)
+	    op_type = ipa_get_type (caller_info, src_idx);
+
+	  unsigned precision = TYPE_PRECISION (op_type);
+	  signop sgn = TYPE_SIGN (op_type);
 	  bool drop_all_ones
 	    = keep_null && !src_lats->bits_lattice.known_nonzero_p ();
 
@@ -2541,7 +2576,8 @@ propagate_bits_across_jump_function (cgraph_edge *cs, int idx,
 	    = widest_int::from (bm.mask (), TYPE_SIGN (parm_type));
 	  widest_int value
 	    = widest_int::from (bm.value (), TYPE_SIGN (parm_type));
-	  return dest_lattice->meet_with (value, mask, precision);
+	  return dest_lattice->meet_with (value, mask,
+					  TYPE_PRECISION (parm_type));
 	}
     }
   return dest_lattice->set_to_bottom ();
@@ -2840,6 +2876,7 @@ propagate_aggregate_lattice (struct cgraph_edge *cs,
 					   src_lat, aglat,
 					   src_offset,
 					   src_idx,
+					   item->value.pass_through.op_type,
 					   item->type);
 
   if (src_lat->contains_variable)
@@ -4609,7 +4646,8 @@ adjust_clone_incoming_counts (cgraph_node *node,
 	cs->count = cs->count.combine_with_ipa_count (sum);
       }
     else if (!desc->processed_edges->contains (cs)
-	     && cs->caller->clone_of == desc->orig)
+	     && cs->caller->clone_of == desc->orig
+	     && cs->count.compatible_p (desc->count))
       {
 	cs->count += desc->count;
 	if (dump_file)
@@ -5364,11 +5402,14 @@ find_more_scalar_values_for_callers_subset (struct cgraph_node *node,
 	  if (self_recursive_pass_through_p (cs, jump_func, i, false))
 	    {
 	      gcc_assert (newval);
-	      t = ipa_get_jf_arith_result (
-				ipa_get_jf_pass_through_operation (jump_func),
-				newval,
+	      enum tree_code opcode
+		= ipa_get_jf_pass_through_operation (jump_func);
+	      tree op_type = (opcode == NOP_EXPR) ? NULL_TREE
+		: ipa_get_jf_pass_through_op_type (jump_func);
+	      t = ipa_get_jf_arith_result (opcode, newval,
 				ipa_get_jf_pass_through_operand (jump_func),
-				type);
+				op_type);
+	      t = ipacp_value_safe_for_type (type, t);
 	    }
 	  else
 	    t = ipa_value_from_jfunc (ipa_node_params_sum->get (cs->caller),
@@ -5573,10 +5614,13 @@ push_agg_values_for_index_from_edge (struct cgraph_edge *cs, int index,
 	  && self_recursive_agg_pass_through_p (cs, &agg_jf, index, false)
 	  && (srcvalue = interim->get_value(index,
 					    agg_jf.offset / BITS_PER_UNIT)))
-	value = ipa_get_jf_arith_result (agg_jf.value.pass_through.operation,
-					 srcvalue,
-					 agg_jf.value.pass_through.operand,
-					 agg_jf.type);
+	{
+	  value = ipa_get_jf_arith_result (agg_jf.value.pass_through.operation,
+					   srcvalue,
+					   agg_jf.value.pass_through.operand,
+					   agg_jf.value.pass_through.op_type);
+	  value = ipacp_value_safe_for_type (agg_jf.type, value);
+	}
       else
 	value = ipa_agg_value_from_jfunc (caller_info, cs->caller,
 					  &agg_jf);
@@ -6396,7 +6440,7 @@ ipcp_store_vr_results (void)
 	  fprintf (dump_file, " param %i: value = ", i);
 	  ipcp_print_widest_int (dump_file, bits->get_value ());
 	  fprintf (dump_file, ", mask = ");
-	  print_hex (bits->get_mask (), dump_file);
+	  ipcp_print_widest_int (dump_file, bits->get_mask ());
 	  fprintf (dump_file, "\n");
 	}
     }

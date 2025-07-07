@@ -26,6 +26,10 @@ mcall-prologues
 Target Mask(CALL_PROLOGUES) Optimization
 Optimization. Use subroutines for function prologues and epilogues.
 
+mcvt
+Target Mask(CVT)
+Use a startup code with a compact vector table.
+
 mmcu=
 Target RejectNegative Joined Var(avropt_mmcu) MissingArgError(missing device or architecture after %qs)
 -mmcu=<MCU>	Select the target MCU.
@@ -37,6 +41,10 @@ Optimization. Allow usage of __gcc_isr pseudo instructions in ISR prologues and 
 mn-flash=
 Target RejectNegative Joined Var(avropt_n_flash) UInteger Init(-1)
 This option is used internally. Set the number of 64 KiB flash segments.
+
+mcall-main
+Target Var(avropt_call_main) UInteger Init(1)
+Call main and exit (default).
 
 mskip-bug
 Target Mask(SKIP_BUG)
@@ -51,6 +59,15 @@ Target Undocumented Mask(ALL_DEBUG)
 
 mlog=
 Target RejectNegative Joined Undocumented Var(avropt_log_details)
+
+;; Tries to work around PR118012.
+mpr118012
+Target Var(avropt_pr118012) UInteger Init(1) Undocumented
+This option is on per default in order to work around PR118012.
+
+muse-nonzero-bits
+Target Var(avropt_use_nonzero_bits) UInteger Init(0) Optimization
+Optimization. Allow to use nonzero_bits() in some insn conditions.
 
 mshort-calls
 Target RejectNegative Mask(SHORT_CALLS)

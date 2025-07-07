@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
+#define INCLUDE_ALGORITHM
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
@@ -731,7 +732,9 @@ vect_analyze_early_break_dependences (loop_vec_info loop_vinfo)
 	  if (is_gimple_debug (stmt))
 	    continue;
 
-	  stmt_vec_info stmt_vinfo = loop_vinfo->lookup_stmt (stmt);
+	  stmt_vec_info stmt_vinfo
+	    = vect_stmt_to_vectorize (loop_vinfo->lookup_stmt (stmt));
+	  stmt = STMT_VINFO_STMT (stmt_vinfo);
 	  auto dr_ref = STMT_VINFO_DATA_REF (stmt_vinfo);
 	  if (!dr_ref)
 	    continue;
@@ -748,26 +751,16 @@ vect_analyze_early_break_dependences (loop_vec_info loop_vinfo)
 	     bounded by VF so accesses are within range.  We only need to check
 	     the reads since writes are moved to a safe place where if we get
 	     there we know they are safe to perform.  */
-	  if (DR_IS_READ (dr_ref)
-	      && !ref_within_array_bound (stmt, DR_REF (dr_ref)))
+	  if (DR_IS_READ (dr_ref))
 	    {
-	      if (STMT_VINFO_GATHER_SCATTER_P (stmt_vinfo)
-		  || STMT_VINFO_STRIDED_P (stmt_vinfo))
-		{
-		  const char *msg
-		    = "early break not supported: cannot peel "
-		      "for alignment, vectorization would read out of "
-		      "bounds at %G";
-		  return opt_result::failure_at (stmt, msg, stmt);
-		}
-
-	      dr_vec_info *dr_info = STMT_VINFO_DR_INFO (stmt_vinfo);
-	      dr_info->need_peeling_for_alignment = true;
+	      dr_set_safe_speculative_read_required (stmt_vinfo, true);
+	      bool inbounds = ref_within_array_bound (stmt, DR_REF (dr_ref));
+	      DR_SCALAR_KNOWN_BOUNDS (STMT_VINFO_DR_INFO (stmt_vinfo)) = inbounds;
 
 	      if (dump_enabled_p ())
 		dump_printf_loc (MSG_NOTE, vect_location,
-				 "marking DR (read) as needing peeling for "
-				 "alignment at %G", stmt);
+				 "marking DR (read) as possibly needing peeling "
+				 "for alignment at %G", stmt);
 	    }
 
 	  if (DR_IS_READ (dr_ref))
@@ -1326,9 +1319,6 @@ vect_record_base_alignments (vec_info *vinfo)
    Compute the misalignment of the data reference DR_INFO when vectorizing
    with VECTYPE.
 
-   RESULT is non-NULL iff VINFO is a loop_vec_info.  In that case, *RESULT will
-   be set appropriately on failure (but is otherwise left unchanged).
-
    Output:
    1. initialized misalignment info for DR_INFO
 
@@ -1337,7 +1327,7 @@ vect_record_base_alignments (vec_info *vinfo)
 
 static void
 vect_compute_data_ref_alignment (vec_info *vinfo, dr_vec_info *dr_info,
-				 tree vectype, opt_result *result = nullptr)
+				 tree vectype)
 {
   stmt_vec_info stmt_info = dr_info->stmt;
   vec_base_alignments *base_alignments = &vinfo->base_alignments;
@@ -1365,63 +1355,29 @@ vect_compute_data_ref_alignment (vec_info *vinfo, dr_vec_info *dr_info,
     = exact_div (targetm.vectorize.preferred_vector_alignment (vectype),
 		 BITS_PER_UNIT);
 
-  /* If this DR needs peeling for alignment for correctness, we must
-     ensure the target alignment is a constant power-of-two multiple of the
-     amount read per vector iteration (overriding the above hook where
-     necessary).  */
-  if (dr_info->need_peeling_for_alignment)
+  if (loop_vinfo
+      && dr_safe_speculative_read_required (stmt_info))
     {
-      /* Vector size in bytes.  */
-      poly_uint64 safe_align = tree_to_poly_uint64 (TYPE_SIZE_UNIT (vectype));
-
-      /* We can only peel for loops, of course.  */
-      gcc_checking_assert (loop_vinfo);
-
-      /* Calculate the number of vectors read per vector iteration.  If
-	 it is a power of two, multiply through to get the required
-	 alignment in bytes.  Otherwise, fail analysis since alignment
-	 peeling wouldn't work in such a case.  */
-      poly_uint64 num_scalars = LOOP_VINFO_VECT_FACTOR (loop_vinfo);
+      poly_uint64 vf = LOOP_VINFO_VECT_FACTOR (loop_vinfo);
+      auto vectype_size
+	= TREE_INT_CST_LOW (TYPE_SIZE_UNIT (TREE_TYPE (vectype)));
+      poly_uint64 new_alignment = vf * vectype_size;
+      /* If we have a grouped access we require that the alignment be N * elem.  */
       if (STMT_VINFO_GROUPED_ACCESS (stmt_info))
-	num_scalars *= DR_GROUP_SIZE (stmt_info);
+	new_alignment *= DR_GROUP_SIZE (DR_GROUP_FIRST_ELEMENT (stmt_info));
 
-      auto num_vectors = vect_get_num_vectors (num_scalars, vectype);
-      if (!pow2p_hwi (num_vectors))
-	{
-	  *result = opt_result::failure_at (vect_location,
-					    "non-power-of-two num vectors %u "
-					    "for DR needing peeling for "
-					    "alignment at %G",
-					    num_vectors, stmt_info->stmt);
-	  return;
-	}
-
-      safe_align *= num_vectors;
-      if (maybe_gt (safe_align, 4096U))
-	{
-	  pretty_printer pp;
-	  pp_wide_integer (&pp, safe_align);
-	  *result = opt_result::failure_at (vect_location,
-					    "alignment required for correctness"
-					    " (%s) may exceed page size",
-					    pp_formatted_text (&pp));
-	  return;
-	}
-
-      unsigned HOST_WIDE_INT multiple;
-      if (!constant_multiple_p (vector_alignment, safe_align, &multiple)
-	  || !pow2p_hwi (multiple))
+      unsigned HOST_WIDE_INT target_alignment;
+      if (new_alignment.is_constant (&target_alignment)
+	  && pow2p_hwi (target_alignment))
 	{
 	  if (dump_enabled_p ())
 	    {
 	      dump_printf_loc (MSG_NOTE, vect_location,
-			       "forcing alignment for DR from preferred (");
-	      dump_dec (MSG_NOTE, vector_alignment);
-	      dump_printf (MSG_NOTE, ") to safe align (");
-	      dump_dec (MSG_NOTE, safe_align);
-	      dump_printf (MSG_NOTE, ") for stmt: %G", stmt_info->stmt);
+			       "alignment increased due to early break to ");
+	      dump_dec (MSG_NOTE, new_alignment);
+	      dump_printf (MSG_NOTE, " bytes.\n");
 	    }
-	  vector_alignment = safe_align;
+	  vector_alignment = target_alignment;
 	}
     }
 
@@ -1722,30 +1678,36 @@ not_size_aligned (tree exp)
    a few loop iterations.  Return false otherwise.  */
 
 static bool
-vector_alignment_reachable_p (dr_vec_info *dr_info)
+vector_alignment_reachable_p (dr_vec_info *dr_info, poly_uint64 vf)
 {
   stmt_vec_info stmt_info = dr_info->stmt;
   tree vectype = STMT_VINFO_VECTYPE (stmt_info);
+  poly_uint64 nelements = TYPE_VECTOR_SUBPARTS (vectype);
+  poly_uint64 vector_size = GET_MODE_SIZE (TYPE_MODE (vectype));
+  unsigned elem_size = vector_element_size (vector_size, nelements);
+  unsigned group_size = 1;
 
   if (STMT_VINFO_GROUPED_ACCESS (stmt_info))
     {
       /* For interleaved access we peel only if number of iterations in
 	 the prolog loop ({VF - misalignment}), is a multiple of the
 	 number of the interleaved accesses.  */
-      int elem_size, mis_in_elements;
 
       /* FORNOW: handle only known alignment.  */
       if (!known_alignment_for_access_p (dr_info, vectype))
 	return false;
 
-      poly_uint64 nelements = TYPE_VECTOR_SUBPARTS (vectype);
-      poly_uint64 vector_size = GET_MODE_SIZE (TYPE_MODE (vectype));
-      elem_size = vector_element_size (vector_size, nelements);
-      mis_in_elements = dr_misalignment (dr_info, vectype) / elem_size;
-
+      unsigned mis_in_elements = dr_misalignment (dr_info, vectype) / elem_size;
       if (!multiple_p (nelements - mis_in_elements, DR_GROUP_SIZE (stmt_info)))
 	return false;
+
+      group_size = DR_GROUP_SIZE (DR_GROUP_FIRST_ELEMENT (stmt_info));
     }
+
+  /* If the vectorization factor does not guarantee DR advancement of
+     a multiple of the target alignment no peeling will help.  */
+  if (!multiple_p (elem_size * group_size * vf, dr_target_alignment (dr_info)))
+    return false;
 
   /* If misalignment is known at the compile time then allow peeling
      only if natural alignment is reachable through peeling.  */
@@ -2346,7 +2308,9 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
 
       stmt_vec_info stmt_info = dr_info->stmt;
       tree vectype = STMT_VINFO_VECTYPE (stmt_info);
-      do_peeling = vector_alignment_reachable_p (dr_info);
+      do_peeling
+	= vector_alignment_reachable_p (dr_info,
+					LOOP_VINFO_VECT_FACTOR (loop_vinfo));
       if (do_peeling)
         {
 	  if (known_alignment_for_access_p (dr_info, vectype))
@@ -2479,6 +2443,8 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
       || !slpeel_can_duplicate_loop_p (loop, LOOP_VINFO_IV_EXIT (loop_vinfo),
 				       loop_preheader_edge (loop))
       || loop->inner
+      /* We don't currently maintaing the LCSSA for prologue peeled inversed
+	 loops.  */
       || LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo))
     do_peeling = false;
 
@@ -2942,12 +2908,9 @@ vect_analyze_data_refs_alignment (loop_vec_info loop_vinfo)
 	  if (STMT_VINFO_GROUPED_ACCESS (dr_info->stmt)
 	      && DR_GROUP_FIRST_ELEMENT (dr_info->stmt) != dr_info->stmt)
 	    continue;
-	  opt_result res = opt_result::success ();
+
 	  vect_compute_data_ref_alignment (loop_vinfo, dr_info,
-					   STMT_VINFO_VECTYPE (dr_info->stmt),
-					   &res);
-	  if (!res)
-	    return res;
+					   STMT_VINFO_VECTYPE (dr_info->stmt));
 	}
     }
 
@@ -4066,7 +4029,7 @@ vect_prune_runtime_alias_test_list (loop_vec_info loop_vinfo)
       poly_uint64 lower_bound;
       tree segment_length_a, segment_length_b;
       unsigned HOST_WIDE_INT access_size_a, access_size_b;
-      unsigned int align_a, align_b;
+      unsigned HOST_WIDE_INT align_a, align_b;
 
       /* Ignore the alias if the VF we chose ended up being no greater
 	 than the dependence distance.  */
@@ -4222,6 +4185,13 @@ vect_prune_runtime_alias_test_list (loop_vec_info loop_vinfo)
 					   stmt_info_a->stmt,
 					   stmt_info_b->stmt);
 	}
+
+      /* dr_with_seg_len requires the alignment to apply to the segment length
+	 and access size, not just the start address.  The access size can be
+	 smaller than the pointer alignment for grouped accesses and bitfield
+	 references; see PR115192 and PR116125 respectively.  */
+      align_a = std::min (align_a, least_bit_hwi (access_size_a));
+      align_b = std::min (align_b, least_bit_hwi (access_size_b));
 
       dr_with_seg_len dr_a (dr_info_a->dr, segment_length_a,
 			    access_size_a, align_a);
@@ -7211,7 +7181,7 @@ vect_supportable_dr_alignment (vec_info *vinfo, dr_vec_info *dr_info,
 
   if (misalignment == 0)
     return dr_aligned;
-  else if (dr_info->need_peeling_for_alignment)
+  else if (dr_safe_speculative_read_required (stmt_info))
     return dr_unaligned_unsupported;
 
   /* For now assume all conditional loads/stores support unaligned

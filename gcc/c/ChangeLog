@@ -1,3 +1,186 @@
+2025-04-15  Qing Zhao  <qing.zhao@oracle.com>
+
+	PR c/119717
+	* c-typeck.cc (build_access_with_size_for_counted_by): Fully fold the
+	parameters for call to .ACCESS_WITH_SIZE.
+
+2025-04-08  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/119612
+	* c-tree.h (c_type_tag): Add prototype.
+	* c-typeck.cc (c_type_tag): New function.
+	(tagged_types_tu_compatible_p, composite_type_internal): Use
+	c_type_tag.
+	* c-decl.cc (c_struct_hasher::hash, previous_tag): Use c_type_tag.
+
+2025-04-02  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/119582
+	* c-typeck.cc (pointer_diff, build_binary_op): Call c_fully_fold on
+	__sanitizer_ptr_sub or __sanitizer_ptr_cmp arguments.
+
+2025-04-02  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR middle-end/118965
+	* c-parser.cc (c_parser_omp_clause_init_modifiers): Adjust
+	error message.
+	(c_parser_omp_clause_init): Remove code for recognizing clauses
+	without modifiers.  Diagnose missing target/targetsync modifier.
+	(c_finish_omp_declare_variant): Diagnose missing target/targetsync
+	modifier.
+
+2025-03-28  Jakub Jelinek  <jakub@redhat.com>
+
+	* Make-lang.in (c.srcextra): Don't depend on anything and don't copy
+	anything.
+
+2025-03-27  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/118765
+	* c-decl.cc (merge_decls): For TYPE_DECLS copy
+	DECL_ORIGINAL_TYPE from the old declaration.
+	* c-typeck.cc (tagged_types_tu_compatible_p): Add
+	checking assertions.
+
+2025-03-21  Paul-Antoine Arras  <parras@baylibre.com>
+	    Tobias Burnus  <tburnus@baylibre.com>
+
+	* c-parser.cc (c_parser_omp_clause_destroy): Make addressable.
+	(c_parser_omp_clause_init): Make addressable.
+
+2025-03-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/119350
+	* c-typeck.cc (pop_init_level): Don't ignore empty brackets for
+	flag_isoc23, still set constructor_type to NULL in that case but
+	emit a pedwarn_init in that case.
+
+2025-03-19  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/118765
+	* c-decl.cc (finish_struct,finish_enum): Swap direction when
+	copying TYPE_STRUB_DECL in redefinitions.
+
+2025-03-19  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/118061
+	* c-typeck.cc (tagged_types_tu_compatible_p): Handle
+	errors in types of struct members.
+
+2025-03-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/119311
+	* c-parser.cc (c_parser_if_body): Pass result of c_parser_all_labels
+	as last argument to c_parser_statement_after_labels.
+	(c_parser_else_body): Likewise.
+
+2025-03-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/116545
+	* c-parser.cc (c_parser_declaration_or_fndef): Parse
+	__attribute__((musttail)) return.
+	(c_parser_handle_musttail): Diagnose attribute arguments.
+	(c_parser_statement_after_labels): Parse
+	__attribute__((musttail)) return.
+
+2025-03-11  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/117178
+	* c-typeck.cc (output_init_element): Pass field to digest_init
+	only for record/union types, otherwise pass constructor_fields
+	if non-NULL and constructor_decl if constructor_fields is NULL.
+
+2025-03-11  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR c/118579
+	* c-parser.cc (c_parser_omp_variable_list): Capture location
+	information when KIND is OMP_CLAUSE_ERROR.
+	(c_parser_oacc_data_clause_deviceptr): Use the improved location
+	for diagnostics, and remove the FIXME.
+	(c_finish_omp_declare_variant): Likewise.
+	(c_parser_omp_threadprivate): Likewise.
+
+2025-03-07  Kees Cook  <kees@kernel.org>
+	    Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/117178
+	* c-typeck.cc (digest_init): Add DECL argument.  Adjust wording of
+	pedwarn_init for too long strings and provide details on the lengths,
+	for string literals where just the trailing NULL doesn't fit warn for
+	warn_cxx_compat with OPT_Wc___compat, wording which mentions "for C++"
+	and provides details on lengths, otherwise for
+	warn_unterminated_string_initialization adjust the warning, provide
+	details on lengths and don't warn if get_attr_nonstring_decl (decl).
+	(build_c_cast, store_init_value, output_init_element): Adjust
+	digest_init callers.
+
+2025-03-07  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	PR c/60440
+	* c-typeck.cc (c_finish_return): Mark the current function
+	for supression of the -Wreturn-type if there was an error
+	on the return statement.
+
+2025-02-26  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/119001
+	* c-typeck.cc (pop_init_level): Don't clear constructor_type
+	if DECL_CHAIN of constructor_fields is NULL but p->type is UNION_TYPE.
+	Formatting fix.
+	(process_init_element): Diagnose non-static initialization of flexible
+	array member in union or FAM in union initialization in nested context.
+
+2025-02-25  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/119000
+	* c-parser.cc (c_parser_omp_atomic): For omp write call
+	default_function_array_read_conversion on the rhs expression.
+	Merge the two adjacent if (code == NOP_EXPR) blocks.
+
+2025-02-11  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	* c-parser.cc (c_finish_omp_declare_variant): Update call to
+	omp_check_context_selector.
+	(c_parser_omp_metadirective): Likewise.
+
+2025-02-07  Jakub Jelinek  <jakub@redhat.com>
+	    Jason Merrill  <jason@redhat.com>
+
+	PR c++/86769
+	* c-parser.cc (c_parser_while_statement): Add 2 further NULL_TREE
+	operands to build_stmt.
+	(c_parser_for_statement): Likewise.
+
+2025-02-04  Richard Biener  <rguenther@suse.de>
+
+	PR c/118742
+	* gimple-parser.cc (gimple_parser_build_unary_op): New
+	wrapper around build_unary_op.
+	(c_parser_gimple_unary_expression): Use it.
+
+2025-01-30  Tobias Burnus  <tburnus@baylibre.com>
+
+	* c-parser.cc (c_finish_omp_declare_variant): Modify how
+	append_args is saved internally.
+
+2025-01-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/116357
+	* c-decl.cc (grokdeclarator): Use c_build_qualified_type with
+	TYPE_UNQUALIFIED instead of TYPE_MAIN_VARIANT.
+
+2025-01-25  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/118639
+	* c-parser.cc (c_parser_omp_variable_list): Remove first variable
+	and emit "expected identifier" error regardless of it.
+
+2025-01-23  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/118604
+	* c-parser.cc (c_parser_omp_metadirective): Rewrite
+	condition for clauses other than when, default and otherwise.
+
 2025-01-21  Jakub Jelinek  <jakub@redhat.com>
 
 	* c-decl.cc (names_builtin_p): Return 1 for RID_C23_VA_START and

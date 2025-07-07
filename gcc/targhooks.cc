@@ -1305,6 +1305,14 @@ default_ira_change_pseudo_allocno_class (int regno ATTRIBUTE_UNUSED,
   return cl;
 }
 
+int
+default_ira_callee_saved_register_cost_scale (int)
+{
+  return (optimize_size
+	  ? 1
+	  : REG_FREQ_FROM_BB (ENTRY_BLOCK_PTR_FOR_FN (cfun)));
+}
+
 extern bool
 default_lra_p (void)
 {
@@ -2073,6 +2081,33 @@ default_register_move_cost (machine_mode mode ATTRIBUTE_UNUSED,
   return REGISTER_MOVE_COST (MACRO_MODE (mode),
 			     (enum reg_class) from, (enum reg_class) to);
 #endif
+}
+
+/* The default implementation of TARGET_CALLEE_SAVE_COST.  */
+
+int
+default_callee_save_cost (spill_cost_type spill_type, unsigned int,
+			  machine_mode, unsigned int, int mem_cost,
+			  const HARD_REG_SET &callee_saved_regs,
+			  bool existing_spills_p)
+{
+  if (!existing_spills_p)
+    {
+      auto frame_type = (spill_type == spill_cost_type::SAVE
+			 ? frame_cost_type::ALLOCATION
+			 : frame_cost_type::DEALLOCATION);
+      mem_cost += targetm.frame_allocation_cost (frame_type,
+						 callee_saved_regs);
+    }
+  return mem_cost;
+}
+
+/* The default implementation of TARGET_FRAME_ALLOCATION_COST.  */
+
+int
+default_frame_allocation_cost (frame_cost_type, const HARD_REG_SET &)
+{
+  return 0;
 }
 
 /* The default implementation of TARGET_SLOW_UNALIGNED_ACCESS.  */

@@ -804,6 +804,8 @@ tree gfc_build_library_function_decl_with_spec (tree name, const char *spec,
 						tree rettype, int nargs, ...);
 
 /* Process the local variable decls of a block construct.  */
+void gfc_start_saved_local_decls ();
+void gfc_stop_saved_local_decls ();
 void gfc_process_block_locals (gfc_namespace*);
 
 /* Output initialization/clean-up code that was deferred.  */
@@ -837,6 +839,10 @@ tree gfc_omp_clause_assign_op (tree, tree, tree);
 tree gfc_omp_clause_linear_ctor (tree, tree, tree, tree);
 tree gfc_omp_clause_dtor (tree, tree);
 void gfc_omp_finish_clause (tree, gimple_seq *, bool);
+bool gfc_omp_deep_mapping_p (const gimple *, tree);
+tree gfc_omp_deep_mapping_cnt (const gimple *, tree, gimple_seq *);
+void gfc_omp_deep_mapping (const gimple *, tree, unsigned HOST_WIDE_INT, tree,
+			   tree, tree, tree, tree, gimple_seq *);
 bool gfc_omp_allocatable_p (tree);
 bool gfc_omp_scalar_p (tree, bool);
 bool gfc_omp_scalar_target_p (tree);
@@ -883,21 +889,12 @@ extern GTY(()) tree gfor_fndecl_caf_this_image;
 extern GTY(()) tree gfor_fndecl_caf_num_images;
 extern GTY(()) tree gfor_fndecl_caf_register;
 extern GTY(()) tree gfor_fndecl_caf_deregister;
-
-// Deprecate start
-extern GTY(()) tree gfor_fndecl_caf_get;
-extern GTY(()) tree gfor_fndecl_caf_send;
-extern GTY(()) tree gfor_fndecl_caf_sendget;
-extern GTY(()) tree gfor_fndecl_caf_get_by_ref;
-extern GTY(()) tree gfor_fndecl_caf_send_by_ref;
-extern GTY(()) tree gfor_fndecl_caf_sendget_by_ref;
-// Deprecate end
-
-extern GTY (()) tree gfor_fndecl_caf_register_accessor;
-extern GTY (()) tree gfor_fndecl_caf_register_accessors_finish;
-extern GTY (()) tree gfor_fndecl_caf_get_remote_function_index;
-extern GTY (()) tree gfor_fndecl_caf_get_by_ct;
-
+extern GTY(()) tree gfor_fndecl_caf_register_accessor;
+extern GTY(()) tree gfor_fndecl_caf_register_accessors_finish;
+extern GTY(()) tree gfor_fndecl_caf_get_remote_function_index;
+extern GTY(()) tree gfor_fndecl_caf_get_from_remote;
+extern GTY(()) tree gfor_fndecl_caf_send_to_remote;
+extern GTY(()) tree gfor_fndecl_caf_transfer_between_remotes;
 extern GTY(()) tree gfor_fndecl_caf_sync_all;
 extern GTY(()) tree gfor_fndecl_caf_sync_memory;
 extern GTY(()) tree gfor_fndecl_caf_sync_images;
@@ -929,7 +926,7 @@ extern GTY(()) tree gfor_fndecl_co_max;
 extern GTY(()) tree gfor_fndecl_co_min;
 extern GTY(()) tree gfor_fndecl_co_reduce;
 extern GTY(()) tree gfor_fndecl_co_sum;
-extern GTY(()) tree gfor_fndecl_caf_is_present;
+extern GTY(()) tree gfor_fndecl_caf_is_present_on_remote;
 
 /* Math functions.  Many other math functions are handled in
    trans-intrinsic.cc.  */
@@ -942,6 +939,8 @@ typedef struct GTY(()) gfc_powdecl_list {
 gfc_powdecl_list;
 
 extern GTY(()) gfc_powdecl_list gfor_fndecl_math_powi[4][3];
+extern GTY(()) tree gfor_fndecl_unsigned_pow_list[5][5];
+
 extern GTY(()) tree gfor_fndecl_math_ishftc4;
 extern GTY(()) tree gfor_fndecl_math_ishftc8;
 extern GTY(()) tree gfor_fndecl_math_ishftc16;
@@ -1019,6 +1018,9 @@ enum gfc_array_kind
   GFC_ARRAY_ASSUMED_SHAPE_CONT,
   GFC_ARRAY_ASSUMED_RANK,
   GFC_ARRAY_ASSUMED_RANK_CONT,
+  GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE,
+  GFC_ARRAY_ASSUMED_RANK_POINTER,
+  GFC_ARRAY_ASSUMED_RANK_POINTER_CONT,
   GFC_ARRAY_ALLOCATABLE,
   GFC_ARRAY_POINTER,
   GFC_ARRAY_POINTER_CONT

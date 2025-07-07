@@ -2646,6 +2646,27 @@ range_in_array_bounds_p (tree ref)
   return true;
 }
 
+/* Return true iff a BIT_FIELD_REF <(TYPE)???, SIZE, OFFSET> would access a bit
+   range that is known to be in bounds for TYPE.  */
+
+bool
+access_in_bounds_of_type_p (tree type, poly_uint64 size, poly_uint64 offset)
+{
+  tree type_size_tree;
+  poly_uint64 type_size_max, min = offset, wid = size, max;
+
+  type_size_tree = TYPE_SIZE (type);
+  if (!type_size_tree || !poly_int_tree_p (type_size_tree, &type_size_max))
+    return false;
+
+  max = min + wid;
+  if (maybe_lt (max, min)
+      || maybe_lt (type_size_max, max))
+    return false;
+
+  return true;
+}
+
 /* Return true if EXPR can trap, as in dereferencing an invalid pointer
    location or floating point arithmetic.  C.f. the rtl version, may_trap_p.
    This routine expects only GIMPLE lhs or rhs input.  */
@@ -2688,10 +2709,17 @@ tree_could_trap_p (tree expr)
  restart:
   switch (code)
     {
+    case BIT_FIELD_REF:
+      if (DECL_P (TREE_OPERAND (expr, 0))
+	  && !access_in_bounds_of_type_p (TREE_TYPE (TREE_OPERAND (expr, 0)),
+					  bit_field_size (expr),
+					  bit_field_offset (expr)))
+	return true;
+      /* Fall through.  */
+
     case COMPONENT_REF:
     case REALPART_EXPR:
     case IMAGPART_EXPR:
-    case BIT_FIELD_REF:
     case VIEW_CONVERT_EXPR:
     case WITH_SIZE_EXPR:
       expr = TREE_OPERAND (expr, 0);
@@ -2735,11 +2763,16 @@ tree_could_trap_p (tree expr)
 	  if (TREE_CODE (base) == STRING_CST)
 	    return maybe_le (TREE_STRING_LENGTH (base), off);
 	  tree size = DECL_SIZE_UNIT (base);
+	  tree refsz = TYPE_SIZE_UNIT (TREE_TYPE (expr));
 	  if (size == NULL_TREE
+	      || refsz == NULL_TREE
 	      || !poly_int_tree_p (size)
-	      || maybe_le (wi::to_poly_offset (size), off))
+	      || !poly_int_tree_p (refsz)
+	      || maybe_le (wi::to_poly_offset (size), off)
+	      || maybe_gt (off + wi::to_poly_offset (refsz),
+			   wi::to_poly_offset (size)))
 	    return true;
-	  /* Now we are sure the first byte of the access is inside
+	  /* Now we are sure the whole base of the access is inside
 	     the object.  */
 	  return false;
 	}

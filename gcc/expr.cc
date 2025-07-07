@@ -7193,9 +7193,9 @@ categorize_ctor_elements_1 (const_tree ctor, HOST_WIDE_INT *p_nz_elts,
 
 	case VECTOR_CST:
 	  {
-	    /* We can only construct constant-length vectors using
-	       CONSTRUCTOR.  */
-	    unsigned int nunits = VECTOR_CST_NELTS (value).to_constant ();
+	    unsigned int nunits
+	      = constant_lower_bound
+	      (TYPE_VECTOR_SUBPARTS (TREE_TYPE (value)));
 	    for (unsigned int i = 0; i < nunits; ++i)
 	      {
 		tree v = VECTOR_CST_ELT (value, i);
@@ -7920,11 +7920,16 @@ store_constructor (tree exp, rtx target, int cleared, poly_int64 size,
 	gcc_assert (eltmode != BLKmode);
 
 	/* Try using vec_duplicate_optab for uniform vectors.  */
+	icode = optab_handler (vec_duplicate_optab, mode);
 	if (!TREE_SIDE_EFFECTS (exp)
 	    && VECTOR_MODE_P (mode)
-	    && eltmode == GET_MODE_INNER (mode)
-	    && ((icode = optab_handler (vec_duplicate_optab, mode))
-		!= CODE_FOR_nothing)
+	    && icode != CODE_FOR_nothing
+	    /* If the vec_duplicate target pattern does not specify an element
+	       mode check that eltmode is the normal inner mode of the
+	       requested vector mode.  But if the target allows eltmode
+	       explicitly go ahead and use it.  */
+	    && (eltmode == GET_MODE_INNER (mode)
+		|| insn_data[icode].operand[1].mode == eltmode)
 	    && (elt = uniform_vector_p (exp))
 	    && !VECTOR_TYPE_P (TREE_TYPE (elt)))
 	  {
@@ -8747,7 +8752,19 @@ force_operand (rtx value, rtx target)
     {
       if (!target)
 	target = gen_reg_rtx (GET_MODE (value));
-      op1 = force_operand (XEXP (value, 0), NULL_RTX);
+      /* FIX or UNSIGNED_FIX with integral mode has unspecified rounding,
+	 while FIX with floating point mode rounds toward zero.  So, some
+	 targets use expressions like (fix:SI (fix:DF (reg:DF ...)))
+	 to express rounding toward zero during the conversion to int.
+	 expand_fix isn't able to handle that, it can only handle
+	 FIX/UNSIGNED_FIX from floating point mode to integral one.  */
+      if ((code == FIX || code == UNSIGNED_FIX)
+	  && GET_CODE (XEXP (value, 0)) == FIX
+	  && (GET_MODE (XEXP (value, 0))
+	      == GET_MODE (XEXP (XEXP (value, 0), 0))))
+	op1 = force_operand (XEXP (XEXP (value, 0), 0), NULL_RTX);
+      else
+	op1 = force_operand (XEXP (value, 0), NULL_RTX);
       switch (code)
 	{
 	case ZERO_EXTEND:
@@ -11796,15 +11813,36 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 		&& known_eq (GET_MODE_BITSIZE (DECL_MODE (base)), type_size))
 	      return expand_expr (build1 (VIEW_CONVERT_EXPR, type, base),
 				  target, tmode, modifier);
-	    if (TYPE_MODE (type) == BLKmode)
+	    unsigned align;
+	    if (TYPE_MODE (type) == BLKmode || maybe_lt (offset, 0))
 	      {
 		temp = assign_stack_temp (DECL_MODE (base),
 					  GET_MODE_SIZE (DECL_MODE (base)));
 		store_expr (base, temp, 0, false, false);
-		temp = adjust_address (temp, BLKmode, offset);
-		set_mem_size (temp, int_size_in_bytes (type));
+		temp = adjust_address (temp, TYPE_MODE (type), offset);
+		if (TYPE_MODE (type) == BLKmode)
+		  set_mem_size (temp, int_size_in_bytes (type));
+		/* When the original ref was misaligned so will be the
+		   access to the stack temporary.  Not all targets handle
+		   this correctly, some will ICE in sanity checking.
+		   Handle this by doing bitfield extraction when necessary.  */
+		else if ((align = get_object_alignment (exp))
+			 < GET_MODE_ALIGNMENT (TYPE_MODE (type)))
+		  temp
+		    = expand_misaligned_mem_ref (temp, TYPE_MODE (type),
+						 unsignedp, align,
+						 modifier == EXPAND_STACK_PARM
+						 ? NULL_RTX : target, NULL);
 		return temp;
 	      }
+	    /* When the access is fully outside of the underlying object
+	       expand the offset as zero.  This avoids out-of-bound
+	       BIT_FIELD_REFs and generates smaller code for these cases
+	       with UB.  */
+	    type_size = tree_to_poly_uint64 (TYPE_SIZE_UNIT (type));
+	    if (!ranges_maybe_overlap_p (offset, type_size, 0,
+					 GET_MODE_SIZE (DECL_MODE (base))))
+	      offset = 0;
 	    exp = build3 (BIT_FIELD_REF, type, base, TYPE_SIZE (type),
 			  bitsize_int (offset * BITS_PER_UNIT));
 	    REF_REVERSE_STORAGE_ORDER (exp) = reverse;
@@ -12147,7 +12185,13 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 	   and need be, put it there.  */
 	else if (CONSTANT_P (op0) || (!MEM_P (op0) && must_force_mem))
 	  {
-	    memloc = assign_temp (TREE_TYPE (tem), 1, 1);
+	    poly_int64 size;
+	    if (!poly_int_tree_p (TYPE_SIZE_UNIT (TREE_TYPE (tem)), &size))
+	      size = max_int_size_in_bytes (TREE_TYPE (tem));
+	    memloc = assign_stack_local (TYPE_MODE (TREE_TYPE (tem)), size,
+					 TREE_CODE (tem) == SSA_NAME
+					 ? TYPE_ALIGN (TREE_TYPE (tem))
+					 : get_object_alignment (tem));
 	    emit_move_insn (memloc, op0);
 	    op0 = memloc;
 	    clear_mem_expr = true;

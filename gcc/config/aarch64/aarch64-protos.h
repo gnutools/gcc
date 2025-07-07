@@ -733,15 +733,17 @@ const unsigned int AARCH64_BUILTIN_CLASS = (1 << AARCH64_BUILTIN_SHIFT) - 1;
 
 /* RAII class for enabling enough features to define built-in types
    and implement the arm_neon.h pragma.  */
-class aarch64_simd_switcher
+class aarch64_target_switcher
 {
 public:
-  aarch64_simd_switcher (aarch64_feature_flags extra_flags = 0);
-  ~aarch64_simd_switcher ();
+  aarch64_target_switcher (aarch64_feature_flags flags = 0);
+  ~aarch64_target_switcher ();
 
 private:
   aarch64_feature_flags m_old_asm_isa_flags;
   bool m_old_general_regs_only;
+  tree m_old_target_pragma;
+  bool m_old_have_regs_of_mode[MAX_MACHINE_MODE];
 };
 
 /* Represents the ISA requirements of an intrinsic function, or of some
@@ -1098,7 +1100,7 @@ void aarch64_finish_ldpstp_peephole (rtx *, bool,
 				     enum rtx_code = (enum rtx_code)0);
 
 void aarch64_expand_sve_vec_cmp_int (rtx, rtx_code, rtx, rtx);
-bool aarch64_expand_sve_vec_cmp_float (rtx, rtx_code, rtx, rtx, bool);
+void aarch64_expand_sve_vec_cmp_float (rtx, rtx_code, rtx, rtx);
 
 bool aarch64_prepare_sve_int_fma (rtx *, rtx_code);
 bool aarch64_prepare_sve_cond_int_fma (rtx *, rtx_code);
@@ -1190,13 +1192,31 @@ void aarch64_set_asm_isa_flags (aarch64_feature_flags);
 void aarch64_set_asm_isa_flags (gcc_options *, aarch64_feature_flags);
 bool aarch64_handle_option (struct gcc_options *, struct gcc_options *,
 			     const struct cl_decoded_option *, location_t);
-const char *aarch64_rewrite_selected_cpu (const char *name);
+aarch64_feature_flags aarch64_get_required_features (aarch64_feature_flags);
+void aarch64_print_hint_for_extensions (const char *);
+void aarch64_print_hint_for_arch (const char *);
+void aarch64_print_hint_for_core (const char *);
 enum aarch_parse_opt_result aarch64_parse_extension (const char *,
                                                      aarch64_feature_flags *,
                                                      std::string *);
-void aarch64_get_all_extension_candidates (auto_vec<const char *> *candidates);
+enum aarch_parse_opt_result aarch64_parse_arch (const char *,
+						aarch64_arch *,
+						aarch64_feature_flags *,
+						std::string *);
+enum aarch_parse_opt_result aarch64_parse_cpu (const char *,
+					       aarch64_cpu *,
+					       aarch64_feature_flags *,
+					       std::string *);
+enum aarch_parse_opt_result aarch64_parse_tune (const char *, aarch64_cpu *);
+bool aarch64_validate_march (const char *, aarch64_arch *,
+			     aarch64_feature_flags *);
+bool aarch64_validate_mcpu (const char *, aarch64_cpu *,
+			    aarch64_feature_flags *);
+bool aarch64_validate_mtune (const char *, aarch64_cpu *);
 std::string aarch64_get_extension_string_for_isa_flags (aarch64_feature_flags,
 							aarch64_feature_flags);
+std::string aarch64_get_arch_string_for_assembler (aarch64_arch,
+						   aarch64_feature_flags);
 
 rtl_opt_pass *make_pass_aarch64_early_ra (gcc::context *);
 rtl_opt_pass *make_pass_fma_steering (gcc::context *);

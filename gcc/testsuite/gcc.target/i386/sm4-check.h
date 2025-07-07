@@ -196,9 +196,6 @@ main ()
 #ifdef AVX10_2
       && __builtin_cpu_supports ("avx10.2")
 #endif
-#ifdef AVX10_2_512
-      && __builtin_cpu_supports ("avx10.2-512")
-#endif
       )
     {
       do_test ();

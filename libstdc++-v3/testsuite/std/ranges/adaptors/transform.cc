@@ -107,20 +107,16 @@ test05()
   auto r = ranges::subrange{i, std::default_sentinel};
   auto v = r | views::transform(std::negate{});
 
-#if ! __cpp_lib_ranges_as_const
   // Verify that _Iterator<false> is implicitly convertible to _Iterator<true>.
   static_assert(!std::same_as<decltype(ranges::begin(v)),
 			      decltype(ranges::cbegin(v))>);
-#endif
   auto a = ranges::cbegin(v);
   a = ranges::begin(v);
 
-#if ! __cpp_lib_ranges_as_const
   // Verify that _Sentinel<false> is implicitly convertible to _Sentinel<true>.
   static_assert(!ranges::common_range<decltype(v)>);
   static_assert(!std::same_as<decltype(ranges::end(v)),
 			      decltype(ranges::cend(v))>);
-#endif
   auto b = ranges::cend(v);
   b = ranges::end(v);
 }
@@ -191,8 +187,10 @@ test09()
 #if __cpp_lib_ranges >= 202207L
   // P2494R2 Relaxing range adaptors to allow for move only types
   static_assert( requires { transform(x, move_only{}); } );
+  static_assert( requires { x | transform(move_only{}); } ); // PR libstdc++/118413
 #else
   static_assert( ! requires { transform(x, move_only{}); } );
+  static_assert( ! requires { x | transform(move_only{}); } );
 #endif
 }
 

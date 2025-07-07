@@ -191,6 +191,8 @@ lvalue_kind (const_tree ref)
       return op1_lvalue_kind;
 
     case STRING_CST:
+      return clk_ordinary | clk_mergeable;
+
     case COMPOUND_LITERAL_EXPR:
       return clk_ordinary;
 
@@ -210,6 +212,10 @@ lvalue_kind (const_tree ref)
 	  && DECL_LANG_SPECIFIC (ref)
 	  && DECL_IN_AGGR_P (ref))
 	return clk_none;
+
+      if (TREE_CODE (ref) == CONST_DECL || DECL_MERGEABLE (ref))
+	return clk_ordinary | clk_mergeable;
+
       /* FALLTHRU */
     case INDIRECT_REF:
     case ARROW_EXPR:
@@ -405,6 +411,17 @@ bool
 bitfield_p (const_tree ref)
 {
   return (lvalue_kind (ref) & clk_bitfield);
+}
+
+/* True if REF is a glvalue with a unique address, excluding mergeable glvalues
+   such as string constants.  */
+
+bool
+non_mergeable_glvalue_p (const_tree ref)
+{
+  auto kind = lvalue_kind (ref);
+  return (kind != clk_none
+	  && !(kind & (clk_class|clk_mergeable)));
 }
 
 /* C++-specific version of stabilize_reference.  */
@@ -950,6 +967,24 @@ get_target_expr (tree init, tsubst_flags_t complain /* = tf_warning_or_error */)
       init = convert_bitfield_to_declared_type (init);
       return build_target_expr_with_type (init, TREE_TYPE (init), complain);
     }
+}
+
+/* Like get_target_expr, but for an internal detail like a cleanup flag or loop
+   iterator.  These variables should not be extended by extend_all_temps.
+
+   This function can also be used for an ephemeral copy of a scalar value such
+   as the pointer to the allocated memory in build_new_1.
+
+   This function should not be used for objects that are part of the abstract
+   C++ semantics such as in stabilize_expr.  */
+
+tree
+get_internal_target_expr (tree init)
+{
+  init = convert_bitfield_to_declared_type (init);
+  tree t = force_target_expr (TREE_TYPE (init), init, tf_warning_or_error);
+  TARGET_EXPR_INTERNAL_P (t) = true;
+  return t;
 }
 
 /* If EXPR is a bitfield reference, convert it to the declared type of
@@ -5318,7 +5353,8 @@ handle_init_priority_attribute (tree* node,
       && !in_system_header_at (input_location))
     {
       warning
-	(0, "requested %<init_priority%> %i is reserved for internal use",
+	(OPT_Wprio_ctor_dtor,
+	 "requested %<init_priority%> %i is reserved for internal use",
 	 pri);
     }
 
@@ -5793,6 +5829,7 @@ cp_walk_subtrees (tree *tp, int *walk_subtrees_p, walk_tree_fn func,
 		  && !TREE_STATIC (TREE_OPERAND (t, 0)))))
 	{
 	  tree decl = TREE_OPERAND (t, 0);
+	  WALK_SUBTREE (TREE_TYPE (decl));
 	  WALK_SUBTREE (DECL_INITIAL (decl));
 	  WALK_SUBTREE (DECL_SIZE (decl));
 	  WALK_SUBTREE (DECL_SIZE_UNIT (decl));
@@ -5841,6 +5878,12 @@ cp_walk_subtrees (tree *tp, int *walk_subtrees_p, walk_tree_fn func,
     case STATIC_ASSERT:
       WALK_SUBTREE (STATIC_ASSERT_CONDITION (t));
       WALK_SUBTREE (STATIC_ASSERT_MESSAGE (t));
+      break;
+
+    case INTEGER_TYPE:
+      /* Removed from walk_type_fields in r119481.  */
+      WALK_SUBTREE (TYPE_MIN_VALUE (t));
+      WALK_SUBTREE (TYPE_MAX_VALUE (t));
       break;
 
     default:
@@ -6488,11 +6531,11 @@ test_lvalue_kind ()
   tree string_lit = build_string (4, "foo");
   TREE_TYPE (string_lit) = char_array_type_node;
   string_lit = fix_string_type (string_lit);
-  ASSERT_EQ (clk_ordinary, lvalue_kind (string_lit));
+  ASSERT_EQ (clk_ordinary|clk_mergeable, lvalue_kind (string_lit));
 
   tree wrapped_string_lit = maybe_wrap_with_location (string_lit, loc);
   ASSERT_TRUE (location_wrapper_p (wrapped_string_lit));
-  ASSERT_EQ (clk_ordinary, lvalue_kind (wrapped_string_lit));
+  ASSERT_EQ (clk_ordinary|clk_mergeable, lvalue_kind (wrapped_string_lit));
 
   tree parm = build_decl (UNKNOWN_LOCATION, PARM_DECL,
 			  get_identifier ("some_parm"),

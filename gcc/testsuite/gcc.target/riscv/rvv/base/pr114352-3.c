@@ -4,6 +4,7 @@
 
 /*
 ** test_1:
+** ...
 ** sext\.w\s+[atx][0-9]+,\s*[atx][0-9]+
 ** ...
 */
@@ -56,6 +57,7 @@ test_3 (int *a, int *b, int *out, unsigned count)
 
 /*
 ** test_4:
+** ...
 ** sext\.w\s+[atx][0-9]+,\s*[atx][0-9]+
 ** ...
 */
@@ -91,9 +93,9 @@ test_5 (_Float16 *a, _Float16 *b, _Float16 *out, unsigned count)
 /*
 ** test_6:
 ** ...
-** call\s+__extendhfsf2
+** call\s+__extendhfsf2(?:@plt)?
 ** ...
-** call\s+__truncsfhf2
+** call\s+__truncsfhf2(?:@plt)?
 ** ...
 */
 void

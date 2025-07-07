@@ -1,3 +1,124 @@
+2025-04-06  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	* c.opt.urls: Regenerate.
+
+2025-04-06  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR c/81831
+	* c.opt (Wpsabi): Remove "Undocumented" modifier and add a
+	documentation string.
+
+2025-04-03  Jakub Jelinek  <jakub@redhat.com>
+
+	* c.opt.urls: Regenerate.
+
+2025-03-30  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	* c.opt.urls: Regenerate.
+
+2025-03-22  Jakub Jelinek  <jakub@redhat.com>
+
+	* c.opt (Wdeprecated-literal-operator): Use \"\" rather than ""
+	in option description.
+
+2025-03-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/116545
+	* c-attribs.cc (c_common_clang_attributes): Add musttail.
+
+2025-03-14  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/119120
+	* c-gimplify.cc (c_genericize_control_r): Set DECL_NOT_GIMPLE_REG_P
+	on {REAL,IMAG}PART_EXPR is_gimple_reg operand at -O0 if it is lhs
+	of a MODIFY_EXPR.
+
+2025-03-13  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/119265
+	* c-ada-spec.cc (dump_ada_node) <INTEGER_TYPE>: Deal with typedefs
+	of unsigned __int128.
+
+2025-03-07  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/117178
+	* c-attribs.cc (handle_nonstring_attribute): Allow the attribute also
+	on multi-dimensional arrays with char/signed char/unsigned char
+	element type or pointers to such single and multi-dimensional arrays.
+
+2025-03-07  Kees Cook  <kees@kernel.org>
+	    Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/117178
+	* c.opt (Wunterminated-string-initialization): Don't depend on
+	-Wc++-compat.
+
+2025-03-05  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/115580
+	* c-common.cc (check_function_arguments): Return early if
+	c_inhibit_evaluation_warnings.
+
+2025-02-28  Jakub Jelinek  <jakub@redhat.com>
+
+	* c.opt (Wc++26-extensions): Add CppReason(CPP_W_CXX26_EXTENSIONS).
+	* c-cppbuiltin.cc (c_cpp_builtins): Predefine __cpp_pp_embed=202502
+	for C++26.
+
+2025-02-13  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/118822
+	PR c++/118833
+	* c-common.h (WHILE_COND_CLEANUP): Change description in comment.
+	(FOR_COND_CLEANUP): Likewise.
+	* c-gimplify.cc (genericize_c_loop): Adjust for COND_CLEANUP
+	being CLEANUP_STMT/TRY_FINALLY_EXPR trailing nesting depth
+	instead of actual cleanup.
+
+2025-02-11  Jason Merrill  <jason@redhat.com>
+
+	PR c++/188574
+	* c-opts.cc (c_common_post_options): Only enable
+	-frange-for-ext-temps by default in C++23.
+
+2025-02-07  Jakub Jelinek  <jakub@redhat.com>
+	    Jason Merrill  <jason@redhat.com>
+
+	PR c++/86769
+	* c-common.def (FOR_STMT): Add 2 operands and document them.
+	(WHILE_STMT): Likewise.
+	* c-common.h (WHILE_COND_PREP, WHILE_COND_CLEANUP): Define.
+	(FOR_COND_PREP, FOR_COND_CLEANUP): Define.
+	* c-gimplify.cc (genericize_c_loop): Add COND_PREP and COND_CLEANUP
+	arguments, handle them if they are non-NULL.
+	(genericize_for_stmt, genericize_while_stmt, genericize_do_stmt):
+	Adjust callers.
+
+2025-02-07  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* c-gimplify.cc (c_genericize): Pass 'local_dump_flags' to
+	'print_c_tree'.
+	* c-pretty-print.cc (c_pretty_printer::statement): Pass
+	'dump_flags' to 'dump_generic_node'.
+	(c_pretty_printer::c_pretty_printer): Initialize 'dump_flags'.
+	(print_c_tree): Add 'dump_flags_t' formal parameter.
+	(debug_c_tree): Adjust.
+	* c-pretty-print.h (c_pretty_printer): Add 'dump_flags_t
+	dump_flags'.
+	(c_pretty_printer::c_pretty_printer): Add 'dump_flags_t' formal
+	parameter.
+	(print_c_tree): Adjust.
+
+2025-01-23  Jakub Jelinek  <jakub@redhat.com>
+
+	* c-common.cc (make_tree_vector_from_ctor): Only use make_tree_vector
+	for ctors with <= 16 elements.
+
+2025-01-23  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/107741
+	* c-opts.cc (c_common_post_options): Bump ABI version.
+
 2025-01-22  Jakub Jelinek  <jakub@redhat.com>
 
 	* c-common.h (append_ctor_to_tree_vector): Declare.

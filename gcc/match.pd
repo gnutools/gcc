@@ -303,6 +303,23 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
  (mult @0 integer_zerop@1)
  @1)
 
+#if GIMPLE
+/* When multiplying a value by a boolean involving the value, we may
+   be able to simplify further.
+     a * ((a || b) != 0) -> a
+     a * ((a || b) == 0) -> 0
+
+   There are also bit-and cases which don't show up in practice yet.
+     a * ((a && b) != 0) -> a * b
+     a * ((a && b) == 0) -> b != 0 ? a : b */
+(for neeq (ne eq)
+ (simplify
+  (mult:c (convert? (neeq (bit_ior:c @0 @1) integer_zerop@2)) @0)
+  (if (neeq == EQ_EXPR)
+   { build_zero_cst (type); }
+   @0)))
+#endif
+
 /* -x == x -> x == 0 */
 (for cmp (eq ne)
  (simplify
@@ -965,6 +982,15 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (bit_and @0 (negate @1))))
 
 (for div (trunc_div ceil_div floor_div round_div exact_div)
+#if GIMPLE
+ /* Canonicalize unsigned t / 4 to t >> 2.  */
+ (simplify
+  (div @0 integer_pow2p@1)
+  (if (INTEGRAL_TYPE_P (type)
+       && (TYPE_UNSIGNED (type) || tree_expr_nonnegative_p (@0)))
+   (rshift @0 { build_int_cst (integer_type_node,
+			       wi::exact_log2 (wi::to_wide (@1))); })))
+#endif
  /* Simplify (t * u) / u -> t.  */
  (simplify
   (div (mult:c @0 @1) @1)
@@ -3010,6 +3036,33 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (pointer_plus @0 (negate (bit_and (convert @0) INTEGER_CST@1)))
   (with { tree algn = wide_int_to_tree (TREE_TYPE (@0), ~wi::to_wide (@1)); }
    (bit_and @0 { algn; })))
+
+/* Also match cases in which a constant is applied:
+
+   (1) tem = (sizetype) ptr;  ---> tem = (sizetype) (ptr + CST);
+   (2) tem = -tem             ---> tem = CST - tem;
+
+   and where "& align" masks only trailing zeros of CST.  (1) then has no
+   effect, whereas (2) adds CST to the result.  */
+(simplify
+ (pointer_plus @0 (negate (bit_and (convert (pointer_plus @0 INTEGER_CST@1))
+				   INTEGER_CST@2)))
+ (if (tree_int_cst_min_precision (@2, UNSIGNED) <= tree_ctz (@1))
+  (with { tree algn = wide_int_to_tree (TREE_TYPE (@0), ~wi::to_wide (@2)); }
+   (bit_and @0 { algn; }))))
+(simplify
+ (pointer_plus @0 (minus:s INTEGER_CST@1 (bit_and (convert @0) INTEGER_CST@2)))
+ (if (tree_int_cst_min_precision (@2, UNSIGNED) <= tree_ctz (@1))
+  (with { tree algn = wide_int_to_tree (TREE_TYPE (@0), ~wi::to_wide (@2)); }
+   (pointer_plus (bit_and @0 { algn; }) @1))))
+(simplify
+ (pointer_plus @0 (minus:s INTEGER_CST@1
+			   (bit_and (convert (pointer_plus @0 INTEGER_CST@2))
+				    INTEGER_CST@3)))
+ (with { auto mask_width = tree_int_cst_min_precision (@3, UNSIGNED); }
+  (if (mask_width <= tree_ctz (@1) && mask_width <= tree_ctz (@2))
+   (with { tree algn = wide_int_to_tree (TREE_TYPE (@0), ~wi::to_wide (@3)); }
+    (pointer_plus (bit_and @0 { algn; }) @1)))))
 
 /* Try folding difference of addresses.  */
 (simplify
@@ -5204,6 +5257,34 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (with { tree mask = int_const_binop (shift, fold_convert (type, @2), @1); }
      (if (mask)
       (bit_op (shift (convert @0) @1) { mask; })))))))
+
+/* Fold ((X >> C1) & C2) * (1 << C1) into X & (C2 << C1), including cases where
+   the & happens in a different type.  It is the conversion case that isn't
+   a composition of other folds.
+
+   Let the type of the * and >> be T1 and the type of the & be T2.
+   The fold is valid if the conversion to T2 preserves all information;
+   that is, if T2 is wider than T1 or drops no more than C1 bits from T1.
+   In that case, the & might operate on bits that are dropped by the
+   later conversion to T1 and the multiplication by (1 << C1), but those
+   bits are also dropped by ANDing with C2 << C1 (converted to T1).
+
+   If the conversion to T2 is not information-preserving, we have to be
+   careful about the later conversion to T1 acting as a sign extension.
+   We need either T2 to be unsigned or the top (sign) bit of C2 to be clear.
+   That is equivalent to testing whether C2 is nonnegative.  */
+(simplify
+ (mult (convert? (bit_and (convert? (rshift @0 INTEGER_CST@1)) INTEGER_CST@2))
+       INTEGER_CST@3)
+ (if (tree_nop_conversion_p (type, TREE_TYPE (@0))
+      && wi::ltu_p (wi::to_widest (@1), TYPE_PRECISION (type)))
+  (with { unsigned int shift = tree_to_uhwi (@1);
+	  unsigned int prec = TYPE_PRECISION (type); }
+   (if ((prec <= TYPE_PRECISION (TREE_TYPE (@2)) + shift
+	 || tree_int_cst_sgn (@2) >= 0)
+	&& wi::to_wide (@3) == wi::set_bit_in_zero (shift, prec))
+    (with { auto mask = wide_int::from (wi::to_wide (@2), prec, UNSIGNED); }
+     (bit_and (convert @0) { wide_int_to_tree (type, mask << shift); }))))))
 
 /* ~(~X >> Y) -> X >> Y (for arithmetic shift).  */
 (simplify
@@ -8320,12 +8401,12 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     /* Simplify logN (x) CMP CST into x CMP expN (CST) */
     (simplify
     (cmp:c (logs:s @0) REAL_CST@1)
-     (cmp @0 (exps @1)))
+     (cmp @0 (exps! @1)))
 
     /* Simplify expN (x) CMP CST into x CMP logN (CST) */
     (simplify
     (cmp:c (exps:s @0) REAL_CST@1)
-     (cmp @0 (logs @1))))))
+     (cmp @0 (logs! @1))))))
 
  (for logs (LOG LOG2 LOG10 LOG10)
       exps (EXP EXP2 EXP10 POW10)
@@ -9504,6 +9585,62 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 	 (view_convert { CONSTRUCTOR_ELT (ctor, idx / const_k)->value; }))
 	(BIT_FIELD_REF { CONSTRUCTOR_ELT (ctor, idx / const_k)->value; }
 		       @1 { bitsize_int ((idx % const_k) * width); })))))))))
+
+(simplify
+ (BIT_FIELD_REF (vec_perm@0 @1 @2 VECTOR_CST@3) @rsize @rpos)
+ (with
+  {
+    tree elem_type = TREE_TYPE (TREE_TYPE (@0));
+    poly_uint64 elem_size = tree_to_poly_uint64 (TYPE_SIZE (elem_type));
+    poly_uint64 size = tree_to_poly_uint64 (TYPE_SIZE (type));
+    unsigned HOST_WIDE_INT nelts, idx;
+    unsigned HOST_WIDE_INT nelts_op = 0;
+  }
+  (if (constant_multiple_p (tree_to_poly_uint64 (@rpos), elem_size, &idx)
+       && VECTOR_CST_NELTS (@3).is_constant (&nelts)
+       && (known_eq (size, elem_size)
+	   || (constant_multiple_p (size, elem_size, &nelts_op)
+	       && pow2p_hwi (nelts_op))))
+   (with
+    {
+      bool ok = true;
+      /* One element.  */
+      if (known_eq (size, elem_size))
+        idx = TREE_INT_CST_LOW (VECTOR_CST_ELT (@3, idx)) % (2 * nelts);
+      else
+        {
+	  /* Clamp vec_perm_expr index.  */
+	  unsigned start
+	    = TREE_INT_CST_LOW (vector_cst_elt (@3, idx)) % (2 * nelts);
+	  unsigned end
+	    = (TREE_INT_CST_LOW (vector_cst_elt (@3, idx + nelts_op - 1))
+	       % (2 * nelts));
+	  /* Be in the same vector.  */
+	  if ((start < nelts) != (end < nelts))
+	    ok = false;
+	  else
+	    for (unsigned HOST_WIDE_INT i = 1; i != nelts_op; i++)
+	      {
+	        /* Continuous area.  */
+		if ((TREE_INT_CST_LOW (vector_cst_elt (@3, idx + i))
+		     % (2 * nelts) - 1)
+		    != (TREE_INT_CST_LOW (vector_cst_elt (@3, idx + i - 1))
+			% (2 * nelts)))
+		  {
+		    ok = false;
+		    break;
+		  }
+	      }
+	  /* Alignment not worse than before.  */
+	  if (start % nelts_op)
+	    ok = false;
+	  idx = start;
+	}
+    }
+    (if (ok)
+     (if (idx < nelts)
+      (BIT_FIELD_REF @1 @rsize { bitsize_int (idx * elem_size); })
+      (BIT_FIELD_REF @2 @rsize { bitsize_int ((idx - nelts) * elem_size); })))))))
 
 /* Simplify a bit extraction from a bit insertion for the cases with
    the inserted element fully covering the extraction or the insertion
@@ -10984,7 +11121,7 @@ and,
     (with
      {
        vec_perm_indices sel0 (builder0, 2, nelts);
-       vec_perm_indices sel1 (builder1, 1, nelts);
+       vec_perm_indices sel1 (builder1, 2, nelts);
 
        for (int i = 0; i < nelts; i++)
 	 builder2.quick_push (sel0[sel1[i].to_constant ()]);

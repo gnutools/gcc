@@ -1284,6 +1284,13 @@ poly_int_binop (poly_wide_int &res, enum tree_code code,
 	return false;
       break;
 
+    case BIT_AND_EXPR:
+      if (TREE_CODE (arg2) != INTEGER_CST
+	  || !can_and_p (wi::to_poly_wide (arg1), wi::to_wide (arg2),
+			 &res))
+	return false;
+      break;
+
     case BIT_IOR_EXPR:
       if (TREE_CODE (arg2) != INTEGER_CST
 	  || !can_ior_p (wi::to_poly_wide (arg1), wi::to_wide (arg2),
@@ -1964,7 +1971,7 @@ const_unop (enum tree_code code, tree type, tree arg0)
       if (TREE_CODE (arg0) == INTEGER_CST)
 	return fold_not_const (arg0, type);
       else if (POLY_INT_CST_P (arg0))
-	return wide_int_to_tree (type, -poly_int_cst_value (arg0));
+	return wide_int_to_tree (type, ~poly_int_cst_value (arg0));
       /* Perform BIT_NOT_EXPR on each element individually.  */
       else if (TREE_CODE (arg0) == VECTOR_CST)
 	{
@@ -7465,15 +7472,16 @@ fold_plusminus_mult_expr (location_t loc, enum tree_code code, tree type,
   return NULL_TREE;
 }
 
-/* Subroutine of native_encode_expr.  Encode the INTEGER_CST
-   specified by EXPR into the buffer PTR of length LEN bytes.
+
+/* Subroutine of native_encode_int.  Encode the integer VAL with type TYPE
+   into the buffer PTR of length LEN bytes.
    Return the number of bytes placed in the buffer, or zero
    upon failure.  */
 
-static int
-native_encode_int (const_tree expr, unsigned char *ptr, int len, int off)
+int
+native_encode_wide_int (tree type, const wide_int_ref &val,
+			unsigned char *ptr, int len, int off)
 {
-  tree type = TREE_TYPE (expr);
   int total_bytes;
   if (TREE_CODE (type) == BITINT_TYPE)
     {
@@ -7516,7 +7524,7 @@ native_encode_int (const_tree expr, unsigned char *ptr, int len, int off)
       int bitpos = byte * BITS_PER_UNIT;
       /* Extend EXPR according to TYPE_SIGN if the precision isn't a whole
 	 number of bytes.  */
-      value = wi::extract_uhwi (wi::to_widest (expr), bitpos, BITS_PER_UNIT);
+      value = wi::extract_uhwi (val, bitpos, BITS_PER_UNIT);
 
       if (total_bytes > UNITS_PER_WORD)
 	{
@@ -7535,6 +7543,18 @@ native_encode_int (const_tree expr, unsigned char *ptr, int len, int off)
 	ptr[offset - off] = value;
     }
   return MIN (len, total_bytes - off);
+}
+
+/* Subroutine of native_encode_expr.  Encode the INTEGER_CST
+   specified by EXPR into the buffer PTR of length LEN bytes.
+   Return the number of bytes placed in the buffer, or zero
+   upon failure.  */
+
+static int
+native_encode_int (const_tree expr, unsigned char *ptr, int len, int off)
+{
+  return native_encode_wide_int (TREE_TYPE (expr), wi::to_widest (expr),
+				 ptr, len, off);
 }
 
 
@@ -7572,11 +7592,11 @@ native_encode_fixed (const_tree expr, unsigned char *ptr, int len, int off)
    Return the number of bytes placed in the buffer, or zero
    upon failure.  */
 
-static int
-native_encode_real (const_tree expr, unsigned char *ptr, int len, int off)
+int
+native_encode_real (scalar_float_mode mode, const REAL_VALUE_TYPE *val,
+		    unsigned char *ptr, int len, int off)
 {
-  tree type = TREE_TYPE (expr);
-  int total_bytes = GET_MODE_SIZE (SCALAR_FLOAT_TYPE_MODE (type));
+  int total_bytes = GET_MODE_SIZE (mode);
   int byte, offset, word, words, bitpos;
   unsigned char value;
 
@@ -7596,7 +7616,7 @@ native_encode_real (const_tree expr, unsigned char *ptr, int len, int off)
 
   words = (32 / BITS_PER_UNIT) / UNITS_PER_WORD;
 
-  real_to_target (tmp, TREE_REAL_CST_PTR (expr), TYPE_MODE (type));
+  real_to_target (tmp, val, mode);
 
   for (bitpos = 0; bitpos < total_bytes * BITS_PER_UNIT;
        bitpos += BITS_PER_UNIT)
@@ -7836,7 +7856,8 @@ native_encode_expr (const_tree expr, unsigned char *ptr, int len, int off)
       return native_encode_int (expr, ptr, len, off);
 
     case REAL_CST:
-      return native_encode_real (expr, ptr, len, off);
+      return native_encode_real (SCALAR_FLOAT_TYPE_MODE (TREE_TYPE (expr)),
+				 TREE_REAL_CST_PTR (expr), ptr, len, off);
 
     case FIXED_CST:
       return native_encode_fixed (expr, ptr, len, off);

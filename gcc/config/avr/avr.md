@@ -84,6 +84,7 @@
   [UNSPEC_STRLEN
    UNSPEC_CPYMEM
    UNSPEC_INDEX_JMP
+   UNSPEC_NZB
    UNSPEC_FMUL
    UNSPEC_FMULS
    UNSPEC_FMULSU
@@ -160,7 +161,7 @@
 ;; Otherwise do special processing depending on the attribute.
 
 (define_attr "adjust_len"
-  "out_bitop, plus, addto_sp, sext, extr, extr_not, plus_ext,
+  "out_bitop, plus, addto_sp, sext, extr, extr_not, plus_ext, sextr,
    tsthi, tstpsi, tstsi, compare, compare64, call,
    mov8, mov16, mov24, mov32, reload_in16, reload_in24, reload_in32,
    ufract, sfract, round,
@@ -173,6 +174,10 @@
    insert_bits, insv_notbit, insv, set_some,
    add_set_ZN, add_set_N, cmp_uext, cmp_sext, cmp_lsr,
    no"
+  (const_string "no"))
+
+(define_attr "nzb"
+  "yes, no"
   (const_string "no"))
 
 ;; Flavours of instruction set architecture (ISA), used in enabled attribute
@@ -336,6 +341,7 @@
 (define_code_iterator any_lshift  [lshiftrt ashift]) ; logic shift
 
 (define_code_iterator piaop [plus ior and])
+(define_code_iterator pixop [plus ior xor])
 (define_code_iterator bitop [xor ior and])
 (define_code_iterator xior [xor ior])
 (define_code_iterator eqne [eq ne])
@@ -3337,8 +3343,18 @@
                             (match_operand:SI 2 "nonmemory_operand" "")))
               (clobber (reg:HI 26))
               (clobber (reg:DI 18))])]
-  "AVR_HAVE_MUL"
+  "AVR_HAVE_MUL
+   || (avropt_pr118012
+       /* AVR_TINY passes args on the stack, so we cannot work
+          around PR118012 like this. */
+       && ! AVR_TINY)"
   {
+    if (! AVR_HAVE_MUL)
+      {
+        emit (gen_gen_mulsi3_pr118012 (operands[0], operands[1], operands[2]));
+        DONE;
+      }
+
     if (u16_operand (operands[2], SImode))
       {
         operands[2] = force_reg (HImode, gen_int_mode (INTVAL (operands[2]), HImode));
@@ -3355,6 +3371,26 @@
 
     if (avr_emit3_fix_outputs (gen_mulsi3, operands, 1 << 0,
                                regmask (DImode, 18) | regmask (HImode, 26)))
+      DONE;
+  })
+
+;; With PR118012, we do __mulsi3 as a transparent call, so insn combine
+;; can transform  (mult:SI (and:SI * (const_int 1)))  into something
+;; less toxic.
+(define_expand "gen_mulsi3_pr118012"
+  [(parallel [(set (match_operand:SI 0 "register_operand")
+                   (mult:SI (match_operand:SI 1 "register_operand")
+                            (match_operand:SI 2 "nonmemory_operand")))
+              (clobber (reg:HI 26))
+              (clobber (reg:HI 30))
+              (clobber (reg:DI 18))])]
+  "avropt_pr118012
+   && ! AVR_HAVE_MUL
+   && ! AVR_TINY"
+  {
+    operands[2] = force_reg (SImode, operands[2]);
+    if (avr_emit3_fix_outputs (gen_gen_mulsi3_pr118012, operands, 1 << 0,
+                               regmask (DImode, 18) | regmask (HImode, 26) | regmask (HImode, 30)))
       DONE;
   })
 
@@ -3392,6 +3428,33 @@
         DONE;
       }
   })
+
+(define_insn_and_split "*mulsi3_pr118012"
+  [(set (match_operand:SI 0 "pseudo_register_operand"         "=r")
+        (mult:SI (match_operand:SI 1 "pseudo_register_operand" "r")
+                 (match_operand:SI 2 "pseudo_register_operand" "r")))
+   (clobber (reg:HI 26))
+   (clobber (reg:HI 30))
+   (clobber (reg:DI 18))]
+  "avropt_pr118012
+   && ! AVR_HAVE_MUL
+   && ! AVR_TINY
+   && ! reload_completed"
+  { gcc_unreachable(); }
+  "&& 1"
+  [(set (reg:SI 18)
+        (match_dup 1))
+   (set (reg:SI 22)
+        (match_dup 2))
+   (parallel [(set (reg:SI 22)
+                   (mult:SI (reg:SI 22)
+                            (reg:SI 18)))
+              (clobber (reg:SI 18))
+              (clobber (reg:HI 26))
+              (clobber (reg:HI 30))])
+   (set (match_dup 0)
+        (reg:SI 22))])
+
 
 ;; "muluqisi3"
 ;; "muluhisi3"
@@ -3658,6 +3721,26 @@
               (clobber (reg:HI 26))
               (clobber (reg:CC REG_CC))])])
 
+(define_insn_and_split "*mulsi3_call_pr118012_split"
+  [(set (reg:SI 22)
+        (mult:SI (reg:SI 22)
+                 (reg:SI 18)))
+   (clobber (reg:SI 18))
+   (clobber (reg:HI 26))
+   (clobber (reg:HI 30))]
+  "avropt_pr118012
+   && ! AVR_HAVE_MUL
+   && ! AVR_TINY"
+  "#"
+  "&& reload_completed"
+  [(parallel [(set (reg:SI 22)
+                   (mult:SI (reg:SI 22)
+                            (reg:SI 18)))
+              (clobber (reg:SI 18))
+              (clobber (reg:HI 26))
+              (clobber (reg:HI 30))
+              (clobber (reg:CC REG_CC))])])
+
 (define_insn "*mulsi3_call"
   [(set (reg:SI 22)
         (mult:SI (reg:SI 22)
@@ -3665,6 +3748,21 @@
    (clobber (reg:HI 26))
    (clobber (reg:CC REG_CC))]
   "AVR_HAVE_MUL && reload_completed"
+  "%~call __mulsi3"
+  [(set_attr "type" "xcall")])
+
+(define_insn "*mulsi3_call_pr118012"
+  [(set (reg:SI 22)
+        (mult:SI (reg:SI 22)
+                 (reg:SI 18)))
+   (clobber (reg:SI 18))
+   (clobber (reg:HI 26))
+   (clobber (reg:HI 30))
+   (clobber (reg:CC REG_CC))]
+  "avropt_pr118012
+   && ! AVR_HAVE_MUL
+   && ! AVR_TINY
+   && reload_completed"
   "%~call __mulsi3"
   [(set_attr "type" "xcall")])
 
@@ -6206,6 +6304,15 @@
   ""
   [(set_attr "isa" "*,*,mov,movw")])
 
+(define_insn "*negsi2.libgcc"
+  [(set (reg:SI REG_22)
+        (neg:SI (reg:SI REG_22)))
+   (clobber (reg:CC REG_CC))]
+  "reload_completed
+   && optimize_size"
+  "%~call __negsi2"
+  [(set_attr "type" "xcall")])
+
 (define_insn "*negsi2"
   [(set (match_operand:SI 0 "register_operand"       "=!d,r,&r,&r")
         (neg:SI (match_operand:SI 1 "register_operand" "0,0,r ,r")))
@@ -7508,7 +7615,7 @@
 ;; Combine will create zero-extract patterns for single-bit tests.
 ;; Permit any mode in source pattern by using VOIDmode.
 
-(define_insn_and_split "*sbrx_branch<mode>_split"
+(define_insn_and_split "sbrx_branch<mode>_split"
   [(set (pc)
         (if_then_else
          (match_operator 0 "eqne_operator"
@@ -8975,8 +9082,8 @@
   [(set (pc)
         (if_then_else (ge (match_operand:QI 0 "register_operand" "")
                           (const_int 0))
-         (label_ref (match_operand 1 "" ""))
-         (pc)))]
+                      (label_ref (match_operand 1 "" ""))
+                      (pc)))]
    ""
    "#"
    "reload_completed"
@@ -10307,9 +10414,9 @@
 
 (define_insn_and_split "*extzv.qihi1"
   [(set (match_operand:HI 0 "register_operand"                     "=r")
-        (zero_extract:HI (match_operand:QI 1 "register_operand"     "r")
+        (zero_extract:HI (match_operand:QIHI 1 "register_operand"   "r")
                          (const_int 1)
-                         (match_operand:QI 2 "const_0_to_7_operand" "n")))]
+                         (match_operand:QI 2 "const_0_to_<MSB>_operand" "n")))]
   ""
   "#"
   ""
@@ -10530,6 +10637,499 @@
         (zero_extract:QI (match_dup 1)
                          (const_int 1)
                          (match_dup 2)))])
+
+
+(define_insn_and_split "*sextr.<QISI:mode>.<QISI2:mode>_split"
+  [(set (match_operand:QISI 0 "register_operand"                    "=r")
+        (sign_extract:QISI (match_operand:QISI2 1 "register_operand" "r")
+                           (const_int 1)
+                           (match_operand:QI 2 "const0_operand"      "L")))]
+  ""
+  "#"
+  "&& reload_completed"
+  [(parallel [(set (match_dup 0)
+                   (sign_extract:QISI (match_dup 1)
+                                      (const_int 1)
+                                      (match_dup 2)))
+              (clobber (reg:CC REG_CC))])])
+
+(define_insn "*sextr.<QISI:mode>.<QISI2:mode>"
+  [(set (match_operand:QISI 0 "register_operand"                    "=r")
+        (sign_extract:QISI (match_operand:QISI2 1 "register_operand" "r")
+                           (const_int 1)
+                           (match_operand:QI 2 "const0_operand"      "L")))
+   (clobber (reg:CC REG_CC))]
+  "reload_completed"
+  {
+    return avr_out_sextr (insn, operands, NULL);
+  }
+  [(set_attr "adjust_len" "sextr")])
+
+
+(define_insn_and_split "*neg.zextr-to-sextr.<HISI:mode>.<QISI:mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (neg:HISI (zero_extend:HISI
+                   (zero_extract:QIPSI (match_operand:QISI 1 "register_operand")
+                                       (const_int 1)
+                                       (match_operand:QI 2 "const0_operand")))))]
+  "avropt_pr118012
+   && <HISI:SIZE> > <QIPSI:SIZE>
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(set (match_dup 0)
+        (sign_extract:HISI (match_dup 1)
+                           (const_int 1)
+                           (match_dup 2)))])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PR118012: match.pd's
+;;
+;; /* (zero_one == 0) ? y : z <op> y -> ((typeof(y))zero_one * z) <op> y */
+;; /* (zero_one != 0) ? z <op> y : y -> ((typeof(y))zero_one * z) <op> y */
+;;
+;; introduces a crazy "optimization" that transforms code like
+;;
+;;    if (b & 1)
+;;       c ^= a;
+;; to
+;;
+;;    u = extract_bit0 (b);
+;;    v = zero_extend (u);
+;;    w = NEG v;
+;;    x = a AND w
+;;    c ^= x
+;;
+;; or even to
+;;
+;;    u = extract_bit0 (b);
+;;    v = a MULT u
+;;    c ^= v
+;;
+;; even on machines that don't have MUL instructions or that
+;; have to perform the multiplication by means of a libgcc call.
+;; Try to fix that below.  Notice that on AVR_TINY no MUL insn is
+;; available since is is performed as a libgcc call from which we
+;; cannot roll back.  With !AVR_HAVR_MULMUL it's a transparent call
+;; from avr.md so we can get rid of that at least.
+
+;; Map
+;;      $0 = ((sign_extract ($1.0)) AND $3) <op> $4
+;; to
+;;      $0 = $4
+;;      if ($1.0 == 0)
+;;        goto L
+;;      $0 <op>= $3
+;;      L:;
+(define_insn_and_split "*pixop-to-skip.<QISI:mode>"
+  [(set (match_operand:QISI 0 "register_operand")
+        (pixop:QISI (and:QISI (sign_extract:QISI (match_operand:QISI2 1 "register_operand")
+                                                 (const_int 1)
+                                                 (match_operand:QI 2 "const0_operand"))
+                              (match_operand:QISI 3 "nonmemory_operand"))
+                    (match_operand:QISI 4 "register_operand")))]
+  "avropt_pr118012
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_pixop (<pixop:CODE>, operands[0], operands[4], operands[3],
+                         EQ, operands[1], 0);
+    DONE;
+  })
+
+;; Map
+;;      $0 = (($1 AND 1) MULT $2) o $3
+;; to
+;;      $0 = $3
+;;      if ($1.0 == 0)
+;;        goto L
+;;      $0 o= $2
+;;      L:;
+(define_insn_and_split "*mul.and1-to-skip.<mode>"
+  [(set (match_operand:QISI 0 "register_operand")
+        (pixop:QISI (mult:QISI (and:QISI (match_operand:QISI 1 "register_operand")
+                                         (const_int 1))
+                               (match_operand:QISI 2 "nonmemory_operand"))
+                    (match_operand:QISI 3 "register_operand")))]
+  "avropt_pr118012
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_pixop (<CODE>, operands[0], operands[3], operands[2],
+                         EQ, operands[1], 0);
+    DONE;
+  })
+
+(define_insn_and_split "*mul.ext.and1-to-skip.<HISI:mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (pixop:HISI (mult:HISI (any_extend:HISI (and:QIPSI (match_operand:QIPSI 1 "register_operand")
+                                                           (const_int 1)))
+                               (match_operand:HISI 2 "nonmemory_operand"))
+                    (match_operand:HISI 3 "register_operand")))]
+  "avropt_pr118012
+   && <HISI:SIZE> > <QIPSI:SIZE>
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_pixop (<pixop:CODE>, operands[0], operands[3], operands[2],
+                         EQ, operands[1], 0);
+    DONE;
+  })
+
+;; Like the one above, but where $2 was a power of 2 and MULT has been
+;; transformed to ASHIFT (PR118360).
+(define_insn_and_split "*shl.ext.and1-to-skip.<HISI:mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (pixop:HISI (ashift:HISI (any_extend:HISI (and:QIPSI (match_operand:QIPSI 1 "register_operand")
+                                                             (const_int 1)))
+                                 (match_operand:QI 2 "const_int_operand"))
+                    (match_operand:HISI 3 "register_operand")))]
+  "avropt_pr118012
+   && <HISI:SIZE> > <QIPSI:SIZE>
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    rtx op2 = gen_int_mode (1u << INTVAL (operands[2]), <HISI:MODE>mode);
+    avr_emit_skip_pixop (<pixop:CODE>, operands[0], operands[3], op2,
+                         EQ, operands[1], 0);
+    DONE;
+  })
+
+(define_insn_and_split "*shl.and-to-skip.<mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (pixop:HISI (and:HISI (ashift:HISI (match_operand:HISI 1 "register_operand")
+                                           (match_operand:QI 4 "const_0_to_<MSB>_operand"))
+                              (match_operand:HISI 2 "single_one_operand"))
+                    (match_operand:HISI 3 "register_operand")))]
+  "avropt_pr118012
+   && exact_log2 (UINTVAL (operands[2]) & GET_MODE_MASK (<MODE>mode))
+      == INTVAL (operands[4])
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_pixop (<CODE>, operands[0], operands[3], operands[2],
+                         EQ, operands[1], 0);
+    DONE;
+  })
+
+
+;; Map
+;;      $0 = ($1 AND 1) MULT $2
+;; to
+;;      $0 = $2
+;;      if ($1.0 != 0)
+;;        goto L
+;;      $0 = 0
+;;      L:;
+(define_insn_and_split "*map.mul.and1-to-skip.<QISI:mode>"
+  [(set (match_operand:QISI 0 "register_operand")
+        (mult:QISI (and:QISI (match_operand:QISI2 1 "register_operand")
+                             (const_int 1))
+                   (match_operand:QISI 2 "nonmemory_operand")))]
+  "avropt_pr118012
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_clear (operands[0], operands[2], NE, operands[1], 0);
+    DONE;
+  })
+
+(define_insn_and_split "*map.mul.and1-to-skip.<mode>"
+  [(set (match_operand:QISI 0 "register_operand")
+        (mult:QISI (and:QISI (match_operand:QISI 1 "register_operand")
+                             (const_int 1))
+                   (match_operand:QISI 2 "nonmemory_operand")))]
+  "avropt_pr118012
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_clear (operands[0], operands[2], NE, operands[1], 0);
+    DONE;
+  })
+
+(define_insn_and_split "*map.mul.ext.and1-to-skip.<HISI:mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (mult:HISI (any_extend:HISI (and:QIPSI (match_operand:QIPSI 1 "register_operand")
+                                               (const_int 1)))
+                   (match_operand:HISI 2 "nonmemory_operand")))]
+  "avropt_pr118012
+   && <HISI:SIZE> > <QIPSI:SIZE>
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_clear (operands[0], operands[2], NE, operands[1], 0);
+    DONE;
+  })
+
+;; Similar, but the MULT has been turned to ASHIFT.
+(define_insn_and_split "*map.shl.ext.and1-to-skip.<HISI:mode>"
+  [(set (match_operand:HISI 0 "register_operand")
+        (ashift:HISI (any_extend:HISI (and:QIPSI (match_operand:QIPSI 1 "register_operand")
+                                                 (const_int 1)))
+                     (match_operand:QI 2 "const_0_to_<HISI:MSB>_operand")))]
+  "avropt_pr118012
+   && <HISI:SIZE> > <QIPSI:SIZE>
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    rtx op2 = gen_int_mode (1u << INTVAL (operands[2]), <HISI:MODE>mode);
+    avr_emit_skip_clear (operands[0], op2, NE, operands[1], 0);
+    DONE;
+  })
+
+
+;; Map
+;;      $0 = sign_extract($1.0) AND $3
+;; to
+;;      $0 = $3
+;;      if ($1.0 != 0)
+;;        goto L
+;;      $0 = 0
+;;      L:;
+(define_insn_and_split "*map.and1-to-skip.<QISI:mode>"
+  [(set (match_operand:QISI 0 "register_operand")
+        (and:QISI (sign_extract:QISI (match_operand:QISI2 1 "register_operand")
+                                     (const_int 1)
+                                     (match_operand:QI 2 "const0_operand"))
+                  (match_operand:QISI 3 "nonmemory_operand")))]
+  "avropt_pr118012
+   && ! reload_completed"
+  { gcc_unreachable (); }
+  "&& 1"
+  [(scratch)]
+  {
+    avr_emit_skip_clear (operands[0], operands[3], NE, operands[1], 0);
+    DONE;
+  })
+
+;; Patterns for -muse-nonzero-bits use nonzero_bits() in their condition,
+;; which makes possible some more optimizations.
+;;    Since combine may add clobber of REG_CC, we must make sure that there are
+;; no other routes to synthesize such patterns.  We use an UNSPEC for that.
+;;    As insns are not supposed to use stuff like nonzero_bits() in their
+;; condition, we split the insns right after reload.  For CFG reasons we have
+;; to do the splits by hand in avr_pass_split_nzb.  All insns that must be
+;; split by that pass must have insn attribute "nzb" set to "yes".  Moreover,
+;; the insns to split must be single_sets and must not touch control flow.
+
+(define_code_attr nzb_constr_rdr [(and "r") (ior "d") (xor "r")])
+(define_code_attr nzb_use1_nnr   [(and "n") (ior "n") (xor "r")])
+
+(define_insn_and_split "*nzb=1.<code>.zerox_split"
+  [(set (match_operand:QI 0 "register_operand")
+        (bitop:QI (zero_extract:QI (match_operand:QI 1 "register_operand")
+                                   (const_int 1)
+                                   (match_operand:QI 2 "const_0_to_7_operand"))
+                  (match_operand:QI 3 "register_operand")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && (<CODE> == IOR || <CODE> == XOR
+       || nonzero_bits (operands[3], QImode) == 1)"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  [(parallel [(set (match_dup 0)
+                   (bitop:QI (zero_extract:QI (match_dup 1)
+                                              (const_int 1)
+                                              (match_dup 2))
+                             (unspec:QI [(match_dup 3)
+                                         ] UNSPEC_NZB)))
+              (use (const_int 1))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn "*nzb=1.<code>.zerox"
+  [(set (match_operand:QI 0 "register_operand"                "=<nzb_constr_rdr>")
+        (bitop:QI (zero_extract:QI (match_operand:QI 1 "register_operand"     "r")
+                                   (const_int 1)
+                                   (match_operand:QI 2 "const_0_to_7_operand" "n"))
+                  (unspec:QI [(match_operand:QI 3 "register_operand"          "0")
+                              ] UNSPEC_NZB)))
+   (use (match_operand:QI 4 "nonmemory_operand" "<nzb_use1_nnr>"))
+   (clobber (reg:CC REG_CC))]
+  "optimize && avropt_use_nonzero_bits"
+  {
+    if (<CODE> == AND)
+      return "sbrs %1,%2\;clr %0";
+    else if (<CODE> == IOR)
+      return "sbrc %1,%2\;ori %0,1";
+    else if (<CODE> == XOR)
+      return "sbrc %1,%2\;eor %0,%4";
+    else
+      gcc_unreachable ();
+  }
+  [(set_attr "length" "2")])
+
+(define_insn_and_split "*nzb=1.<code>.lsr_split"
+  [(set (match_operand:QI 0 "register_operand")
+        (bitop:QI (lshiftrt:QI (match_operand:QI 1 "register_operand")
+                               (match_operand:QI 2 "const_0_to_7_operand"))
+                  (match_operand:QI 3 "register_operand")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && avr_nonzero_bits_lsr_operands_p (<CODE>, operands)"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  [(parallel [(set (match_dup 0)
+                   (bitop:QI (zero_extract:QI (match_dup 1)
+                                              (const_int 1)
+                                              (match_dup 2))
+                             (unspec:QI [(match_dup 3)
+                                        ] UNSPEC_NZB)))
+              (use (const_int 1))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn_and_split "*nzb=1.<code>.zerox.not_split"
+  [(set (match_operand:QI 0 "register_operand")
+        (bitop:QI (zero_extract:QI (xor:QI (match_operand:QI 1 "register_operand")
+                                           (match_operand:QI 4 "const_int_operand"))
+                                   (const_int 1)
+                                   (match_operand:QI 2 "const_0_to_7_operand"))
+                  (match_operand:QI 3 "register_operand")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && INTVAL (operands[2]) == exact_log2 (0xff & INTVAL (operands[4]))
+   && (<CODE> == IOR
+       || nonzero_bits (operands[3], QImode) == 1)"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  ; "*nzb=1.<code>.zerox.not"
+  [(parallel [(set (match_dup 0)
+                   (bitop:QI (zero_extract:QI (not:QI (match_dup 1))
+                                              (const_int 1)
+                                              (match_dup 2))
+                             (unspec:QI [(match_dup 3)
+                                         ] UNSPEC_NZB)))
+              (use (const_int 1))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn_and_split "*nzb=1.<code>.lsr.not_split"
+  [(set (match_operand:QI 0 "register_operand")
+        (bitop:QI (lshiftrt:QI (xor:QI (match_operand:QI 1 "register_operand")
+                                       (match_operand:QI 4 "const_int_operand"))
+                               (match_operand:QI 2 "const_0_to_7_operand"))
+                  (match_operand:QI 3 "register_operand")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && INTVAL (operands[2]) == exact_log2 (0xff & INTVAL (operands[4]))
+   && avr_nonzero_bits_lsr_operands_p (<CODE>, operands)"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  ; "*nzb=1.<code>.zerox.not"
+  [(parallel [(set (match_dup 0)
+                   (bitop:QI (zero_extract:QI (not:QI (match_dup 1))
+                                              (const_int 1)
+                                              (match_dup 2))
+                             (unspec:QI [(match_dup 3)
+                                         ] UNSPEC_NZB)))
+              (use (const_int 1))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn_and_split "*nzb=1.<code>.ge0_split"
+  [(set (match_operand:QI 0 "register_operand")
+        (bitop:QI (ge:QI (match_operand:QI 1 "register_operand")
+                         (const_int 0))
+                  (match_operand:QI 2 "register_operand")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && (<CODE> == IOR || <CODE> == XOR
+       || nonzero_bits (operands[2], QImode) == 1)"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  ; "*nzb=1.<code>.zerox.not"
+  [(parallel [(set (match_dup 0)
+                   (bitop:QI (zero_extract:QI (not:QI (match_dup 1))
+                                              (const_int 1)
+                                              (const_int 7))
+                             (unspec:QI [(match_dup 2)
+                                         ] UNSPEC_NZB)))
+              (use (const_int 1))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn "*nzb=1.<code>.zerox.not"
+  [(set (match_operand:QI 0 "register_operand"                    "=<nzb_constr_rdr>")
+        (bitop:QI (zero_extract:QI (not:QI (match_operand:QI 1 "register_operand" "r"))
+                                   (const_int 1)
+                                   (match_operand:QI 2 "const_0_to_7_operand"     "n"))
+                  (unspec:QI [(match_operand:QI 3 "register_operand"              "0")
+                              ] UNSPEC_NZB)))
+   (use (match_operand:QI 4 "nonmemory_operand" "<nzb_use1_nnr>"))
+   (clobber (reg:CC REG_CC))]
+  "optimize && avropt_use_nonzero_bits"
+  {
+    if (<CODE> == AND)
+      return "sbrc %1,%2\;clr %0";
+    else if (<CODE> == IOR)
+      return "sbrs %1,%2\;ori %0,1";
+    else if (<CODE> == XOR)
+      return "sbrs %1,%2\;eor %0,%4";
+    else
+      gcc_unreachable ();
+  }
+  [(set_attr "length" "2")])
+
+(define_insn_and_split "*nzb=1.ior.ashift_split"
+  [(set (match_operand:QI 0 "register_operand"                       "=d")
+        (ior:QI (ashift:QI (match_operand:QI 1 "register_operand"     "r")
+                           (match_operand:QI 2 "const_0_to_7_operand" "n"))
+                (match_operand:QI 3 "register_operand"                "0")))]
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed
+   && nonzero_bits (operands[1], QImode) == 1"
+  { gcc_unreachable (); }
+  "optimize && avropt_use_nonzero_bits
+   && !reload_completed"
+  [(parallel [(set (match_dup 0)
+                   (unspec:QI [(ior:QI (ashift:QI (match_dup 1)
+                                                  (match_dup 2))
+                                       (match_dup 3))
+                               ] UNSPEC_NZB))
+              (clobber (reg:CC REG_CC))])]
+  ""
+  [(set_attr "nzb" "yes")])
+
+(define_insn "*nzb=1.ior.ashift"
+  [(set (match_operand:QI 0 "register_operand"                                   "=d")
+        (unspec:QI [(ior:QI (ashift:QI (match_operand:QI 1 "register_operand"     "r")
+                                       (match_operand:QI 2 "const_0_to_7_operand" "n"))
+                            (match_operand:QI 3 "register_operand"                "0"))
+                    ] UNSPEC_NZB))
+   (clobber (reg:CC REG_CC))]
+  "optimize && avropt_use_nonzero_bits"
+  "sbrc %1,0\;ori %0,1<<%2"
+  [(set_attr "length" "2")])
 
 
 ;; Work around PR115307: Early passes expand isinf/f/l to a bloat.

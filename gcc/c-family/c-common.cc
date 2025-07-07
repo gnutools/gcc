@@ -6261,6 +6261,9 @@ check_function_arguments (location_t loc, const_tree fndecl, const_tree fntype,
 {
   bool warned_p = false;
 
+  if (c_inhibit_evaluation_warnings)
+    return warned_p;
+
   /* Check for null being passed in a pointer argument that must be
      non-null.  In C++, this includes the this pointer.  We also need
      to do this if format checking is enabled.  */
@@ -9044,7 +9047,8 @@ append_ctor_to_tree_vector (vec<tree, va_gc> *v, tree ctor)
 vec<tree, va_gc> *
 make_tree_vector_from_ctor (tree ctor)
 {
-  vec<tree,va_gc> *ret = make_tree_vector ();
+  vec<tree,va_gc> *ret
+    = CONSTRUCTOR_NELTS (ctor) <= 16 ? make_tree_vector () : NULL;
   return append_ctor_to_tree_vector (ret, ctor);
 }
 

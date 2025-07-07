@@ -16394,10 +16394,11 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
                 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-    #if defined __riscv
+    #if defined __AMDGCN__ || defined __nvptx__
+    /* Yes, please.  */
+    #elif defined __riscv
     # error "Defaulting to mutex-based locks for ABI compatibility"
-    #endif
-    #if ! defined __GCC_HAVE_SYNC_COMPARE_AND_SWAP_2
+    #elif ! defined __GCC_HAVE_SYNC_COMPARE_AND_SWAP_2
     # error "No 2-byte compare-and-swap"
     #elif ! defined __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
     # error "No 4-byte compare-and-swap"
@@ -16444,7 +16445,7 @@ $as_echo "mutex" >&6; }
   # unnecessary for this test.
 
     cat > conftest.$ac_ext << EOF
-#line 16447 "configure"
+#line 16448 "configure"
 int main()
 {
   _Decimal32 d1;
@@ -16486,7 +16487,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
   # unnecessary for this test.
 
   cat > conftest.$ac_ext << EOF
-#line 16489 "configure"
+#line 16490 "configure"
 template<typename T1, typename T2>
   struct same
   { typedef T2 type; };
@@ -19450,9 +19451,11 @@ fi
 	     as_fn_error $? "compiler flags start with a -" "$LINENO" 5 ;;
       esac
     done
+
+    # Append the additional flags to any that came from 'configure.host'.
+    EXTRA_CXX_FLAGS="$EXTRA_CXX_FLAGS $enable_cxx_flags"
   fi
 
-  EXTRA_CXX_FLAGS="$enable_cxx_flags"
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $EXTRA_CXX_FLAGS" >&5
 $as_echo "$EXTRA_CXX_FLAGS" >&6; }
 
@@ -54421,6 +54424,65 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
   fi
+
+
+# For std::chrono formatters to use tm::tm_zone
+
+
+
+  ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+  ac_save_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -std=c++20"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tm_zone member of struct tm" >&5
+$as_echo_n "checking for tm_zone member of struct tm... " >&6; }
+if ${glibcxx_cv_tm_zone+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <time.h>
+
+int
+main ()
+{
+struct tm t{}; t.tm_zone = (char*)0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  glibcxx_cv_tm_zone=yes
+else
+  glibcxx_cv_tm_zone=no
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $glibcxx_cv_tm_zone" >&5
+$as_echo "$glibcxx_cv_tm_zone" >&6; }
+
+  if test $glibcxx_cv_tm_zone = yes; then
+
+$as_echo "#define _GLIBCXX_USE_STRUCT_TM_TM_ZONE 1" >>confdefs.h
+
+  fi
+
+  CXXFLAGS="$ac_save_CXXFLAGS"
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 
 
 # For src/c++11/shared_ptr.cc alignment.

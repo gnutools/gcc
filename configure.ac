@@ -161,6 +161,7 @@ target_libraries="target-libgcc \
 		target-libgfortran \
 		target-libffi \
 		target-libobjc \
+		target-libgcobol \
 		target-libada \
 		target-libgm2 \
 		target-libgo \
@@ -656,10 +657,6 @@ if test "${ENABLE_LIBSTDCXX}" = "default" ; then
       # VxWorks uses the Dinkumware C++ library.
       noconfigdirs="$noconfigdirs target-libstdc++-v3"
       ;;
-    amdgcn*-*-*)
-      # Not ported/fails to build when using newlib.
-      noconfigdirs="$noconfigdirs target-libstdc++-v3"
-      ;;
     arm*-wince-pe*)
       # the C++ libraries don't build on top of CE's C libraries
       noconfigdirs="$noconfigdirs target-libstdc++-v3"
@@ -675,6 +672,21 @@ if test "${ENABLE_LIBSTDCXX}" = "default" ; then
       ;;
   esac
 fi
+
+# Disable Ada/GNAT on systems where it is known to not work.
+# For testing, you can override this with --enable-languages=ada.
+case ,${enable_languages}, in
+  *,ada,*)
+    ;;
+  *)
+      case "${target}" in
+        amdgcn*-*-* \
+        | nvptx*-*-* )
+          unsupported_languages="$unsupported_languages ada"
+          ;;
+      esac
+      ;;
+esac
 
 # Disable C++ on systems where it is known to not work.
 # For testing, you can override this with --enable-languages=c++.
@@ -702,6 +714,16 @@ case ,${enable_languages}, in
           ;;
       esac
       ;;
+esac
+
+# Disable libobjc for some systems where it is known to not work.
+case "${target}" in
+  amdgcn*-*-*)
+    noconfigdirs="$noconfigdirs target-libobjc"
+    ;;
+  nvptx*-*-*)
+    noconfigdirs="$noconfigdirs target-libobjc"
+    ;;
 esac
 
 # Disable D on systems where it is known to not work.
@@ -735,6 +757,23 @@ if test -d ${srcdir}/libphobos; then
     fi
 fi
 
+# Disable libgcobol on unsupported systems.
+# For testing, you can override this with --enable-libgcobol.
+if test -d ${srcdir}/libgcobol; then
+    if test x$enable_libgcobol = x; then
+	AC_MSG_CHECKING([for libgcobol support])
+	if (srcdir=${srcdir}/libgcobol; \
+		. ${srcdir}/configure.tgt; \
+		test -n "$UNSUPPORTED")
+	then
+	    AC_MSG_RESULT([no])
+	    noconfigdirs="$noconfigdirs target-libgcobol"
+	else
+	    AC_MSG_RESULT([yes])
+	fi
+    fi
+fi
+
 # Disable Fortran for some systems.
 case "${target}" in
   mmix-*-*)
@@ -743,6 +782,41 @@ case "${target}" in
     ;;
   bpf-*-*)
     unsupported_languages="$unsupported_languages fortran"
+    ;;
+esac
+
+# Always enable COBOL for --enable-languages=*cobol*
+# Otherwise, enable COBOL only for known architectures
+case ,${enable_languages}, in
+  *,cobol,*)
+    case ,${enable_languages}, in
+      *,c++,*)
+      ;;
+      *)
+        # We have an explicit cobol, but no c++.  We need c++, because cobol
+        # requires libstdc++
+        enable_languages="$enable_languages,c++"
+      ;;
+    esac
+    ;;
+  *)
+    case "${target}" in
+      *-*-darwin*)
+        unsupported_languages="$unsupported_languages cobol"
+        ;;
+      x86_64-*-*|aarch64-*-*)
+        ;;
+      *-*-*)
+    unsupported_languages="$unsupported_languages cobol"
+    ;;
+    esac
+    case "${host}" in
+      x86_64-*-*|aarch64-*-*)
+        ;;
+      *-*-*)
+    unsupported_languages="$unsupported_languages cobol"
+    ;;
+    esac
     ;;
 esac
 
@@ -779,6 +853,9 @@ case "${target}" in
     noconfigdirs="$noconfigdirs target-libffi"
     ;;
   alpha*-*-*vms*)
+    noconfigdirs="$noconfigdirs target-libffi"
+    ;;
+  amdgcn*-*-*)
     noconfigdirs="$noconfigdirs target-libffi"
     ;;
   arm*-*-freebsd*)
@@ -822,6 +899,9 @@ case "${target}" in
     noconfigdirs="$noconfigdirs target-libffi"
     ;;
   mmix-*-*)
+    noconfigdirs="$noconfigdirs target-libffi"
+    ;;
+  nvptx*-*-*)
     noconfigdirs="$noconfigdirs target-libffi"
     ;;
   powerpc-*-aix*)
@@ -871,9 +951,15 @@ if test x$enable_libgo = x; then
     *-*-cygwin* | *-*-mingw*)
 	noconfigdirs="$noconfigdirs target-libgo"
 	;;
+    amdgcn*-*-*)
+	noconfigdirs="$noconfigdirs target-libgo"
+	;;
     bpf-*-*)
         noconfigdirs="$noconfigdirs target-libgo"
         ;;
+    nvptx*-*-*)
+	noconfigdirs="$noconfigdirs target-libgo"
+	;;
     esac
 fi
 
@@ -1275,7 +1361,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs gprof"
     ;;
   nvptx*-*-*)
-    noconfigdirs="$noconfigdirs target-libssp target-libstdc++-v3 target-libobjc"
+    noconfigdirs="$noconfigdirs target-libssp"
     ;;
   sh-*-*)
     case "${target}" in
@@ -2606,6 +2692,16 @@ case ,${enable_languages}, in
         # Disable target libgrust if we're not building target libstdc++.
         noconfigdirs="$noconfigdirs target-libgrust"
         ;;
+      *)
+	case "${target}" in
+	  amdgcn*-*-* \
+	  | nvptx*-*-* )
+	    # Build fails in 'libgrust/libproc_macro_internal/':
+	    #     sorry, unimplemented: exception handling not supported
+	    noconfigdirs="$noconfigdirs target-libgrust"
+	    ;;
+	esac
+	;;
     esac
     ;;
 esac
@@ -3965,12 +4061,24 @@ GCC_TARGET_TOOL(ar, AR_FOR_TARGET, AR, [binutils/ar])
 GCC_TARGET_TOOL(as, AS_FOR_TARGET, AS, [gas/as-new])
 GCC_TARGET_TOOL(cc, CC_FOR_TARGET, CC, [gcc/xgcc -B$$r/$(HOST_SUBDIR)/gcc/])
 dnl see comments for CXX_FOR_TARGET_FLAG_TO_PASS
-GCC_TARGET_TOOL(c++, CXX_FOR_TARGET, CXX,
+case $target in
+  *-*-darwin*)
+    GCC_TARGET_TOOL(c++, CXX_FOR_TARGET, CXX,
+		[gcc/xg++ -B$$r/$(HOST_SUBDIR)/gcc/ -nostdinc++ `if test -f $$r/$(TARGET_SUBDIR)/libstdc++-v3/scripts/testsuite_flags; then $(SHELL) $$r/$(TARGET_SUBDIR)/libstdc++-v3/scripts/testsuite_flags --build-includes; else echo -funconfigured-libstdc++-v3 ; fi` -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/src -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/src/.libs -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/libsupc++/.libs],
+		c++)
+    GCC_TARGET_TOOL(c++ for libstdc++, RAW_CXX_FOR_TARGET, CXX,
+		[gcc/xgcc -shared-libgcc -B$$r/$(HOST_SUBDIR)/gcc -nostdinc++ -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/src -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/src/.libs -B$$r/$(TARGET_SUBDIR)/libstdc++-v3/libsupc++/.libs],
+		c++)
+  ;;
+  *)
+    GCC_TARGET_TOOL(c++, CXX_FOR_TARGET, CXX,
 		[gcc/xg++ -B$$r/$(HOST_SUBDIR)/gcc/ -nostdinc++ `if test -f $$r/$(TARGET_SUBDIR)/libstdc++-v3/scripts/testsuite_flags; then $(SHELL) $$r/$(TARGET_SUBDIR)/libstdc++-v3/scripts/testsuite_flags --build-includes; else echo -funconfigured-libstdc++-v3 ; fi` -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/src -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/src/.libs -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/libsupc++/.libs],
 		c++)
-GCC_TARGET_TOOL(c++ for libstdc++, RAW_CXX_FOR_TARGET, CXX,
+    GCC_TARGET_TOOL(c++ for libstdc++, RAW_CXX_FOR_TARGET, CXX,
 		[gcc/xgcc -shared-libgcc -B$$r/$(HOST_SUBDIR)/gcc -nostdinc++ -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/src -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/src/.libs -L$$r/$(TARGET_SUBDIR)/libstdc++-v3/libsupc++/.libs],
 		c++)
+  ;;
+esac
 GCC_TARGET_TOOL(dlltool, DLLTOOL_FOR_TARGET, DLLTOOL, [binutils/dlltool])
 GCC_TARGET_TOOL(dsymutil, DSYMUTIL_FOR_TARGET, DSYMUTIL)
 GCC_TARGET_TOOL(gcc, GCC_FOR_TARGET, , [gcc/xgcc -B$$r/$(HOST_SUBDIR)/gcc/])
@@ -4111,6 +4219,7 @@ compare_exclusions="gcc/cc*-checksum\$(objext) | gcc/ada/*tools/*"
 compare_exclusions="$compare_exclusions | gcc/m2/gm2-compiler-boot/M2Version*"
 compare_exclusions="$compare_exclusions | gcc/m2/gm2-compiler-boot/SYSTEM*"
 compare_exclusions="$compare_exclusions | gcc/m2/gm2version*"
+compare_exclusions="$compare_exclusions | gcc/cobol/parse\$(objext)"
 case "$target" in
   hppa*64*-*-hpux*) ;;
   powerpc*-ibm-aix*) compare_exclusions="$compare_exclusions | *libgomp*\$(objext)" ;;

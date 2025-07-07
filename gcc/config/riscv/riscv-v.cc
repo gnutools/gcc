@@ -1265,7 +1265,16 @@ expand_const_vector (rtx target, rtx src)
 	       element. Use element width = 64 and broadcast a vector with
 	       all element equal to 0x0706050403020100.  */
 	  rtx ele = builder.get_merged_repeating_sequence ();
-	  rtx dup = expand_vector_broadcast (builder.new_mode (), ele);
+	  rtx dup;
+	  if (lra_in_progress)
+	    {
+	      dup = gen_reg_rtx (builder.new_mode ());
+	      rtx ops[] = {dup, ele};
+	      emit_vlmax_insn (code_for_pred_broadcast
+			       (builder.new_mode ()), UNARY_OP, ops);
+	    }
+	  else
+	    dup = expand_vector_broadcast (builder.new_mode (), ele);
 	  emit_move_insn (result, gen_lowpart (mode, dup));
 	}
       else
@@ -1480,22 +1489,44 @@ expand_const_vector (rtx target, rtx src)
 
 		  EEW = 32, { 2, 4, ... }.
 
-	     This only works as long as the larger type does not overflow
-	     as we can't guarantee a zero value for each second element
-	     of the sequence with smaller EEW.
-	     ??? For now we assume that no overflow happens with positive
-	     steps and forbid negative steps altogether.  */
+	     Both the series1 and series2 may overflow before taking the IOR
+	     to generate the final result.  However, only series1 matters
+	     because the series2 will shift before IOR, thus the overflow
+	     bits will never pollute the final result.
+
+	     For now we forbid the negative steps and overflow, and they
+	     will fall back to the default merge way to generate the
+	     const_vector.  */
+
 	  unsigned int new_smode_bitsize = builder.inner_bits_size () * 2;
 	  scalar_int_mode new_smode;
 	  machine_mode new_mode;
 	  poly_uint64 new_nunits
 	    = exact_div (GET_MODE_NUNITS (builder.mode ()), 2);
+
+	  poly_int64 base1_poly = rtx_to_poly_int64 (base1);
+	  bool overflow_smode_p = false;
+
+	  if (!step1.is_constant ())
+	    overflow_smode_p = true;
+	  else
+	    {
+	      int elem_count = XVECLEN (src, 0);
+	      uint64_t step1_val = step1.to_constant ();
+	      uint64_t base1_val = base1_poly.to_constant ();
+	      uint64_t elem_val = base1_val + (elem_count - 1) * step1_val;
+
+	      if ((elem_val >> builder.inner_bits_size ()) != 0)
+		overflow_smode_p = true;
+	    }
+
 	  if (known_ge (step1, 0) && known_ge (step2, 0)
 	      && int_mode_for_size (new_smode_bitsize, 0).exists (&new_smode)
-	      && get_vector_mode (new_smode, new_nunits).exists (&new_mode))
+	      && get_vector_mode (new_smode, new_nunits).exists (&new_mode)
+	      && !overflow_smode_p)
 	    {
 	      rtx tmp1 = gen_reg_rtx (new_mode);
-	      base1 = gen_int_mode (rtx_to_poly_int64 (base1), new_smode);
+	      base1 = gen_int_mode (base1_poly, new_smode);
 	      expand_vec_series (tmp1, base1, gen_int_mode (step1, new_smode));
 
 	      if (rtx_equal_p (base2, const0_rtx) && known_eq (step2, 0))
@@ -1523,10 +1554,20 @@ expand_const_vector (rtx target, rtx src)
 		  base2 = gen_int_mode (rtx_to_poly_int64 (base2), new_smode);
 		  expand_vec_series (tmp2, base2,
 				     gen_int_mode (step2, new_smode));
-		  rtx shifted_tmp2 = expand_simple_binop (
-		    new_mode, ASHIFT, tmp2,
-		    gen_int_mode (builder.inner_bits_size (), Pmode), NULL_RTX,
-		    false, OPTAB_DIRECT);
+		  rtx shifted_tmp2;
+		  rtx shift = gen_int_mode (builder.inner_bits_size (), Xmode);
+		  if (lra_in_progress)
+		    {
+		      shifted_tmp2 = gen_reg_rtx (new_mode);
+		      rtx shift_ops[] = {shifted_tmp2, tmp2, shift};
+		      emit_vlmax_insn (code_for_pred_scalar
+				       (ASHIFT, new_mode), BINARY_OP,
+				       shift_ops);
+		    }
+		  else
+		    shifted_tmp2 = expand_simple_binop (new_mode, ASHIFT, tmp2,
+							shift, NULL_RTX, false,
+							OPTAB_DIRECT);
 		  rtx tmp3 = gen_reg_rtx (new_mode);
 		  rtx ior_ops[] = {tmp3, tmp1, shifted_tmp2};
 		  emit_vlmax_insn (code_for_pred (IOR, new_mode), BINARY_OP,
@@ -1539,9 +1580,20 @@ expand_const_vector (rtx target, rtx src)
 	      rtx vid = gen_reg_rtx (mode);
 	      expand_vec_series (vid, const0_rtx, const1_rtx);
 	      /* Transform into { 0, 0, 1, 1, 2, 2, ... }.  */
-	      rtx shifted_vid
-		= expand_simple_binop (mode, LSHIFTRT, vid, const1_rtx,
-				       NULL_RTX, false, OPTAB_DIRECT);
+	      rtx shifted_vid;
+	      if (lra_in_progress)
+		{
+		  shifted_vid = gen_reg_rtx (mode);
+		  rtx shift = gen_int_mode (1, Xmode);
+		  rtx shift_ops[] = {shifted_vid, vid, shift};
+		  emit_vlmax_insn (code_for_pred_scalar
+				   (ASHIFT, mode), BINARY_OP,
+				   shift_ops);
+		}
+	      else
+		shifted_vid = expand_simple_binop (mode, LSHIFTRT, vid,
+						   const1_rtx, NULL_RTX,
+						   false, OPTAB_DIRECT);
 	      rtx tmp1 = gen_reg_rtx (mode);
 	      rtx tmp2 = gen_reg_rtx (mode);
 	      expand_vec_series (tmp1, base1,
@@ -1730,13 +1782,15 @@ get_vlmul (machine_mode mode)
       int inner_size = GET_MODE_BITSIZE (GET_MODE_INNER (mode));
       if (size < TARGET_MIN_VLEN)
 	{
+	  /* Follow rule LMUL >= SEW / ELEN.  */
+	  int elen = TARGET_VECTOR_ELEN_64 ? 1 : 2;
 	  int factor = TARGET_MIN_VLEN / size;
 	  if (inner_size == 8)
-	    factor = MIN (factor, 8);
+	    factor = MIN (factor, 8 / elen);
 	  else if (inner_size == 16)
-	    factor = MIN (factor, 4);
+	    factor = MIN (factor, 4 / elen);
 	  else if (inner_size == 32)
-	    factor = MIN (factor, 2);
+	    factor = MIN (factor, 2 / elen);
 	  else if (inner_size == 64)
 	    factor = MIN (factor, 1);
 	  else
@@ -2103,7 +2157,7 @@ get_unknown_min_value (machine_mode mode)
 static rtx
 force_vector_length_operand (rtx vl)
 {
-  if (CONST_INT_P (vl) && !satisfies_constraint_K (vl))
+  if (CONST_INT_P (vl) && !satisfies_constraint_vl (vl))
     return force_reg (Pmode, vl);
   return vl;
 }
@@ -3947,11 +4001,22 @@ shuffle_generic_patterns (struct expand_vec_perm_d *d)
   if (!get_gather_index_mode (d).exists (&sel_mode))
     return false;
 
+  rtx sel = vec_perm_indices_to_rtx (sel_mode, d->perm);
+  poly_uint64 nunits = GET_MODE_NUNITS (sel_mode);
+  rtx elt;
+
+  bool is_simple = d->one_vector_p
+    || const_vec_duplicate_p (sel, &elt)
+    || (nunits.is_constant ()
+	&& const_vec_all_in_range_p (sel, 0, nunits - 1));
+
+  if (!is_simple && !riscv_two_source_permutes)
+    return false;
+
   /* Success! */
   if (d->testing_p)
     return true;
 
-  rtx sel = vec_perm_indices_to_rtx (sel_mode, d->perm);
   /* Some FIXED-VLMAX/VLS vector permutation situations call targethook
      instead of expand vec_perm<mode>, we handle it directly.  */
   expand_vec_perm (d->target, d->op0, d->op1, sel);
@@ -4119,7 +4184,7 @@ expand_load_store (rtx *ops, bool is_load)
     }
   else
     {
-      if (!satisfies_constraint_K (len))
+      if (!satisfies_constraint_vl (len))
 	len = force_reg (Pmode, len);
       if (is_load)
 	{
@@ -4154,7 +4219,7 @@ expand_strided_load (machine_mode mode, rtx *ops)
     emit_vlmax_insn (icode, BINARY_OP_TAMA, emit_ops);
   else
     {
-      len = satisfies_constraint_K (len) ? len : force_reg (Pmode, len);
+      len = satisfies_constraint_vl (len) ? len : force_reg (Pmode, len);
       emit_nonvlmax_insn (icode, BINARY_OP_TAMA, emit_ops, len);
     }
 }
@@ -4180,7 +4245,7 @@ expand_strided_store (machine_mode mode, rtx *ops)
     }
   else
     {
-      len = satisfies_constraint_K (len) ? len : force_reg (Pmode, len);
+      len = satisfies_constraint_vl (len) ? len : force_reg (Pmode, len);
       vl_type = get_avl_type_rtx (NONVLMAX);
     }
 
@@ -4631,7 +4696,7 @@ expand_lanes_load_store (rtx *ops, bool is_load)
     }
   else
     {
-      if (!satisfies_constraint_K (len))
+      if (!satisfies_constraint_vl (len))
 	len = force_reg (Pmode, len);
       if (is_load)
 	{

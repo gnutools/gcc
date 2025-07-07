@@ -1,3 +1,58 @@
+2025-03-14  Jakub Jelinek  <jakub@redhat.com>
+
+	PR analyzer/119278
+	* svalue.cc (cmp_csts_same_type): For STRING_CST, compare
+	TREE_STRING_LENGTH first just in case and use memcmp rather
+	than strcmp.  Handle RAW_DATA_CST.
+
+2025-03-13  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/117262
+	* region-model-manager.cc
+	(region_model_manager::get_or_create_constant_svalue): Use
+	NULL_TREE for the types of constant_svalue for RAW_DATA_CST.
+	(region_model_manager::maybe_fold_sub_svalue): Generalize
+	STRING_CST logic to also handle RAW_DATA_CST.
+	(region_model_manager::maybe_get_char_from_cst): New.
+	(region_model_manager::maybe_get_char_from_raw_data_cst): New.
+	* region-model-manager.h
+	(region_model_manager::maybe_get_char_from_cst): New decl.
+	(region_model_manager::maybe_get_char_from_raw_data_cst): New decl.
+	* region-model.cc (region_model::get_rvalue_1): Handle
+	RAW_DATA_CST.
+	* store.cc (get_subregion_within_ctor_for_ctor_pair): New.
+	(binding_map::apply_ctor_pair_to_child_region): Call
+	get_subregion_within_ctor_for_ctor_pair so that we handle
+	RAW_DATA_CST.
+
+2025-02-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/117023
+	* sm-malloc.cc (malloc_state_machine::handle_nonnull): New private
+	method.
+	(malloc_state_machine::on_stmt): Use it for nonnull attribute arguments.
+	Handle also nonnull_if_nonzero attributes.
+
+2025-02-19  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/118300
+	* kf.cc (class kf_ubsan_bounds): Replace this with...
+	(class kf_ubsan_noop): ...this.
+	(register_sanitizer_builtins): Use it to handle IFN_UBSAN_NULL,
+	IFN_UBSAN_BOUNDS, and IFN_UBSAN_PTR as nop-ops.
+	(register_known_functions): Drop handling of IFN_UBSAN_BOUNDS
+	here, as it's now handled by register_sanitizer_builtins above.
+
+2025-02-18  David Malcolm  <dmalcolm@redhat.com>
+
+	* diagnostic-manager.cc
+	(saved_diagnostic::maybe_add_sarif_properties): Add various
+	properties for debugging, for m_stmt, m_var, and m_duplicates.
+	Remove stray 'if' statement.  Capture the kind of the
+	pending_diagnostic.
+	* region-model.cc
+	(poisoned_value_diagnostic::maybe_add_sarif_properties): New.
+
 2024-12-06  David Malcolm  <dmalcolm@redhat.com>
 
 	* region-model.cc: Include "gcc-urlifier.h".

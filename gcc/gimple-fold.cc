@@ -7686,10 +7686,8 @@ decode_field_reference (tree *pexp, HOST_WIDE_INT *pbitsize,
       || bs <= shiftrt
       || offset != 0
       || TREE_CODE (inner) == PLACEHOLDER_EXPR
-      /* Reject out-of-bound accesses (PR79731).  */
-      || (! AGGREGATE_TYPE_P (TREE_TYPE (inner))
-	  && compare_tree_int (TYPE_SIZE (TREE_TYPE (inner)),
-			       bp + bs) < 0)
+      /* Reject out-of-bound accesses (PR79731, PR118514).  */
+      || !access_in_bounds_of_type_p (TREE_TYPE (inner), bs, bp)
       || (INTEGRAL_TYPE_P (TREE_TYPE (inner))
 	  && !type_has_mode_precision_p (TREE_TYPE (inner))))
     return NULL_TREE;
@@ -8090,15 +8088,18 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
       return 0;
     }
 
-  /* Prepare to turn compares of signed quantities with zero into
-     sign-bit tests.  */
-  bool lsignbit = false, rsignbit = false;
+  /* Prepare to turn compares of signed quantities with zero into sign-bit
+     tests.  We need not worry about *_reversep here for these compare
+     rewrites: loads will have already been reversed before compares.  Save the
+     precision, because [lr]l_arg may change and we won't be able to tell how
+     wide it was originally.  */
+  unsigned lsignbit = 0, rsignbit = 0;
   if ((lcode == LT_EXPR || lcode == GE_EXPR)
       && integer_zerop (lr_arg)
       && INTEGRAL_TYPE_P (TREE_TYPE (ll_arg))
       && !TYPE_UNSIGNED (TREE_TYPE (ll_arg)))
     {
-      lsignbit = true;
+      lsignbit = TYPE_PRECISION (TREE_TYPE (ll_arg));
       lcode = (lcode == LT_EXPR ? NE_EXPR : EQ_EXPR);
     }
   /* Turn compares of unsigned quantities with powers of two into
@@ -8131,7 +8132,7 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
       && INTEGRAL_TYPE_P (TREE_TYPE (rl_arg))
       && !TYPE_UNSIGNED (TREE_TYPE (rl_arg)))
     {
-      rsignbit = true;
+      rsignbit = TYPE_PRECISION (TREE_TYPE (rl_arg));
       rcode = (rcode == LT_EXPR ? NE_EXPR : EQ_EXPR);
     }
   else if ((rcode == LT_EXPR || rcode == GE_EXPR)
@@ -8198,13 +8199,14 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
      the rhs's.  If one is a load and the other isn't, we have to be
      conservative and avoid the optimization, otherwise we could get
      SRAed fields wrong.  */
-  if (volatilep || ll_reversep != rl_reversep)
+  if (volatilep)
     return 0;
 
-  if (! operand_equal_p (ll_inner, rl_inner, 0))
+  if (ll_reversep != rl_reversep
+      || ! operand_equal_p (ll_inner, rl_inner, 0))
     {
       /* Try swapping the operands.  */
-      if (ll_reversep != rr_reversep
+      if (ll_reversep != rr_reversep || rsignbit
 	  || !operand_equal_p (ll_inner, rr_inner, 0))
 	return 0;
 
@@ -8284,6 +8286,14 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
   if (lsignbit)
     {
       wide_int sign = wi::mask (ll_bitsize - 1, true, ll_bitsize);
+      /* If ll_arg is zero-extended and we're testing the sign bit, we know
+	 what the result should be.  Shifting the sign bit out of sign will get
+	 us to mask the entire field out, yielding zero, i.e., the sign bit of
+	 the zero-extended value.  We know the masked value is being compared
+	 with zero, so the compare will get us the result we're looking
+	 for: TRUE if EQ_EXPR, FALSE if NE_EXPR.  */
+      if (lsignbit > ll_bitsize && ll_unsignedp)
+	sign <<= 1;
       if (!ll_and_mask.get_precision ())
 	ll_and_mask = sign;
       else
@@ -8303,6 +8313,8 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
   if (rsignbit)
     {
       wide_int sign = wi::mask (rl_bitsize - 1, true, rl_bitsize);
+      if (rsignbit > rl_bitsize && rl_unsignedp)
+	sign <<= 1;
       if (!rl_and_mask.get_precision ())
 	rl_and_mask = sign;
       else
@@ -8535,12 +8547,21 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
     {
       /* Before clipping upper bits of the right-hand operand of the compare,
 	 check that they're sign or zero extensions, depending on how the
-	 left-hand operand would be extended.  */
+	 left-hand operand would be extended.  If it is unsigned, or if there's
+	 a mask that zeroes out extension bits, whether because we've checked
+	 for upper bits in the mask and did not set ll_signbit, or because the
+	 sign bit itself is masked out, check that the right-hand operand is
+	 zero-extended.  */
       bool l_non_ext_bits = false;
       if (ll_bitsize < lr_bitsize)
 	{
 	  wide_int zext = wi::zext (l_const, ll_bitsize);
-	  if ((ll_unsignedp ? zext : wi::sext (l_const, ll_bitsize)) == l_const)
+	  if ((ll_unsignedp
+	       || (ll_and_mask.get_precision ()
+		   && (!ll_signbit
+		       || ((ll_and_mask & wi::mask (ll_bitsize - 1, true, ll_bitsize))
+			   == 0)))
+	       ? zext : wi::sext (l_const, ll_bitsize)) == l_const)
 	    l_const = zext;
 	  else
 	    l_non_ext_bits = true;
@@ -8566,7 +8587,12 @@ fold_truth_andor_for_ifcombine (enum tree_code code, tree truth_type,
       if (rl_bitsize < rr_bitsize)
 	{
 	  wide_int zext = wi::zext (r_const, rl_bitsize);
-	  if ((rl_unsignedp ? zext : wi::sext (r_const, rl_bitsize)) == r_const)
+	  if ((rl_unsignedp
+	       || (rl_and_mask.get_precision ()
+		   && (!rl_signbit
+		       || ((rl_and_mask & wi::mask (rl_bitsize - 1, true, rl_bitsize))
+			   == 0)))
+	       ? zext : wi::sext (r_const, rl_bitsize)) == r_const)
 	    r_const = zext;
 	  else
 	    r_non_ext_bits = true;

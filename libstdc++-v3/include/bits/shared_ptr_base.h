@@ -61,7 +61,6 @@
 #include <ext/atomicity.h>
 #include <ext/concurrence.h>
 #if __cplusplus >= 202002L
-# include <bit>          // __bit_floor
 # include <compare>
 # include <bits/align.h> // std::align
 # include <bits/stl_uninitialized.h>
@@ -2076,7 +2075,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       __shared_ptr<_Tp, _Lp>
       lock() const noexcept
-      { return __shared_ptr<element_type, _Lp>(*this, std::nothrow); }
+      { return __shared_ptr<_Tp, _Lp>(*this, std::nothrow); }
 
       long
       use_count() const noexcept

@@ -107,12 +107,12 @@ array_tune<loongarch_cache> loongarch_cpu_cache =
 
 static inline loongarch_align la464_align ()
 {
-  return loongarch_align ().function_ ("32").loop_ ("16").jump_ ("16");
+  return loongarch_align ().function_ ("32").loop_ ("8").jump_ ("32").label_ ("8");
 }
 
 static inline loongarch_align la664_align ()
 {
-  return loongarch_align ().function_ ("8").loop_ ("8").jump_ ("32");
+  return loongarch_align ().function_ ("16").loop_ ("16").jump_ ("32").label_ ("8");
 }
 
 array_tune<loongarch_align> loongarch_cpu_align =
@@ -136,6 +136,7 @@ loongarch_rtx_cost_data::loongarch_rtx_cost_data ()
     movcf2gr (COSTS_N_INSNS (7)),
     movgr2cf (COSTS_N_INSNS (15)),
     branch_cost (6),
+    addr_reg_reg_cost (3),
     memory_latency (4) {}
 
 /* The following properties cannot be looked up directly using "cpucfg".

@@ -7,6 +7,7 @@
 #endif
 
 #include <deque>
+#include <ranges>
 #include <vector>
 #include <testsuite_allocator.h>
 #include <testsuite_hooks.h>
@@ -143,6 +144,110 @@ test05()
   VERIFY( std::ranges::equal(m, (int[]){1, 2, 3, 4, 5}) );
 }
 
+void
+test06()
+{
+  // PR libstdc++/118156 - flat_foo::insert_range cannot handle non-common ranges
+  std::flat_set<int> s;
+  auto r = std::views::iota(1) | std::views::take(5);
+  static_assert(!std::ranges::common_range<decltype(r)>);
+  s.insert_range(r);
+  VERIFY( std::ranges::equal(s, (int[]){1, 2, 3, 4, 5}) );
+  s.clear();
+  s.insert_range(r | std::views::reverse);
+  VERIFY( std::ranges::equal(s, (int[]){1, 2, 3, 4, 5}) );
+}
+
+template<typename T>
+struct NoInsertRange : std::vector<T>
+{
+  using std::vector<T>::vector;
+
+  template<typename It, typename R>
+  void insert_range(typename std::vector<T>::const_iterator, R&&) = delete;
+};
+
+struct NoCatIterator {
+  using difference_type = int;
+  using value_type = int;
+
+  NoCatIterator() : v(0) {}
+  NoCatIterator(int x) : v(x) {}
+
+  int operator*() const
+  { return v; }
+
+  NoCatIterator& operator++()
+  {
+    ++v;
+    return *this;
+  }
+
+  NoCatIterator operator++(int)
+  {
+    ++v;
+    return NoCatIterator(v-1);
+  }
+
+  bool operator==(const NoCatIterator& rhs) const
+  { return v == rhs.v; }
+
+private:
+  int v;
+};
+
+template<>
+struct std::iterator_traits<NoCatIterator> {
+  using difference_type = int;
+  using value_type = int;
+  using iterator_concept = std::input_iterator_tag;
+  // no iterator_category, happens also for common_iterator
+};
+
+void test07()
+{
+  std::flat_set<int> s;
+  std::flat_set<int, std::less<int>, NoInsertRange<int>> s2;
+
+  auto r = std::ranges::subrange<NoCatIterator>(1, 6);
+  s.insert_range(r);
+  VERIFY( std::ranges::equal(s, (int[]){1, 2, 3, 4, 5}) );
+  s2.insert_range(r);
+  VERIFY( std::ranges::equal(s2, (int[]){1, 2, 3, 4, 5}) );
+
+#ifdef __SIZEOF_INT128__
+  // PR libstdc++/119415 - flat_foo::insert_range cannot handle common ranges
+  // on c++20 only iterators
+  auto r2 = std::views::iota(__int128(1), __int128(6));
+  s.clear();
+  s.insert_range(r2);
+  VERIFY( std::ranges::equal(s, (int[]){1, 2, 3, 4, 5}) );
+
+  s2.clear();
+  s2.insert_range(r2);
+  VERIFY( std::ranges::equal(s2, (int[]){1, 2, 3, 4, 5}) );
+#endif
+}
+
+void
+test08()
+{
+  // PR libstdc++/119620 -- flat_set::emplace always constructs element on the stack
+  static int copy_counter;
+  struct A {
+    A() { }
+    A(const A&) { ++copy_counter; }
+    A& operator=(const A&) { ++copy_counter; return *this; }
+    auto operator<=>(const A&) const = default;
+  };
+  std::flat_set<A> s;
+  A a;
+  s.emplace(a);
+  VERIFY( copy_counter == 1 );
+  s.emplace(a);
+  VERIFY( copy_counter == 1 );
+}
+
 int
 main()
 {
@@ -152,4 +257,7 @@ main()
   test03();
   test04();
   test05();
+  test06();
+  test07();
+  test08();
 }

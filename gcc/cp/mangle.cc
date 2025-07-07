@@ -238,7 +238,6 @@ static void write_local_name (tree, const tree, const tree);
 static void dump_substitution_candidates (void);
 static tree mangle_decl_string (const tree);
 static void maybe_check_abi_tags (tree, tree = NULL_TREE, int = 10);
-static bool equal_abi_tags (tree, tree);
 
 /* Control functions.  */
 
@@ -1049,6 +1048,12 @@ decl_mangling_context (tree decl)
       tree extra = LAMBDA_TYPE_EXTRA_SCOPE (TREE_TYPE (decl));
       if (extra)
 	return extra;
+      tcontext = CP_DECL_CONTEXT (decl);
+      if (LAMBDA_TYPE_P (tcontext))
+	/* Lambda type context means this lambda appears between the
+	   lambda-introducer and the open brace of another lambda (c++/119175).
+	   That isn't a real scope; look further into the enclosing scope.  */
+	return decl_mangling_context (TYPE_NAME (tcontext));
     }
   else if (template_type_parameter_p (decl))
      /* template type parms have no mangling context.  */
@@ -1673,7 +1678,7 @@ write_source_name (tree identifier)
 
 /* Compare two TREE_STRINGs like strcmp.  */
 
-int
+static int
 tree_string_cmp (const void *p1, const void *p2)
 {
   if (p1 == p2)
@@ -1728,7 +1733,7 @@ write_abi_tags (tree tags)
 
 /* True iff the TREE_LISTS T1 and T2 of ABI tags are equivalent.  */
 
-static bool
+bool
 equal_abi_tags (tree t1, tree t2)
 {
   releasing_vec v1 = sorted_abi_tags (t1);
@@ -1738,7 +1743,8 @@ equal_abi_tags (tree t1, tree t2)
   if (len1 != v2->length())
     return false;
   for (unsigned i = 0; i < len1; ++i)
-    if (tree_string_cmp (v1[i], v2[i]) != 0)
+    if (strcmp (TREE_STRING_POINTER (v1[i]),
+		TREE_STRING_POINTER (v2[i])) != 0)
       return false;
   return true;
 }
@@ -3642,10 +3648,15 @@ write_expression (tree expr)
 
       if (nelts)
 	{
-	  tree domain;
 	  ++processing_template_decl;
-	  domain = compute_array_index_type (NULL_TREE, nelts,
-					     tf_warning_or_error);
+	  /* Avoid compute_array_index_type complaints about
+	     non-constant nelts.  */
+	  tree max = cp_build_binary_op (input_location, MINUS_EXPR,
+					 fold_convert (sizetype, nelts),
+					 size_one_node,
+					 tf_warning_or_error);
+	  max = maybe_constant_value (max);
+	  tree domain = build_index_type (max);
 	  type = build_cplus_array_type (type, domain);
 	  --processing_template_decl;
 	}
@@ -4242,6 +4253,8 @@ write_array_type (const tree type)
 	    }
 	  else
 	    {
+	      gcc_checking_assert (TREE_CODE (max) == MINUS_EXPR
+				   && integer_onep (TREE_OPERAND (max, 1)));
 	      max = TREE_OPERAND (max, 0);
 	      write_expression (max);
 	    }

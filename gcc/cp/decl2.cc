@@ -64,7 +64,7 @@ static tree start_partial_init_fini_fn (bool, unsigned, unsigned, bool);
 static void finish_partial_init_fini_fn (tree);
 static tree emit_partial_init_fini_fn (bool, unsigned, tree,
 				       unsigned, location_t, tree);
-static void one_static_initialization_or_destruction (bool, tree, tree);
+static void one_static_initialization_or_destruction (bool, tree, tree, bool);
 static void generate_ctor_or_dtor_function (bool, unsigned, tree, location_t,
 					    bool);
 static tree prune_vars_needing_no_initialization (tree *);
@@ -1295,6 +1295,8 @@ start_initialized_static_member (const cp_declarator *declarator,
   gcc_checking_assert (VAR_P (value));
 
   DECL_CONTEXT (value) = current_class_type;
+  DECL_INITIALIZED_IN_CLASS_P (value) = true;
+
   if (processing_template_decl)
     {
       value = push_template_decl (value);
@@ -1305,10 +1307,35 @@ start_initialized_static_member (const cp_declarator *declarator,
   if (attrlist)
     cplus_decl_attributes (&value, attrlist, 0);
 
-  finish_member_declaration (value);
-  DECL_INITIALIZED_IN_CLASS_P (value) = true;
+  /* When defining a template we need to register the TEMPLATE_DECL.  */
+  tree maybe_template = value;
+  if (template_parm_scope_p ())
+    {
+      if (!DECL_TEMPLATE_SPECIALIZATION (value))
+	maybe_template = DECL_TI_TEMPLATE (value);
+      else
+	maybe_template = NULL_TREE;
+    }
+  if (maybe_template)
+    finish_member_declaration (maybe_template);
 
   return value;
+}
+
+/* Whether DECL is a static data member initialized at the point
+   of declaration within its class.  */
+
+bool
+is_static_data_member_initialized_in_class (tree decl)
+{
+  if (!decl || decl == error_mark_node)
+    return false;
+
+  tree inner = STRIP_TEMPLATE (decl);
+  return (inner
+	  && VAR_P (inner)
+	  && DECL_CLASS_SCOPE_P (inner)
+	  && DECL_INITIALIZED_IN_CLASS_P (inner));
 }
 
 /* Finish a declaration prepared with start_initialized_static_member.  */
@@ -1318,7 +1345,7 @@ finish_initialized_static_member (tree decl, tree init, tree asmspec)
 {
   if (decl == error_mark_node)
     return;
-  gcc_checking_assert (VAR_P (decl));
+  gcc_checking_assert (is_static_data_member_initialized_in_class (decl));
 
   int flags;
   if (init && DIRECT_LIST_INIT_P (init))
@@ -2032,7 +2059,7 @@ build_anon_union_vars (tree type, tree object)
 
       if (processing_template_decl)
 	ref = build_min_nt_loc (UNKNOWN_LOCATION, COMPONENT_REF, object,
-				DECL_NAME (field), NULL_TREE);
+				field, NULL_TREE);
       else
 	ref = build_class_member_access_expr (object, field, NULL_TREE,
 					      false, tf_warning_or_error);
@@ -2786,6 +2813,19 @@ min_vis_expr_r (tree *tp, int */*walk_subtrees*/, void *data)
   tree t = *tp;
   if (TREE_CODE (t) == PTRMEM_CST)
     t = PTRMEM_CST_MEMBER (t);
+
+  if (TREE_CODE (t) == TEMPLATE_DECL)
+    {
+      if (DECL_ALIAS_TEMPLATE_P (t) || concept_definition_p (t))
+	/* FIXME: We don't maintain TREE_PUBLIC / DECL_VISIBILITY for
+	   alias templates so we can't trust it here (PR107906).  Ditto
+	   for concepts.  */
+	return NULL_TREE;
+      t = DECL_TEMPLATE_RESULT (t);
+      if (!t)
+	return NULL_TREE;
+    }
+
   switch (TREE_CODE (t))
     {
     case CAST_EXPR:
@@ -2797,25 +2837,32 @@ min_vis_expr_r (tree *tp, int */*walk_subtrees*/, void *data)
     case NEW_EXPR:
     case CONSTRUCTOR:
     case LAMBDA_EXPR:
+    case TYPE_DECL:
       tpvis = type_visibility (TREE_TYPE (t));
       break;
 
-    case TEMPLATE_DECL:
-      if (DECL_ALIAS_TEMPLATE_P (t) || concept_definition_p (t))
-	/* FIXME: We don't maintain TREE_PUBLIC / DECL_VISIBILITY for
-	   alias templates so we can't trust it here (PR107906).  Ditto
-	   for concepts.  */
-	break;
-      t = DECL_TEMPLATE_RESULT (t);
-      /* Fall through.  */
+    case ADDR_EXPR:
+      t = TREE_OPERAND (t, 0);
+      if (VAR_P (t))
+	/* If a variable has its address taken, the lvalue-rvalue conversion is
+	   not applied, so skip that case.  */
+	goto addressable;
+      break;
+
     case VAR_DECL:
     case FUNCTION_DECL:
       if (decl_constant_var_p (t))
 	/* The ODR allows definitions in different TUs to refer to distinct
 	   constant variables with internal or no linkage, so such a reference
-	   shouldn't affect visibility (PR110323).  FIXME but only if the
-	   lvalue-rvalue conversion is applied.  */;
-      else if (! TREE_PUBLIC (t))
+	   shouldn't affect visibility if the lvalue-rvalue conversion is
+	   applied (PR110323).  We still want to restrict visibility according
+	   to the type of the declaration however.  */
+	{
+	  tpvis = type_visibility (TREE_TYPE (t));
+	  break;
+	}
+    addressable:
+      if (! TREE_PUBLIC (t))
 	tpvis = VISIBILITY_ANON;
       else
 	tpvis = DECL_VISIBILITY (t);
@@ -4383,7 +4430,8 @@ fix_temporary_vars_context_r (tree *node,
    are destroying it.  */
 
 static void
-one_static_initialization_or_destruction (bool initp, tree decl, tree init)
+one_static_initialization_or_destruction (bool initp, tree decl, tree init,
+					  bool omp_target)
 {
   /* If we are supposed to destruct and there's a trivial destructor,
      nothing has to be done.  */
@@ -4486,7 +4534,7 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init)
       /* If we're using __cxa_atexit, register a function that calls the
 	 destructor for the object.  */
       if (flag_use_cxa_atexit)
-	finish_expr_stmt (register_dtor_fn (decl));
+	finish_expr_stmt (register_dtor_fn (decl, omp_target));
     }
   else
     finish_expr_stmt (build_cleanup (decl));
@@ -4502,6 +4550,72 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init)
      member of its class any longer.  */
   DECL_CONTEXT (current_function_decl) = NULL_TREE;
   DECL_STATIC_FUNCTION_P (current_function_decl) = 0;
+}
+
+/* Helper function for emit_partial_init_fini_fn and handle_tls_init.
+   For structured bindings, disable stmts_are_full_exprs_p ()
+   on STATIC_INIT_DECOMP_BASE_P nodes, reenable it on the
+   first STATIC_INIT_DECOMP_NONBASE_P node and emit all the
+   STATIC_INIT_DECOMP_BASE_P and STATIC_INIT_DECOMP_NONBASE_P
+   consecutive nodes in a single STATEMENT_LIST wrapped with
+   CLEANUP_POINT_EXPR.  */
+
+static inline tree
+decomp_handle_one_var (tree node, tree sl, bool *saw_nonbase,
+		       int save_stmts_are_full_exprs_p)
+{
+  if (sl && !*saw_nonbase && STATIC_INIT_DECOMP_NONBASE_P (node))
+    {
+      *saw_nonbase = true;
+      current_stmt_tree ()->stmts_are_full_exprs_p
+	= save_stmts_are_full_exprs_p;
+    }
+  else if (sl && *saw_nonbase && !STATIC_INIT_DECOMP_NONBASE_P (node))
+    {
+      sl = pop_stmt_list (sl);
+      sl = maybe_cleanup_point_expr_void (sl);
+      add_stmt (sl);
+      sl = NULL_TREE;
+    }
+  if (sl == NULL_TREE && STATIC_INIT_DECOMP_BASE_P (node))
+    {
+      sl = push_stmt_list ();
+      *saw_nonbase = false;
+      current_stmt_tree ()->stmts_are_full_exprs_p = 0;
+    }
+  return sl;
+}
+
+/* Similarly helper called when the whole var list is processed.  */
+
+static inline void
+decomp_finalize_var_list (tree sl, int save_stmts_are_full_exprs_p)
+{
+  if (sl)
+    {
+      current_stmt_tree ()->stmts_are_full_exprs_p
+	= save_stmts_are_full_exprs_p;
+      sl = pop_stmt_list (sl);
+      sl = maybe_cleanup_point_expr_void (sl);
+      add_stmt (sl);
+    }
+}
+
+/* Helper for emit_partial_init_fini_fn OpenMP target handling, called via
+   walk_tree.  Set DECL_CONTEXT on any automatic temporaries which still
+   have it NULL to id->src_fn, so that later copy_tree_body_r can remap those.
+   Otherwise DECL_CONTEXT would be set only during gimplification of the host
+   fn and when copy_tree_body_r doesn't remap those, we'd ICE during the
+   target fn gimplification because the same automatic VAR_DECL can't be
+   used in multiple functions (with the exception of nested functions).  */
+
+static tree
+set_context_for_auto_vars_r (tree *tp, int *, void *data)
+{
+  copy_body_data *id = (copy_body_data *) data;
+  if (auto_var_in_fn_p (*tp, NULL_TREE) && DECL_ARTIFICIAL (*tp))
+    DECL_CONTEXT (*tp) = id->src_fn;
+  return NULL_TREE;
 }
 
 /* Generate code to do the initialization or destruction of the decls in VARS,
@@ -4533,12 +4647,17 @@ emit_partial_init_fini_fn (bool initp, unsigned priority, tree vars,
       finish_if_stmt_cond (target_dev_p, nonhost_if_stmt);
     }
 
+  tree sl = NULL_TREE;
+  int save_stmts_are_full_exprs_p = stmts_are_full_exprs_p ();
+  bool saw_nonbase = false;
   for (tree node = vars; node; node = TREE_CHAIN (node))
     {
       tree decl = TREE_VALUE (node);
       tree init = TREE_PURPOSE (node);
-	/* We will emit 'init' twice, and it is modified in-place during
-	   gimplification.  Make a copy here.  */
+      sl = decomp_handle_one_var (node, sl, &saw_nonbase,
+				  save_stmts_are_full_exprs_p);
+      /* We will emit 'init' twice, and it is modified in-place during
+	 gimplification.  Make a copy here.  */
       if (omp_target)
 	{
 	  /* We've already emitted INIT in the host version of the ctor/dtor
@@ -4557,11 +4676,13 @@ emit_partial_init_fini_fn (bool initp, unsigned priority, tree vars,
 	  id.transform_new_cfg = true;
 	  id.transform_return_to_modify = false;
 	  id.eh_lp_nr = 0;
+	  walk_tree (&init, set_context_for_auto_vars_r, &id, NULL);
 	  walk_tree (&init, copy_tree_body_r, &id, NULL);
 	}
       /* Do one initialization or destruction.  */
-      one_static_initialization_or_destruction (initp, decl, init);
+      one_static_initialization_or_destruction (initp, decl, init, omp_target);
     }
+  decomp_finalize_var_list (sl, save_stmts_are_full_exprs_p);
 
   if (omp_target)
     {
@@ -4611,6 +4732,8 @@ prune_vars_needing_no_initialization (tree *vars)
 	 here.  */
       if (DECL_EXTERNAL (decl))
 	{
+	  gcc_checking_assert (!STATIC_INIT_DECOMP_BASE_P (t)
+			       && !STATIC_INIT_DECOMP_NONBASE_P (t));
 	  var = &TREE_CHAIN (t);
 	  continue;
 	}
@@ -4640,12 +4763,19 @@ prune_vars_needing_no_initialization (tree *vars)
 void
 partition_vars_for_init_fini (tree var_list, priority_map_t *(&parts)[4])
 {
+  unsigned priority = 0;
+  enum { none, base, nonbase } decomp_state = none;
   for (auto node = var_list; node; node = TREE_CHAIN (node))
     {
       tree decl = TREE_VALUE (node);
       tree init = TREE_PURPOSE (node);
       bool has_cleanup = !TYPE_HAS_TRIVIAL_DESTRUCTOR (TREE_TYPE (decl));
-      unsigned priority = DECL_EFFECTIVE_INIT_PRIORITY (decl);
+      if (decomp_state == base && STATIC_INIT_DECOMP_NONBASE_P (node))
+	decomp_state = nonbase;
+      else if (decomp_state == nonbase && !STATIC_INIT_DECOMP_NONBASE_P (node))
+	decomp_state = none;
+      if (decomp_state == none)
+	priority = DECL_EFFECTIVE_INIT_PRIORITY (decl);
 
       if (init || (flag_use_cxa_atexit && has_cleanup))
 	{
@@ -4654,6 +4784,34 @@ partition_vars_for_init_fini (tree var_list, priority_map_t *(&parts)[4])
 	    parts[true] = priority_map_t::create_ggc ();
 	  auto &slot = parts[true]->get_or_insert (priority);
 	  slot = tree_cons (init, decl, slot);
+	  if (init
+	      && STATIC_INIT_DECOMP_BASE_P (node)
+	      && decomp_state == none)
+	    {
+	      /* If one or more STATIC_INIT_DECOMP_BASE_P with at least
+		 one init is followed by at least one
+		 STATIC_INIT_DECOMP_NONBASE_P with init, mark it in the
+		 resulting chain as well.  */
+	      for (tree n = TREE_CHAIN (node); n; n = TREE_CHAIN (n))
+		if (STATIC_INIT_DECOMP_BASE_P (n))
+		  continue;
+		else if (STATIC_INIT_DECOMP_NONBASE_P (n))
+		  {
+		    if (TREE_PURPOSE (n))
+		      {
+			decomp_state = base;
+			break;
+		      }
+		    else
+		      continue;
+		  }
+		else
+		  break;
+	    }
+	  if (init && decomp_state == base)
+	    STATIC_INIT_DECOMP_BASE_P (slot) = 1;
+	  else if (decomp_state == nonbase)
+	    STATIC_INIT_DECOMP_NONBASE_P (slot) = 1;
 	}
 
       if (!flag_use_cxa_atexit && has_cleanup)
@@ -4666,7 +4824,7 @@ partition_vars_for_init_fini (tree var_list, priority_map_t *(&parts)[4])
 	}
 
       if (flag_openmp
-	   && lookup_attribute ("omp declare target", DECL_ATTRIBUTES (decl)))
+	  && lookup_attribute ("omp declare target", DECL_ATTRIBUTES (decl)))
 	{
 	  priority_map_t **omp_parts = parts + 2;
 
@@ -4677,6 +4835,10 @@ partition_vars_for_init_fini (tree var_list, priority_map_t *(&parts)[4])
 		omp_parts[true] = priority_map_t::create_ggc ();
 	      auto &slot = omp_parts[true]->get_or_insert (priority);
 	      slot = tree_cons (init, decl, slot);
+	      if (init && decomp_state == base)
+		STATIC_INIT_DECOMP_BASE_P (slot) = 1;
+	      else if (decomp_state == nonbase)
+		STATIC_INIT_DECOMP_NONBASE_P (slot) = 1;
 	    }
 
 	  if (!flag_use_cxa_atexit && has_cleanup)
@@ -4889,7 +5051,8 @@ decl_maybe_constant_var_p (tree decl)
   tree type = TREE_TYPE (decl);
   if (!VAR_P (decl))
     return false;
-  if (DECL_DECLARED_CONSTEXPR_P (decl) && !TREE_THIS_VOLATILE (decl))
+  if (DECL_DECLARED_CONSTEXPR_P (decl)
+      && (!TREE_THIS_VOLATILE (decl) || NULLPTR_TYPE_P (type)))
     return true;
   if (DECL_HAS_VALUE_EXPR_P (decl))
     /* A proxy isn't constant.  */
@@ -5063,11 +5226,17 @@ handle_tls_init (void)
   finish_expr_stmt (cp_build_modify_expr (loc, guard, NOP_EXPR,
 					  boolean_true_node,
 					  tf_warning_or_error));
+  tree sl = NULL_TREE;
+  int save_stmts_are_full_exprs_p = stmts_are_full_exprs_p ();
+  bool saw_nonbase = false;
   for (; vars; vars = TREE_CHAIN (vars))
     {
       tree var = TREE_VALUE (vars);
       tree init = TREE_PURPOSE (vars);
-      one_static_initialization_or_destruction (/*initp=*/true, var, init);
+      sl = decomp_handle_one_var (vars, sl, &saw_nonbase,
+				  save_stmts_are_full_exprs_p);
+      one_static_initialization_or_destruction (/*initp=*/true, var, init,
+						false);
 
       /* Output init aliases even with -fno-extern-tls-init.  */
       if (TARGET_SUPPORTS_ALIASES && TREE_PUBLIC (var))
@@ -5081,6 +5250,7 @@ handle_tls_init (void)
 	  gcc_assert (alias != NULL);
 	}
     }
+  decomp_finalize_var_list (sl, save_stmts_are_full_exprs_p);
 
   finish_then_clause (if_stmt);
   finish_if_stmt (if_stmt);

@@ -965,6 +965,9 @@ loongarch_target_option_override (struct loongarch_target *target,
 
       if (opts->x_flag_align_jumps && !opts->x_str_align_jumps)
 	opts->x_str_align_jumps = loongarch_cpu_align[target->cpu_tune].jump;
+
+      if (opts->x_flag_align_labels && !opts->x_str_align_labels)
+	opts->x_str_align_labels = loongarch_cpu_align[target->cpu_tune].label;
     }
 
   /* Set up parameters to be used in prefetching algorithm.  */
@@ -1009,6 +1012,9 @@ loongarch_target_option_override (struct loongarch_target *target,
      default.  */
   if (!opts_set->x_la_branch_cost)
     opts->x_la_branch_cost = loongarch_cost->branch_cost;
+
+  if (!opts_set->x_la_addr_reg_reg_cost)
+    opts->x_la_addr_reg_reg_cost = loongarch_cost->addr_reg_reg_cost;
 
   /* other stuff */
   if (ABI_LP64_P (target->abi.base))

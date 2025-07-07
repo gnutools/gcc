@@ -69,6 +69,7 @@ extern const char *avr_out_insert_notbit (rtx_insn *, rtx*, int*);
 extern const char *avr_out_insv (rtx_insn *, rtx*, int*);
 extern const char *avr_out_extr (rtx_insn *, rtx*, int*);
 extern const char *avr_out_extr_not (rtx_insn *, rtx*, int*);
+extern const char *avr_out_sextr (rtx_insn *, rtx*, int*);
 extern const char *avr_out_plus_set_ZN (rtx*, int*);
 extern const char *avr_out_plus_set_N (rtx*, int*);
 extern const char *avr_out_op8_set_ZN (rtx_code, rtx*, int*);
@@ -102,6 +103,8 @@ extern void avr_expand_prologue (void);
 extern void avr_expand_epilogue (bool);
 extern bool avr_emit_cpymemhi (rtx*);
 extern void avr_emit_xior_with_shift (rtx_insn*, rtx*, int);
+extern void avr_emit_skip_pixop (rtx_code, rtx, rtx, rtx, rtx_code, rtx, int);
+extern void avr_emit_skip_clear (rtx, rtx, rtx_code, rtx, int);
 extern bool avr_epilogue_uses (int regno);
 
 extern void avr_output_addr_vec (rtx_insn*, rtx);
@@ -133,6 +136,7 @@ extern bool reg_unused_after (rtx_insn *insn, rtx reg);
 extern int avr_jump_mode (rtx x, rtx_insn *insn, int = 0);
 extern bool test_hard_reg_class (enum reg_class rclass, rtx x);
 extern bool jump_over_one_insn_p (rtx_insn *insn, rtx dest);
+extern bool avr_nonzero_bits_lsr_operands_p (rtx_code, rtx *);
 
 extern void avr_final_prescan_insn (rtx_insn *insn, rtx *operand,
 				    int num_operands);
@@ -202,6 +206,7 @@ extern rtl_opt_pass *make_avr_pass_pre_proep (gcc::context *);
 extern rtl_opt_pass *make_avr_pass_recompute_notes (gcc::context *);
 extern rtl_opt_pass *make_avr_pass_casesi (gcc::context *);
 extern rtl_opt_pass *make_avr_pass_ifelse (gcc::context *);
+extern rtl_opt_pass *make_avr_pass_split_nzb (gcc::context *);
 extern rtl_opt_pass *make_avr_pass_split_after_peephole2 (gcc::context *);
 #ifdef RTX_CODE
 extern bool avr_casei_sequence_check_operands (rtx *xop);

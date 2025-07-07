@@ -187,7 +187,7 @@
 
 ;; Main data type used by the insn
 (define_attr "mode" "unknown,none,QI,HI,SI,DI,TI,SF,DF,TF,FCC,
-  V2DI,V4SI,V8HI,V16QI,V2DF,V4SF,V4DI,V8SI,V16HI,V32QI,V4DF,V8SF"
+  V1TI,V2DI,V4SI,V8HI,V16QI,V2DF,V4SF,V2TI,V4DI,V8SI,V16HI,V32QI,V4DF,V8SF"
   (const_string "unknown"))
 
 ;; True if the main data type is twice the size of a word.
@@ -374,10 +374,6 @@
 ;; from the same template.
 (define_mode_iterator GPR [SI (DI "TARGET_64BIT")])
 
-;; A copy of GPR that can be used when a pattern has two independent
-;; modes.
-(define_mode_iterator GPR2 [SI (DI "TARGET_64BIT")])
-
 ;; This mode iterator allows 16-bit and 32-bit GPR patterns and 32-bit 64-bit
 ;; FPR patterns to be generated from the same template.
 (define_mode_iterator JOIN_MODE [HI
@@ -491,6 +487,10 @@
 				   (ior "uns_arith_operand")
 				   (xor "uns_arith_operand")])
 (define_code_attr is_and [(and "true") (ior "false") (xor "false")])
+
+;; If we know the operands does not have overlapping bits, use this
+;; instead of just ior to cover more cases.
+(define_code_iterator any_or_plus [any_or plus])
 
 ;; This code iterator allows unsigned and signed division to be generated
 ;; from the same template.
@@ -1592,10 +1592,11 @@
 
 (define_insn_and_split "*bstrins_<mode>_for_ior_mask"
   [(set (match_operand:GPR 0 "register_operand" "=r")
-	(ior:GPR (and:GPR (match_operand:GPR 1 "register_operand" "r")
-			  (match_operand:GPR 2 "const_int_operand" "i"))
-		 (and:GPR (match_operand:GPR 3 "register_operand" "r")
-			  (match_operand:GPR 4 "const_int_operand" "i"))))]
+	(any_or_plus:GPR
+	  (and:GPR (match_operand:GPR 1 "register_operand" "r")
+		   (match_operand:GPR 2 "const_int_operand" "i"))
+	  (and:GPR (match_operand:GPR 3 "register_operand" "r")
+		   (match_operand:GPR 4 "const_int_operand" "i"))))]
   "loongarch_pre_reload_split ()
    && loongarch_use_bstrins_for_ior_with_mask (<MODE>mode, operands)"
   "#"
@@ -2507,11 +2508,11 @@
 
 ;; Conditional move instructions.
 
-(define_insn "*sel<code><GPR:mode>_using_<GPR2:mode>"
+(define_insn "*sel<code><GPR:mode>_using_<X:mode>"
   [(set (match_operand:GPR 0 "register_operand" "=r,r")
 	(if_then_else:GPR
-	 (equality_op:GPR2 (match_operand:GPR2 1 "register_operand" "r,r")
-			   (const_int 0))
+	 (equality_op:X (match_operand:X 1 "register_operand" "r,r")
+			(const_int 0))
 	 (match_operand:GPR 2 "reg_or_0_operand" "r,J")
 	 (match_operand:GPR 3 "reg_or_0_operand" "J,r")))]
   "register_operand (operands[2], <GPR:MODE>mode)
@@ -3199,10 +3200,8 @@
       emit_insn (gen_<optab>di3 (operands[0], operands[1], operands[3]));
     else
       {
-	/* Hmm would we really reach here?  If we reach here we'd have
-	   a miss-optimization in the generic code (as it should have
-	   optimized this to alslsi3_extend_subreg).  But let's be safe
-	   than sorry.  */
+	/* We can end up here with things like:
+	   x:DI = sign_extend(a:SI + ((b:DI << 2) & 0xfffffffc)#0)  */
 	gcc_checking_assert (<is_and>);
 	emit_move_insn (operands[0], operands[1]);
       }
@@ -4232,12 +4231,13 @@
     DONE;
   })
 
-(define_insn "bytepick_w_<bytepick_imm>"
+(define_insn "*bytepick_w_<bytepick_imm>"
   [(set (match_operand:SI 0 "register_operand" "=r")
-	(ior:SI (lshiftrt:SI (match_operand:SI 1 "register_operand" "r")
-			     (const_int <bytepick_w_lshiftrt_amount>))
-		(ashift:SI (match_operand:SI 2 "register_operand" "r")
-			   (const_int bytepick_w_ashift_amount))))]
+	(any_or_plus:SI
+	  (lshiftrt:SI (match_operand:SI 1 "register_operand" "r")
+		       (const_int <bytepick_w_lshiftrt_amount>))
+	  (ashift:SI (match_operand:SI 2 "register_operand" "r")
+		     (const_int bytepick_w_ashift_amount))))]
   ""
   "bytepick.w\t%0,%1,%2,<bytepick_imm>"
   [(set_attr "mode" "SI")])
@@ -4275,22 +4275,24 @@
   "bytepick.w\t%0,%2,%1,1"
   [(set_attr "mode" "SI")])
 
-(define_insn "bytepick_d_<bytepick_imm>"
+(define_insn "*bytepick_d_<bytepick_imm>"
   [(set (match_operand:DI 0 "register_operand" "=r")
-	(ior:DI (lshiftrt (match_operand:DI 1 "register_operand" "r")
-			  (const_int <bytepick_d_lshiftrt_amount>))
-		(ashift (match_operand:DI 2 "register_operand" "r")
-			(const_int bytepick_d_ashift_amount))))]
+	(any_or_plus:DI
+	  (lshiftrt (match_operand:DI 1 "register_operand" "r")
+		    (const_int <bytepick_d_lshiftrt_amount>))
+	  (ashift (match_operand:DI 2 "register_operand" "r")
+		  (const_int bytepick_d_ashift_amount))))]
   "TARGET_64BIT"
   "bytepick.d\t%0,%1,%2,<bytepick_imm>"
   [(set_attr "mode" "DI")])
 
-(define_insn "bytepick_d_<bytepick_imm>_rev"
+(define_insn "*bytepick_d_<bytepick_imm>_rev"
   [(set (match_operand:DI 0 "register_operand" "=r")
-	(ior:DI (ashift (match_operand:DI 1 "register_operand" "r")
-			(const_int bytepick_d_ashift_amount))
-		(lshiftrt (match_operand:DI 2 "register_operand" "r")
-			  (const_int <bytepick_d_lshiftrt_amount>))))]
+	(any_or_plus:DI
+	  (ashift (match_operand:DI 1 "register_operand" "r")
+		  (const_int bytepick_d_ashift_amount))
+	  (lshiftrt (match_operand:DI 2 "register_operand" "r")
+		    (const_int <bytepick_d_lshiftrt_amount>))))]
   "TARGET_64BIT"
   "bytepick.d\t%0,%2,%1,<bytepick_imm>"
   [(set_attr "mode" "DI")])

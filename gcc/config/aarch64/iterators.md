@@ -2025,8 +2025,12 @@
 ;; Like vwcore, but for the container mode rather than the element mode.
 (define_mode_attr vccore [(VNx16QI "w") (VNx8QI "w") (VNx4QI "w") (VNx2QI "x")
 			  (VNx8HI "w") (VNx4HI "w") (VNx2HI "x")
+			  (VNx8HF "w") (VNx4HF "w") (VNx2HF "x")
+			  (VNx8BF "w") (VNx4BF "w") (VNx2BF "x")
 			  (VNx4SI "w") (VNx2SI "x")
-			  (VNx2DI "x")])
+			  (VNx4SF "w") (VNx2SF "x")
+			  (VNx2DI "x")
+			  (VNx2DF "x")])
 
 ;; Double vector types for ALLX.
 (define_mode_attr Vallxd [(QI "8b") (HI "4h") (SI "2s")])
@@ -2656,6 +2660,10 @@
 
 ;; Code iterator for logical operations
 (define_code_iterator LOGICAL [and ior xor])
+
+;; Code iterator for operations that are equivalent when the
+;; two input operands are known have disjoint bits set.
+(define_code_iterator any_or_plus [plus ior xor])
 
 ;; LOGICAL with plus, for when | gets converted to +.
 (define_code_iterator LOGICAL_OR_PLUS [and ior xor plus])
@@ -3340,8 +3348,8 @@
 
 (define_int_iterator SVE_COND_FP_BINARY
   [UNSPEC_COND_FADD
-   (UNSPEC_COND_FAMAX "TARGET_SVE_FAMINMAX")
-   (UNSPEC_COND_FAMIN "TARGET_SVE_FAMINMAX")
+   (UNSPEC_COND_FAMAX "TARGET_FAMINMAX && TARGET_SVE2_OR_SME2")
+   (UNSPEC_COND_FAMIN "TARGET_FAMINMAX && TARGET_SVE2_OR_SME2")
    UNSPEC_COND_FDIV
    UNSPEC_COND_FMAX
    UNSPEC_COND_FMAXNM
@@ -3381,8 +3389,8 @@
 					    UNSPEC_COND_SMIN])
 
 (define_int_iterator SVE_COND_FP_BINARY_REG
-  [(UNSPEC_COND_FAMAX "TARGET_SVE_FAMINMAX")
-   (UNSPEC_COND_FAMIN "TARGET_SVE_FAMINMAX")
+  [(UNSPEC_COND_FAMAX "TARGET_FAMINMAX && TARGET_SVE2_OR_SME2")
+   (UNSPEC_COND_FAMIN "TARGET_FAMINMAX && TARGET_SVE2_OR_SME2")
    UNSPEC_COND_FDIV
    UNSPEC_COND_FMULX])
 

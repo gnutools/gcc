@@ -2881,30 +2881,30 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	&& three_way_comparable_with<_It, _It2>
       { return _M_current <=> __y; }
 
-    template<__detail::__not_a_const_iterator _It2>
+    template<__detail::__not_a_const_iterator _It2, same_as<_It> _It3>
       friend constexpr bool
-      operator<(const _It2& __x, const basic_const_iterator& __y)
+      operator<(const _It2& __x, const basic_const_iterator<_It3>& __y)
       noexcept(noexcept(__x < __y._M_current))
       requires random_access_iterator<_It> && totally_ordered_with<_It, _It2>
       { return __x < __y._M_current; }
 
-    template<__detail::__not_a_const_iterator _It2>
+    template<__detail::__not_a_const_iterator _It2, same_as<_It> _It3>
       friend constexpr bool
-      operator>(const _It2& __x, const basic_const_iterator& __y)
+      operator>(const _It2& __x, const basic_const_iterator<_It3>& __y)
       noexcept(noexcept(__x > __y._M_current))
       requires random_access_iterator<_It> && totally_ordered_with<_It, _It2>
       { return __x > __y._M_current; }
 
-    template<__detail::__not_a_const_iterator _It2>
+    template<__detail::__not_a_const_iterator _It2, same_as<_It> _It3>
       friend constexpr bool
-      operator<=(const _It2& __x, const basic_const_iterator& __y)
+      operator<=(const _It2& __x, const basic_const_iterator<_It3>& __y)
       noexcept(noexcept(__x <= __y._M_current))
       requires random_access_iterator<_It> && totally_ordered_with<_It, _It2>
       { return __x <= __y._M_current; }
 
-    template<__detail::__not_a_const_iterator _It2>
+    template<__detail::__not_a_const_iterator _It2, same_as<_It> _It3>
       friend constexpr bool
-      operator>=(const _It2& __x, const basic_const_iterator& __y)
+      operator>=(const _It2& __x, const basic_const_iterator<_It3>& __y)
       noexcept(noexcept(__x >= __y._M_current))
       requires random_access_iterator<_It> && totally_ordered_with<_It, _It2>
       { return __x >= __y._M_current; }
@@ -2933,10 +2933,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(noexcept(_M_current - __y))
       { return _M_current - __y; }
 
-    template<__detail::__not_a_const_iterator _Sent>
+    template<__detail::__not_a_const_iterator _Sent, same_as<_It> _It2>
       requires sized_sentinel_for<_Sent, _It>
       friend constexpr difference_type
-      operator-(const _Sent& __x, const basic_const_iterator& __y)
+      operator-(const _Sent& __x, const basic_const_iterator<_It2>& __y)
       noexcept(noexcept(__x - __y._M_current))
       { return __x - __y._M_current; }
 

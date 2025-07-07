@@ -1405,15 +1405,8 @@ vect_recog_sad_pattern (vec_info *vinfo,
       tree abd_oprnd0 = gimple_call_arg (abd_stmt, 0);
       tree abd_oprnd1 = gimple_call_arg (abd_stmt, 1);
 
-      if (gimple_call_internal_fn (abd_stmt) == IFN_ABD)
-	{
-	  if (!vect_look_through_possible_promotion (vinfo, abd_oprnd0,
-						     &unprom[0])
-	      || !vect_look_through_possible_promotion (vinfo, abd_oprnd1,
-							&unprom[1]))
-	    return NULL;
-	}
-      else if (gimple_call_internal_fn (abd_stmt) == IFN_VEC_WIDEN_ABD)
+      if (gimple_call_internal_fn (abd_stmt) == IFN_ABD
+	  || gimple_call_internal_fn (abd_stmt) == IFN_VEC_WIDEN_ABD)
 	{
 	  unprom[0].op = abd_oprnd0;
 	  unprom[0].type = TREE_TYPE (abd_oprnd0);
@@ -6029,7 +6022,8 @@ vect_recog_gather_scatter_pattern (vec_info *vinfo,
       else
 	pattern_stmt = gimple_build_call_internal (gs_info.ifn, 4, base,
 						   offset, scale, zero);
-      tree load_lhs = vect_recog_temp_ssa_var (gs_info.element_type, NULL);
+      tree lhs = gimple_get_lhs (stmt_info->stmt);
+      tree load_lhs = vect_recog_temp_ssa_var (TREE_TYPE (lhs), NULL);
       gimple_call_set_lhs (pattern_stmt, load_lhs);
     }
   else

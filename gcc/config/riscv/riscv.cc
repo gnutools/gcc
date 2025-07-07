@@ -728,6 +728,12 @@ static const unsigned gpr_save_reg_order[] = {
   S10_REGNUM, S11_REGNUM
 };
 
+/* Order for the (ra, s0-sx) of zcmp_save.  */
+static const unsigned zcmp_save_reg_order[]
+  = {RETURN_ADDR_REGNUM, S0_REGNUM,  S1_REGNUM,	 S2_REGNUM,	S3_REGNUM,
+     S4_REGNUM,		 S5_REGNUM,  S6_REGNUM,	 S7_REGNUM,	S8_REGNUM,
+     S9_REGNUM,		 S10_REGNUM, S11_REGNUM, INVALID_REGNUM};
+
 /* A table describing all the processors GCC knows about.  */
 static const struct riscv_tune_info riscv_tune_info_table[] = {
 #define RISCV_TUNE(TUNE_NAME, PIPELINE_MODEL, TUNE_INFO)	\
@@ -3587,6 +3593,9 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
 	  nunits = nunits * 2;
 	}
 
+      /* This test can fail if (for example) we want a HF and Z[v]fh is
+	 not enabled.  In that case we just want to let the standard
+	 expansion path run.  */
       if (riscv_vector::get_vector_mode (smode, nunits).exists (&vmode))
 	{
 	  rtx v = gen_lowpart (vmode, SUBREG_REG (src));
@@ -3636,12 +3645,10 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
 	    emit_move_insn (dest, gen_lowpart (GET_MODE (dest), int_reg));
 	  else
 	    emit_move_insn (dest, int_reg);
+	  return true;
 	}
-      else
-	gcc_unreachable ();
-
-      return true;
     }
+
   /* Expand
        (set (reg:QI target) (mem:QI (address)))
      to
@@ -6478,9 +6485,13 @@ riscv_fntype_abi (const_tree fntype)
   /* Implement the vector calling convention.  For more details please
      reference the below link.
      https://github.com/riscv-non-isa/riscv-elf-psabi-doc/pull/389  */
-  if (riscv_return_value_is_vector_type_p (fntype)
-	  || riscv_arguments_is_vector_type_p (fntype)
-	  || riscv_vector_cc_function_p (fntype))
+  bool validate_v_abi_p = false;
+
+  validate_v_abi_p |= riscv_return_value_is_vector_type_p (fntype);
+  validate_v_abi_p |= riscv_arguments_is_vector_type_p (fntype);
+  validate_v_abi_p |= riscv_vector_cc_function_p (fntype);
+
+  if (validate_v_abi_p)
     return riscv_v_abi ();
 
   return default_function_abi;
@@ -6857,7 +6868,7 @@ riscv_asm_output_opcode (FILE *asm_out_file, const char *p)
 	  any outermost HIGH.
    'R'	Print the low-part relocation associated with OP.
    'C'	Print the integer branch condition for comparison OP.
-   'n'	Print the inverse of the integer branch condition for comparison OP.
+   'r'	Print the inverse of the integer branch condition for comparison OP.
    'A'	Print the atomic operation suffix for memory model OP.
    'I'	Print the LR suffix for memory model OP.
    'J'	Print the SC suffix for memory model OP.
@@ -7016,7 +7027,7 @@ riscv_print_operand (FILE *file, rtx op, int letter)
       fputs (GET_RTX_NAME (code), file);
       break;
 
-    case 'n':
+    case 'r':
       /* The RTL names match the instruction names. */
       fputs (GET_RTX_NAME (reverse_condition (code)), file);
       break;
@@ -8359,8 +8370,11 @@ riscv_adjust_multi_push_cfi_prologue (int saved_size)
   int offset;
   int saved_cnt = 0;
 
-  if (mask & S10_MASK)
-    mask |= S11_MASK;
+  unsigned int num_multi_push = riscv_multi_push_regs_count (mask);
+  for (unsigned int i = 0; i < num_multi_push; i++) {
+    gcc_assert(zcmp_save_reg_order[i] != INVALID_REGNUM);
+    mask |= 1 << (zcmp_save_reg_order[i] - GP_REG_FIRST);
+  }
 
   for (int regno = GP_REG_LAST; regno >= GP_REG_FIRST; regno--)
     if (BITSET_P (mask & MULTI_PUSH_GPR_MASK, regno - GP_REG_FIRST))
@@ -10368,7 +10382,7 @@ riscv_file_end ()
       fprintf (asm_out_file, "1:\n");
 
       /* pr_type.  */
-      fprintf (asm_out_file, "\t.p2align\t3\n");
+      fprintf (asm_out_file, "\t.p2align\t%u\n", p2align);
       fprintf (asm_out_file, "2:\n");
       fprintf (asm_out_file, "\t.long\t0xc0000000\n");
       /* pr_datasz.  */
@@ -10885,7 +10899,9 @@ riscv_conditional_register_usage (void)
 	call_used_regs[r] = 1;
     }
 
-  if (!TARGET_HARD_FLOAT)
+  if (TARGET_HARD_FLOAT)
+    global_regs[FRM_REGNUM] = 1;
+  else
     {
       for (int regno = FP_REG_FIRST; regno <= FP_REG_LAST; regno++)
 	fixed_regs[regno] = call_used_regs[regno] = 1;
@@ -10898,7 +10914,9 @@ riscv_conditional_register_usage (void)
 	call_used_regs[regno] = 1;
     }
 
-  if (!TARGET_VECTOR)
+  if (TARGET_VECTOR)
+    global_regs[VXRM_REGNUM] = 1;
+  else
     {
       for (int regno = V_REG_FIRST; regno <= V_REG_LAST; regno++)
 	fixed_regs[regno] = call_used_regs[regno] = 1;
@@ -12642,14 +12660,27 @@ riscv_get_raw_result_mode (int regno)
 /* Generate a REG rtx of Xmode from the given rtx and mode.
    The rtx x can be REG (QI/HI/SI/DI) or const_int.
    The machine_mode mode is the original mode from define pattern.
+   The rtx_code can be ZERO_EXTEND or SIGN_EXTEND.
 
-   If rtx is REG and Xmode, the RTX x will be returned directly.
+   If rtx is REG:
 
-   If rtx is REG and non-Xmode, the zero extended to new REG of Xmode will be
-   returned.
+   1.  If rtx Xmode, the RTX x will be returned directly.
+   2.  If rtx non-Xmode, the value extended into a new REG of Xmode will be
+       returned.
 
-   If rtx is const_int, a new REG rtx will be created to hold the value of
-   const_int and then returned.
+   The scalar ALU like add don't support non-Xmode like QI/HI.  Then the
+   gen_lowpart will have problem here.  For example, when we would like
+   to add -1 (0xff if QImode) and 2 (0x2 if QImode).  The 0xff and 0x2 will
+   be loaded to register for adding.  Aka:
+
+   0xff + 0x2 = 0x101 instead of -1 + 2 = 1.
+
+   Thus we need to sign extend 0xff to 0xffffffffffffffff if Xmode is DImode
+   for correctness.  Similar the unsigned also need zero extend.
+
+   If rtx is const_int:
+
+   1.  A new REG rtx will be created to hold the value of const_int.
 
    According to the gccint doc, the constants generated for modes with fewer
    bits than in HOST_WIDE_INT must be sign extended to full width.  Thus there
@@ -12667,28 +12698,41 @@ riscv_get_raw_result_mode (int regno)
    the REG rtx of Xmode, instead of taking care of these in expand func.  */
 
 static rtx
-riscv_gen_zero_extend_rtx (rtx x, machine_mode mode)
+riscv_extend_to_xmode_reg (rtx x, machine_mode mode, enum rtx_code rcode)
 {
+  gcc_assert (rcode == ZERO_EXTEND || rcode == SIGN_EXTEND);
+
   rtx xmode_reg = gen_reg_rtx (Xmode);
 
-  if (!CONST_INT_P (x))
+  if (CONST_INT_P (x))
     {
       if (mode == Xmode)
-	return x;
+	emit_move_insn (xmode_reg, x);
+      else if (rcode == ZERO_EXTEND)
+	{
+	  /* Combine deliberately does not simplify extensions of constants
+	     (long story).  So try to generate the zero extended constant
+	     efficiently.
 
-      riscv_emit_unary (ZERO_EXTEND, xmode_reg, x);
-      return xmode_reg;
+	     First extract the constant and mask off all the bits not in
+	     MODE.  */
+	  HOST_WIDE_INT val = INTVAL (x);
+	  val &= GET_MODE_MASK (mode);
+
+	  /* X may need synthesis, so do not blindly copy it.  */
+	  xmode_reg = force_reg (Xmode, gen_int_mode (val, Xmode));
+	}
+      else /* SIGN_EXTEND.  */
+	{
+	  rtx x_reg = gen_reg_rtx (mode);
+	  emit_move_insn (x_reg, x);
+	  riscv_emit_unary (rcode, xmode_reg, x_reg);
+	}
     }
-
-  if (mode == Xmode)
-    emit_move_insn (xmode_reg, x);
+  else if (mode == Xmode)
+    return x;
   else
-    {
-      rtx reg_x = gen_reg_rtx (mode);
-
-      emit_move_insn (reg_x, x);
-      riscv_emit_unary (ZERO_EXTEND, xmode_reg, reg_x);
-    }
+    riscv_emit_unary (rcode, xmode_reg, x);
 
   return xmode_reg;
 }
@@ -12709,8 +12753,8 @@ riscv_expand_usadd (rtx dest, rtx x, rtx y)
   machine_mode mode = GET_MODE (dest);
   rtx xmode_sum = gen_reg_rtx (Xmode);
   rtx xmode_lt = gen_reg_rtx (Xmode);
-  rtx xmode_x = riscv_gen_zero_extend_rtx (x, mode);
-  rtx xmode_y = riscv_gen_zero_extend_rtx (y, mode);
+  rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, ZERO_EXTEND);
+  rtx xmode_y = riscv_extend_to_xmode_reg (y, mode, ZERO_EXTEND);
   rtx xmode_dest = gen_reg_rtx (Xmode);
 
   /* Step-1: sum = x + y  */
@@ -12788,8 +12832,8 @@ riscv_expand_ssadd (rtx dest, rtx x, rtx y)
   machine_mode mode = GET_MODE (dest);
   unsigned bitsize = GET_MODE_BITSIZE (mode).to_constant ();
   rtx shift_bits = GEN_INT (bitsize - 1);
-  rtx xmode_x = gen_lowpart (Xmode, x);
-  rtx xmode_y = gen_lowpart (Xmode, y);
+  rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, SIGN_EXTEND);
+  rtx xmode_y = riscv_extend_to_xmode_reg (y, mode, SIGN_EXTEND);
   rtx xmode_sum = gen_reg_rtx (Xmode);
   rtx xmode_dest = gen_reg_rtx (Xmode);
   rtx xmode_xor_0 = gen_reg_rtx (Xmode);
@@ -12844,8 +12888,8 @@ void
 riscv_expand_ussub (rtx dest, rtx x, rtx y)
 {
   machine_mode mode = GET_MODE (dest);
-  rtx xmode_x = riscv_gen_zero_extend_rtx (x, mode);
-  rtx xmode_y = riscv_gen_zero_extend_rtx (y, mode);
+  rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, ZERO_EXTEND);
+  rtx xmode_y = riscv_extend_to_xmode_reg (y, mode, ZERO_EXTEND);
   rtx xmode_lt = gen_reg_rtx (Xmode);
   rtx xmode_minus = gen_reg_rtx (Xmode);
   rtx xmode_dest = gen_reg_rtx (Xmode);
@@ -12892,8 +12936,8 @@ riscv_expand_sssub (rtx dest, rtx x, rtx y)
   machine_mode mode = GET_MODE (dest);
   unsigned bitsize = GET_MODE_BITSIZE (mode).to_constant ();
   rtx shift_bits = GEN_INT (bitsize - 1);
-  rtx xmode_x = gen_lowpart (Xmode, x);
-  rtx xmode_y = gen_lowpart (Xmode, y);
+  rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, SIGN_EXTEND);
+  rtx xmode_y = riscv_extend_to_xmode_reg (y, mode, SIGN_EXTEND);
   rtx xmode_minus = gen_reg_rtx (Xmode);
   rtx xmode_xor_0 = gen_reg_rtx (Xmode);
   rtx xmode_xor_1 = gen_reg_rtx (Xmode);
@@ -13003,7 +13047,7 @@ riscv_expand_sstrunc (rtx dest, rtx src)
   rtx xmode_narrow_min = gen_reg_rtx (Xmode);
   rtx xmode_lt = gen_reg_rtx (Xmode);
   rtx xmode_gt = gen_reg_rtx (Xmode);
-  rtx xmode_src = gen_lowpart (Xmode, src);
+  rtx xmode_src = riscv_extend_to_xmode_reg (src, GET_MODE (src), SIGN_EXTEND);
   rtx xmode_dest = gen_reg_rtx (Xmode);
   rtx xmode_mask = gen_reg_rtx (Xmode);
   rtx xmode_sat = gen_reg_rtx (Xmode);

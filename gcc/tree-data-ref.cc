@@ -2498,9 +2498,10 @@ create_waw_or_war_checks (tree *cond_expr,
   limit = fold_build2 (PLUS_EXPR, sizetype, limit,
 		       size_int (last_chunk_a + last_chunk_b));
 
-  tree subject = fold_build2 (POINTER_DIFF_EXPR, ssizetype, addr_b, addr_a);
-  subject = fold_build2 (PLUS_EXPR, sizetype,
-			 fold_convert (sizetype, subject), bias);
+  tree subject = fold_build2 (MINUS_EXPR, sizetype,
+			      fold_convert (sizetype, addr_b),
+			      fold_convert (sizetype, addr_a));
+  subject = fold_build2 (PLUS_EXPR, sizetype, subject, bias);
 
   *cond_expr = fold_build2 (GT_EXPR, boolean_type_node, subject, limit);
   if (dump_enabled_p ())
@@ -2647,8 +2648,6 @@ create_intersect_range_checks (class loop *loop, tree *cond_expr,
 	 if the maximum value of one segment is equal to the minimum
 	 value of the other.  */
       min_align = std::min (dr_a.align, dr_b.align);
-      min_align = std::min (min_align, known_alignment (dr_a.access_size));
-      min_align = std::min (min_align, known_alignment (dr_b.access_size));
       cmp_code = LT_EXPR;
     }
 
@@ -2978,6 +2977,29 @@ object_address_invariant_in_loop_p (const class loop *loop, const_tree obj)
 						  loop->num);
 }
 
+/* Helper for contains_ssa_ref_p.  */
+
+static bool
+contains_ssa_ref_p_1 (tree, tree *idx, void *data)
+{
+  if (TREE_CODE (*idx) == SSA_NAME)
+    {
+      *(bool *)data = true;
+      return false;
+    }
+  return true;
+}
+
+/* Returns true if the reference REF contains a SSA index. */
+
+static bool
+contains_ssa_ref_p (tree ref)
+{
+  bool res = false;
+  for_each_index (&ref, contains_ssa_ref_p_1, &res);
+  return res;
+}
+
 /* Returns false if we can prove that data references A and B do not alias,
    true otherwise.  If LOOP_NEST is false no cross-iteration aliases are
    considered.  */
@@ -3080,7 +3102,8 @@ dr_may_alias_p (const struct data_reference *a, const struct data_reference *b,
      possibly left with a non-base in which case we didn't analyze
      a possible evolution of the base when analyzing a loop.  */
   else if (loop_nest
-	   && (handled_component_p (addr_a) || handled_component_p (addr_b)))
+	   && ((handled_component_p (addr_a) && contains_ssa_ref_p (addr_a))
+	       || (handled_component_p (addr_b) && contains_ssa_ref_p (addr_b))))
     {
       /* For true dependences we can apply TBAA.  */
       if (flag_strict_aliasing

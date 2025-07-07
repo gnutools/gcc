@@ -375,6 +375,7 @@ static struct GTY(()) builtin_function_entry list_of_builtins[] = {
     BUILT_IN_NORMAL, "strchr", NULL, NULL, bf_default_lib },
   { "__builtin_strrchr", BT_FN_STRING_CONST_STRING_INT, BUILT_IN_STRCHR,
     BUILT_IN_NORMAL, "strrchr", NULL, NULL, bf_default_lib },
+
   { "__builtin_frame_address", BT_FN_PTR_UNSIGNED, BUILT_IN_FRAME_ADDRESS,
     BUILT_IN_NORMAL, "frame_address", NULL, NULL, bf_gcc },
   { "__builtin_return_address", BT_FN_PTR_UNSIGNED, BUILT_IN_RETURN_ADDRESS,
@@ -417,6 +418,7 @@ static GTY (()) tree ldouble_ftype_ldouble;
 static GTY (()) tree gm2_alloca_node;
 static GTY (()) tree gm2_memcpy_node;
 static GTY (()) tree gm2_memset_node;
+static GTY (()) tree gm2_strncpy_node;
 static GTY (()) tree gm2_isfinite_node;
 static GTY (()) tree gm2_isnan_node;
 static GTY (()) tree gm2_huge_valf_node;
@@ -426,6 +428,9 @@ static GTY (()) tree long_doubleptr_type_node;
 static GTY (()) tree doubleptr_type_node;
 static GTY (()) tree floatptr_type_node;
 static GTY (()) tree builtin_ftype_int_var;
+static GTY (()) tree builtin_ftype_int_uint;
+static GTY (()) tree builtin_ftype_int_ulong;
+static GTY (()) tree builtin_ftype_int_ulonglong;
 static GTY (()) vec<builtin_macro_definition, va_gc> *builtin_macros;
 
 /* Prototypes for locally defined functions.  */
@@ -1036,6 +1041,18 @@ DoBuiltinMemCopy (location_t location, tree dest, tree src, tree bytes)
 }
 
 static tree
+DoBuiltinStrNCopy (location_t location, tree dest, tree src, tree bytes)
+{
+  tree functype = TREE_TYPE (gm2_strncpy_node);
+  tree rettype = TREE_TYPE (functype);
+  tree funcptr
+      = build1 (ADDR_EXPR, build_pointer_type (functype), gm2_strncpy_node);
+  tree call
+      = m2treelib_DoCall3 (location, rettype, funcptr, dest, src, bytes);
+  return call;
+}
+
+static tree
 DoBuiltinAlloca (location_t location, tree bytes)
 {
   tree functype = TREE_TYPE (gm2_alloca_node);
@@ -1099,6 +1116,14 @@ m2builtins_BuiltInHugeValLong (location_t location)
       = build1 (ADDR_EXPR, build_pointer_type (functype), gm2_huge_vall_node);
   tree call = m2treelib_DoCall0 (location, rettype, funcptr);
   return call;
+}
+
+/* BuiltinStrNCopy copy at most n chars from address src to dest.  */
+
+tree
+m2builtins_BuiltinStrNCopy (location_t location, tree dest, tree src, tree n)
+{
+  return DoBuiltinStrNCopy (location, dest, src, n);
 }
 
 static void
@@ -1480,6 +1505,27 @@ define_builtin_math (enum built_in_function val, const char *name, tree type,
      versions as well?  */
 }
 
+/* Define gcc specific builtins.  */
+
+static
+void
+define_builtin_gcc (void)
+{
+  /* Bit count functions.  */
+  define_builtin (BUILT_IN_CLZ, "clz", builtin_ftype_int_uint,
+		  "__builtin_clz", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+  define_builtin (BUILT_IN_CLZL, "clzl", builtin_ftype_int_ulong,
+		  "__builtin_clzl", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+  define_builtin (BUILT_IN_CLZLL, "clzll", builtin_ftype_int_ulonglong,
+		  "__builtin_clzll", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+  define_builtin (BUILT_IN_CTZ, "ctz", builtin_ftype_int_uint,
+		  "__builtin_ctz", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+  define_builtin (BUILT_IN_CTZL, "ctzl", builtin_ftype_int_ulong,
+		  "__builtin_ctzl", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+  define_builtin (BUILT_IN_CTZLL, "ctzll", builtin_ftype_int_ulonglong,
+		  "__builtin_ctzll", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+}
+
 void
 m2builtins_init (location_t location)
 {
@@ -1516,6 +1562,15 @@ m2builtins_init (location_t location)
   builtin_ftype_int_var = build_function_type (
       integer_type_node, tree_cons (NULL_TREE, double_type_node, endlink));
 
+  builtin_ftype_int_uint = build_function_type (
+      integer_type_node, tree_cons (NULL_TREE, unsigned_type_node, endlink));
+
+  builtin_ftype_int_ulong = build_function_type (
+      integer_type_node, tree_cons (NULL_TREE, long_unsigned_type_node, endlink));
+
+  builtin_ftype_int_ulonglong = build_function_type (
+      integer_type_node, tree_cons (NULL_TREE, long_long_unsigned_type_node, endlink));
+
   for (i = 0; list_of_builtins[i].name != NULL; i++)
     create_function_prototype (location, &list_of_builtins[i]);
 
@@ -1541,9 +1596,12 @@ m2builtins_init (location_t location)
   define_builtin_math (BUILT_IN_ISINF_SIGN, "isinf_sign", builtin_ftype_int_var,
 		       "__builtin_isinf_sign", ECF_CONST | ECF_NOTHROW | ECF_LEAF);
 
+  define_builtin_gcc ();
+
   gm2_alloca_node = find_builtin_tree ("__builtin_alloca");
   gm2_memcpy_node = find_builtin_tree ("__builtin_memcpy");
   gm2_memset_node = find_builtin_tree ("__builtin_memset");
+  gm2_strncpy_node = find_builtin_tree ("__builtin_strncpy");  
   gm2_huge_valf_node = find_builtin_tree ("__builtin_huge_valf");
   gm2_huge_val_node = find_builtin_tree ("__builtin_huge_val");
   gm2_huge_vall_node = find_builtin_tree ("__builtin_huge_vall");

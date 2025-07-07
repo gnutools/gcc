@@ -2531,7 +2531,7 @@ ix86_expand_branch (enum rtx_code code, rtx op0, rtx op1, rtx label)
       return;
 
     case E_BFmode:
-      gcc_assert (TARGET_AVX10_2_256 && !flag_trapping_math);
+      gcc_assert (TARGET_AVX10_2 && !flag_trapping_math);
       goto simple;
 
     case E_DImode:
@@ -2802,7 +2802,7 @@ ix86_prepare_fp_compare_args (enum rtx_code code, rtx *pop0, rtx *pop1)
   machine_mode op_mode = GET_MODE (op0);
   bool is_sse = SSE_FLOAT_MODE_SSEMATH_OR_HFBF_P (op_mode);
 
-  if (op_mode == BFmode && (!TARGET_AVX10_2_256 || flag_trapping_math))
+  if (op_mode == BFmode && (!TARGET_AVX10_2 || flag_trapping_math))
     {
       rtx op = gen_lowpart (HImode, op0);
       if (CONST_INT_P (op))
@@ -2924,7 +2924,7 @@ ix86_expand_fp_compare (enum rtx_code code, rtx op0, rtx op1)
       /* We only have vcomisbf16, No vcomubf16 nor vcomxbf16 */
       if (GET_MODE (op0) != E_BFmode)
 	{
-	  if (TARGET_AVX10_2_256 && (code == EQ || code == NE))
+	  if (TARGET_AVX10_2 && (code == EQ || code == NE))
 	    tmp = gen_rtx_UNSPEC (CCFPmode, gen_rtvec (1, tmp), UNSPEC_OPTCOMX);
 	  if (unordered_compare)
 	    tmp = gen_rtx_UNSPEC (CCFPmode, gen_rtvec (1, tmp), UNSPEC_NOTRAP);
@@ -10225,13 +10225,15 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
     fnaddr = gen_rtx_MEM (QImode, construct_plt_address (XEXP (fnaddr, 0)));
   /* Since x32 GOT slot is 64 bit with zero upper 32 bits, indirect
      branch via x32 GOT slot is OK.  */
-  else if (!(TARGET_X32
-	     && MEM_P (fnaddr)
-	     && GET_CODE (XEXP (fnaddr, 0)) == ZERO_EXTEND
-	     && GOT_memory_operand (XEXP (XEXP (fnaddr, 0), 0), Pmode))
-	   && (sibcall
-	       ? !sibcall_insn_operand (XEXP (fnaddr, 0), word_mode)
-	       : !call_insn_operand (XEXP (fnaddr, 0), word_mode)))
+  else if (TARGET_X32
+      && MEM_P (fnaddr)
+      && GET_CODE (XEXP (fnaddr, 0)) == ZERO_EXTEND
+      && GOT_memory_operand (XEXP (XEXP (fnaddr, 0), 0), Pmode)
+      && !TARGET_INDIRECT_BRANCH_REGISTER)
+    ;
+  else if (sibcall
+	   ? !sibcall_insn_operand (XEXP (fnaddr, 0), word_mode)
+	   : !call_insn_operand (XEXP (fnaddr, 0), word_mode))
     {
       fnaddr = convert_to_mode (word_mode, XEXP (fnaddr, 0), 1);
       fnaddr = gen_rtx_MEM (QImode, copy_to_mode_reg (word_mode, fnaddr));
@@ -10777,7 +10779,7 @@ ix86_ssecom_setcc (const enum rtx_code comparison,
 
   /* NB: For ordered EQ or unordered NE, check ZF alone isn't sufficient
      with NAN operands.
-     Under TARGET_AVX10_2_256, VCOMX/VUCOMX are generated instead of
+     Under TARGET_AVX10_2, VCOMX/VUCOMX are generated instead of
      COMI/UCOMI.  VCOMX/VUCOMX will not set ZF for NAN operands.  */
   if (check_unordered)
     {
@@ -10850,12 +10852,12 @@ ix86_expand_sse_comi (const struct builtin_description *d, tree exp,
     case GE:
       break;
     case EQ:
-      if (!TARGET_AVX10_2_256 || !comx_ok)
+      if (!TARGET_AVX10_2 || !comx_ok)
 	check_unordered = true;
       mode = CCZmode;
       break;
     case NE:
-      if (!TARGET_AVX10_2_256 || !comx_ok)
+      if (!TARGET_AVX10_2 || !comx_ok)
 	check_unordered = true;
       mode = CCZmode;
       const_val = const1_rtx;
@@ -10876,7 +10878,7 @@ ix86_expand_sse_comi (const struct builtin_description *d, tree exp,
     op1 = copy_to_mode_reg (mode1, op1);
 
   if ((comparison == EQ || comparison == NE)
-      && TARGET_AVX10_2_256 && comx_ok)
+      && TARGET_AVX10_2 && comx_ok)
     {
       switch (icode)
 	{
@@ -11781,6 +11783,11 @@ ix86_expand_args_builtin (const struct builtin_description *d,
     case V8HF_FTYPE_V16QI_V8HF_UQI:
     case V16HF_FTYPE_V16QI_V16HF_UHI:
     case V32HF_FTYPE_V32QI_V32HF_USI:
+    case V16SI_FTYPE_V16SF_V16SI_UHI:
+    case V32HI_FTYPE_V32HF_V32HI_USI:
+    case V8DI_FTYPE_V8SF_V8DI_UQI:
+    case V8DI_FTYPE_V8DF_V8DI_UQI:
+    case V8SI_FTYPE_V8DF_V8SI_UQI:
       nargs = 3;
       break;
     case V32QI_FTYPE_V32QI_V32QI_INT:
@@ -12096,6 +12103,7 @@ ix86_expand_args_builtin (const struct builtin_description *d,
     case V8BF_FTYPE_V8BF_V8BF_INT_V8BF_UQI:
     case V16BF_FTYPE_V16BF_V16BF_INT_V16BF_UHI:
     case V32BF_FTYPE_V32BF_V32BF_INT_V32BF_USI:
+    case V16HF_FTYPE_V16HF_V16HF_INT_V16HF_UHI:
     case V8HF_FTYPE_V8HF_V8HF_INT_V8HF_UQI:
       nargs = 5;
       mask_pos = 1;
@@ -12466,7 +12474,7 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
     case ORDERED:
       if (!ordered)
 	{
-	  if (TARGET_AVX10_2_256 && comx_ok)
+	  if (TARGET_AVX10_2 && comx_ok)
 	    {
 	      /* Unlike VCOMI{SH,SS,SD}, VCOMX{SH,SS,SD} will set SF
 		 differently. So directly return true here.  */
@@ -12494,7 +12502,7 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
     case UNORDERED:
       if (ordered)
 	{
-	  if (TARGET_AVX10_2_256 && comx_ok)
+	  if (TARGET_AVX10_2 && comx_ok)
 	    {
 	      /* Unlike VCOMI{SH,SS,SD}, VCOMX{SH,SS,SD} will set SF
 		 differently. So directly return false here.  */
@@ -12541,20 +12549,20 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
       break;
       /* NB: COMI/UCOMI will set ZF with NAN operands.  Use CCZmode for
 	 _CMP_EQ_OQ/_CMP_EQ_OS.
-	 Under TARGET_AVX10_2_256, VCOMX/VUCOMX are always generated instead
+	 Under TARGET_AVX10_2, VCOMX/VUCOMX are always generated instead
 	 of COMI/UCOMI, VCOMX/VUCOMX will not set ZF with NAN.  */
     case EQ:
-      if (!TARGET_AVX10_2_256 || !comx_ok)
+      if (!TARGET_AVX10_2 || !comx_ok)
 	check_unordered = true;
       mode = CCZmode;
       break;
     case NE:
       /* NB: COMI/UCOMI will set ZF with NAN operands.  Use CCZmode for
 	 _CMP_NEQ_UQ/_CMP_NEQ_US.
-	 Under TARGET_AVX10_2_256, VCOMX/VUCOMX are always generated instead
+	 Under TARGET_AVX10_2, VCOMX/VUCOMX are always generated instead
 	 of COMI/UCOMI, VCOMX/VUCOMX will not set ZF with NAN.  */
       gcc_assert (!ordered);
-      if (!TARGET_AVX10_2_256 || !comx_ok)
+      if (!TARGET_AVX10_2 || !comx_ok)
 	check_unordered = true;
       mode = CCZmode;
       const_val = const1_rtx;
@@ -12577,7 +12585,7 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
     /* Generate comx instead of comi when EQ/NE to avoid NAN checks.
        Use orig_comp to exclude ORDERED/UNORDERED cases.  */
   if ((orig_comp == EQ || orig_comp == NE)
-      && TARGET_AVX10_2_256 && comx_ok)
+      && TARGET_AVX10_2 && comx_ok)
     {
       switch (icode)
 	{
@@ -12598,7 +12606,7 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
 
   /* Generate comi instead of comx when UNEQ/LTGT to avoid NAN checks.  */
   if ((comparison == UNEQ || comparison == LTGT)
-       && TARGET_AVX10_2_256 && comx_ok)
+       && TARGET_AVX10_2 && comx_ok)
     {
       switch (icode)
 	{
@@ -12701,7 +12709,6 @@ ix86_expand_round_builtin (const struct builtin_description *d,
       nargs = 2;
       break;
     case V32HF_FTYPE_V32HF_V32HF_INT:
-    case V16HF_FTYPE_V16HF_V16HF_INT:
     case V8HF_FTYPE_V8HF_V8HF_INT:
     case V8HF_FTYPE_V8HF_INT_INT:
     case V8HF_FTYPE_V8HF_UINT_INT:
@@ -12739,37 +12746,14 @@ ix86_expand_round_builtin (const struct builtin_description *d,
     case V16SI_FTYPE_V16SF_V16SI_HI_INT:
     case V16SI_FTYPE_V16SF_V16SI_UHI_INT:
     case V16SI_FTYPE_V16HF_V16SI_UHI_INT:
-    case V16HF_FTYPE_V16HF_V16HF_V16HF_INT:
     case V16HF_FTYPE_V16SI_V16HF_UHI_INT:
-    case V16HI_FTYPE_V16HF_V16HI_UHI_INT:
     case V8DF_FTYPE_V8SF_V8DF_QI_INT:
     case V16SF_FTYPE_V16HI_V16SF_HI_INT:
-    case V8SF_FTYPE_V8SF_V8SF_UQI_INT:
-    case V8SF_FTYPE_V8SI_V8SF_UQI_INT:
-    case V8SF_FTYPE_V8HF_V8SF_UQI_INT:
-    case V8SI_FTYPE_V8SF_V8SI_UQI_INT:
-    case V8SI_FTYPE_V8HF_V8SI_UQI_INT:
-    case V4DF_FTYPE_V4DF_V4DF_UQI_INT:
-    case V4DF_FTYPE_V4DI_V4DF_UQI_INT:
-    case V4DF_FTYPE_V4SF_V4DF_UQI_INT:
-    case V4DF_FTYPE_V8HF_V4DF_UQI_INT:
-    case V4DI_FTYPE_V8HF_V4DI_UQI_INT:
-    case V4DI_FTYPE_V4DF_V4DI_UQI_INT:
-    case V4DI_FTYPE_V4SF_V4DI_UQI_INT:
     case V2DF_FTYPE_V2DF_V2DF_V2DF_INT:
-    case V4SI_FTYPE_V4DF_V4SI_UQI_INT:
-    case V4SF_FTYPE_V4DF_V4SF_UQI_INT:
-    case V4SF_FTYPE_V4DI_V4SF_UQI_INT:
     case V4SF_FTYPE_V4SF_V4SF_V4SF_INT:
     case V8HF_FTYPE_V8DI_V8HF_UQI_INT:
     case V8HF_FTYPE_V8DF_V8HF_UQI_INT:
-    case V8HF_FTYPE_V8SF_V8HF_UQI_INT:
-    case V8HF_FTYPE_V8SI_V8HF_UQI_INT:
-    case V8HF_FTYPE_V4DF_V8HF_UQI_INT:
-    case V8HF_FTYPE_V4DI_V8HF_UQI_INT:
     case V16HF_FTYPE_V16SF_V16HF_UHI_INT:
-    case V16HF_FTYPE_V16HF_V16HF_UHI_INT:
-    case V16HF_FTYPE_V16HI_V16HF_UHI_INT:
     case V16HI_FTYPE_V16BF_V16HI_UHI_INT:
     case V8HF_FTYPE_V8HF_V8HF_V8HF_INT:
       nargs = 4;
@@ -12782,15 +12766,11 @@ ix86_expand_round_builtin (const struct builtin_description *d,
     case INT_FTYPE_V4SF_V4SF_INT_INT:
     case INT_FTYPE_V2DF_V2DF_INT_INT:
       return ix86_expand_sse_comi_round (d, exp, target, true);
-    case V4DF_FTYPE_V4DF_V4DF_V4DF_UQI_INT:
     case V8DF_FTYPE_V8DF_V8DF_V8DF_UQI_INT:
     case V2DF_FTYPE_V2DF_V2DF_V2DF_UQI_INT:
     case V4SF_FTYPE_V4SF_V4SF_V4SF_UQI_INT:
     case V4SF_FTYPE_V8HF_V4SF_V4SF_UQI_INT:
-    case V8SF_FTYPE_V8SF_V8SF_V8SF_UQI_INT:
     case V16SF_FTYPE_V16SF_V16SF_V16SF_HI_INT:
-    case V16HF_FTYPE_V16HF_V16HF_V16HF_UHI_INT:
-    case V16HF_FTYPE_V16HF_V16HF_V16HF_UQI_INT:
     case V32HF_FTYPE_V32HF_V32HF_V32HF_UHI_INT:
     case V32HF_FTYPE_V32HF_V32HF_V32HF_USI_INT:
     case V2DF_FTYPE_V8HF_V2DF_V2DF_UQI_INT:
@@ -12803,7 +12783,6 @@ ix86_expand_round_builtin (const struct builtin_description *d,
     case V8HF_FTYPE_V8HF_V8HF_V8HF_UQI_INT:
     case V8HF_FTYPE_V2DF_V8HF_V8HF_UQI_INT:
     case V8HF_FTYPE_V4SF_V8HF_V8HF_UQI_INT:
-    case V16HF_FTYPE_V8SF_V8SF_V16HF_UHI_INT:
     case V32HF_FTYPE_V16SF_V16SF_V32HF_USI_INT:
       nargs = 5;
       break;
@@ -12812,18 +12791,12 @@ ix86_expand_round_builtin (const struct builtin_description *d,
     case V8DF_FTYPE_V8DF_INT_V8DF_QI_INT:
     case V8DF_FTYPE_V8DF_INT_V8DF_UQI_INT:
     case V16SF_FTYPE_V16SF_INT_V16SF_UHI_INT:
-    case V16HF_FTYPE_V16HF_INT_V16HF_UHI_INT:
-    case V4DF_FTYPE_V4DF_INT_V4DF_UQI_INT:
-    case V8SF_FTYPE_V8SF_INT_V8SF_UQI_INT:
       nargs_constant = 4;
       nargs = 5;
       break;
     case UQI_FTYPE_V8DF_V8DF_INT_UQI_INT:
-    case UQI_FTYPE_V4DF_V4DF_INT_UQI_INT:
     case UQI_FTYPE_V2DF_V2DF_INT_UQI_INT:
     case UHI_FTYPE_V16SF_V16SF_INT_UHI_INT:
-    case UHI_FTYPE_V16HF_V16HF_INT_UHI_INT:
-    case UQI_FTYPE_V8SF_V8SF_INT_UQI_INT:
     case UQI_FTYPE_V4SF_V4SF_INT_UQI_INT:
     case USI_FTYPE_V32HF_V32HF_INT_USI_INT:
     case UQI_FTYPE_V8HF_V8HF_INT_UQI_INT:
@@ -12832,8 +12805,6 @@ ix86_expand_round_builtin (const struct builtin_description *d,
       break;
     case V16SF_FTYPE_V16SF_V16SF_INT_V16SF_HI_INT:
     case V8DF_FTYPE_V8DF_V8DF_INT_V8DF_QI_INT:
-    case V8SF_FTYPE_V8SF_V8SF_INT_V8SF_UQI_INT:
-    case V4DF_FTYPE_V4DF_V4DF_INT_V4DF_UQI_INT:
     case V4SF_FTYPE_V4SF_V4SF_INT_V4SF_QI_INT:
     case V2DF_FTYPE_V2DF_V2DF_INT_V2DF_QI_INT:
     case V2DF_FTYPE_V2DF_V2DF_INT_V2DF_UQI_INT:
@@ -12841,15 +12812,12 @@ ix86_expand_round_builtin (const struct builtin_description *d,
     case V8HF_FTYPE_V8HF_V8HF_INT_V8HF_UQI_INT:
     case V8DF_FTYPE_V8DF_V8DF_INT_V8DF_UQI_INT:
     case V32HF_FTYPE_V32HF_V32HF_INT_V32HF_USI_INT:
-    case V16HF_FTYPE_V16HF_V16HF_INT_V16HF_UHI_INT:
     case V16SF_FTYPE_V16SF_V16SF_INT_V16SF_UHI_INT:
       nargs = 6;
       nargs_constant = 4;
       break;
     case V8DF_FTYPE_V8DF_V8DF_V8DI_INT_QI_INT:
-    case V4DF_FTYPE_V4DF_V4DF_V4DI_INT_UQI_INT:
     case V16SF_FTYPE_V16SF_V16SF_V16SI_INT_HI_INT:
-    case V8SF_FTYPE_V8SF_V8SF_V8SI_INT_UQI_INT:
     case V2DF_FTYPE_V2DF_V2DF_V2DI_INT_QI_INT:
     case V4SF_FTYPE_V4SF_V4SF_V4SI_INT_QI_INT:
       nargs = 6;
@@ -13614,9 +13582,9 @@ ix86_check_builtin_isa_match (unsigned int fcode,
   SHARE_BUILTIN (OPTION_MASK_ISA_AES, 0, OPTION_MASK_ISA_AVX512VL,
 		 OPTION_MASK_ISA2_VAES);
   SHARE_BUILTIN (0, OPTION_MASK_ISA2_AVXVNNIINT8, 0,
-		 OPTION_MASK_ISA2_AVX10_2_256);
+		 OPTION_MASK_ISA2_AVX10_2);
   SHARE_BUILTIN (0, OPTION_MASK_ISA2_AVXVNNIINT16, 0,
-		 OPTION_MASK_ISA2_AVX10_2_256);
+		 OPTION_MASK_ISA2_AVX10_2);
   isa = tmp_isa;
   isa2 = tmp_isa2;
 

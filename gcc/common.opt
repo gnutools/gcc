@@ -614,11 +614,11 @@ Warn when an optimization pass is disabled.
 
 Werror
 Common Var(warnings_are_errors)
-Treat all warnings as errors.
+Turn all warnings into errors.
 
 Werror=
 Common Joined
-Treat specified warning as error.
+Turn the specified warning into an error.
 
 Wextra
 Common Var(extra_warnings) Warning
@@ -692,6 +692,14 @@ Does nothing. Preserved for backward compatibility.
 
 Wmissing-noreturn
 Common Warning Alias(Wsuggest-attribute=noreturn)
+
+Wmusttail-local-addr
+Common Var(warn_musttail_local_addr) Init(1) Warning
+Warn about passing a pointer/reference to a local or temporary variable to a musttail call argument.
+
+Wmaybe-musttail-local-addr
+Common Var(warn_maybe_musttail_local_addr) Warning EnabledBy(Wextra)
+Warn about pointer/reference to a local or temporary variable possibly escaping to a musttail call.
 
 Wodr
 Common Var(warn_odr_violations) Init(1) Warning
@@ -884,6 +892,18 @@ Wcoverage-too-many-conditions
 Common Var(warn_too_many_conditions) Init(1) Warning
 Warn when a conditional has too many terms and condition coverage profiling
 gives up instrumenting the expression.
+
+fpath-coverage-limit=
+Common RejectNegative Joined UInteger Var(path_coverage_limit) Init(250000)
+-fpath-coverage-limit=<number> Don't instrument functions path count exceeding
+<number>.
+
+Wcoverage-too-many-paths
+Common Var(warn_too_many_paths) Init(1) Warning
+Warn if a function exceeds the number of paths (controlled by
+-fpath-coverage-limit) and path coverage give up instrumenting the function.
+The limit is approximate and conservative and coverage might give up even if
+the actual number is slightly below the limit.
 
 Wmissing-profile
 Common Var(warn_missing_profile) Init(1) Warning
@@ -2035,6 +2055,7 @@ Enum(ilsop_fn) String(memset) Value(ILSOP_MEMSET) Set(4)
 
 fcf-protection
 Common RejectNegative Alias(fcf-protection=,full)
+Equivalent to -fcf-protection=full.
 
 fcf-protection=
 Common Joined RejectNegative Enum(cf_protection_level) EnumSet Var(flag_cf_protection) Init(CF_NONE)
@@ -2094,6 +2115,10 @@ Perform interprocedural bitwise constant propagation.
 fipa-modref
 Common Var(flag_ipa_modref) Optimization
 Perform interprocedural modref analysis.
+
+fipa-reorder-for-locality
+Common Var(flag_ipa_reorder_for_locality) Init(0) Optimization
+Perform reordering and cloning of functions to maximize locality.
 
 fipa-profile
 Common Var(flag_ipa_profile) Init(0) Optimization
@@ -2254,6 +2279,9 @@ Enum
 Name(lto_partition_model) Type(enum lto_partition_model) UnknownError(unknown LTO partitioning model %qs)
 
 EnumValue
+Enum(lto_partition_model) String(default) Value(LTO_PARTITION_DEFAULT)
+
+EnumValue
 Enum(lto_partition_model) String(none) Value(LTO_PARTITION_NONE)
 
 EnumValue
@@ -2272,7 +2300,7 @@ EnumValue
 Enum(lto_partition_model) String(cache) Value(LTO_PARTITION_CACHE)
 
 flto-partition=
-Common Joined RejectNegative Enum(lto_partition_model) Var(flag_lto_partition) Init(LTO_PARTITION_BALANCED)
+Common Joined RejectNegative Enum(lto_partition_model) Var(flag_lto_partition) Init(LTO_PARTITION_DEFAULT)
 Specify the algorithm to partition symbols and vars at linktime.
 
 ; The initial value of -1 comes from Z_DEFAULT_COMPRESSION in zlib.h.
@@ -2453,6 +2481,10 @@ Does nothing. Preserved for backward compatibility.
 foptimize-sibling-calls
 Common Var(flag_optimize_sibling_calls) Optimization
 Optimize sibling and tail recursive calls.
+
+fpath-coverage
+Common Var(path_coverage_flag)
+Insert path profiling code.
 
 fpartial-inlining
 Common Var(flag_partial_inlining) Optimization
@@ -3781,7 +3813,7 @@ Common Alias(Wpedantic)
 
 pedantic-errors
 Common Var(flag_pedantic_errors)
-Like -pedantic but issue them as errors.
+Like -pedantic but issue errors instead of warnings.
 
 pg
 Driver
@@ -3891,6 +3923,10 @@ Driver
 static-libgfortran
 Driver
 ; Documented for Fortran, but always accepted by driver.
+
+static-libgcobol
+Driver
+; Documented for COBOL, but always accepted by driver.
 
 static-libgm2
 Driver

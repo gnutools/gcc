@@ -31,6 +31,36 @@ TypeCheckBase::TypeCheckBase ()
     context (TypeCheckContext::get ())
 {}
 
+void
+TypeCheckBase::ResolveGenericParams (
+  const std::vector<std::unique_ptr<HIR::GenericParam>> &generic_params,
+  std::vector<TyTy::SubstitutionParamMapping> &substitutions, bool is_foreign,
+  ABI abi)
+{
+  TypeCheckBase ctx;
+  ctx.resolve_generic_params (generic_params, substitutions, is_foreign, abi);
+}
+
+static void
+walk_types_to_constrain (std::set<HirId> &constrained_symbols,
+			 const TyTy::SubstitutionArgumentMappings &constraints)
+{
+  for (const auto &c : constraints.get_mappings ())
+    {
+      const TyTy::BaseType *arg = c.get_tyty ();
+      if (arg != nullptr)
+	{
+	  const TyTy::BaseType *p = arg->get_root ();
+	  constrained_symbols.insert (p->get_ty_ref ());
+	  if (p->has_substitutions_defined ())
+	    {
+	      walk_types_to_constrain (constrained_symbols,
+				       p->get_subst_argument_mappings ());
+	    }
+	}
+    }
+}
+
 bool
 TypeCheckBase::check_for_unconstrained (
   const std::vector<TyTy::SubstitutionParamMapping> &params_to_constrain,
@@ -52,28 +82,14 @@ TypeCheckBase::check_for_unconstrained (
       HirId ref = p.get_param_ty ()->get_ref ();
       symbols_to_constrain.insert (ref);
       symbol_to_location.insert ({ref, p.get_param_locus ()});
+
+      rust_debug_loc (p.get_param_locus (), "XX constrain THIS");
     }
 
   // set up the set of constrained symbols
   std::set<HirId> constrained_symbols;
-  for (const auto &c : constraint_a.get_mappings ())
-    {
-      const TyTy::BaseType *arg = c.get_tyty ();
-      if (arg != nullptr)
-	{
-	  const TyTy::BaseType *p = arg->get_root ();
-	  constrained_symbols.insert (p->get_ty_ref ());
-	}
-    }
-  for (const auto &c : constraint_b.get_mappings ())
-    {
-      const TyTy::BaseType *arg = c.get_tyty ();
-      if (arg != nullptr)
-	{
-	  const TyTy::BaseType *p = arg->get_root ();
-	  constrained_symbols.insert (p->get_ty_ref ());
-	}
-    }
+  walk_types_to_constrain (constrained_symbols, constraint_a);
+  walk_types_to_constrain (constrained_symbols, constraint_b);
 
   const auto root = reference->get_root ();
   if (root->get_kind () == TyTy::TypeKind::PARAM)
@@ -238,9 +254,9 @@ TypeCheckBase::resolve_literal (const Analysis::NodeMapping &expr_mappings,
 	auto ok = context->lookup_builtin ("u8", &u8);
 	rust_assert (ok);
 
-	auto crate_num = mappings->get_current_crate ();
+	auto crate_num = mappings.get_current_crate ();
 	Analysis::NodeMapping capacity_mapping (crate_num, UNKNOWN_NODEID,
-						mappings->get_next_hir_id (
+						mappings.get_next_hir_id (
 						  crate_num),
 						UNKNOWN_LOCAL_DEFID);
 
@@ -260,7 +276,7 @@ TypeCheckBase::resolve_literal (const Analysis::NodeMapping &expr_mappings,
 	context->insert_type (capacity_mapping, expected_ty);
 
 	Analysis::NodeMapping array_mapping (crate_num, UNKNOWN_NODEID,
-					     mappings->get_next_hir_id (
+					     mappings.get_next_hir_id (
 					       crate_num),
 					     UNKNOWN_LOCAL_DEFID);
 
@@ -292,9 +308,19 @@ TypeCheckBase::parse_repr_options (const AST::AttrVec &attrs, location_t locus)
   repr.pack = 0;
   repr.align = 0;
 
+  // FIXME handle repr types....
+  bool ok = context->lookup_builtin ("isize", &repr.repr);
+  rust_assert (ok);
+
   for (const auto &attr : attrs)
     {
       bool is_repr = attr.get_path ().as_string () == Values::Attributes::REPR;
+      if (is_repr && !attr.has_attr_input ())
+	{
+	  rust_error_at (attr.get_locus (), "malformed %qs attribute", "repr");
+	  continue;
+	}
+
       if (is_repr)
 	{
 	  const AST::AttrInput &input = attr.get_attr_input ();
@@ -305,8 +331,22 @@ TypeCheckBase::parse_repr_options (const AST::AttrVec &attrs, location_t locus)
 	  AST::AttrInputMetaItemContainer *meta_items
 	    = option.parse_to_meta_item ();
 
-	  const std::string inline_option
-	    = meta_items->get_items ().at (0)->as_string ();
+	  if (meta_items == nullptr)
+	    {
+	      rust_error_at (attr.get_locus (), "malformed %qs attribute",
+			     "repr");
+	      continue;
+	    }
+
+	  auto &items = meta_items->get_items ();
+	  if (items.size () == 0)
+	    {
+	      // nothing to do with this its empty
+	      delete meta_items;
+	      continue;
+	    }
+
+	  const std::string inline_option = items.at (0)->as_string ();
 
 	  // TODO: it would probably be better to make the MetaItems more aware
 	  // of constructs with nesting like #[repr(packed(2))] rather than
@@ -343,6 +383,8 @@ TypeCheckBase::parse_repr_options (const AST::AttrVec &attrs, location_t locus)
 	  else if (is_align)
 	    repr.align = value;
 
+	  delete meta_items;
+
 	  // Multiple repr options must be specified with e.g. #[repr(C,
 	  // packed(2))].
 	  break;
@@ -355,7 +397,8 @@ TypeCheckBase::parse_repr_options (const AST::AttrVec &attrs, location_t locus)
 void
 TypeCheckBase::resolve_generic_params (
   const std::vector<std::unique_ptr<HIR::GenericParam>> &generic_params,
-  std::vector<TyTy::SubstitutionParamMapping> &substitutions)
+  std::vector<TyTy::SubstitutionParamMapping> &substitutions, bool is_foreign,
+  ABI abi)
 {
   for (auto &generic_param : generic_params)
     {
@@ -365,31 +408,33 @@ TypeCheckBase::resolve_generic_params (
 	    auto lifetime_param
 	      = static_cast<HIR::LifetimeParam &> (*generic_param);
 	    auto lifetime = lifetime_param.get_lifetime ();
-	    rust_assert (lifetime.get_lifetime_type ()
-			 == AST::Lifetime::LifetimeType::NAMED);
 	    context->get_lifetime_resolver ().insert_mapping (
 	      context->intern_lifetime (lifetime));
 	  }
-
 	  break;
 
 	  case HIR::GenericParam::GenericKind::CONST: {
-	    auto param
-	      = static_cast<HIR::ConstGenericParam *> (generic_param.get ());
-	    auto specified_type
-	      = TypeCheckType::Resolve (param->get_type ().get ());
-
-	    if (param->has_default_expression ())
+	    if (is_foreign && abi != Rust::ABI::INTRINSIC)
 	      {
-		auto expr_type = TypeCheckExpr::Resolve (
-		  param->get_default_expression ().get ());
+		rust_error_at (generic_param->get_locus (), ErrorCode::E0044,
+			       "foreign items may not have const parameters");
+	      }
 
-		coercion_site (
-		  param->get_mappings ().get_hirid (),
-		  TyTy::TyWithLocation (specified_type),
-		  TyTy::TyWithLocation (
-		    expr_type, param->get_default_expression ()->get_locus ()),
-		  param->get_locus ());
+	    auto &param
+	      = static_cast<HIR::ConstGenericParam &> (*generic_param);
+	    auto specified_type = TypeCheckType::Resolve (param.get_type ());
+
+	    if (param.has_default_expression ())
+	      {
+		auto expr_type
+		  = TypeCheckExpr::Resolve (param.get_default_expression ());
+
+		coercion_site (param.get_mappings ().get_hirid (),
+			       TyTy::TyWithLocation (specified_type),
+			       TyTy::TyWithLocation (
+				 expr_type,
+				 param.get_default_expression ().get_locus ()),
+			       param.get_locus ());
 	      }
 
 	    context->insert_type (generic_param->get_mappings (),
@@ -398,24 +443,38 @@ TypeCheckBase::resolve_generic_params (
 	  break;
 
 	  case HIR::GenericParam::GenericKind::TYPE: {
-	    auto param_type
-	      = TypeResolveGenericParam::Resolve (generic_param.get ());
+	    if (is_foreign && abi != Rust::ABI::INTRINSIC)
+	      {
+		rust_error_at (generic_param->get_locus (), ErrorCode::E0044,
+			       "foreign items may not have type parameters");
+	      }
+
+	    auto param_type = TypeResolveGenericParam::Resolve (
+	      *generic_param, false /*resolve_trait_bounds*/);
 	    context->insert_type (generic_param->get_mappings (), param_type);
 
-	    substitutions.push_back (TyTy::SubstitutionParamMapping (
-	      static_cast<HIR::TypeParam &> (*generic_param), param_type));
+	    auto &param = static_cast<HIR::TypeParam &> (*generic_param);
+	    TyTy::SubstitutionParamMapping p (param, param_type);
+	    substitutions.push_back (p);
 	  }
 	  break;
 	}
+    }
+
+  // now walk them to setup any specified type param bounds
+  for (auto &subst : substitutions)
+    {
+      auto pty = subst.get_param_ty ();
+      TypeResolveGenericParam::ApplyAnyTraitBounds (subst.get_generic_param (),
+						    pty);
     }
 }
 
 TyTy::TypeBoundPredicate
 TypeCheckBase::get_marker_predicate (LangItem::Kind item_type, location_t locus)
 {
-  DefId item_id = mappings->get_lang_item (item_type, locus);
-  HIR::Item *item = mappings->lookup_defid (item_id);
-  rust_assert (item != nullptr);
+  DefId item_id = mappings.get_lang_item (item_type, locus);
+  HIR::Item *item = mappings.lookup_defid (item_id).value ();
   rust_assert (item->get_item_kind () == HIR::Item::ItemKind::Trait);
 
   HIR::Trait &trait = *static_cast<HIR::Trait *> (item);

@@ -670,7 +670,9 @@
   (match_code "symbol_ref")
 {
   if (ix86_cmodel == CM_LARGE || ix86_cmodel == CM_LARGE_PIC
-      || flag_force_indirect_call)
+      || flag_force_indirect_call
+      || (TARGET_INDIRECT_BRANCH_REGISTER
+          && ix86_nopic_noplt_attribute_p (op)))
     return false;
   if (TARGET_DLLIMPORT_DECL_ATTRIBUTES && SYMBOL_REF_DLLIMPORT_P (op))
     return false;
@@ -779,22 +781,14 @@
   (ior (match_test "constant_call_address_operand
 		     (op, mode == VOIDmode ? mode : Pmode)")
        (match_operand 0 "call_register_operand")
-       (and (not (match_test "TARGET_INDIRECT_BRANCH_REGISTER"))
-	    (ior (and (not (match_test "TARGET_X32"))
-		      (match_operand 0 "memory_operand"))
-		 (and (match_test "TARGET_X32 && Pmode == DImode")
-		      (match_operand 0 "GOT_memory_operand"))))))
+       (match_test "satisfies_constraint_Bw (op)")))
 
 ;; Similarly, but for tail calls, in which we cannot allow memory references.
 (define_special_predicate "sibcall_insn_operand"
   (ior (match_test "constant_call_address_operand
 		     (op, mode == VOIDmode ? mode : Pmode)")
        (match_operand 0 "register_no_elim_operand")
-       (and (not (match_test "TARGET_INDIRECT_BRANCH_REGISTER"))
-	    (ior (and (not (match_test "TARGET_X32"))
-		      (match_operand 0 "sibcall_memory_operand"))
-		 (and (match_test "TARGET_X32 && Pmode == DImode")
-		      (match_operand 0 "GOT_memory_operand"))))))
+       (match_test "satisfies_constraint_Bs (op)")))
 
 ;; Return true if OP is a 32-bit GOT symbol operand.
 (define_predicate "GOT32_symbol_operand"
@@ -1635,7 +1629,7 @@
 ;; Return true if this comparison only requires testing one flag bit.
 ;; VCOMX/VUCOMX set ZF, SF, OF, differently from COMI/UCOMI.
 (define_predicate "ix86_trivial_fp_comparison_operator"
-  (if_then_else (match_test "TARGET_AVX10_2_256")
+  (if_then_else (match_test "TARGET_AVX10_2")
 		(match_code "gt,ge,unlt,unle,eq,uneq,ne,ltgt,ordered,unordered")
 		(match_code "gt,ge,unlt,unle,uneq,ltgt,ordered,unordered")))
 
