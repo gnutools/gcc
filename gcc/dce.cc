@@ -1324,7 +1324,8 @@ make_pass_fast_rtl_dce (gcc::context *ctxt)
 }
 
 namespace {
-// offset_bitmap is a wrapper around sbitmap that also handles negative indices from RTL SSA
+// offset_bitmap is a wrapper around sbitmap that also handles negative indices
+// from RTL SSA
 struct offset_bitmap
 {
 private:
@@ -1332,9 +1333,7 @@ private:
   sbitmap m_bitmap;
 
 public:
-  offset_bitmap ()
-    : m_offset{0}, m_bitmap{sbitmap_alloc(0)}
-  {}
+  offset_bitmap () : m_offset{0}, m_bitmap{sbitmap_alloc (0)} {}
 
   offset_bitmap (size_t size, int offset)
     : m_offset{offset}, m_bitmap{sbitmap_alloc (size)}
@@ -1344,15 +1343,15 @@ public:
     : offset_bitmap (size_t (max_index - min_index + 1), -min_index)
   {}
 
-  void resize(size_t size, int offset)
+  void resize (size_t size, int offset)
   {
-    m_bitmap = sbitmap_resize(m_bitmap, (unsigned int)size, 0); 
-    m_offset = offset; 
+    m_bitmap = sbitmap_resize (m_bitmap, (unsigned int) size, 0);
+    m_offset = offset;
   }
 
-  void resize(int min_index, int max_index)
+  void resize (int min_index, int max_index)
   {
-    resize(size_t (max_index - min_index + 1), -min_index);
+    resize (size_t (max_index - min_index + 1), -min_index);
   }
 
   void clear_bit (int index) { bitmap_clear_bit (m_bitmap, index + m_offset); }
@@ -1411,13 +1410,12 @@ rtl_ssa_dce::can_delete_call (const_rtx insn)
   // We cannot delete pure or const sibling calls because it is
   // hard to see the result.
   return !SIBLING_CALL_P (insn)
-    // We can delete dead const or pure calls as long as they do not
-    // infinite loop.
-    && (RTL_CONST_OR_PURE_CALL_P (insn)
-      && !RTL_LOOPING_CONST_OR_PURE_CALL_P (insn))
-    // Don't delete calls that may throw if we cannot do so.
-    && cfun->can_delete_dead_exceptions 
-    && insn_nothrow_p (insn);
+	 // We can delete dead const or pure calls as long as they do not
+	 // infinite loop.
+	 && (RTL_CONST_OR_PURE_CALL_P (insn)
+	     && !RTL_LOOPING_CONST_OR_PURE_CALL_P (insn))
+	 // Don't delete calls that may throw if we cannot do so.
+	 && cfun->can_delete_dead_exceptions && insn_nothrow_p (insn);
 }
 
 bool
@@ -1508,7 +1506,6 @@ rtl_ssa_dce::is_prelive (insn_info *insn)
   return is_rtx_prelive (insn->rtl ());
 }
 
-
 // Mark SET as visited and return true if SET->insn() is not nullptr and SET
 // has not been visited. Otherwise return false.
 bool
@@ -1519,26 +1516,28 @@ rtl_ssa_dce::mark_if_not_visited (const set_info *set)
     return false;
 
   if (insn->is_phi ())
-  {
-    const phi_info *phi = static_cast<const phi_info *> (set);
-	  auto uid = phi->uid ();
+    {
+      const phi_info *phi = static_cast<const phi_info *> (set);
+      auto uid = phi->uid ();
 
-    if (bitmap_bit_p (m_marked_phis, uid))
-	    return false;
+      if (bitmap_bit_p (m_marked_phis, uid))
+	return false;
 
-    bitmap_set_bit (m_marked_phis, uid);
-    if (dump_file)
-      fprintf (dump_file, "Phi node %d:%d marked as live\n", set->regno () ,insn->uid ());
-  } else
-  {
-    auto uid = insn->uid ();
-    if (m_marked.get_bit (uid))
-      return false;
+      bitmap_set_bit (m_marked_phis, uid);
+      if (dump_file)
+	fprintf (dump_file, "Phi node %d:%d marked as live\n", set->regno (),
+		 insn->uid ());
+    }
+  else
+    {
+      auto uid = insn->uid ();
+      if (m_marked.get_bit (uid))
+	return false;
 
-    m_marked.set_bit (uid);
-    if (dump_file)
-      fprintf (dump_file, "Insn %d marked as live\n", insn->uid ());
-  }
+      m_marked.set_bit (uid);
+      if (dump_file)
+	fprintf (dump_file, "Insn %d marked as live\n", insn->uid ());
+    }
 
   return true;
 }
@@ -1546,28 +1545,31 @@ rtl_ssa_dce::mark_if_not_visited (const set_info *set)
 // For each use in USES, if use->def () is non-null and has not been visited,
 // mark it as visited and append it to WORKLIST.
 void
-rtl_ssa_dce::append_not_visited_sets (auto_vec<set_info *>& worklist, use_array& uses) {
+rtl_ssa_dce::append_not_visited_sets (auto_vec<set_info *> &worklist,
+				      use_array &uses)
+{
   for (use_info *use : uses)
-  {
-    // This seems to be a good idea, however there is a problem is process_uses_of_deleted_def
-    if (use->only_occurs_in_notes())
-      continue;
+    {
+      // This seems to be a good idea, however there is a problem is
+      // process_uses_of_deleted_def
+      if (use->only_occurs_in_notes ())
+	continue;
 
-    set_info *parent_set = use->def ();
-	  if (!parent_set)
-	    continue;
+      set_info *parent_set = use->def ();
+      if (!parent_set)
+	continue;
 
-    if (!mark_if_not_visited (parent_set))
-      continue;
+      if (!mark_if_not_visited (parent_set))
+	continue;
 
-    // mark_if_not_visited will return false if insn is nullptr
-    // insn_info *insn = parent_set->insn ();
-    // gcc_checking_assert (insn);
+      // mark_if_not_visited will return false if insn is nullptr
+      // insn_info *insn = parent_set->insn ();
+      // gcc_checking_assert (insn);
 
-    // if (dump_file)
-	  //   fprintf (dump_file, "Adding insn %d to worklist\n", insn->uid ());
-    worklist.safe_push (parent_set);
-  }
+      // if (dump_file)
+      //   fprintf (dump_file, "Adding insn %d to worklist\n", insn->uid ());
+      worklist.safe_push (parent_set);
+    }
 }
 
 // Mark INSN and add its uses to WORKLIST if INSN is not a debug instruction
@@ -1578,9 +1580,9 @@ rtl_ssa_dce::mark_prelive_insn (insn_info *insn, auto_vec<set_info *> &worklist)
     fprintf (dump_file, "Insn %d marked as prelive\n", insn->uid ());
 
   // A phi node will never be prelive.
-  m_marked.set_bit(insn->uid ());
-  // Debug instruction are not added to worklist. They would wake up possibly dead
-  // instructions
+  m_marked.set_bit (insn->uid ());
+  // Debug instruction are not added to worklist. They would wake up possibly
+  // dead instructions
   if (insn->is_debug_insn ())
     return;
 
@@ -1627,7 +1629,7 @@ rtl_ssa_dce::mark ()
 	  uses = phi->inputs ();
 	}
 
-      append_not_visited_sets(worklist, uses);
+      append_not_visited_sets (worklist, uses);
     }
 }
 
@@ -1659,23 +1661,27 @@ rtl_ssa_dce::reset_dead_debug ()
 
       for (use_info *use : insn->uses ())
 	{
-    def_info *def = use->def ();
+	  def_info *def = use->def ();
 	  insn_info *parent_insn = def->insn ();
-    if (parent_insn == nullptr)
-      continue;
-    // If we depend on a dead instruction, clear current instruction uses.
-    bool is_parent_marked = false;
-    if (parent_insn->is_phi ()) {
-      auto phi = static_cast<phi_info *> (def);
-      is_parent_marked = bitmap_bit_p (m_marked_phis, phi->uid ());
-    } else {
-      is_parent_marked = m_marked.get_bit (parent_insn->uid ());
-    }
+	  if (parent_insn == nullptr)
+	    continue;
+	  // If we depend on a dead instruction, clear current instruction uses.
+	  bool is_parent_marked = false;
+	  if (parent_insn->is_phi ())
+	    {
+	      auto phi = static_cast<phi_info *> (def);
+	      is_parent_marked = bitmap_bit_p (m_marked_phis, phi->uid ());
+	    }
+	  else
+	    {
+	      is_parent_marked = m_marked.get_bit (parent_insn->uid ());
+	    }
 
-    if (!is_parent_marked) {
-      reset_dead_debug_insn (insn);
-	    break;
-    }
+	  if (!is_parent_marked)
+	    {
+	      reset_dead_debug_insn (insn);
+	      break;
+	    }
 	}
     }
 }
@@ -1717,27 +1723,27 @@ rtl_ssa_dce::sweep ()
 unsigned int
 rtl_ssa_dce::execute (function *fn)
 {
-  auto_timevar timer(TV_RTL_SSA_DCE);
+  auto_timevar timer (TV_RTL_SSA_DCE);
   calculate_dominance_info (CDI_DOMINATORS);
   crtl->ssa = new rtl_ssa::function_info (fn);
   int real_max = 0, artificial_min = 0;
   std::size_t count = 0;
-  for (insn_info *insn : crtl->ssa->all_insns ()) 
-  {
-    artificial_min = std::min (artificial_min, insn->uid ());
-    real_max = std::max (real_max, insn->uid ());
-    count++;
-  }
+  for (insn_info *insn : crtl->ssa->all_insns ())
+    {
+      artificial_min = std::min (artificial_min, insn->uid ());
+      real_max = std::max (real_max, insn->uid ());
+      count++;
+    }
 
-  m_marked.resize(artificial_min, real_max + 1);
+  m_marked.resize (artificial_min, real_max + 1);
 
   unsigned int phi_node_max = 0;
   for (ebb_info *ebb : crtl->ssa->ebbs ())
     for (phi_info *phi : ebb->phis ())
       phi_node_max = std::max (phi_node_max, phi->uid ());
 
-  m_marked_phis = sbitmap_alloc(phi_node_max + 1);
-  bitmap_clear(m_marked_phis);
+  m_marked_phis = sbitmap_alloc (phi_node_max + 1);
+  bitmap_clear (m_marked_phis);
 
   mark ();
   if (MAY_HAVE_DEBUG_BIND_INSNS)
@@ -1748,21 +1754,21 @@ rtl_ssa_dce::execute (function *fn)
   if (crtl->ssa->perform_pending_updates ())
     cleanup_cfg (0);
 
-  sbitmap_free(m_marked_phis);
+  sbitmap_free (m_marked_phis);
   delete crtl->ssa;
   crtl->ssa = nullptr;
   return 0;
 }
 
 const pass_data pass_data_rtl_ssa_dce = {
-  RTL_PASS,	  /* type */
-  "rtl_ssa_dce",  /* name */
-  OPTGROUP_NONE,  /* optinfo_flags */
-  TV_RTL_SSA_DCE,	  /* tv_id */
-  0,		  /* properties_required */
-  0,		  /* properties_provided */
-  0,		  /* properties_destroyed */
-  0,		  /* todo_flags_start */
+  RTL_PASS,	/* type */
+  "rtl_ssa_dce", /* name */
+  OPTGROUP_NONE, /* optinfo_flags */
+  TV_RTL_SSA_DCE, /* tv_id */
+  0, /* properties_required */
+  0, /* properties_provided */
+  0, /* properties_destroyed */
+  0, /* todo_flags_start */
   TODO_df_finish, /* todo_flags_finish */
 };
 

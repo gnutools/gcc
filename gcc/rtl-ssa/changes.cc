@@ -36,6 +36,7 @@
 #include "cfghooks.h"
 #include "cfgrtl.h"
 #include "sreal.h"
+#include "rtl-iter.h"
 
 using namespace rtl_ssa;
 
@@ -253,8 +254,42 @@ rtl_ssa::changes_are_worthwhile (array_slice<insn_change *const> changes,
   return true;
 }
 
+// A definition is dead. Remove REG_EQUIV and REG_EQUAL notes from
+// the instruction which uses the definition.
+void
+function_info::remove_notes_of_deleted_def (use_info *use)
+{
+  gcc_checking_assert (use->only_occurs_in_notes ());
+
+  insn_info *insn = use->insn ();
+  rtx_insn *rtl = insn->rtl ();
+  for (rtx next = REG_NOTES (rtl); next;)
+    {
+      rtx note = next;
+      next = XEXP (note, 1);
+      int kind = REG_NOTE_KIND (note);
+      if (kind != REG_EQUIV && kind != REG_EQUAL)
+	continue;
+
+      bool reg_equals = false;
+      subrtx_iterator::array_type array;
+      FOR_EACH_SUBRTX (iter, array, note, ALL)
+	{
+	  if (GET_CODE (*iter) == REG && REGNO (*iter) == use->regno ())
+	    {
+	      reg_equals = true;
+	      break;
+	    }
+	}
+
+      if (reg_equals)
+	remove_note (rtl, note);
+    }
+}
+
+
 // SET has been deleted.  Clean up all remaining uses.  Such uses are
-// either dead phis or now-redundant live-out uses.
+// either dead phis, now-redundant live-out uses or dead notes.
 void
 function_info::process_uses_of_deleted_def (set_info *set)
 {
@@ -285,20 +320,12 @@ function_info::process_uses_of_deleted_def (set_info *set)
 	}
       else
 	{
-	  // following assert causes crash when running rtl_ssa_dce with
-	  // deleting eq_notes on testsuite
 	  if (use->only_occurs_in_notes ())
-	  {
-		insn_info *insn =  use->insn ();
-		rtx_insn *rtl = insn->rtl ();
-		// TODO: remove note from rtl
-	  }
+		remove_notes_of_deleted_def (use);
 	  else
-	  {
 		gcc_assert (use->is_live_out_use ());
-	  }
 
-	  remove_use (use);
+		remove_use (use);
 	}
       // The phi handling above might have removed multiple uses of this_set.
       if (this_set->has_any_uses ())
