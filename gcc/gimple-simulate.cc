@@ -4720,7 +4720,9 @@ simul_scope_evaluate_tests ()
   DECL_CONTEXT (result) = func;
   DECL_RESULT (func) = result;
 
+  push_cfun (nullptr);
   init_lowered_empty_function (func, true, profile_count::one ());
+  pop_cfun ();
 
   tree def_var = create_var (integer_type_node, "def_var");
   DECL_CONTEXT (def_var) = func;
@@ -6482,8 +6484,10 @@ simul_scope_simulate_call_tests ()
   DECL_CONTEXT (result) = my_int_func;
   DECL_RESULT (my_int_func) = result;
 
+  push_cfun (nullptr);
   basic_block bb = init_lowered_empty_function (my_int_func, true,
 						profile_count::one ());
+  pop_cfun ();
   gimple_stmt_iterator gsi = gsi_last_bb (bb);
   greturn *ret_stmt = gimple_build_return (cst6);
   gsi_insert_after (&gsi, ret_stmt, GSI_CONTINUE_LINKING);
@@ -6534,8 +6538,10 @@ simul_scope_simulate_call_tests ()
   DECL_ARGUMENTS (int_func_with_arg) = arg;
   layout_decl (arg, 0);
 
+  push_cfun (nullptr);
   basic_block bb2 = init_lowered_empty_function (int_func_with_arg, true,
 						 profile_count::one ());
+  pop_cfun ();
   gimple_stmt_iterator gsi2 = gsi_last_bb (bb2);
   greturn *ret_stmt2 = gimple_build_return (arg);
   gsi_insert_after (&gsi2, ret_stmt2, GSI_CONTINUE_LINKING);
@@ -6618,7 +6624,9 @@ simul_scope_simulate_call_tests ()
   DECL_CONTEXT (void_result) = simple_func;
   DECL_RESULT (simple_func) = void_result;
 
+  push_cfun (nullptr);
   init_lowered_empty_function (simple_func, true, profile_count::one ());
+  pop_cfun ();
 
   gcall * simple_call = gimple_build_call (simple_func, 0);
 
