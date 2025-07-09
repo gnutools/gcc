@@ -3656,7 +3656,7 @@ gfc_conv_ss_descriptor (stmtblock_t * block, gfc_ss * ss, int base)
       /* Also the data pointer.  */
       tmp = gfc_conv_array_data (se.expr);
       /* If this is a variable or address or a class array, use it directly.
-         Otherwise we must evaluate it now to avoid breaking dependency
+	 Otherwise we must evaluate it now to avoid breaking dependency
 	 analysis by pulling the expressions for elemental array indices
 	 inside the loop.  */
       if (save_descriptor_data (se.expr, tmp) && !ss->is_alloc_lhs)
