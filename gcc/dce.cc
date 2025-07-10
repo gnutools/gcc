@@ -1386,6 +1386,7 @@ private:
   sbitmap m_marked_phis;
 };
 
+// Return true if INSN cannot be deleted.
 bool
 rtl_ssa_dce::is_rtx_pattern_prelive (const_rtx insn)
 {
@@ -1393,7 +1394,7 @@ rtl_ssa_dce::is_rtx_pattern_prelive (const_rtx insn)
     {
     case PREFETCH:
     case UNSPEC:
-    case TRAP_IF: /* testsuite/gcc.c-torture/execute/20020418-1.c */
+    case TRAP_IF:
       return true;
 
     default:
@@ -1401,7 +1402,7 @@ rtl_ssa_dce::is_rtx_pattern_prelive (const_rtx insn)
     }
 }
 
-// Return true if an call INSN can be deleted
+// Return true if an call INSN can be deleted.
 bool
 rtl_ssa_dce::can_delete_call (const_rtx insn)
 {
@@ -1418,6 +1419,7 @@ rtl_ssa_dce::can_delete_call (const_rtx insn)
 	 && cfun->can_delete_dead_exceptions && insn_nothrow_p (insn);
 }
 
+// Return true if rtx INSN is prelive.
 bool
 rtl_ssa_dce::is_rtx_prelive (const_rtx insn)
 {
@@ -1461,33 +1463,34 @@ rtl_ssa_dce::is_rtx_prelive (const_rtx insn)
     }
 }
 
+// Return true if INSN is prelive - cannot be deleted.
 bool
 rtl_ssa_dce::is_prelive (insn_info *insn)
 {
   // Bb head and end contain artificial uses that we need to mark as prelive.
   // Debug instructions are also prelive, however, they are not added to the
-  // worklist
+  // worklist.
   if (insn->is_bb_head () || insn->is_bb_end () || insn->is_debug_insn ())
     return true;
 
-  // Phi instructions are never prelive
+  // Phi instructions are never prelive.
   if (insn->is_artificial ())
     return false;
 
-  gcc_assert (insn->is_real ());
+  gcc_checking_assert (insn->is_real ());
   for (def_info *def : insn->defs ())
     {
-      // The purpose of this pass is not to eliminate memory stores...
+      // The purpose of this pass is not to eliminate memory stores.
       if (def->is_mem ())
 	return true;
 
       gcc_checking_assert (def->is_reg ());
 
-      // We should not delete the frame pointer because of the dward2frame pass
+      // We should not delete the frame pointer because of the dward2frame pass.
       if (frame_pointer_needed && def->regno () == HARD_FRAME_POINTER_REGNUM)
 	return true;
 
-      // Skip clobbers, they are handled inside is_rtx_prelive
+      // Skip clobbers, they are handled inside is_rtx_prelive.
       if (def->kind () == access_kind::CLOBBER)
 	continue;
 
@@ -1509,7 +1512,7 @@ rtl_ssa_dce::is_prelive (insn_info *insn)
 // Mark SET as visited and return true if SET->insn() is not nullptr and SET
 // has not been visited. Otherwise return false.
 bool
-rtl_ssa_dce::mark_if_not_visited (const set_info *set)
+rtl_ssa_dce::mark_if_not_visited (set_info *set)
 {
   insn_info *insn = set->insn ();
   if (!insn)
@@ -1517,20 +1520,20 @@ rtl_ssa_dce::mark_if_not_visited (const set_info *set)
 
   if (insn->is_phi ())
     {
-      const phi_info *phi = static_cast<const phi_info *> (set);
-      auto uid = phi->uid ();
+      phi_info *phi = static_cast<phi_info *> (set);
+      unsigned int uid = phi->uid ();
 
       if (bitmap_bit_p (m_marked_phis, uid))
 	return false;
 
       bitmap_set_bit (m_marked_phis, uid);
       if (dump_file)
-	fprintf (dump_file, "Phi node %d:%d marked as live\n", set->regno (),
+	fprintf (dump_file, "Phi node %d in insn %d marked as live\n", uid,
 		 insn->uid ());
     }
   else
     {
-      auto uid = insn->uid ();
+      unsigned int uid = insn->uid ();
       if (m_marked.get_bit (uid))
 	return false;
 
@@ -1550,8 +1553,6 @@ rtl_ssa_dce::append_not_visited_sets (auto_vec<set_info *> &worklist,
 {
   for (use_info *use : uses)
     {
-      // This seems to be a good idea, however there is a problem is
-      // process_uses_of_deleted_def
       if (use->only_occurs_in_notes ())
 	continue;
 
@@ -1562,27 +1563,23 @@ rtl_ssa_dce::append_not_visited_sets (auto_vec<set_info *> &worklist,
       if (!mark_if_not_visited (parent_set))
 	continue;
 
-      // mark_if_not_visited will return false if insn is nullptr
-      // insn_info *insn = parent_set->insn ();
-      // gcc_checking_assert (insn);
-
-      // if (dump_file)
-      //   fprintf (dump_file, "Adding insn %d to worklist\n", insn->uid ());
       worklist.safe_push (parent_set);
     }
 }
 
-// Mark INSN and add its uses to WORKLIST if INSN is not a debug instruction
+// Mark INSN and add its uses to WORKLIST if INSN is not a debug instruction.
 void
 rtl_ssa_dce::mark_prelive_insn (insn_info *insn, auto_vec<set_info *> &worklist)
 {
   if (dump_file)
     fprintf (dump_file, "Insn %d marked as prelive\n", insn->uid ());
 
-  // A phi node will never be prelive.
+  // A phi instruction will never be prelive.
+  gcc_checking_assert(!insn->is_phi ());
+
   m_marked.set_bit (insn->uid ());
   // Debug instruction are not added to worklist. They would wake up possibly
-  // dead instructions
+  // dead instructions.
   if (insn->is_debug_insn ())
     return;
 
@@ -1590,7 +1587,7 @@ rtl_ssa_dce::mark_prelive_insn (insn_info *insn, auto_vec<set_info *> &worklist)
   append_not_visited_sets (worklist, uses);
 }
 
-// Scans all instructions and marks all which are prelive
+// Scan over all instructions and mark all prelive instructions.
 auto_vec<set_info *>
 rtl_ssa_dce::mark_prelive ()
 {
@@ -1607,6 +1604,7 @@ rtl_ssa_dce::mark_prelive ()
   return worklist;
 }
 
+// Mark prelive instructions and then mark their dependencies.
 void
 rtl_ssa_dce::mark ()
 {
@@ -1619,7 +1617,7 @@ rtl_ssa_dce::mark ()
       set_info *set = worklist.pop ();
       insn_info *insn = set->insn ();
 
-      // a set without an insn will not be added to the worklist
+      // A set without an insn will not be added to the worklist.
       gcc_checking_assert (insn);
 
       use_array uses = insn->uses ();
@@ -1633,7 +1631,7 @@ rtl_ssa_dce::mark ()
     }
 }
 
-// Clear debug_insn uses and set gen_rtx_UNKNOWN_VAR_LOC
+// Clear debug_insn uses and set gen_rtx_UNKNOWN_VAR_LOC.
 void
 rtl_ssa_dce::reset_dead_debug_insn (insn_info *insn)
 {
@@ -1662,14 +1660,17 @@ rtl_ssa_dce::reset_dead_debug ()
       for (use_info *use : insn->uses ())
 	{
 	  def_info *def = use->def ();
+    if (!def) // Should not happen for debug insn use...
+      continue;
+
 	  insn_info *parent_insn = def->insn ();
-	  if (parent_insn == nullptr)
+	  if (!parent_insn)
 	    continue;
-	  // If we depend on a dead instruction, clear current instruction uses.
+	  // If INSN depends on a dead instruction, clear its uses and reset it.
 	  bool is_parent_marked = false;
 	  if (parent_insn->is_phi ())
 	    {
-	      auto phi = static_cast<phi_info *> (def);
+	      phi_info *phi = static_cast<phi_info *> (def);
 	      is_parent_marked = bitmap_bit_p (m_marked_phis, phi->uid ());
 	    }
 	  else
