@@ -19,7 +19,7 @@ load_lib torture-options.exp
 
 # Define gfortran callbacks for dg.exp.
 
-proc gfortran-dg-test { prog do_what extra_tool_flags } {
+proc gfortran-dg-test-1 { prog do_what extra_tool_flags } {
     set result \
 	[gcc-dg-test-1 gfortran_target_compile $prog $do_what $extra_tool_flags]
     
@@ -112,6 +112,29 @@ proc gfortran-dg-test { prog do_what extra_tool_flags } {
     regsub -all "(^|\n)(Warning: |Error: )" $comp_output "\\1:0:0: \\2" comp_output
     verbose "comput_output4:\n$comp_output"
     return [list $comp_output $output_file]
+}
+
+proc gfortran-dg-test { prog do_what extra_tool_flags } {
+    set result [uplevel [list gfortran-dg-test-1 $prog $do_what $extra_tool_flags]]
+    global asm_target_dir
+    if [file exists $asm_target_dir] {
+	set output_file [lindex $result 1] 
+	set asm_file "[file rootname $output_file].s"
+	set flag_found [expr false]
+	foreach flag $extra_tool_flags {
+	    if { $flag == "-O2" } {
+		set flag_found [expr true]
+	    }
+	}
+	if $flag_found {
+	    if [file exists $asm_file] {
+		file copy -force $asm_file $asm_target_dir
+	    } else {
+		puts "NOT found $asm_file"
+	    }
+	}
+    }
+    return $result
 }
 
 proc gfortran-dg-prune { system text } {
