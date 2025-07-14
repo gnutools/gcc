@@ -3935,6 +3935,12 @@
   dm1024 __builtin_mma_dmsetdmrz_internal ();
     DMSETDMRZ_INTERNAL mma_dmsetdmrz {dm}
 
+  void __builtin_mma_dmr_extract512 (void *, dm1024 *, const int<2>);
+    DM_EXTRACT512 nothing {dm,dmint}
+
+  v512 __builtin_mma_dmr_extract512_internal (dm1024, const int<2>);
+    DM_EXTRACT512_INTERNAL movtdo_extract512 {dm}
+
   void __builtin_mma_dmmr (dm1024 *, dm1024 *);
     DMMR nothing {dm,dmint}
 
@@ -3952,6 +3958,9 @@
 
   dm1024 __builtin_mma_build_dmr_internal (vuc, vuc, vuc, vuc, vuc, vuc, vuc, vuc);
     BUILD_DMR_INTERNAL mma_build_dmr {dm}
+
+  void __builtin_mma_disassemble_dmr (void *, dm1024 *);
+    DISASSEMBLE_DMR nothing {dm}
 
   void __builtin_mma_dmxvi8gerx4 (dm1024 *, v256, vuc);
     DMXVI8GERX4 nothing {dm,dmint}
