@@ -600,10 +600,10 @@
   rtx vp1 = gen_reg_rtx (OOmode);
   rtx vp2 = gen_reg_rtx (OOmode);
   rtx vp3 = gen_reg_rtx (OOmode);
-  emit_insn (gen_vsx_assemble_pair (vp0, operands[1], operands[2]));
-  emit_insn (gen_vsx_assemble_pair (vp1, operands[3], operands[4]));
-  emit_insn (gen_vsx_assemble_pair (vp2, operands[5], operands[6]));
-  emit_insn (gen_vsx_assemble_pair (vp3, operands[7], operands[8]));
+  emit_insn (gen_vsx_assemble_pair (vp0, operands[2], operands[1]));
+  emit_insn (gen_vsx_assemble_pair (vp1, operands[4], operands[3]));
+  emit_insn (gen_vsx_assemble_pair (vp2, operands[6], operands[5]));
+  emit_insn (gen_vsx_assemble_pair (vp3, operands[8], operands[7]));
   emit_insn (gen_dm_insert1024 (operands[0], vp0, vp1, vp2, vp3));
   DONE;
 })
