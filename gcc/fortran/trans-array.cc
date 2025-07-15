@@ -11828,10 +11828,8 @@ gfc_trans_deferred_array (gfc_symbol * sym, gfc_wrapped_block * block)
   /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
      pointers when -fcheck=pointer is specified.  */
   if (GFC_DESCRIPTOR_TYPE_P (type) && !sym->attr.save
-      && (sym->attr.allocatable
-	  || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER))))
+      && (sym->attr.allocatable || sym->attr.pointer))
     {
-      gfc_conv_descriptor_data_set (&init, descriptor, null_pointer_node);
       if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
 	{
 	  /* Declare the variable static so its array descriptor stays present
@@ -11839,22 +11837,10 @@ gfc_trans_deferred_array (gfc_symbol * sym, gfc_wrapped_block * block)
 	     image.  This may happen, for example, with the caf_mpi
 	     implementation.  */
 	  TREE_STATIC (descriptor) = 1;
-	  gfc_conv_descriptor_token_set (&init, descriptor, null_pointer_node);
 	}
+      gfc_clear_descriptor (&init, sym, descriptor);
     }
 
-  /* Set initial TKR for pointers and allocatables */
-  if (GFC_DESCRIPTOR_TYPE_P (type)
-      && (sym->attr.pointer || sym->attr.allocatable))
-    {
-      tree etype;
-
-      gcc_assert (sym->as && sym->as->rank>=0);
-      etype = gfc_get_element_type (type);
-      gfc_conv_descriptor_dtype_set (&init, descriptor,
-				     gfc_get_dtype_rank_type (sym->as->rank,
-							      etype));
-    }
   input_location = loc;
   gfc_init_block (&cleanup);
 

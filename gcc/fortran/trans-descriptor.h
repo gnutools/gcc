@@ -94,4 +94,6 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 				     tree *stride_suboff, tree *lower_suboff,
 				     tree *upper_suboff);
 
+void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr);
+
 #endif /* GFC_TRANS_DESCRIPTOR_H */

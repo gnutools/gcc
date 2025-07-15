@@ -48,8 +48,8 @@ end
 ! { dg-final { scan-tree-dump-times "a.data = \\(void \\* restrict\\) __builtin_GOMP_alloc \\(512, 20, D\\.\[0-9\]+\\);" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "a.data = \\(void \\* restrict\\) __builtin_GOMP_alloc \\(4, 28, 0B\\);" 1 "original" } }
 ! { dg-final { scan-tree-dump-times "a.dtype.version = 1;" 2 "original" } }
-! { dg-final { scan-tree-dump-times "a.data = \\(void \\* restrict\\) \\(a.dtype.version == 1 \\? __builtin_omp_realloc \\(\\(void \\*\\) a.data, 4, 0B, 0B\\) : __builtin_realloc \\(\\(void \\*\\) a.data, 4\\)\\);" 2 "original" } }
-! { dg-final { scan-tree-dump-times "if \\(a.dtype.version == 1\\)" 3 "original" } }
+! { dg-final { scan-tree-dump-times "a.data = \\(void \\* restrict\\) \\((?:NON_LVALUE_EXPR <)?a.dtype.version>? == 1 \\? __builtin_omp_realloc \\(\\(void \\*\\) a.data, 4, 0B, 0B\\) : __builtin_realloc \\(\\(void \\*\\) a.data, 4\\)\\);" 2 "original" } }
+! { dg-final { scan-tree-dump-times "if \\((?:NON_LVALUE_EXPR <)?a.dtype.version>? == 1\\)" 3 "original" } }
 ! { dg-final { scan-tree-dump-times "__builtin_GOMP_free \\(\\(integer\\(kind=4\\)\\\[0:\\\] \\* restrict\\) a.data, 0B\\);" 3 "original" } }
 ! { dg-final { scan-tree-dump-times "a.dtype.version = 0;" 3 "original" } }
 

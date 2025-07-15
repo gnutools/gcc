@@ -668,3 +668,27 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 #undef STRIDE_SUBFIELD
 #undef LBOUND_SUBFIELD
 #undef UBOUND_SUBFIELD
+
+
+void
+gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr)
+{
+  /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
+     pointers when -fcheck=pointer is specified.  */
+  if (sym->attr.allocatable
+      || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER)))
+    {
+      gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
+      if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
+	gfc_conv_descriptor_token_set (block, descr, null_pointer_node);
+    }
+
+  tree etype;
+
+  gcc_assert (sym->as && sym->as->rank>=0);
+  etype = gfc_get_element_type (TREE_TYPE (descr));
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype_rank_type (sym->as->rank,
+							  etype));
+}
+
