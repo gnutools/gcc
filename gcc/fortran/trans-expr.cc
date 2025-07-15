@@ -978,10 +978,9 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	      tmp = gfc_finish_block (&block);
 
 	      gfc_init_block (&block);
-	      gfc_conv_descriptor_data_set (&block, ctree, null_pointer_node);
+	      gfc_clear_descriptor (&block, fsym, ctree);
 	      if (derived_array && *derived_array != NULL_TREE)
-		gfc_conv_descriptor_data_set (&block, *derived_array,
-					      null_pointer_node);
+		gfc_clear_descriptor (&block, fsym, *derived_array);
 
 	      tmp = build3_v (COND_EXPR, cond_optional, tmp,
 			      gfc_finish_block (&block));
