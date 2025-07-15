@@ -802,3 +802,11 @@ gfc_init_absent_descriptor (stmtblock_t *block, tree descr)
 {
   gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
 }
+
+
+void
+gfc_init_static_descriptor (tree descr)
+{
+  tree type = TREE_TYPE (descr);
+  DECL_INITIAL (descr) = gfc_build_null_descriptor (type);
+}

@@ -625,12 +625,8 @@ gfc_get_array_span (tree desc, gfc_expr *expr)
 void
 gfc_trans_static_array_pointer (gfc_symbol * sym)
 {
-  tree type;
-
   gcc_assert (TREE_STATIC (sym->backend_decl));
-  /* Just zero the data member.  */
-  type = TREE_TYPE (sym->backend_decl);
-  DECL_INITIAL (sym->backend_decl) = gfc_build_null_descriptor (type);
+  gfc_init_static_descriptor (sym->backend_decl);
 }
 
 

@@ -78,5 +78,6 @@ void gfc_grow_array (stmtblock_t *, tree, tree);
 void gfc_nullify_descriptor (stmtblock_t *block, tree);
 void gfc_init_descriptor_result (stmtblock_t *block, tree descr);
 void gfc_init_absent_descriptor (stmtblock_t *block, tree descr);
+void gfc_init_static_descriptor (tree descr);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
