@@ -701,6 +701,14 @@ gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr)
 }
 
 
+void
+gfc_clear_descriptor (tree descr)
+{
+  tree type = TREE_TYPE (descr);
+  DECL_INITIAL (descr) = gfc_build_null_descriptor (type);
+}
+
+
 tree
 gfc_build_default_class_descriptor (const gfc_typespec &ts, tree class_type)
 {
