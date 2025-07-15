@@ -10253,7 +10253,7 @@ update_reallocated_descriptor (stmtblock_t *block, gfc_loopinfo *loop)
       if (save_descriptor_data (info->descriptor, info->data))
 	SAVE_VALUE (info->data);
       SAVE_VALUE (info->offset);
-      info->saved_data = info->offset;
+      info->saved_data = info->data;
       for (int i = 0; i < s->dimen; i++)
 	{
 	  int dim = s->dim[i];
