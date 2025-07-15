@@ -173,8 +173,8 @@ gfc_get_cfi_dim_sm (tree desc, tree idx)
 #define UBOUND_SUBFIELD 2
 
 
-static tree
-get_type_field (tree type, unsigned field_idx, tree field_type = NULL_TREE)
+tree
+gfc_get_type_field (tree type, unsigned field_idx, tree field_type = NULL_TREE)
 {
   tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
   gcc_assert (field != NULL_TREE
@@ -187,7 +187,7 @@ get_type_field (tree type, unsigned field_idx, tree field_type = NULL_TREE)
 static tree
 get_ref_comp (tree ref, unsigned field_idx, tree type = NULL_TREE)
 {
-  tree field = get_type_field (TREE_TYPE (ref), field_idx, type);
+  tree field = gfc_get_type_field (TREE_TYPE (ref), field_idx, type);
 
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
 			  ref, field, NULL_TREE);
@@ -415,8 +415,9 @@ gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
   tree type = TREE_TYPE (desc);
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
-  tree dtype_field = get_type_field (type, DTYPE_FIELD, get_dtype_type_node ());
-  tree field = get_type_field (TREE_TYPE (dtype_field), GFC_DTYPE_TYPE);
+  tree dtype_field = gfc_get_type_field (type, DTYPE_FIELD,
+					 get_dtype_type_node ());
+  tree field = gfc_get_type_field (TREE_TYPE (dtype_field), GFC_DTYPE_TYPE);
 
   tree type_value = build_int_cst (TREE_TYPE (field), value);
   gfc_conv_descriptor_type_set (block, desc, type_value);
@@ -697,5 +698,38 @@ gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr)
   etype = gfc_get_element_type (TREE_TYPE (descr));
   gfc_conv_descriptor_dtype_set (block, descr,
 				 gfc_get_dtype_rank_type (as->rank, etype));
+}
+
+
+tree
+gfc_build_default_class_descriptor (const gfc_typespec &ts, tree class_type)
+{
+  gcc_assert (ts.type == BT_CLASS);
+
+  gfc_symbol *derived = ts.u.derived;
+
+  tree vptr;
+  if (derived->attr.unlimited_polymorphic)
+    vptr = null_pointer_node;
+  else
+    {
+      gfc_symbol *vsym;
+      vsym = gfc_find_derived_vtab (derived);
+      vptr = gfc_get_symbol_decl (vsym);
+      vptr = gfc_build_addr_expr (NULL, vptr);
+    }
+
+  tree tmp;
+  if (derived->components->attr.dimension
+      || (derived->components->attr.codimension
+	  && flag_coarray != GFC_FCOARRAY_LIB))
+    {
+      tmp = gfc_class_type_data_field_get (class_type);
+      tmp = gfc_build_null_descriptor (TREE_TYPE (tmp));
+    }
+  else
+    tmp = null_pointer_node;
+
+  return gfc_class_set_static_fields (class_type, vptr, tmp);
 }
 

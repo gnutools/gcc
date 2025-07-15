@@ -21,7 +21,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Build a null array descriptor constructor.  */
 tree gfc_build_null_descriptor (tree);
-tree gfc_build_default_class_descriptor (tree, gfc_typespec &);
+tree gfc_build_default_class_descriptor (const gfc_typespec &, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
 void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
@@ -47,6 +47,8 @@ tree gfc_get_cfi_dim_lbound (tree desc, tree idx);
 tree gfc_get_cfi_dim_extent (tree desc, tree idx);
 tree gfc_get_cfi_dim_sm (tree desc, tree idx);
 
+
+tree gfc_get_type_field (tree, unsigned, tree);
 
 tree gfc_get_descriptor_dimension (tree desc);
 tree gfc_conv_descriptor_token (tree desc);

@@ -223,20 +223,28 @@ gfc_get_ultimate_alloc_ptr_comps_caf_token (gfc_se *outerse, gfc_expr *expr)
 
 
 tree
-gfc_class_set_static_fields (tree decl, tree vptr, tree data)
+gfc_class_type_data_field_get (tree class_type)
+{
+  return gfc_advance_chain (TYPE_FIELDS (class_type),
+			    CLASS_DATA_FIELD);
+}
+
+
+tree
+gfc_class_set_static_fields (tree decl_type, tree vptr, tree data)
 {
   tree tmp;
   tree field;
   vec<constructor_elt, va_gc> *init = NULL;
 
-  field = TYPE_FIELDS (TREE_TYPE (decl));
+  field = TYPE_FIELDS (decl_type);
   tmp = gfc_advance_chain (field, CLASS_DATA_FIELD);
   CONSTRUCTOR_APPEND_ELT (init, tmp, data);
 
   tmp = gfc_advance_chain (field, CLASS_VPTR_FIELD);
   CONSTRUCTOR_APPEND_ELT (init, tmp, vptr);
 
-  return build_constructor (TREE_TYPE (decl), init);
+  return build_constructor (decl_type, init);
 }
 
 

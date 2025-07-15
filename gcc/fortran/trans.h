@@ -430,6 +430,7 @@ typedef struct
 gfc_wrapped_block;
 
 /* Class API functions.  */
+tree gfc_class_type_data_field_get (tree);
 tree gfc_class_set_static_fields (tree, tree, tree);
 tree gfc_class_data_get (tree);
 tree gfc_class_vptr_get (tree);
