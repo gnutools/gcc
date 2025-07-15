@@ -83,6 +83,7 @@ void gfc_conv_descriptor_dimension_set (stmtblock_t *block, tree desc, int dim, 
 void gfc_conv_descriptor_stride_set (stmtblock_t *block, tree desc, tree dim, tree value);
 void gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc, tree dim, tree value);
 void gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc, tree dim, tree value);
+void gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value);
 
 tree gfc_build_null_descriptor (tree type);
 
