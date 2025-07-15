@@ -21,7 +21,6 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Build a null array descriptor constructor.  */
 void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
-void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_scalar_null_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
 				    gfc_expr *, locus *);
@@ -98,5 +97,7 @@ void gfc_nullify_descriptor (stmtblock_t *block, tree);
 void gfc_init_descriptor_result (stmtblock_t *block, tree descr);
 void gfc_init_absent_descriptor (stmtblock_t *block, tree descr);
 void gfc_init_static_descriptor (tree descr);
+
+void gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

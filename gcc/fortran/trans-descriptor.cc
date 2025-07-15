@@ -840,3 +840,25 @@ gfc_init_static_descriptor (tree descr)
   tree type = TREE_TYPE (descr);
   DECL_INITIAL (descr) = gfc_build_null_descriptor (type);
 }
+
+
+void
+gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
+{
+  /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
+     pointers when -fcheck=pointer is specified.  */
+  if (!sym->attr.save
+      && (sym->attr.allocatable
+	  || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER))))
+    {
+      gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
+      if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
+	gfc_conv_descriptor_token_set (block, descr, null_pointer_node);
+    }
+
+  gcc_assert (sym->as && sym->as->rank>=0);
+  tree etype = gfc_get_element_type (TREE_TYPE (descr));
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype_rank_type (sym->as->rank,
+							  etype));
+}
