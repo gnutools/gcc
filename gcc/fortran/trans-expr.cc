@@ -849,7 +849,7 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref (tmp);
       gfc_get_caf_token_offset (parmse, &token, nullptr, tmp, NULL_TREE, e);
-      gfc_add_modify (&parmse->pre, gfc_conv_descriptor_token (ctree), token);
+      gfc_conv_descriptor_token_set (&parmse->pre, ctree, token);
     }
 
   if (optional)
@@ -9947,8 +9947,7 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm,
 	{
 	  gfc_conv_descriptor_data_set (&block, dest, null_pointer_node);
 	  if (cm->attr.codimension && flag_coarray == GFC_FCOARRAY_LIB)
-	    gfc_add_modify (&block, gfc_conv_descriptor_token (dest),
-			    null_pointer_node);
+	    gfc_conv_descriptor_token_set (&block, dest, null_pointer_node);
 	}
       else if (cm->attr.allocatable || cm->attr.pdt_array)
 	{
@@ -11745,10 +11744,9 @@ gfc_trans_scalar_assign (gfc_se *lse, gfc_se *rse, gfc_typespec ts,
 	{
 	  if (flag_coarray == GFC_FCOARRAY_LIB && assoc_assign)
 	    {
-	      gfc_add_modify (&block, gfc_conv_descriptor_token (lse->expr),
-			      TYPE_LANG_SPECIFIC (
-				TREE_TYPE (TREE_TYPE (rse->expr)))
-				->caf_token);
+	      tree rtype = TREE_TYPE (TREE_TYPE (rse->expr));
+	      tree rtoken = TYPE_LANG_SPECIFIC (rtype)->caf_token;
+	      gfc_conv_descriptor_token_set (&block, lse->expr, rtoken);
 	    }
 	  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (lse->expr)))
 	    lse->expr = gfc_conv_array_data (lse->expr);

@@ -8442,7 +8442,7 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	      tmp = GFC_TYPE_ARRAY_CAF_TOKEN (TREE_TYPE (tmp));
 	    }
 
-	  gfc_add_modify (&loop.pre, gfc_conv_descriptor_token (parm), tmp);
+	  gfc_conv_descriptor_token_set (&loop.pre, parm, tmp);
 	}
       desc = parm;
     }
@@ -9060,7 +9060,7 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	    }
 	  else if (!ctree)
 	    {
-	      tree old_field, new_field;
+	      tree old_field;
 
 	      /* The original descriptor has transposed dims so we can't reuse
 		 it directly; we have to create a new one.  */
@@ -9087,8 +9087,8 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 		     == GFC_ARRAY_ALLOCATABLE)
 		{
 		  old_field = gfc_conv_descriptor_token (old_desc);
-		  new_field = gfc_conv_descriptor_token (new_desc);
-		  gfc_add_modify (&se->pre, new_field, old_field);
+		  gfc_conv_descriptor_token_set (&se->pre, new_desc,
+						 old_field);
 		}
 
 	      gfc_conv_descriptor_data_set (&se->pre, new_desc, ptr);
@@ -11974,9 +11974,7 @@ gfc_trans_deferred_array (gfc_symbol * sym, gfc_wrapped_block * block)
 	     image.  This may happen, for example, with the caf_mpi
 	     implementation.  */
 	  TREE_STATIC (descriptor) = 1;
-	  tmp = gfc_conv_descriptor_token (descriptor);
-	  gfc_add_modify (&init, tmp, fold_convert (TREE_TYPE (tmp),
-						    null_pointer_node));
+	  gfc_conv_descriptor_token_set (&init, descriptor, null_pointer_node);
 	}
     }
 

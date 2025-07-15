@@ -13408,8 +13408,7 @@ conv_intrinsic_move_alloc (gfc_code *code)
     {
       /* Copy the array descriptor data has overwritten the to-token and cleared
 	 from.data.  Now also clear the from.token.  */
-      gfc_add_modify (&block, gfc_conv_descriptor_token (from_se.expr),
-		      null_pointer_node);
+      gfc_conv_descriptor_token_set (&block, from_se.expr, null_pointer_node);
     }
 
   if (to_expr->ts.type == BT_CHARACTER && to_expr->ts.deferred)
