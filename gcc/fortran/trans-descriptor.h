@@ -54,6 +54,7 @@ void gfc_conv_descriptor_dimension_set (stmtblock_t *, tree, int, tree);
 void gfc_conv_descriptor_stride_set (stmtblock_t *, tree, tree, tree);
 void gfc_conv_descriptor_lbound_set (stmtblock_t *, tree, tree, tree);
 void gfc_conv_descriptor_ubound_set (stmtblock_t *, tree, tree, tree);
+void gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value);
 
 /* Build expressions for accessing components of an array descriptor.  */
 void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *,
