@@ -513,7 +513,7 @@ const char *rs6000_type_string (tree type_node)
   else if (type_node == vector_quad_type_node)
     return "__vector_quad";
   else if (type_node == dmr_type_node)
-    return "__dmr";
+    return "__dmr1024";
 
   return "unknown";
 }
@@ -811,7 +811,7 @@ rs6000_init_builtins (void)
   TYPE_SIZE_UNIT (dmr_type_node) = size_int (GET_MODE_SIZE (TDOmode));
   SET_TYPE_ALIGN (dmr_type_node, 512);
   TYPE_USER_ALIGN (dmr_type_node) = 0;
-  lang_hooks.types.register_builtin_type (dmr_type_node, "__dmr");
+  lang_hooks.types.register_builtin_type (dmr_type_node, "__dmr1024");
   t = build_qualified_type (dmr_type_node, TYPE_QUAL_CONST);
   ptr_dmr_type_node = build_pointer_type (t);
 

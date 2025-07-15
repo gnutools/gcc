@@ -4,7 +4,7 @@
 typedef unsigned char vec_t __attribute__((vector_size(16)));
 
 void
-foo2 (__dmr *dst, vec_t *src)
+foo2 (__dmr1024 *dst, vec_t *src)
 {
   __builtin_mma_build_dmr (dst, src[0], src[1], src[2], src[3], src[4], src[5], src[6], src[7]);
 }

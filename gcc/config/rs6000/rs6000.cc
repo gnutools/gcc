@@ -11353,7 +11353,7 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
     case E_TDOmode:
       if (CONST_INT_P (operands[1]))
 	error ("%qs is an opaque type, and you cannot set it to constants",
-	       "__dmr");
+	       "__dmr1024");
       break;
 
     case E_SImode:
@@ -20808,7 +20808,7 @@ rs6000_mangle_type (const_tree type)
   if (type == vector_quad_type_node)
     return "u13__vector_quad";
   if (type == dmr_type_node)
-    return "u5__dmr";
+    return "u5__dmr1024";
 
   /* For all other types, use the default mangling.  */
   return NULL;
@@ -22939,7 +22939,7 @@ rs6000_dmr_register_move_cost (machine_mode mode, reg_class_t rclass)
       if (mode == XOmode)
 	return reg_move_base;
 
-      /* __dmr (i.e. TDOmode) is transferred in 2 instructions.  */
+      /* __dmr1024 (i.e. TDOmode) is transferred in 2 instructions.  */
       else if (mode == TDOmode)
 	return reg_move_base * 2;
 
@@ -27840,7 +27840,7 @@ rs6000_split_multireg_move (rtx dst, rtx src)
       return;
     }
 
-  /* The __vector_pair, __vector_quad, and __dmr modes are multi-register
+  /* The __vector_pair, __vector_quad, and __dmr1024 modes are multi-register
      modes, so if we have to load or store the registers, we have to be careful
      to properly swap them if we're in little endian mode below.  This means
      the last register gets the first memory location.  We also need to be
@@ -29150,9 +29150,9 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
       if (tomode == OOmode)
 	return N_("invalid conversion to type %<__vector_pair%>");
       if (frommode == TDOmode)
-	return N_("invalid conversion from type %<__dmr%>");
+	return N_("invalid conversion from type %<__dmr1024%>");
       if (tomode == TDOmode)
-	return N_("invalid conversion to type %<__dmr%>");
+	return N_("invalid conversion to type %<__dmr1024%>");
     }
 
   /* Conversion allowed.  */

@@ -1,8 +1,7 @@
 /* { dg-do compile } */
-/* { dg-require-effective-target powerpc_dense_math_ok } */
 /* { dg-options "-mdejagnu-cpu=future -O2" } */
 
-/* Test basic load/store for __dmr type.  */
+/* Test basic load/store for __dmr1024 type.  */
 
 #ifndef CONSTRAINT
 #if defined(USE_D)
@@ -20,10 +19,10 @@
 #endif
 const char constraint[] = CONSTRAINT;
 
-void foo_mem_asm (__dmr *p, __dmr *q)
+void foo_mem_asm (__dmr1024 *p, __dmr1024 *q)
 {
   /* 2 LXVP instructions.  */
-  __dmr vq = *p;
+  __dmr1024 vq = *p;
 
   /* 2 DMXXINSTDMR512 instructions to transfer VSX to DMR.  */
   __asm__ ("# foo (" CONSTRAINT ") %A0" : "+" CONSTRAINT (vq));
@@ -33,12 +32,12 @@ void foo_mem_asm (__dmr *p, __dmr *q)
   *q = vq;
 }
 
-void foo_mem_asm2 (__dmr *p, __dmr *q)
+void foo_mem_asm2 (__dmr1024 *p, __dmr1024 *q)
 {
   /* 2 LXVP instructions.  */
-  __dmr vq = *p;
-  __dmr vq2;
-  __dmr vq3;
+  __dmr1024 vq = *p;
+  __dmr1024 vq2;
+  __dmr1024 vq3;
 
   /* 2 DMXXINSTDMR512 instructions to transfer VSX to DMR.  */
   __asm__ ("# foo1 (" CONSTRAINT ") %A0" : "+" CONSTRAINT (vq));
@@ -51,7 +50,7 @@ void foo_mem_asm2 (__dmr *p, __dmr *q)
   *q = vq2;
 }
 
-void foo_mem (__dmr *p, __dmr *q)
+void foo_mem (__dmr1024 *p, __dmr1024 *q)
 {
   /* 2 LXVP, 2 STXVP instructions, no DMR transfer.  */
   *q = *p;

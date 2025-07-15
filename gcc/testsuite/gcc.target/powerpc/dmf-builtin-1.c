@@ -4,9 +4,9 @@
 typedef unsigned char vec_t __attribute__((vector_size(16)));
 
 void
-foo (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -15,9 +15,9 @@ foo (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvbf16gerx2 (&dmr, vp, vec);
@@ -27,9 +27,9 @@ bar (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mdmxvbf16gerx2\M} 2 } } */
 
 void
-foo_1 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_1 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -38,9 +38,9 @@ foo_1 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar_1 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar_1 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvbf16gerx2nn (&dmr, vp, vec);
@@ -50,9 +50,9 @@ bar_1 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mdmxvbf16gerx2nn\M} 2 } } */
 
 void
-foo_2 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_2 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -61,9 +61,9 @@ foo_2 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar_2 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar_2 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvbf16gerx2np (&dmr, vp, vec);
@@ -73,9 +73,9 @@ bar_2 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mdmxvbf16gerx2np\M} 2 } } */
 
 void
-foo_3 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_3 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -84,9 +84,9 @@ foo_3 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar_3 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar_3 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvbf16gerx2pn (&dmr, vp, vec);
@@ -96,9 +96,9 @@ bar_3 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mdmxvbf16gerx2pn\M} 2 } } */
 
 void
-foo_4 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_4 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -107,9 +107,9 @@ foo_4 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar_4 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar_4 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvbf16gerx2pp (&dmr, vp, vec);
@@ -119,7 +119,7 @@ bar_4 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mdmxvbf16gerx2pp\M} 2 } } */
 
 void
-foo_5 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_5 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -129,7 +129,7 @@ foo_5 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvbf16gerx2\M} 1 } } */
 
 void
-foo_6 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_6 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -139,7 +139,7 @@ foo_6 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvbf16gerx2nn\M} 1 } } */
 
 void
-foo_7 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_7 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -149,7 +149,7 @@ foo_7 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvbf16gerx2np\M} 1 } } */
 
 void
-foo_8 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_8 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -159,7 +159,7 @@ foo_8 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvbf16gerx2pn\M} 1 } } */
 
 void
-foo_9 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_9 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -169,7 +169,7 @@ foo_9 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvbf16gerx2pp\M} 1 } } */
 
 void
-foo_10 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_10 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
   __vector_pair vp = *vpp;
   vec_t vec = *src;
@@ -179,9 +179,9 @@ foo_10 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 /* { dg-final { scan-assembler-times {\mpmdmxvi8gerx4spp\M} 1 } } */
 
 void
-foo_11 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+foo_11 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr;
+  __dmr1024 dmr;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmsetdmrz (&dmr);
@@ -190,9 +190,9 @@ foo_11 (__dmr *dst, __vector_pair *vpp, vec_t *src)
 }
 
 void
-bar_11 (__dmr *dst, __vector_pair *vpp, vec_t *src)
+bar_11 (__dmr1024 *dst, __vector_pair *vpp, vec_t *src)
 {
-  __dmr dmr = dst[0];;
+  __dmr1024 dmr = dst[0];;
   __vector_pair vp = *vpp;
   vec_t vec = *src;
   __builtin_mma_dmxvi8gerx4spp (&dmr, vp, vec);

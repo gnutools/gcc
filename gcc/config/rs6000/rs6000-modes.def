@@ -80,6 +80,6 @@ PARTIAL_INT_MODE (TI, 128, PTI);
 OPAQUE_MODE (OO, 32);
 OPAQUE_MODE (XO, 64);
 
-/* Mode used by __dmr.  */
+/* Mode used by __dmr1024.  */
 OPAQUE_MODE (TDO, 128);
 

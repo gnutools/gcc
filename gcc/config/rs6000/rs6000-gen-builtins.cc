@@ -1077,7 +1077,7 @@ match_type (typeinfo *typedata, int voidok)
        vd	vector double
        v256	__vector_pair
        v512	__vector_quad
-       dm1024	__dmr
+       dm1024	__dmr1024
 
      For simplicity, We don't support "short int" and "long long int".
      We don't currently support a <basetype> of "_Float16".  "signed"
