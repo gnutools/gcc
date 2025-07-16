@@ -781,3 +781,10 @@ gfc_grow_array (stmtblock_t * pblock, tree desc, tree extra)
   tmp = gfc_call_realloc (pblock, arg0, arg1);
   gfc_conv_descriptor_data_set (pblock, desc, tmp);
 }
+
+
+void
+gfc_nullify_descriptor (stmtblock_t *block, tree descr)
+{
+  gfc_conv_descriptor_data_set (block, descr, null_pointer_node); 
+}

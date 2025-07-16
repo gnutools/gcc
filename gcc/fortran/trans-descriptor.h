@@ -74,4 +74,7 @@ void gfc_copy_descriptor (stmtblock_t *, tree, tree, int);
 
 void gfc_grow_array (stmtblock_t *, tree, tree);
 
+/* Build a null array descriptor constructor.  */
+void gfc_nullify_descriptor (stmtblock_t *block, tree);
+
 #endif /* GFC_TRANS_DESCRIPTOR_H */
