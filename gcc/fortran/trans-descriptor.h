@@ -100,5 +100,6 @@ void gfc_conv_shift_descriptor_lbound (stmtblock_t *, tree, int, tree);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, int);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, const gfc_array_ref &);
 void gfc_nullify_descriptor (stmtblock_t *block, tree);
+void gfc_copy_sequence_descriptor (stmtblock_t &, tree, tree, bool);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
