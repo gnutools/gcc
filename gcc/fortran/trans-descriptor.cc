@@ -26,6 +26,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans.h"
 #include "trans-const.h"
 #include "trans-types.h"
+#include "trans-array.h"
 
 
 /******************************************************************************/
@@ -684,4 +685,11 @@ tree
 gfc_conv_descriptor_cosize (tree desc, int rank, int corank)
 {
   return gfc_conv_descriptor_size_1 (desc, rank, rank + corank - 1);
+}
+
+
+void
+gfc_nullify_descriptor (stmtblock_t *block, tree descr)
+{
+  gfc_conv_descriptor_data_set (block, descr, null_pointer_node); 
 }
