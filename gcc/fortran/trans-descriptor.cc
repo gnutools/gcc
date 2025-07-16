@@ -909,6 +909,9 @@ gfc_nullify_descriptor (stmtblock_t *block, tree descr)
 int
 gfc_descriptor_rank (tree descriptor)
 {
+  if (TREE_TYPE (descriptor) != NULL_TREE)
+    return GFC_TYPE_ARRAY_RANK (TREE_TYPE (descriptor));
+
   tree dim = gfc_get_descriptor_dimension (descriptor);
   tree dim_type = TREE_TYPE (dim);
   gcc_assert (TREE_CODE (dim_type) == ARRAY_TYPE);
@@ -1075,4 +1078,46 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, tree src,
 
   gfc_conv_remap_descriptor (block, dest, src, src_rank, as);
 }
+
+
+void
+gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
+			   int rank, tree zero_cond)
+{
+  tree tmp = gfc_conv_descriptor_data_get (src);
+  gfc_conv_descriptor_data_set (block, dest, tmp);
+
+  tree offset = gfc_index_zero_node;
+  for (int n = 0 ; n < rank; n++)
+    {
+      tree lbound;
+
+      lbound = gfc_conv_descriptor_lbound_get (dest, gfc_rank_cst[n]);
+      lbound = fold_build3_loc (input_location, COND_EXPR,
+				gfc_array_index_type, zero_cond,
+				gfc_index_one_node, lbound);
+      lbound = gfc_evaluate_now (lbound, block);
+
+      tmp = gfc_conv_descriptor_ubound_get (src, gfc_rank_cst[n]);
+      tmp = fold_build2_loc (input_location, PLUS_EXPR,
+			     gfc_array_index_type, tmp, lbound);
+      gfc_conv_descriptor_lbound_set (block, dest,
+				      gfc_rank_cst[n], lbound);
+      gfc_conv_descriptor_ubound_set (block, dest,
+				      gfc_rank_cst[n], tmp);
+
+      /* Set stride and accumulate the offset.  */
+      tmp = gfc_conv_descriptor_stride_get (src, gfc_rank_cst[n]);
+      gfc_conv_descriptor_stride_set (block, dest,
+				      gfc_rank_cst[n], tmp);
+      tmp = fold_build2_loc (input_location, MULT_EXPR,
+			     gfc_array_index_type, lbound, tmp);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, tmp);
+      offset = gfc_evaluate_now (offset, block);
+    }
+
+  gfc_conv_descriptor_offset_set (block, dest, offset);
+}
+
 
