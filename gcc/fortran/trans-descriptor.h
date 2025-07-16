@@ -105,5 +105,6 @@ int gfc_descriptor_rank (tree);
 void gfc_conv_remap_descriptor (stmtblock_t *, tree, tree, int,
 				const gfc_array_ref &as);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, tree, int, tree);
+void gfc_copy_descriptor (stmtblock_t *, tree, tree, gfc_expr *, bool);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
