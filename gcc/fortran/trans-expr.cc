@@ -11853,7 +11853,6 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   tree desc;
   tree res_desc;
   tree tmp;
-  tree offset;
   tree zero_cond;
   tree not_same_shape;
   stmtblock_t shape_block;
@@ -11885,9 +11884,6 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   zero_cond = gfc_evaluate_now (zero_cond, &se->post);
   tmp = gfc_call_free (tmp);
   gfc_add_expr_to_block (&se->post, tmp);
-
-  tmp = gfc_conv_descriptor_data_get (res_desc);
-  gfc_conv_descriptor_data_set (&se->post, desc, tmp);
 
   /* Check that the shapes are the same between lhs and expression.
      The evaluation of the shape is done in 'shape_block' to avoid
@@ -11932,37 +11928,7 @@ fcncall_realloc_result (gfc_se *se, int rank, tree dtype)
   /* Now reset the bounds returned from the function call to bounds based
      on the lhs lbounds, except where the lhs is not allocated or the shapes
      of 'variable and 'expr' are different. Set the offset accordingly.  */
-  offset = gfc_index_zero_node;
-  for (n = 0 ; n < rank; n++)
-    {
-      tree lbound;
-
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[n]);
-      lbound = fold_build3_loc (input_location, COND_EXPR,
-				gfc_array_index_type, zero_cond,
-				gfc_index_one_node, lbound);
-      lbound = gfc_evaluate_now (lbound, &se->post);
-
-      tmp = gfc_conv_descriptor_ubound_get (res_desc, gfc_rank_cst[n]);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR,
-			     gfc_array_index_type, tmp, lbound);
-      gfc_conv_descriptor_lbound_set (&se->post, desc,
-				      gfc_rank_cst[n], lbound);
-      gfc_conv_descriptor_ubound_set (&se->post, desc,
-				      gfc_rank_cst[n], tmp);
-
-      /* Set stride and accumulate the offset.  */
-      tmp = gfc_conv_descriptor_stride_get (res_desc, gfc_rank_cst[n]);
-      gfc_conv_descriptor_stride_set (&se->post, desc,
-				      gfc_rank_cst[n], tmp);
-      tmp = fold_build2_loc (input_location, MULT_EXPR,
-			     gfc_array_index_type, lbound, tmp);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, tmp);
-      offset = gfc_evaluate_now (offset, &se->post);
-    }
-
-  gfc_conv_descriptor_offset_set (&se->post, desc, offset);
+  gfc_conv_shift_descriptor (&se->post, desc, res_desc, rank, zero_cond);
 }
 
 
