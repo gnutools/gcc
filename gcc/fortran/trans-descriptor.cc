@@ -1270,3 +1270,36 @@ gfc_copy_sequence_descriptor (stmtblock_t *block, tree dest, tree src, int rank)
 				gfc_conv_descriptor_span_get (src));
   gfc_conv_descriptor_offset_set (block, dest, gfc_index_zero_node);
 }
+
+
+void
+gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
+		     gfc_expr *src_expr, bool subref)
+{
+  struct lang_type *dest_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (dest));
+  struct lang_type *src_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (src));
+
+  /* When only the array_kind differs, do a view_convert.  */
+  tree tmp1;
+  if (dest_ls
+      && src_ls
+      && dest_ls->rank == src_ls->rank
+      && dest_ls->akind != src_ls->akind)
+    tmp1 = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (dest), src);
+  else
+    tmp1 = src;
+
+  /* Copy the descriptor for pointer assignments.  */
+  gfc_add_modify (block, dest, tmp1);
+
+  /* Add any offsets from subreferences.  */
+  gfc_get_dataptr_offset (block, dest, src, NULL_TREE, subref, src_expr);
+
+  /* ....and set the span field.  */
+  tree tmp2;
+  if (src_expr->ts.type == BT_CHARACTER)
+    tmp2 = gfc_conv_descriptor_span_get (src);
+  else
+    tmp2 = gfc_get_array_span (src, src_expr);
+  gfc_conv_descriptor_span_set (block, dest, tmp2);
+}
