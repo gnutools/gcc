@@ -20,10 +20,6 @@ along with GCC; see the file COPYING3.  If not see
 #define GFC_TRANS_DESCRIPTOR_H
 
 /* Build a null array descriptor constructor.  */
-tree gfc_build_null_descriptor (tree);
-tree gfc_build_default_class_descriptor (const gfc_typespec &, tree);
-void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
-void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_scalar_null_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
@@ -96,11 +92,13 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 				     tree *stride_suboff, tree *lower_suboff,
 				     tree *upper_suboff);
 
+tree gfc_build_default_class_descriptor (const gfc_typespec &, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *sym, tree descr);
 void gfc_clear_descriptor (tree descr);
 void gfc_set_scalar_descriptor (stmtblock_t *, tree, tree);
 void gfc_conv_shift_descriptor_lbound (stmtblock_t *, tree, int, tree);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, int);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, const gfc_array_ref &);
+void gfc_nullify_descriptor (stmtblock_t *block, tree);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

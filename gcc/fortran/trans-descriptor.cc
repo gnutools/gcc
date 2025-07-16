@@ -897,3 +897,9 @@ gfc_conv_shift_descriptor (stmtblock_t *block, tree desc,
   conv_shift_descriptor (block, desc, as);
 }
  
+
+void
+gfc_nullify_descriptor (stmtblock_t *block, tree descr)
+{
+  gfc_conv_descriptor_data_set (block, descr, null_pointer_node); 
+}
