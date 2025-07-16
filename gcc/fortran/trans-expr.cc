@@ -11381,32 +11381,8 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
 		}
 	    }
 	  else
-	    {
-	      /* Bounds remapping.  Just shift the lower bounds.  */
-
-	      gcc_assert (expr1->rank == expr2->rank);
-
-	      for (dim = 0; dim < remap->u.ar.dimen; ++dim)
-		{
-		  gfc_se lbound_se;
-
-		  gcc_assert (!remap->u.ar.end[dim]);
-		  gfc_init_se (&lbound_se, NULL);
-		  if (remap->u.ar.start[dim])
-		    {
-		      gfc_conv_expr (&lbound_se, remap->u.ar.start[dim]);
-		      gfc_add_block_to_block (&block, &lbound_se.pre);
-		    }
-		  else
-		    /* This remap arises from a target that is not a whole
-		       array. The start expressions will be NULL but we need
-		       the lbounds to be one.  */
-		    lbound_se.expr = gfc_index_one_node;
-		  gfc_conv_shift_descriptor_lbound (&block, desc,
-						    dim, lbound_se.expr);
-		  gfc_add_block_to_block (&block, &lbound_se.post);
-		}
-	    }
+	    /* Bounds remapping.  Just shift the lower bounds.  */
+	    gfc_conv_shift_descriptor (&block, desc, remap->u.ar);
 	}
 
       /* If rank remapping was done, check with -fcheck=bounds that
