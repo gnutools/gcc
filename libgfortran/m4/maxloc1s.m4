@@ -33,24 +33,24 @@ include(ifunction-s.m4)dnl
 #define HAVE_BACK_ARG 1
 
 ARRAY_FUNCTION(0,
-`	const atype_name *maxval;
+`	const 'atype_name` *maxval;
 	maxval = NULL;
 	result = 0;',
 `		if (maxval == NULL || (back ? compare_fcn (src, maxval, string_len) >= 0 :
 		   	      	      	      compare_fcn (src, maxval, string_len) > 0))
 		  {
 		    maxval = src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		  }', `')
 
 MASKED_ARRAY_FUNCTION(0,
-`	const atype_name *maxval;
+`	const 'atype_name` *maxval;
 	maxval = base;
 	result = 0;',
 `		if (*msrc)
 		      {
 			maxval = src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
 	    }
@@ -60,7 +60,7 @@ MASKED_ARRAY_FUNCTION(0,
 		   	     	     compare_fcn (src, maxval, string_len) > 0))
 		  {
 		    maxval = src;
-		    result = (rtype_name)n + 1;
+		    result = ('rtype_name`)n + 1;
 		  }
 	      ')
 

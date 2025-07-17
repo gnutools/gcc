@@ -519,10 +519,8 @@ set_internal_unit (st_parameter_dt *dtp, gfc_unit *iunit, int kind)
       iunit->rank = GFC_DESCRIPTOR_RANK (dtp->internal_unit_desc);
       iunit->ls = (array_loop_spec *)
 	xmallocarray (iunit->rank, sizeof (array_loop_spec));
-      iunit->internal_unit_len *=
+      iunit->internal_unit_len +=
 	init_loop_spec (dtp->internal_unit_desc, iunit->ls, &start_record);
-
-      start_record *= iunit->recl;
     }
 
   /* Set initial values for unit parameters.  */

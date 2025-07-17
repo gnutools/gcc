@@ -9,7 +9,7 @@ end type t
 
 type(t2),allocatable :: c(:)
 ! { dg-note {'c' declared here} {} { target *-*-* } .-1 }
-! { dg-note {'c\.offset' was declared here} {} { target *-*-* } .-2 }
+! { dg-warning {'c\.offset' is used uninitialized} {} { target *-*-* } .-2 }
 type(t), allocatable :: d(:)
 ! { dg-note {'d' declared here} {} { target *-*-* } .-1 }
 ! { dg-note {'d\.offset' was declared here} {} { target *-*-* } .-2 }

@@ -47,8 +47,10 @@ MASKED_ARRAY_FUNCTION(0,
 			retval = src;
 			break;
 		      }
+		src = ('atype_name`*) (((char*)src) + delta);
+		msrc += mdelta;
 	    }
-	    for (; n < len; n++, src += delta, msrc += mdelta)
+	    for (; n < len; n++)
 	      {
 		if (*msrc && compare_fcn (src, retval, string_len) > 0)
 		  {

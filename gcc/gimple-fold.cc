@@ -327,6 +327,12 @@ maybe_fold_reference (tree expr)
   if (result && is_gimple_min_invariant (result))
     return result;
 
+  if (result
+      && TREE_CODE (result) == MEM_REF
+      && TREE_CODE (expr) == ARRAY_REF
+      && TREE_CODE (TREE_OPERAND (expr, 0)) == MEM_REF)
+    return result;
+
   return NULL_TREE;
 }
 
@@ -10068,9 +10074,10 @@ fold_const_aggregate_ref_1 (tree t, tree (*valueize) (tree))
 	 FIXME: This code can't handle nested references with variable indexes
 	 (they will be handled only by iteration of ccp).  Perhaps we can bring
 	 get_ref_base_and_extent here and make it use a valueize callback.  */
-      if (TREE_CODE (TREE_OPERAND (t, 1)) == SSA_NAME
-	  && valueize
-	  && (idx = (*valueize) (TREE_OPERAND (t, 1)))
+      if (((TREE_CODE (TREE_OPERAND (t, 1)) == SSA_NAME
+	    && valueize
+	    && (idx = (*valueize) (TREE_OPERAND (t, 1))))
+	   || (idx = TREE_OPERAND (t, 1)))
 	  && poly_int_tree_p (idx))
 	{
 	  tree low_bound, unit_size;
@@ -10081,12 +10088,13 @@ fold_const_aggregate_ref_1 (tree t, tree (*valueize) (tree))
 	      && (unit_size = array_ref_element_size (t),
 		  tree_fits_uhwi_p (unit_size)))
 	    {
-	      poly_offset_int woffset
+	      poly_offset_int woffset, woffset_bytes;
+	      woffset_bytes
 		= wi::sext (wi::to_poly_offset (idx)
 			    - wi::to_poly_offset (low_bound),
 			    TYPE_PRECISION (sizetype));
-	      woffset *= tree_to_uhwi (unit_size);
-	      woffset *= BITS_PER_UNIT;
+	      woffset_bytes *= tree_to_uhwi (unit_size);
+	      woffset = woffset_bytes * BITS_PER_UNIT;
 	      if (woffset.to_shwi (&offset))
 		{
 		  base = TREE_OPERAND (t, 0);
@@ -10099,12 +10107,32 @@ fold_const_aggregate_ref_1 (tree t, tree (*valueize) (tree))
 		  if (maybe_lt (offset, 0))
 		    return NULL_TREE;
 		  /* We cannot determine ctor.  */
-		  if (!ctor)
-		    return NULL_TREE;
-		  return fold_ctor_reference (TREE_TYPE (t), ctor, offset,
-					      tree_to_uhwi (unit_size)
-					      * BITS_PER_UNIT,
-					      base);
+		  if (ctor)
+		    return fold_ctor_reference (TREE_TYPE (t), ctor, offset,
+						tree_to_uhwi (unit_size)
+						* BITS_PER_UNIT,
+						base);
+		  if (TREE_CODE (base) == MEM_REF)
+		    {
+		      woffset_bytes += wi::to_offset (TREE_OPERAND (base, 1));
+		      tree offset_type = TREE_TYPE (TREE_OPERAND (base, 1));
+		      if (TREE_CODE (offset_type) == POINTER_TYPE
+			  && TREE_CODE (TREE_TYPE (offset_type)) == ARRAY_TYPE)
+			{
+			  tree type = build_pointer_type (
+				  TREE_TYPE (TREE_TYPE (offset_type)));
+			  if (wi::fits_to_tree_p (woffset_bytes, type))
+			    {
+			      tree offset = wide_int_to_tree (type,
+							      woffset_bytes);
+			      return fold_build2_loc (EXPR_LOCATION (t), MEM_REF,
+						      TREE_TYPE (t),
+						      TREE_OPERAND (base, 0),
+						      offset);
+			    }
+			}
+
+		    }
 		}
 	    }
 	}

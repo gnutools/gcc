@@ -2800,6 +2800,31 @@ done:
 }
 
 
+static void
+expression_shape (gfc_expr *e, gfc_array_spec *as)
+{
+  mpz_t array[GFC_MAX_DIMENSIONS];
+  int i;
+
+  if (e->rank <= 0 || e->shape != NULL)
+    return;
+
+  for (i = 0; i < e->rank; i++)
+    if (!spec_dimen_size (as, i, &array[i]))
+      goto fail;
+
+  e->shape = gfc_get_shape (e->rank);
+
+  memcpy (e->shape, array, e->rank * sizeof (mpz_t));
+
+  return;
+
+fail:
+  for (i--; i >= 0; i--)
+    mpz_clear (array[i]);
+}
+
+
 /************* Function resolution *************/
 
 /* Resolve a function call known to be generic.
@@ -2823,15 +2848,17 @@ resolve_generic_f0 (gfc_expr *expr, gfc_symbol *sym)
 	  else if (s->result != NULL && s->result->ts.type != BT_UNKNOWN)
 	    expr->ts = s->result->ts;
 
-	  if (s->as != NULL)
-	    {
-	      expr->rank = s->as->rank;
-	      expr->corank = s->as->corank;
-	    }
-	  else if (s->result != NULL && s->result->as != NULL)
+	  if (s->result != NULL && s->result->as != NULL)
 	    {
 	      expr->rank = s->result->as->rank;
 	      expr->corank = s->result->as->corank;
+	      expression_shape (expr, s->result->as);
+	    }
+	  else if (s->as != NULL)
+	    {
+	      expr->rank = s->as->rank;
+	      expr->corank = s->as->corank;
+	      expression_shape (expr, s->as);
 	    }
 
 	  gfc_set_sym_referenced (expr->value.function.esym);
@@ -2975,11 +3002,13 @@ found:
     {
       expr->rank = CLASS_DATA (sym)->as->rank;
       expr->corank = CLASS_DATA (sym)->as->corank;
+      expression_shape (expr, CLASS_DATA (sym)->as);
     }
   else if (sym->as != NULL)
     {
       expr->rank = sym->as->rank;
       expr->corank = sym->as->corank;
+      expression_shape (expr, sym->as);
     }
 
   return MATCH_YES;
@@ -3104,6 +3133,7 @@ resolve_unknown_f (gfc_expr *expr)
     {
       expr->rank = sym->as->rank;
       expr->corank = sym->as->corank;
+      expression_shape (expr, sym->as);
     }
 
   /* Type of the expression is either the type of the symbol or the
@@ -3663,6 +3693,7 @@ resolve_function (gfc_expr *expr)
     gfc_warning (OPT_Wdeprecated_declarations,
 		 "Using function %qs at %L is deprecated",
 		 sym->name, &expr->where);
+
   return t;
 }
 
@@ -6043,9 +6074,6 @@ gfc_resolve_ref (gfc_expr *expr)
   return true;
 }
 
-
-/* Given an expression, determine its shape.  This is easier than it sounds.
-   Leaves the shape array NULL if it is not possible to determine the shape.  */
 
 static void
 expression_shape (gfc_expr *e)
@@ -18245,6 +18273,13 @@ skip_interfaces:
 
   if (sym->param_list)
     resolve_pdt (sym);
+}
+
+
+void
+gfc_resolve_symbol (gfc_symbol *sym)
+{
+  resolve_symbol (sym);
 }
 
 

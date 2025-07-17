@@ -34,7 +34,7 @@ end program test
 ! { dg-final { scan-tree-dump-times " fptr_array.data = cptr;" 1 "original" } }
 ! { dg-final { scan-tree-dump-times " fptr_array.dim\\\[S..\\\].lbound = 1;" 1 "original" } }
 ! { dg-final { scan-tree-dump-times " fptr_array.dim\\\[S..\\\].ubound = " 1 "original" } }
-! { dg-final { scan-tree-dump-times " fptr_array.dim\\\[S..\\\].stride = " 1 "original" } }
+! { dg-final { scan-tree-dump-times " fptr_array.dim\\\[S..\\\].spacing = " 1 "original" } }
 !
 ! Check c_f_procpointer
 ! { dg-final { scan-tree-dump-times "  fprocptr = .integer.kind=4. .\\*<.*>. ... cfunptr;" 1 "original" } }

@@ -21,8 +21,8 @@ along with GCC; see the file COPYING3.  If not see
 /* Generate code to initialize and allocate an array.  Statements are added to
    se, which should contain an expression for the array descriptor.  */
 bool gfc_array_allocate (gfc_se *, gfc_expr *, tree, tree, tree, tree,
-			 tree, tree *, gfc_expr *, tree, bool,
-			 gfc_omp_namelist *, bool);
+			 tree, gfc_expr *, tree, bool,
+			 gfc_omp_namelist *, gfc_typespec *);
 
 /* Allow the bounds of a loop to be set from a callee's array spec.  */
 void gfc_set_loop_bounds_from_array_spec (gfc_interface_mapping *,
@@ -30,7 +30,8 @@ void gfc_set_loop_bounds_from_array_spec (gfc_interface_mapping *,
 
 /* Generate code to create a temporary array.  */
 tree gfc_trans_create_temp_array (stmtblock_t *, stmtblock_t *, gfc_ss *,
-				  tree, tree, bool, bool, bool, locus *);
+				  tree, tree, bool, bool, bool, locus *,
+				  bool shift_bounds);
 
 /* Generate function entry code for allocation of compiler allocated array
    variables.  */
@@ -105,6 +106,7 @@ gfc_ss *gfc_reverse_ss (gfc_ss *);
 void gfc_cleanup_loop (gfc_loopinfo *);
 /* Associate a SS chain with a loop.  */
 void gfc_add_ss_to_loop (gfc_loopinfo *, gfc_ss *);
+int gfc_get_array_ref_dim_for_loop_dim (gfc_ss *ss, int loop_dim);
 /* Mark a SS chain as used in this loop.  */
 void gfc_mark_ss_chain_used (gfc_ss *, unsigned);
 /* Free a gfc_ss chain.  */
@@ -119,6 +121,8 @@ gfc_ss *gfc_get_temp_ss (tree, tree, int);
 gfc_ss *gfc_get_scalar_ss (gfc_ss *, gfc_expr *);
 
 bool gfc_scalar_elemental_arg_saved_as_reference (gfc_ss_info *);
+
+void gfc_conv_array_lbound_spacing (stmtblock_t *, gfc_ss *, int);
 
 /* Calculates the lower bound and stride of array sections.  */
 void gfc_conv_ss_startstride (gfc_loopinfo *);
@@ -138,8 +142,6 @@ void gfc_conv_loop_setup (gfc_loopinfo *, locus *);
 void gfc_set_delta (gfc_loopinfo *);
 /* Resolve array assignment dependencies.  */
 void gfc_conv_resolve_dependencies (gfc_loopinfo *, gfc_ss *, gfc_ss *);
-/* Build a null array descriptor constructor.  */
-tree gfc_build_null_descriptor (tree);
 
 /* Get a single array element.  */
 void gfc_conv_array_ref (gfc_se *, gfc_array_ref *, gfc_expr *, locus *);
@@ -160,10 +162,12 @@ void gfc_conv_array_parameter (gfc_se *, gfc_expr *, bool, const gfc_symbol *,
 /* These work with both descriptors and descriptorless arrays.  */
 tree gfc_conv_array_data (tree);
 tree gfc_conv_array_offset (tree);
+tree gfc_conv_array_align (tree);
 /* Return either an INT_CST or an expression for that part of the descriptor.  */
-tree gfc_conv_array_stride (tree, int);
+tree gfc_conv_array_spacing (tree, int);
 tree gfc_conv_array_lbound (tree, int);
 tree gfc_conv_array_ubound (tree, int);
+tree gfc_conv_array_extent (tree, int);
 
 /* Set (co)bounds of an array.  */
 tree gfc_trans_array_bounds (tree, gfc_symbol *, tree *, stmtblock_t *);
@@ -172,9 +176,6 @@ void gfc_trans_array_cobounds (tree, stmtblock_t *, const gfc_symbol *);
 /* Build expressions for accessing components of an array descriptor.  */
 void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *, tree *,
 					  tree *, tree *, tree *, tree *);
-
-/* Shift lower bound of descriptor, updating ubound and offset.  */
-void gfc_conv_shift_descriptor_lbound (stmtblock_t*, tree, int, tree);
 
 /* Add pre-loop scalarization code for intrinsic functions which require
    special handling.  */

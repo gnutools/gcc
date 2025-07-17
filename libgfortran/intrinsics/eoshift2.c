@@ -79,17 +79,17 @@ eoshift2 (gfc_array_char *ret, const gfc_array_char *array,
 
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
-	  index_type ub, str;
+	  index_type ub, sp;
 
           ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-	    str = 1;
+	    sp = GFC_DESCRIPTOR_SIZE(ret);
           else
-            str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
-	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);
+            sp = GFC_DESCRIPTOR_EXTENT(ret,i-1)
+	      * GFC_DESCRIPTOR_SPACING(ret,i-1);
 
-	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, str);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, sp);
         }
     }
   else if (unlikely (compile_options.bounds_check))
@@ -113,10 +113,10 @@ eoshift2 (gfc_array_char *ret, const gfc_array_char *array,
     {
       if (dim == which)
         {
-          roffset = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+          roffset = GFC_DESCRIPTOR_SPACING(ret,dim);
           if (roffset == 0)
             roffset = size;
-          soffset = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+          soffset = GFC_DESCRIPTOR_SPACING(array,dim);
           if (soffset == 0)
             soffset = size;
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
@@ -125,10 +125,10 @@ eoshift2 (gfc_array_char *ret, const gfc_array_char *array,
         {
           count[n] = 0;
           extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-          rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
-          sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+          rstride[n] = GFC_DESCRIPTOR_SPACING(ret,dim);
+          sstride[n] = GFC_DESCRIPTOR_SPACING(array,dim);
           if (bound)
-            bstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(bound,n);
+            bstride[n] = GFC_DESCRIPTOR_SPACING(bound,n);
           else
             bstride[n] = 0;
           n++;

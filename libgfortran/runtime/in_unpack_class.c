@@ -40,8 +40,8 @@ internal_unpack_class (gfc_class_array_t *dest_class,
 
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type dsize;
   void *dest;
@@ -62,16 +62,16 @@ internal_unpack_class (gfc_class_array_t *dest_class,
   dest = dest_arr->base_addr;
   size = GFC_DESCRIPTOR_SIZE (dest_arr);
   dim = GFC_DESCRIPTOR_RANK (dest_arr);
-  dsize = 1;
+  dsize = size;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE (dest_arr, n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING (dest_arr, n);
       extent[n] = GFC_DESCRIPTOR_EXTENT (dest_arr, n);
       if (extent[n] <= 0)
 	return;
 
-      if (dsize == stride[n])
+      if (dsize == spacing[n])
 	dsize *= extent[n];
       else
 	dsize = 0;
@@ -97,7 +97,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
       return;
     }
 
-  stride0 = stride[0] * size;
+  spacing0 = spacing[0];
 
   while (dest)
     {
@@ -105,7 +105,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
       copyfn (src, dest);
       /* Advance to the next element.  */
       src += size;
-      dest += stride0;
+      dest += spacing0;
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -116,7 +116,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n] * size;
+	  dest -= spacing[n] * extent[n];
 	  n++;
 	  if (n == dim)
 	    {
@@ -126,7 +126,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n] * size;
+	      dest += spacing[n];
 	    }
 	}
     }

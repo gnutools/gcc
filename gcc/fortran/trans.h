@@ -194,21 +194,28 @@ typedef struct gfc_array_info
   gfc_ref *ref;
   /* The descriptor of this array.  */
   tree descriptor;
-  /* holds the pointer to the data array.  */
+  /* holds the pointer to the array.  */
   tree data;
+  /* value of the pointer to the array before the beginning of the loops.   */
+  tree saved_data;
   /* To move some of the array index calculation out of the innermost loop.  */
   tree offset;
-  tree saved_offset;
-  tree stride0;
+
   /* Holds the SS for a subscript.  Indexed by actual dimension.  */
   struct gfc_ss *subscript[GFC_MAX_DIMENSIONS];
 
-  /* stride and delta are used to access this inside a scalarization loop.
+  /* stride, spacing and delta are used to access this inside a scalarization loop.
      start is used in the calculation of these.  Indexed by scalarizer
      dimension.  */
+  tree lbound[GFC_MAX_DIMENSIONS];
   tree start[GFC_MAX_DIMENSIONS];
   tree end[GFC_MAX_DIMENSIONS];
+  /* The spacing of indexes, that may be specified by the strides of array
+     references.  */
   tree stride[GFC_MAX_DIMENSIONS];
+  /* The spacing in memory of elements of consecutive indexes, for each
+     dimension. This is the intrinsic spacing of the array.  */
+  tree spacing[GFC_MAX_DIMENSIONS];
   tree delta[GFC_MAX_DIMENSIONS];
 }
 gfc_array_info;
@@ -286,6 +293,7 @@ typedef struct gfc_ss_info
     struct
     {
       tree type;
+      unsigned preserve_bounds:1;
     }
     temp;
 
@@ -427,10 +435,10 @@ typedef struct
 gfc_wrapped_block;
 
 /* Class API functions.  */
-tree gfc_class_type_data_field_get (tree);
 tree gfc_class_set_static_fields (tree, tree, tree);
 tree gfc_class_data_get (tree);
 tree gfc_class_vptr_get (tree);
+bool gfc_class_len_get (tree, tree *);
 tree gfc_class_len_get (tree);
 tree gfc_resize_class_size_with_len (stmtblock_t *, tree, tree);
 gfc_expr * gfc_find_and_cut_at_last_class_ref (gfc_expr *, bool is_mold = false,
@@ -462,7 +470,7 @@ bool gfc_add_comp_finalizer_call (stmtblock_t *, tree, gfc_component *, bool);
 void gfc_finalize_tree_expr (gfc_se *, gfc_symbol *, symbol_attribute, int);
 bool gfc_assignment_finalizer_call (gfc_se *, gfc_expr *, bool);
 
-void gfc_class_array_data_assign (stmtblock_t *, tree, tree, bool);
+void gfc_conv_remap_descriptor (stmtblock_t *, tree, tree, int, const gfc_array_ref &);
 void gfc_conv_derived_to_class (gfc_se *, gfc_expr *, gfc_symbol *fsym, tree,
 				bool, bool, const char *, tree * = nullptr);
 void gfc_conv_class_to_class (gfc_se *, gfc_expr *, gfc_typespec, bool, bool,
@@ -635,9 +643,12 @@ tree gfc_get_extern_function_decl (gfc_symbol *,
 tree gfc_build_addr_expr (tree, tree);
 
 /* Build an ARRAY_REF.  */
-tree gfc_build_array_ref (tree, tree, tree,
-			  bool non_negative_offset = false,
-			  tree vptr = NULL_TREE);
+tree gfc_build_array_ref (tree, tree, bool non_negative_offset = false,
+			  tree min_idx = NULL_TREE, tree spacing = NULL_TREE,
+			  tree offset = NULL_TREE);
+tree gfc_build_array_ref (tree, tree, tree,  bool non_negative_offset = false,
+			  tree min_idx = NULL_TREE, tree spacing = NULL_TREE,
+			  tree offset = NULL_TREE);
 
 /* Build an array ref using pointer arithmetic.  */
 tree gfc_build_spanned_array_ref (tree base, tree offset, tree span);
@@ -659,7 +670,7 @@ void gfc_build_builtin_function_decls (void);
 void gfc_set_decl_location (tree, locus *);
 
 /* Get a module symbol backend_decl if possible.  */
-bool gfc_get_module_backend_decl (gfc_symbol *);
+bool gfc_get_module_backend_decl (gfc_symbol *, bool = true);
 
 /* Return the variable decl for a symbol.  */
 tree gfc_get_symbol_decl (gfc_symbol *);
@@ -1031,7 +1042,9 @@ struct GTY(())	lang_type	 {
   enum gfc_array_kind akind;
   tree lbound[GFC_MAX_DIMENSIONS];
   tree ubound[GFC_MAX_DIMENSIONS];
-  tree stride[GFC_MAX_DIMENSIONS];
+  tree spacing[GFC_MAX_DIMENSIONS];
+  tree elem_len;
+  tree align;
   tree size;
   tree offset;
   tree dtype;
@@ -1040,6 +1053,7 @@ struct GTY(())	lang_type	 {
   tree nonrestricted_type;
   tree caf_token;
   tree caf_offset;
+  tree parent_class_wrapper_type;
 };
 
 struct GTY(()) lang_decl {
@@ -1096,14 +1110,29 @@ struct GTY(()) lang_decl {
 #define GFC_ARRAY_TYPE_P(node) TYPE_LANG_FLAG_2(node)
 /* Fortran CLASS type.  */
 #define GFC_CLASS_TYPE_P(node) TYPE_LANG_FLAG_4(node)
+#define GFC_TYPE_PACKED_ARRAY(node) TYPE_LANG_FLAG_5(node)
 /* The GFC_TYPE_ARRAY_* members are present in both descriptor and
    descriptorless array types.  */
 #define GFC_TYPE_ARRAY_LBOUND(node, dim) \
   (TYPE_LANG_SPECIFIC(node)->lbound[dim])
 #define GFC_TYPE_ARRAY_UBOUND(node, dim) \
   (TYPE_LANG_SPECIFIC(node)->ubound[dim])
+#define GFC_TYPE_ARRAY_SPACING(node, dim) \
+  (TYPE_LANG_SPECIFIC(node)->spacing[dim])
+#define GFC_TYPE_ARRAY_EXTENT(node, dim) \
+  (fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type, \
+		    fold_build2_loc (input_location, MINUS_EXPR, \
+				     gfc_array_index_type, \
+				     GFC_TYPE_ARRAY_UBOUND((node), (dim)), \
+				     GFC_TYPE_ARRAY_LBOUND((node), (dim))), \
+		    gfc_index_one_node))
+#if 0
 #define GFC_TYPE_ARRAY_STRIDE(node, dim) \
-  (TYPE_LANG_SPECIFIC(node)->stride[dim])
+  (fold_build2_loc (input_location, EXACT_DIV_EXPR, gfc_array_index_type, \
+		    GFC_TYPE_ARRAY_SPACING((node), (dim)), \
+		    GFC_TYPE_ARRAY_ELEM_LEN((node))))
+#endif
+#define GFC_TYPE_ARRAY_ELEM_LEN(node) (TYPE_LANG_SPECIFIC(node)->elem_len)
 #define GFC_TYPE_ARRAY_RANK(node) (TYPE_LANG_SPECIFIC(node)->rank)
 #define GFC_TYPE_ARRAY_CORANK(node) (TYPE_LANG_SPECIFIC(node)->corank)
 #define GFC_TYPE_ARRAY_CAF_TOKEN(node) (TYPE_LANG_SPECIFIC(node)->caf_token)
@@ -1118,7 +1147,8 @@ struct GTY(()) lang_decl {
   (TYPE_LANG_SPECIFIC(node)->dataptr_type)
 #define GFC_TYPE_ARRAY_BASE_DECL(node, internal) \
   (TYPE_LANG_SPECIFIC(node)->base_decl[(internal)])
-
+#define GFC_TYPE_PARENT_CLASS_TYPE(node) \
+  (TYPE_LANG_SPECIFIC(node)->parent_class_wrapper_type)
 
 /* Build an expression with void type.  */
 #define build1_v(code, arg) \

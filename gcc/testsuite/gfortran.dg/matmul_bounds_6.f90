@@ -16,8 +16,8 @@ program main
   if (any(c1/=res1)) STOP 2
 
   c2 = matmul(a,pack(b,[b>20.]))
-  if (size(c1,1) /= 3) STOP 3
-  if (any(c1/=res1)) STOP 4
+  if (size(c2,1) /= 3) STOP 3
+  if (any(c2/=res1)) STOP 4
 
   c3 = matmul(pack(b,[b<0.]),a)
   if (size(c3,1) /= 2) STOP 5

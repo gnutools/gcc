@@ -3551,6 +3551,7 @@ void gfc_maybe_initialize_eh (void);
 /* iresolve.cc */
 const char * gfc_get_string (const char *, ...) ATTRIBUTE_PRINTF_1;
 bool gfc_find_sym_in_expr (gfc_symbol *, gfc_expr *);
+void gfc_resolve_symbol (gfc_symbol *);
 
 /* error.cc */
 locus gfc_get_location_range (locus *, unsigned, locus *, unsigned, locus *);
@@ -4208,6 +4209,8 @@ bool gfc_is_class_container_ref (gfc_expr *e);
 gfc_expr *gfc_class_initializer (gfc_typespec *, gfc_expr *);
 unsigned int gfc_hash_value (gfc_symbol *);
 gfc_expr *gfc_get_len_component (gfc_expr *e, int);
+char * gfc_class_name (gfc_symbol *, int, int, bool, bool);
+gfc_namespace *gfc_class_namespace (gfc_symbol *derived);
 bool gfc_build_class_symbol (gfc_typespec *, symbol_attribute *,
 			     gfc_array_spec **);
 void gfc_change_class (gfc_typespec *, symbol_attribute *,

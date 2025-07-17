@@ -34,8 +34,8 @@ internal_pack (gfc_array_char * source)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
-  index_type stride[GFC_MAX_DIMENSIONS];
-  index_type stride0;
+  index_type spacing[GFC_MAX_DIMENSIONS];
+  index_type spacing0;
   index_type dim;
   index_type ssize;
   const char *src;
@@ -160,12 +160,12 @@ internal_pack (gfc_array_char * source)
     }
   
   dim = GFC_DESCRIPTOR_RANK (source);
-  ssize = 1;
+  ssize = GFC_DESCRIPTOR_SIZE (source);
   packed = 1;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      spacing[n] = GFC_DESCRIPTOR_SPACING(source,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (extent[n] <= 0)
         {
@@ -174,7 +174,7 @@ internal_pack (gfc_array_char * source)
           break;
         }
 
-      if (ssize != stride[n])
+      if (ssize != spacing[n])
         packed = 0;
 
       ssize *= extent[n];
@@ -187,7 +187,7 @@ internal_pack (gfc_array_char * source)
   destptr = xmallocarray (ssize, size);
   dest = (char *)destptr;
   src = source->base_addr;
-  stride0 = stride[0] * size;
+  spacing0 = spacing[0];
 
   while (src)
     {
@@ -195,7 +195,7 @@ internal_pack (gfc_array_char * source)
       memcpy(dest, src, size);
       /* Advance to the next element.  */
       dest += size;
-      src += stride0;
+      src += spacing0;
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -206,7 +206,7 @@ internal_pack (gfc_array_char * source)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= stride[n] * extent[n] * size;
+          src -= spacing[n] * extent[n];
           n++;
           if (n == dim)
             {
@@ -216,7 +216,7 @@ internal_pack (gfc_array_char * source)
           else
             {
               count[n]++;
-              src += stride[n] * size;
+              src += spacing[n];
             }
         }
     }
