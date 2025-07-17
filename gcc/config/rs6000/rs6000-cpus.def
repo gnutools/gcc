@@ -160,11 +160,21 @@
    Please keep this list in order, and don't forget to update the documentation
    in invoke.texi when adding a new processor or flag.
 
-   Before including this file, define a macro:
+   Before including this file, define two macros:
 
    RS6000_CPU (NAME, CPU, FLAGS)
+   RS6000_CPU_EXTRA (NAME, CPU, FLAGS, EXTRA)
 
-   where the arguments are the fields of struct rs6000_ptt.  */
+   where the arguments are the fields of struct rs6000_ptt.
+
+   If RS6000_CPU_EXTRA is not defined, it will default to using RS6000_CPU and
+   ignoring the EXTRA argument.  RS6000_CPU_EXTRA is used to define extra ISA
+   bits that do not have an option associated with them.  */
+
+#ifndef RS6000_CPU_EXTRA
+#define RS6000_CPU_EXTRA(NAME, CPU, FLAGS, EXTRA)	\
+  RS6000_CPU(NAME, CPU, FLAGS)
+#endif
 
 RS6000_CPU ("401", PROCESSOR_PPC403, OPTION_MASK_SOFT_FLOAT)
 RS6000_CPU ("403", PROCESSOR_PPC403, OPTION_MASK_SOFT_FLOAT | MASK_STRICT_ALIGN)
@@ -249,6 +259,14 @@ RS6000_CPU ("power9", PROCESSOR_POWER9, MASK_POWERPC64 | ISA_3_0_MASKS_SERVER
 	    | OPTION_MASK_HTM)
 RS6000_CPU ("power10", PROCESSOR_POWER10, MASK_POWERPC64 | ISA_3_1_MASKS_SERVER)
 RS6000_CPU ("power11", PROCESSOR_POWER11, MASK_POWERPC64 | POWER11_MASKS_SERVER)
+
+/* Do not define a PROCESSOR_FUTURE processor type at the current time.  It is
+   expected that we may eventually add tuning support for a potential future
+   processor that differs from power11 support.  */
+RS6000_CPU_EXTRA ("future", PROCESSOR_POWER11,
+		  MASK_POWERPC64 | POWER11_MASKS_SERVER,
+		  EXTRA_ISA_MASK_FUTURE)
+
 RS6000_CPU ("powerpc", PROCESSOR_POWERPC, 0)
 RS6000_CPU ("powerpc64", PROCESSOR_POWERPC64, OPTION_MASK_PPC_GFXOPT
 	    | MASK_POWERPC64)

@@ -324,8 +324,9 @@ extern void rs6000_cpu_cpp_builtins (struct cpp_reader *);
 extern bool rs6000_pragma_target_parse (tree, tree);
 #endif
 extern void rs6000_activate_target_options (tree new_tree);
-extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT);
-extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT);
+extern void rs6000_target_modify_macros (bool, HOST_WIDE_INT, HOST_WIDE_INT);
+extern void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT,
+						HOST_WIDE_INT);
 
 #ifdef NO_DOLLAR_IN_LABEL
 const char * rs6000_xcoff_strip_dollar (const char *);
@@ -352,4 +353,9 @@ extern rtx rs6000_gen_stvx (enum machine_mode, rtx, rtx);
 extern void rs6000_emit_xxspltidp_v2df (rtx, long value);
 extern gimple *currently_expanding_gimple_stmt;
 extern bool rs6000_opaque_type_invalid_use_p (gimple *);
+
+/* Extra ISA bits that are set via -mcpu=<xxx>, but that do not have an
+   associated switch with the option.  */
+#define EXTRA_ISA_MASK_FUTURE	0x1	/* -mcpu=future used.  */
+
 #endif  /* rs6000-protos.h */
