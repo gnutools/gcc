@@ -106,6 +106,56 @@ get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr)
 }
 
 tree
+gfc_conv_scalar_null_to_descriptor (gfc_se *se, gfc_symbol *sym, tree scalar)
+{
+  symbol_attribute attr = sym->attr;
+
+  tree type = get_scalar_to_descriptor_type (scalar, attr);
+  tree desc = gfc_create_var (type, "desc");
+  DECL_ARTIFICIAL (desc) = 1;
+
+  if (CONSTANT_CLASS_P (scalar))
+    {
+      tree tmp;
+      tmp = gfc_create_var (TREE_TYPE (scalar), "scalar");
+      gfc_add_modify (&se->pre, tmp, scalar);
+      scalar = tmp;
+    }
+  if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
+    scalar = gfc_build_addr_expr (NULL_TREE, scalar);
+
+  gfc_set_scalar_descriptor (&se->pre, desc, scalar);
+
+  return desc;
+}
+
+
+tree
+gfc_conv_null_array_descriptor (gfc_se *se, gfc_symbol *sym, gfc_expr *expr)
+{
+  tree lower[GFC_MAX_DIMENSIONS], upper[GFC_MAX_DIMENSIONS];
+
+  for (int i = 0; i < expr->rank; i++)
+    {
+      lower[i] = NULL_TREE;
+      upper[i] = NULL_TREE;
+    }
+
+  tree elt_type = gfc_typenode_for_spec (&sym->ts);
+  tree desc_type = gfc_get_array_type_bounds (elt_type, expr->rank, 0,
+					      lower, upper, 0,
+					      GFC_ARRAY_UNKNOWN, false);
+
+  tree desc = gfc_create_var (desc_type, "desc");
+  DECL_ARTIFICIAL (desc) = 1;
+
+  gfc_clear_descriptor (&se->pre, sym, desc);
+
+  return desc;
+}
+
+
+tree
 gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
   tree desc, type, etype;
@@ -6637,8 +6687,10 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	  if (fsym->as && fsym->as->type == AS_ASSUMED_RANK)
 	    {
 	      tree tmp = parmse->expr;
-	      tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
-	      gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
+	      if (e->rank == 0)
+		tmp = gfc_conv_scalar_null_to_descriptor (parmse, fsym, tmp);
+	      else
+		tmp = gfc_conv_null_array_descriptor (parmse, fsym, e);
 	      parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	    }
 	  else

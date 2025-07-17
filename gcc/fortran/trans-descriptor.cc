@@ -741,3 +741,20 @@ gfc_build_default_class_descriptor (const gfc_typespec &ts, tree class_type)
   return gfc_class_set_static_fields (class_type, vptr, tmp);
 }
 
+
+void
+gfc_set_scalar_descriptor (stmtblock_t *block, tree descr, tree value)
+{
+  tree etype = TREE_TYPE (value);
+
+  if (POINTER_TYPE_P (etype)
+      && TREE_TYPE (etype)
+      && TREE_CODE (TREE_TYPE (etype)) == ARRAY_TYPE)
+    etype = TREE_TYPE (etype);
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype_rank_type (0, etype));
+  gfc_conv_descriptor_data_set (block, descr, value);
+  gfc_conv_descriptor_span_set (block, descr,
+				gfc_conv_descriptor_elem_len_get (descr));
+}
+
