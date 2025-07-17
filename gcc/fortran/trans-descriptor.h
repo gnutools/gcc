@@ -106,5 +106,8 @@ void gfc_conv_remap_descriptor (stmtblock_t *, tree, tree, int,
 				const gfc_array_ref &as);
 void gfc_conv_shift_descriptor (stmtblock_t *, tree, tree, int, tree);
 void gfc_copy_descriptor (stmtblock_t *, tree, tree, gfc_expr *, bool);
+void gfc_set_descriptor (stmtblock_t *, tree, tree, gfc_expr *, int, int,
+			 gfc_ss *, gfc_array_info *, tree [GFC_MAX_DIMENSIONS],
+			 tree [GFC_MAX_DIMENSIONS], bool, bool, bool);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

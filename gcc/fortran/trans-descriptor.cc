@@ -1153,3 +1153,173 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
   gfc_conv_descriptor_span_set (block, dest, tmp2);
 }
 
+ 
+void
+gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
+		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
+		    tree lowers[GFC_MAX_DIMENSIONS],
+		    tree uppers[GFC_MAX_DIMENSIONS], bool unlimited_polymorphic,
+		    bool data_needed, bool subref)
+{
+  int ndim = info->ref ? info->ref->u.ar.dimen : rank;
+
+  /* Set the span field.  */
+  tree tmp = NULL_TREE;
+  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src)))
+    tmp = gfc_conv_descriptor_span_get (src);
+  else
+    tmp = gfc_get_array_span (src, src_expr);
+  if (tmp)
+    gfc_conv_descriptor_span_set (block, dest, tmp);
+
+  /* The following can be somewhat confusing.  We have two
+     descriptors, a new one and the original array.
+     {dest, parmtype, dim} refer to the new one.
+     {src, type, n, loop} refer to the original, which maybe
+     a descriptorless array.
+     The bounds of the scalarization are the bounds of the section.
+     We don't have to worry about numeric overflows when calculating
+     the offsets because all elements are within the array data.  */
+
+  /* Set the dtype.  */
+  tree dtype;
+  if (unlimited_polymorphic)
+    dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
+  else if (src_expr->ts.type == BT_ASSUMED)
+    {
+      tree tmp2 = src;
+      if (DECL_LANG_SPECIFIC (tmp2) && GFC_DECL_SAVED_DESCRIPTOR (tmp2))
+	tmp2 = GFC_DECL_SAVED_DESCRIPTOR (tmp2);
+      if (POINTER_TYPE_P (TREE_TYPE (tmp2)))
+	tmp2 = build_fold_indirect_ref_loc (input_location, tmp2);
+      dtype = gfc_conv_descriptor_dtype_get (tmp2);
+    }
+  else
+    dtype = gfc_get_dtype (TREE_TYPE (dest));
+  gfc_conv_descriptor_dtype_set (block, dest, dtype);
+
+  /* The 1st element in the section.  */
+  tree base = gfc_index_zero_node;
+  if (src_expr->ts.type == BT_CHARACTER && src_expr->rank == 0 && corank)
+    base = gfc_index_one_node;
+
+  /* The offset from the 1st element in the section.  */
+  tree offset = gfc_index_zero_node;
+
+  for (int n = 0; n < ndim; n++)
+    {
+      tree stride = gfc_conv_array_stride (src, n);
+
+      /* Work out the 1st element in the section.  */
+      tree start;
+      if (info->ref
+	  && info->ref->u.ar.dimen_type[n] == DIMEN_ELEMENT)
+	{
+	  gcc_assert (info->subscript[n]
+		      && info->subscript[n]->info->type == GFC_SS_SCALAR);
+	  start = info->subscript[n]->info->data.scalar.value;
+	}
+      else
+	{
+	  /* Evaluate and remember the start of the section.  */
+	  start = info->start[n];
+	  stride = gfc_evaluate_now (stride, block);
+	}
+
+      tmp = gfc_conv_array_lbound (src, n);
+      tmp = fold_build2_loc (input_location, MINUS_EXPR, TREE_TYPE (tmp),
+			     start, tmp);
+      tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
+			     tmp, stride);
+      base = fold_build2_loc (input_location, PLUS_EXPR, TREE_TYPE (tmp),
+				base, tmp);
+
+      if (info->ref
+	  && info->ref->u.ar.dimen_type[n] == DIMEN_ELEMENT)
+	{
+	  /* For elemental dimensions, we only need the 1st
+	     element in the section.  */
+	  continue;
+	}
+
+      /* Vector subscripts need copying and are handled elsewhere.  */
+      if (info->ref)
+	gcc_assert (info->ref->u.ar.dimen_type[n] == DIMEN_RANGE);
+
+      /* look for the corresponding scalarizer dimension: dim.  */
+      int dim;
+      for (dim = 0; dim < ndim; dim++)
+	if (ss->dim[dim] == n)
+	  break;
+
+      /* loop exited early: the DIM being looked for has been found.  */
+      gcc_assert (dim < ndim);
+
+      /* Set the new lower bound.  */
+      tree from = lowers[dim];
+      tree to = uppers[dim];
+
+      gfc_conv_descriptor_lbound_set (block, dest,
+				      gfc_rank_cst[dim], from);
+
+      /* Set the new upper bound.  */
+      gfc_conv_descriptor_ubound_set (block, dest,
+				      gfc_rank_cst[dim], to);
+
+      /* Multiply the stride by the section stride to get the
+	 total stride.  */
+      stride = fold_build2_loc (input_location, MULT_EXPR,
+				gfc_array_index_type,
+				stride, info->stride[n]);
+
+      tmp = fold_build2_loc (input_location, MULT_EXPR,
+			     TREE_TYPE (offset), stride, from);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+			       TREE_TYPE (offset), offset, tmp);
+
+      /* Store the new stride.  */
+      gfc_conv_descriptor_stride_set (block, dest,
+				      gfc_rank_cst[dim], stride);
+    }
+
+  for (int n = rank; n < rank + corank; n++)
+    {
+      tree from = lowers[n];
+      tree to = uppers[n];
+      gfc_conv_descriptor_lbound_set (block, dest,
+				      gfc_rank_cst[n], from);
+      if (n < rank + corank - 1)
+	gfc_conv_descriptor_ubound_set (block, dest,
+					gfc_rank_cst[n], to);
+    }
+
+  if (data_needed)
+    /* Point the data pointer at the 1st element in the section.  */
+    gfc_get_dataptr_offset (block, dest, src, base,
+			    subref, src_expr);
+  else
+    gfc_conv_descriptor_data_set (block, dest,
+				  gfc_index_zero_node);
+
+  gfc_conv_descriptor_offset_set (block, dest, offset);
+
+  if (flag_coarray == GFC_FCOARRAY_LIB && src_expr->corank)
+    {
+      tmp = INDIRECT_REF_P (src) ? TREE_OPERAND (src, 0) : src;
+      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (tmp)))
+	{
+	  tmp = gfc_conv_descriptor_token (tmp);
+	}
+      else if (DECL_P (tmp) && DECL_LANG_SPECIFIC (tmp)
+	       && GFC_DECL_TOKEN (tmp) != NULL_TREE)
+	tmp = GFC_DECL_TOKEN (tmp);
+      else
+	{
+	  tmp = GFC_TYPE_ARRAY_CAF_TOKEN (TREE_TYPE (tmp));
+	}
+
+      gfc_conv_descriptor_token_set (block, dest, tmp);
+    }
+}
+ 
+
