@@ -1060,7 +1060,6 @@ gfc_conv_intrinsic_to_class (gfc_se *parmse, gfc_expr *e,
   tree ctree;
   tree var;
   tree tmp;
-  int dim;
   bool unlimited_poly;
 
   unlimited_poly = class_ts.type == BT_CLASS
@@ -1127,11 +1126,7 @@ gfc_conv_intrinsic_to_class (gfc_se *parmse, gfc_expr *e,
 	  /* Array references with vector subscripts and non-variable expressions
 	     need be converted to a one-based descriptor.  */
 	  if (e->expr_type != EXPR_VARIABLE)
-	    {
-	      for (dim = 0; dim < e->rank; ++dim)
-		gfc_conv_shift_descriptor_lbound (&parmse->pre, parmse->expr,
-						  dim, gfc_index_one_node);
-	    }
+	    gfc_conv_shift_descriptor (&parmse->pre, parmse->expr, e->rank);
 
 	  if (class_ts.u.derived->components->as->rank != e->rank)
 	    {

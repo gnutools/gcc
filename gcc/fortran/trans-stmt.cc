@@ -2168,16 +2168,12 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
       if ((!sym->assoc->variable && !cst_array_ctor)
 	  || !whole_array)
 	{
-	  int dim;
-
 	  if (whole_array)
 	    gfc_add_modify (&se.pre, desc, se.expr);
 
 	  /* The generated descriptor has lower bound zero (as array
 	     temporary), shift bounds so we get lower bounds of 1.  */
-	  for (dim = 0; dim < e->rank; ++dim)
-	    gfc_conv_shift_descriptor_lbound (&se.pre, desc,
-					      dim, gfc_index_one_node);
+	  gfc_conv_shift_descriptor (&se.pre, desc, e->rank);
 	}
 
       if (e->expr_type == EXPR_FUNCTION
