@@ -1,3 +1,60 @@
+2025-07-16  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-16  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/121060
+	* interface.cc (matching_typebound_op): Defer determination of
+	specific procedure until resolution by returning NULL.
+
+2025-07-15  Kwok Cheung Yeung  <kcyeung@baylibre.com>
+
+	Backported from master:
+	2025-07-15  Kwok Cheung Yeung  <kcyeung@baylibre.com>
+
+	PR fortran/104428
+	* trans-openmp.cc (gfc_trans_omp_declare_variant): Check that proc_st
+	is non-NULL before dereferencing.  Add line number to error message.
+
+2025-07-15  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-08  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	PR fortran/120637
+	* class.cc (finalize_component): Return true, when a finalizable
+	component was detect and do not free it.
+
+2025-07-09  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-03  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	PR fortran/120843
+	* resolve.cc (resolve_operator): Remove conformability check,
+	because it is not in the standard.
+
+2025-07-08  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-01  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	PR fortran/120847
+	* coarray.cc (check_add_new_comp_handle_array): Make the count
+	of components static to be able to create more than one.  Create
+	an array component only for array expressions.
+
+2025-07-08  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-01  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	PR fortran/120843
+	* resolve.cc (resolve_operator): Report inconsistent coranks
+	only when not referencing this_image.
+	(gfc_op_rank_conformable): Treat coranks as inconformable only
+	when a coindex other then implicit this_image is used.
+
 2025-07-03  Andre Vehreschild  <vehre@gcc.gnu.org>
 
 	Backported from master:
