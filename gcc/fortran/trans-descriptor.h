@@ -98,5 +98,6 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 
 /* Build a null array descriptor constructor.  */
 void gfc_nullify_descriptor (stmtblock_t *block, tree);
+void gfc_init_descriptor_result (stmtblock_t *block, tree descr);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
