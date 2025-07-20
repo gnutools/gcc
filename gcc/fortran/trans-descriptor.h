@@ -122,4 +122,12 @@ void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree, symbol_attribute
 void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree, gfc_expr *,
 				     tree, tree);
 
+void
+gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
+		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
+		    tree lowers[GFC_MAX_DIMENSIONS],
+		    tree uppers[GFC_MAX_DIMENSIONS],
+		    bool unlimited_polymorphic, bool data_needed,
+		    bool subref);
+
 #endif /* GFC_TRANS_DESCRIPTOR_H */
