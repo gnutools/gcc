@@ -901,20 +901,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 
 	  /* Scalar to an assumed-rank array.  */
 	  if (fsym->ts.u.derived->components->as)
-	    {
-	      tree type;
-	      type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (parmse->expr),
-							gfc_expr_attr (e));
-	      gfc_conv_descriptor_dtype_set (&parmse->pre, ctree,
-					     gfc_get_dtype (type));
-	      if (optional)
-		parmse->expr = build3_loc (input_location, COND_EXPR,
-					   TREE_TYPE (parmse->expr),
-					   cond_optional, parmse->expr,
-					   fold_convert (TREE_TYPE (parmse->expr),
-							 null_pointer_node));
-	      gfc_conv_descriptor_data_set (&parmse->pre, ctree, parmse->expr);
-	    }
+	    gfc_set_descriptor_from_scalar (&parmse->pre, ctree,
+					    parmse->expr, e, cond_optional);
           else
 	    {
 	      tmp = fold_convert (TREE_TYPE (ctree), parmse->expr);

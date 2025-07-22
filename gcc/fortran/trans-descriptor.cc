@@ -950,3 +950,23 @@ gfc_set_descriptor_from_scalar_class (stmtblock_t *block, tree descr,
 
   gfc_conv_descriptor_data_set (block, descr, tmp);
 }
+
+
+void
+gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr,
+				tree scalar, gfc_expr *scalar_expr,
+				tree cond_presence)
+{
+  tree type;
+  type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
+					    gfc_expr_attr (scalar_expr));
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype (type));
+  if (cond_presence)
+    scalar = build3_loc (input_location, COND_EXPR,
+			 TREE_TYPE (scalar),
+			 cond_presence, scalar,
+			 fold_convert (TREE_TYPE (scalar),
+				       null_pointer_node));
+  gfc_conv_descriptor_data_set (block, descr, scalar);
+}
