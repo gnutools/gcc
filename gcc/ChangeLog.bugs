@@ -1,3 +1,47 @@
+==================== Branch work215-bugs, patch #100 ====================
+
+PR 99293: Optimize splat of a V2DF/V2DI extract with constant element
+
+We had optimizations for splat of a vector extract for the other vector
+types, but we missed having one for V2DI and V2DF.  This patch adds a
+combiner insn to do this optimization.
+
+In looking at the source, we had similar optimizations for V4SI and V4SF
+extract and splats, but we missed doing V2DI/V2DF.
+
+Without the patch for the code:
+
+	vector long long splat_dup_l_0 (vector long long v)
+	{
+	  return __builtin_vec_splats (__builtin_vec_extract (v, 0));
+	}
+
+the compiler generates (on a little endian power9):
+
+	splat_dup_l_0:
+		mfvsrld 9,34
+	        mtvsrdd 34,9,9
+		blr
+
+Now it generates:
+
+	splat_dup_l_0:
+		xxpermdi 34,34,34,3
+	        blr
+
+2025-07-22  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/99293
+	* config/rs6000/vsx.md (vsx_splat_extract_<mode>): New insn.
+
+gcc/testsuite/
+
+	PR target/99293
+	* gcc.target/powerpc/builtins-1.c: Adjust insn count.
+	* gcc.target/powerpc/pr99293.c: New test.
+
 ==================== Branch work215-bugs, baseline ====================
 
 2025-07-15   Michael Meissner  <meissner@linux.ibm.com>
