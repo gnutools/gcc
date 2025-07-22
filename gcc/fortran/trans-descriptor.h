@@ -134,5 +134,7 @@ void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
 
 void gfc_set_gfc_from_cfi (stmtblock_t *, tree, gfc_expr *, tree, tree,
 			   tree, gfc_symbol *);
+void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
+			   gfc_symbol *, bool);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
