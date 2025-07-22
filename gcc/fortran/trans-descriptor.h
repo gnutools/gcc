@@ -132,4 +132,7 @@ void gfc_set_contiguous_descriptor (stmtblock_t *, tree, tree, tree);
 void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
 				    gfc_expr *, gfc_expr *, locus *);
 
+void gfc_set_gfc_from_cfi (stmtblock_t *, tree, gfc_expr *, tree, tree,
+			   tree, gfc_symbol *);
+
 #endif /* GFC_TRANS_DESCRIPTOR_H */
