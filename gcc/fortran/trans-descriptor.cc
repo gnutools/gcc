@@ -586,6 +586,13 @@ gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
   set_value (block, get_descriptor_ubound (desc, dim), value);
 }
 
+tree
+gfc_conv_descriptor_sm_get (tree desc, tree dim)
+{
+  return fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			  gfc_conv_descriptor_stride_get (desc, dim),
+			  gfc_conv_descriptor_span_get (desc));
+}
 
 /*******************************************************************************
  * Array descriptor higher level routines.                                     *

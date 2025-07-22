@@ -6276,10 +6276,8 @@ gfc_conv_gfc_desc_to_cfi_desc (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym)
       tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
 			     tmp, gfc_index_one_node);
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
-      /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_stride_get (gfc, idx),
-			     gfc_conv_descriptor_span_get (gfc));
+      /* d->dim[n].sm = gfc->dim[i].stride * gfc->span); */
+      tmp = gfc_conv_descriptor_sm_get (gfc, idx);
       gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
       /* Generate loop.  */
