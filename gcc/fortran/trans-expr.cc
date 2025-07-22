@@ -9526,12 +9526,7 @@ gfc_trans_alloc_subarray_assign (tree dest, gfc_component * cm,
 {
   gfc_se se;
   stmtblock_t block;
-  tree offset;
-  int n;
   tree tmp;
-  tree tmp2;
-  gfc_array_spec *as;
-  gfc_expr *arg = NULL;
 
   gfc_start_block (&block);
   gfc_init_se (&se, NULL);
@@ -9591,84 +9586,17 @@ gfc_trans_alloc_subarray_assign (tree dest, gfc_component * cm,
   gfc_add_expr_to_block (&block, tmp);
   gfc_add_block_to_block (&block, &se.post);
 
-  if (expr->expr_type != EXPR_VARIABLE)
-    gfc_conv_descriptor_data_set (&block, se.expr,
-				  null_pointer_node);
-
   /* We need to know if the argument of a conversion function is a
      variable, so that the correct lower bound can be used.  */
+  gfc_expr *arg = nullptr;
   if (expr->expr_type == EXPR_FUNCTION
-	&& expr->value.function.isym
-	&& expr->value.function.isym->conversion
-	&& expr->value.function.actual->expr
-	&& expr->value.function.actual->expr->expr_type == EXPR_VARIABLE)
+      && expr->value.function.isym
+      && expr->value.function.isym->conversion
+      && expr->value.function.actual->expr
+      && expr->value.function.actual->expr->expr_type == EXPR_VARIABLE)
     arg = expr->value.function.actual->expr;
 
-  /* Obtain the array spec of full array references.  */
-  if (arg)
-    as = gfc_get_full_arrayspec_from_expr (arg);
-  else
-    as = gfc_get_full_arrayspec_from_expr (expr);
-
-  /* Shift the lbound and ubound of temporaries to being unity,
-     rather than zero, based. Always calculate the offset.  */
-  gfc_conv_descriptor_offset_set (&block, dest, gfc_index_zero_node);
-  offset = gfc_conv_descriptor_offset_get (dest);
-  tmp2 =gfc_create_var (gfc_array_index_type, NULL);
-
-  for (n = 0; n < expr->rank; n++)
-    {
-      tree span;
-      tree lbound;
-
-      /* Obtain the correct lbound - ISO/IEC TR 15581:2001 page 9.
-	 TODO It looks as if gfc_conv_expr_descriptor should return
-	 the correct bounds and that the following should not be
-	 necessary.  This would simplify gfc_conv_intrinsic_bound
-	 as well.  */
-      if (as && as->lower[n])
-	{
-	  gfc_se lbse;
-	  gfc_init_se (&lbse, NULL);
-	  gfc_conv_expr (&lbse, as->lower[n]);
-	  gfc_add_block_to_block (&block, &lbse.pre);
-	  lbound = gfc_evaluate_now (lbse.expr, &block);
-	}
-      else if (as && arg)
-	{
-	  tmp = gfc_get_symbol_decl (arg->symtree->n.sym);
-	  lbound = gfc_conv_descriptor_lbound_get (tmp,
-					gfc_rank_cst[n]);
-	}
-      else if (as)
-	lbound = gfc_conv_descriptor_lbound_get (dest,
-						gfc_rank_cst[n]);
-      else
-	lbound = gfc_index_one_node;
-
-      lbound = fold_convert (gfc_array_index_type, lbound);
-
-      /* Shift the bounds and set the offset accordingly.  */
-      tmp = gfc_conv_descriptor_ubound_get (dest, gfc_rank_cst[n]);
-      span = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-		tmp, gfc_conv_descriptor_lbound_get (dest, gfc_rank_cst[n]));
-      tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     span, lbound);
-      gfc_conv_descriptor_ubound_set (&block, dest,
-				      gfc_rank_cst[n], tmp);
-      gfc_conv_descriptor_lbound_set (&block, dest,
-				      gfc_rank_cst[n], lbound);
-
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			 gfc_conv_descriptor_lbound_get (dest,
-							 gfc_rank_cst[n]),
-			 gfc_conv_descriptor_stride_get (dest,
-							 gfc_rank_cst[n]));
-      gfc_add_modify (&block, tmp2, tmp);
-      tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			     offset, tmp2);
-      gfc_conv_descriptor_offset_set (&block, dest, tmp);
-    }
+  gfc_set_subarray_descriptor (&block, dest, se.expr, expr, arg);
 
   if (arg)
     {
