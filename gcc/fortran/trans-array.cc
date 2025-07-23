@@ -624,13 +624,14 @@ gfc_set_loop_bounds_from_array_spec (gfc_interface_mapping * mapping,
    DYNAMIC is true if the caller may want to extend the array later
    using realloc.  This prevents us from putting the array on the stack.  */
 
-static void
+static tree
 gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
 				  gfc_array_info * info, tree size, tree nelem,
 				  tree initial, bool dynamic, bool dealloc)
 {
   tree tmp;
   tree desc;
+  tree ptr = NULL_TREE;
   bool onstack;
 
   desc = info->descriptor;
@@ -638,7 +639,7 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
   if (size == NULL_TREE || (dynamic && integer_zerop (size)))
     {
       /* A callee allocated array.  */
-      gfc_conv_descriptor_data_set (pre, desc, null_pointer_node);
+      ptr = null_pointer_node;
       onstack = false;
     }
   else
@@ -666,8 +667,7 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
 				   fold_build1_loc (input_location,
 						    DECL_EXPR, TREE_TYPE (tmp),
 						    tmp));
-	  tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-	  gfc_conv_descriptor_data_set (pre, desc, tmp);
+	  ptr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
       else
 	{
@@ -675,7 +675,7 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
 	  if (initial == NULL_TREE)
 	    {
 	      tmp = gfc_call_malloc (pre, NULL, size);
-	      tmp = gfc_evaluate_now (tmp, pre);
+	      ptr = gfc_evaluate_now (tmp, pre);
 	    }
 	  else
 	    {
@@ -718,17 +718,11 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
 			      build_empty_stmt (input_location));
 	      gfc_add_expr_to_block (pre, tmp);
 
-	      tmp = fold_convert (pvoid_type_node, packed);
+	      ptr = fold_convert (pvoid_type_node, packed);
 	    }
-
-	  gfc_conv_descriptor_data_set (pre, desc, tmp);
 	}
     }
   info->data = gfc_conv_descriptor_data_get (desc);
-
-  /* The offset is zero because we create temporaries with a zero
-     lower bound.  */
-  gfc_conv_descriptor_offset_set (pre, desc, gfc_index_zero_node);
 
   if (dealloc && !onstack)
     {
@@ -737,6 +731,8 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
       tmp = gfc_call_free (tmp);
       gfc_add_expr_to_block (post, tmp);
     }
+
+  return ptr;
 }
 
 
@@ -970,6 +966,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
   gfc_ss *s;
   gfc_array_info *info;
   tree from[GFC_MAX_DIMENSIONS], to[GFC_MAX_DIMENSIONS];
+  tree stride[GFC_MAX_DIMENSIONS];
   tree type;
   tree desc;
   tree tmp;
@@ -1105,13 +1102,12 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
       TREE_USED (desc) = 0;
     }
 
+  bool rank_changer = false;
   if (class_expr != NULL_TREE
       || (fcn_ss && fcn_ss->info && fcn_ss->info->class_container))
     {
       tree class_data;
-      tree dtype;
       gfc_expr *expr1 = fcn_ss ? fcn_ss->info->expr : NULL;
-      bool rank_changer;
 
       /* Pick out these transformational functions because they change the rank
 	 or shape of the first argument. This requires that the class type be
@@ -1165,17 +1161,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
       class_data = gfc_class_data_get (tmp);
 
       if (rank_changer)
-	{
-	  /* Take the dtype from the class expression.  */
-	  tree class_descr = gfc_class_data_get (class_expr);
-	  dtype = gfc_conv_descriptor_dtype_get (class_descr);
-	  gfc_conv_descriptor_dtype_set (pre, desc, dtype);
-
-
-	  /* These transformational functions change the rank.  */
-	  gfc_conv_descriptor_rank_set (pre, desc, ss->loop->dimen);
-	  fcn_ss->info->class_container = NULL_TREE;
-	}
+	fcn_ss->info->class_container = NULL_TREE;
 
       /* Assign the new descriptor to the _data field. This allows the
 	 vptr _copy to be used for scalarized assignment since the class
@@ -1186,12 +1172,6 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 
       /* Point desc to the class _data field.  */
       desc = class_data;
-    }
-  else
-    {
-      /* Fill in the array dtype.  */
-      gfc_conv_descriptor_dtype_set (pre, desc,
-				     gfc_get_dtype (TREE_TYPE (desc)));
     }
 
   info->descriptor = desc;
@@ -1239,13 +1219,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
     {
       for (n = 0; n < total_dim; n++)
 	{
-	  /* Store the stride and bound components in the descriptor.  */
-	  gfc_conv_descriptor_stride_set (pre, desc, gfc_rank_cst[n], size);
-
-	  gfc_conv_descriptor_lbound_set (pre, desc, gfc_rank_cst[n],
-					  gfc_index_zero_node);
-
-	  gfc_conv_descriptor_ubound_set (pre, desc, gfc_rank_cst[n], to[n]);
+	  stride[n] = size;
 
 	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type,
@@ -1286,12 +1260,14 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
       size = NULL_TREE;
     }
 
-  /* Set the span.  */
-  tmp = fold_convert (gfc_array_index_type, elemsize);
-  gfc_conv_descriptor_span_set (pre, desc, tmp);
+  tree data_ptr = gfc_trans_allocate_array_storage (pre, post, info, size,
+						    nelem, initial, dynamic,
+						    dealloc);
 
-  gfc_trans_allocate_array_storage (pre, post, info, size, nelem, initial,
-				    dynamic, dealloc);
+  gfc_set_temporary_descriptor (pre, desc, class_expr, elemsize, data_ptr,
+				to, stride, total_dim,
+				size == NULL_TREE || callee_alloc,
+				rank_changer);
 
   while (ss->parent)
     ss = ss->parent;

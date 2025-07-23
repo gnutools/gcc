@@ -137,4 +137,8 @@ void gfc_set_gfc_from_cfi (stmtblock_t *, tree, gfc_expr *, tree, tree,
 void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
 			   gfc_symbol *, bool);
 
+void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
+				   tree [GFC_MAX_DIMENSIONS],
+				   tree [GFC_MAX_DIMENSIONS], int, bool, bool);
+
 #endif /* GFC_TRANS_DESCRIPTOR_H */

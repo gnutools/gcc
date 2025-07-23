@@ -2132,3 +2132,56 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
 
   gfc_conv_descriptor_offset_set (block2, gfc_desc, offset);
 }
+
+
+void
+gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
+			      tree elemsize, tree data_ptr,
+			      tree ubound[GFC_MAX_DIMENSIONS],
+			      tree stride[GFC_MAX_DIMENSIONS], int rank,
+			      bool callee_allocated, bool rank_changer)
+{
+  if (!class_src)
+    {
+      /* Fill in the array dtype.  */
+      gfc_conv_descriptor_dtype_set (block, descr,
+				     gfc_get_dtype (TREE_TYPE (descr)));
+    }
+  else if (rank_changer)
+    {
+      /* For classes, we copy the whole original class descriptor to the
+	 temporary one, so we don't need to set the individual dtype fields.
+	 Except for the case of rank altering intrinsics for which we
+	 generate descriptors of different rank.  */
+
+      /* Take the dtype from the class expression.  */
+      tree class_descr = gfc_class_data_get (class_src);
+      tree dtype = gfc_conv_descriptor_dtype_get (class_descr);
+      gfc_conv_descriptor_dtype_set (block, descr, dtype);
+
+      /* These transformational functions change the rank.  */
+      gfc_conv_descriptor_rank_set (block, descr, rank);
+    }
+
+  if (!callee_allocated)
+    for (int n = 0; n < rank; n++)
+      {
+	/* Store the stride and bound components in the descriptor.  */
+	gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[n],
+					stride[n]);
+
+	gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[n],
+					gfc_index_zero_node);
+
+	gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[n],
+					ubound[n]);
+      }
+
+  gfc_conv_descriptor_span_set (block, descr, elemsize);
+
+  /* The offset is zero because we create temporaries with a zero
+     lower bound.  */
+  gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
+
+  gfc_conv_descriptor_data_set (block, descr, data_ptr);
+}
