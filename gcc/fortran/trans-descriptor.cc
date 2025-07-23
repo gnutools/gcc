@@ -1250,3 +1250,23 @@ gfc_shift_descriptor (stmtblock_t *block, tree descr, int rank,
 
   gfc_conv_descriptor_offset_set (block, descr, offset);
 }
+ 
+
+void
+gfc_copy_sequence_descriptor (stmtblock_t *block, tree dest, tree src, int rank)
+{
+  gfc_conv_descriptor_data_set (block, dest,
+				gfc_conv_descriptor_data_get (src));
+  gfc_conv_descriptor_lbound_set (block, dest, gfc_index_zero_node,
+				  gfc_index_zero_node);
+  gfc_conv_descriptor_ubound_set (block, dest, gfc_index_zero_node,
+				  gfc_conv_descriptor_size (src, rank));
+  tree stride = gfc_conv_descriptor_stride_get (src, gfc_index_zero_node);
+  gfc_conv_descriptor_stride_set (block, dest, gfc_index_zero_node, stride);
+  gfc_conv_descriptor_dtype_set (block, dest,
+				 gfc_conv_descriptor_dtype_get (src));
+  gfc_conv_descriptor_rank_set (block, dest, 1);
+  gfc_conv_descriptor_span_set (block, dest,
+				gfc_conv_descriptor_span_get (src));
+  gfc_conv_descriptor_offset_set (block, dest, gfc_index_zero_node);
+}

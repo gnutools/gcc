@@ -107,6 +107,8 @@ void gfc_set_subarray_descriptor (stmtblock_t *, tree, tree, gfc_expr *, gfc_exp
 void gfc_shift_descriptor (stmtblock_t *, tree, int, tree [GFC_MAX_DIMENSIONS],
 			   tree [GFC_MAX_DIMENSIONS]);
 
+void gfc_copy_sequence_descriptor (stmtblock_t *, tree, tree, int);
+
 void gfc_set_descriptor_from_scalar_class (stmtblock_t *, tree, tree, gfc_expr *);
 void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree, symbol_attribute,
 				     tree = NULL_TREE, tree = NULL_TREE);
