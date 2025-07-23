@@ -5391,7 +5391,6 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
   tree tmp_index;
   tree tmp;
   tree base_type;
-  tree size;
   stmtblock_t body;
   int n;
   int dimen;
@@ -5632,42 +5631,8 @@ class_array_fcn:
   /* Determine the offset for pointer formal arguments and set the
      lbounds to one.  */
   if (formal_ptr)
-    {
-      size = gfc_index_one_node;
-      offset = gfc_index_zero_node;
-      for (n = 0; n < dimen; n++)
-	{
-	  tmp = gfc_conv_descriptor_ubound_get (parmse->expr,
-						gfc_rank_cst[n]);
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type, tmp,
-				 gfc_index_one_node);
-	  gfc_conv_descriptor_ubound_set (&parmse->pre,
-					  parmse->expr,
-					  gfc_rank_cst[n],
-					  tmp);
-	  gfc_conv_descriptor_lbound_set (&parmse->pre,
-					  parmse->expr,
-					  gfc_rank_cst[n],
-					  gfc_index_one_node);
-	  size = gfc_evaluate_now (size, &parmse->pre);
-	  offset = fold_build2_loc (input_location, MINUS_EXPR,
-				    gfc_array_index_type,
-				    offset, size);
-	  offset = gfc_evaluate_now (offset, &parmse->pre);
-	  tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				 gfc_array_index_type,
-				 rse.loop->to[n], rse.loop->from[n]);
-	  tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type,
-				 tmp, gfc_index_one_node);
-	  size = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, size, tmp);
-	}
-
-      gfc_conv_descriptor_offset_set (&parmse->pre, parmse->expr,
-				      offset);
-    }
+    gfc_shift_descriptor (&parmse->pre, parmse->expr, dimen,
+			  rse.loop->from, rse.loop->to);
 
   /* We want either the address for the data or the address of the descriptor,
      depending on the mode of passing array arguments.  */
