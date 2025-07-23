@@ -86,6 +86,8 @@ void gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc, tree dim, tr
 void gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value);
 
 tree gfc_build_null_descriptor (tree type);
+tree gfc_conv_descriptor_size (tree, int);
+tree gfc_conv_descriptor_cosize (tree, int, int);
 
 void
 gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
