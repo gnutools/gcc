@@ -955,11 +955,13 @@ gfc_set_descriptor_from_scalar_class (stmtblock_t *block, tree descr,
 void
 gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr,
 				tree scalar, gfc_expr *scalar_expr,
-				tree cond_presence)
+				tree cond_presence, tree caf_token)
 {
-  tree type;
-  type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
-					    gfc_expr_attr (scalar_expr));
+  if (flag_coarray == GFC_FCOARRAY_LIB && caf_token)
+    gfc_conv_descriptor_token_set (block, descr, caf_token);
+
+  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
+						 gfc_expr_attr (scalar_expr));
   gfc_conv_descriptor_dtype_set (block, descr,
 				 gfc_get_dtype (type));
   if (cond_presence)

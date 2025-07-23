@@ -806,6 +806,7 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
   tree var;
   tree tmp;
   tree packed = NULL_TREE;
+  tree caf_token = NULL_TREE;
 
   /* The derived type needs to be converted to a temporary CLASS object.  */
   tmp = gfc_typenode_for_spec (&fsym->ts);
@@ -822,12 +823,17 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 
   if (flag_coarray == GFC_FCOARRAY_LIB && CLASS_DATA (fsym)->attr.codimension)
     {
-      tree token;
       tmp = gfc_get_tree_for_caf_expr (e);
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref (tmp);
-      gfc_get_caf_token_offset (parmse, &token, nullptr, tmp, NULL_TREE, e);
-      gfc_conv_descriptor_token_set (&parmse->pre, ctree, token);
+      gfc_get_caf_token_offset (parmse, &caf_token, nullptr, tmp, NULL_TREE, e);
+      /* Update the token here, unless it's done elsewhere like in
+         gfc_set_descriptor_from_scalar.  */
+      if ((parmse->expr && POINTER_TYPE_P (TREE_TYPE (parmse->expr)))
+	   || (parmse->ss && parmse->ss->info && parmse->ss->info->useflags)
+	   || e->rank != 0
+	   || fsym->ts.u.derived->components->as == nullptr)
+	gfc_conv_descriptor_token_set (&parmse->pre, ctree, caf_token);
     }
 
   if (optional)
@@ -893,8 +899,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 
 	  /* Scalar to an assumed-rank array.  */
 	  if (fsym->ts.u.derived->components->as)
-	    gfc_set_descriptor_from_scalar (&parmse->pre, ctree,
-					    parmse->expr, e, cond_optional);
+	    gfc_set_descriptor_from_scalar (&parmse->pre, ctree, parmse->expr,
+					    e, cond_optional, caf_token);
           else
 	    {
 	      tmp = fold_convert (TREE_TYPE (ctree), parmse->expr);
