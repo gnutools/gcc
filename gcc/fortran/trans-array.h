@@ -189,3 +189,4 @@ void gfc_trans_string_copy (stmtblock_t *, tree, tree, int, tree, tree, int);
 
 /* Calculate extent / size of an array.  */
 tree gfc_conv_array_extent_dim (tree, tree, tree*);
+int gfc_get_array_ref_dim_for_loop_dim (gfc_ss *, int);

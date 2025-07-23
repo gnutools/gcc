@@ -788,8 +788,8 @@ innermost_ss (gfc_ss *ss)
    It is different from the loop dimension in the case of a transposed array.
    */
 
-static int
-get_array_ref_dim_for_loop_dim (gfc_ss *ss, int loop_dim)
+int
+gfc_get_array_ref_dim_for_loop_dim (gfc_ss *ss, int loop_dim)
 {
   return get_scalarizer_dim_for_array_dim (innermost_ss (ss),
 					   ss->dim[loop_dim]);
@@ -2361,7 +2361,7 @@ get_loop_upper_bound_for_array (gfc_ss *array, int array_dim)
 
   for (ss = array; ss; ss = ss->parent)
     for (n = 0; n < ss->loop->dimen; n++)
-      if (array_dim == get_array_ref_dim_for_loop_dim (ss, n))
+      if (array_dim == gfc_get_array_ref_dim_for_loop_dim (ss, n))
 	return &(ss->loop->to[n]);
 
   gcc_unreachable ();
@@ -5480,7 +5480,8 @@ set_loop_bounds (gfc_loopinfo *loop)
 	  && INTEGER_CST_P (info->stride[dim]))
 	{
 	  loop->from[n] = info->start[dim];
-	  mpz_set (i, cshape[get_array_ref_dim_for_loop_dim (loopspec[n], n)]);
+	  int idx = gfc_get_array_ref_dim_for_loop_dim (loopspec[n], n);
+	  mpz_set (i, cshape[idx]);
 	  mpz_sub_ui (i, i, 1);
 	  /* To = from + (size - 1) * stride.  */
 	  tmp = gfc_conv_mpz_to_tree (i, gfc_index_integer_kind);
@@ -8974,39 +8975,13 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
 	    }
 	  else if (!ctree)
 	    {
-	      tree old_field;
-
 	      /* The original descriptor has transposed dims so we can't reuse
 		 it directly; we have to create a new one.  */
 	      tree old_desc = tmp;
 	      tree new_desc = gfc_create_var (TREE_TYPE (old_desc), "arg_desc");
 
-	      old_field = gfc_conv_descriptor_dtype_get (old_desc);
-	      gfc_conv_descriptor_dtype_set (&se->pre, new_desc, old_field);
-
-	      old_field = gfc_conv_descriptor_offset_get (old_desc);
-	      gfc_conv_descriptor_offset_set (&se->pre, new_desc, old_field);
-
-	      for (int i = 0; i < expr->rank; i++)
-		{
-		  int idx = get_array_ref_dim_for_loop_dim (ss, i);
-		  old_field = gfc_conv_descriptor_dimension_get (old_desc, idx);
-		  gfc_conv_descriptor_dimension_set (&se->pre, new_desc, i,
-						     old_field);
-						      
-		}
-
-	      if (flag_coarray == GFC_FCOARRAY_LIB
-		  && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (old_desc))
-		  && GFC_TYPE_ARRAY_AKIND (TREE_TYPE (old_desc))
-		     == GFC_ARRAY_ALLOCATABLE)
-		{
-		  old_field = gfc_conv_descriptor_token (old_desc);
-		  gfc_conv_descriptor_token_set (&se->pre, new_desc,
-						 old_field);
-		}
-
-	      gfc_conv_descriptor_data_set (&se->pre, new_desc, ptr);
+	      gfc_copy_descriptor (&se->pre, new_desc, old_desc, ptr,
+				   expr->rank, ss);
 	      se->expr = gfc_build_addr_expr (NULL_TREE, new_desc);
 	    }
 	  gfc_free_ss (ss);

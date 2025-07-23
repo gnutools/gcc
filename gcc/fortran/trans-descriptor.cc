@@ -1303,3 +1303,30 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
     tmp2 = gfc_get_array_span (src, src_expr);
   gfc_conv_descriptor_span_set (block, dest, tmp2);
 }
+
+
+void
+gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, tree ptr,
+		     int rank, gfc_ss *ss)
+{
+  gfc_conv_descriptor_dtype_set (block, dest,
+				 gfc_conv_descriptor_dtype_get (src));
+
+  gfc_conv_descriptor_offset_set (block, dest,
+				  gfc_conv_descriptor_offset_get (src));
+
+  for (int i = 0; i < rank; i++)
+    {
+      int idx = gfc_get_array_ref_dim_for_loop_dim (ss, i);
+      tree old_field = gfc_conv_descriptor_dimension_get (src, idx);
+      gfc_conv_descriptor_dimension_set (block, dest, i, old_field);
+    }
+
+  if (flag_coarray == GFC_FCOARRAY_LIB
+      && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src))
+      && GFC_TYPE_ARRAY_AKIND (TREE_TYPE (src)) == GFC_ARRAY_ALLOCATABLE)
+    gfc_conv_descriptor_token_set (block, dest,
+				   gfc_conv_descriptor_token (src));
+
+  gfc_conv_descriptor_data_set (block, dest, ptr);
+}
