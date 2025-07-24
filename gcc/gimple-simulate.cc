@@ -2275,6 +2275,20 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage,
 	  }
 	  break;
 
+	case IMAGPART_EXPR:
+	  {
+	    unsigned size = get_constant_type_size (TREE_TYPE (data_ref));
+	    /* Size is the size of the imaginary part, so we can conclude
+	       it is also the size of the real part, and the offset of the
+	       imaginary part.  */
+	    add_offset = wi::shwi (size, HOST_BITS_PER_WIDE_INT);
+	  }
+	  /* Fall through.  */
+
+	case REALPART_EXPR:
+	  parent_data_ref = TREE_OPERAND (data_ref, 0);
+	  break;
+
 	default:
 	  gcc_unreachable ();
 	}
@@ -6331,7 +6345,92 @@ simul_scope_simulate_assign_tests ()
   wide_int wi10 = val10_after.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi10);
   ASSERT_EQ (wi10.to_shwi (), 23);
+
+
+  tree cplx_type_11 = build_complex_type (float_type_node);
+  tree c11 = create_var (cplx_type_11, "c11");
+
+  vec<tree> decls11 {};
+  decls11.safe_push (c11);
+
+  context_builder builder11;
+  builder11.add_decls (&decls11);
+  simul_scope ctx11 = builder11.build (mem, printer);
+
+  data_storage *strg_c11 = ctx11.find_reachable_var (c11);
+  gcc_assert (strg_c11 != nullptr);
+
+  data_value c11_before = strg_c11->get_value ();
+  ASSERT_EQ (c11_before.classify (), VAL_UNDEFINED);
+
+  unsigned float_size = get_constant_type_size (float_type_node);
+  tree float_sized_int = build_nonstandard_integer_type (float_size, 0);
+  tree val44_11 = fold_convert (float_type_node,
+				build_int_cst (float_sized_int, 44));
+  ASSERT_EQ (TREE_CODE (val44_11), REAL_CST);
+
+  tree real11 = build1 (REALPART_EXPR, float_type_node, c11);
+  gimple *g11 = gimple_build_assign (real11, val44_11);
+  ctx11.simulate (g11);
+
+  data_value c11_after = strg_c11->get_value ();
+  ASSERT_EQ (c11_after.classify (), VAL_MIXED);
+  ASSERT_EQ (c11_after.get_bitwidth (), 2 * float_size);
+  ASSERT_EQ (c11_after.classify (0, float_size),
+	     VAL_KNOWN);
+  ASSERT_EQ (c11_after.classify (float_size, float_size),
+	     VAL_UNDEFINED);
+  wide_int wi11 = c11_after.get_known_at (0, float_size);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi11);
+  tree wi11_int = build_int_cst (float_sized_int, wi11.to_shwi ());
+  tree wi11_real = fold_build1 (VIEW_CONVERT_EXPR, float_type_node,
+			        wi11_int);
+  ASSERT_EQ (TREE_CODE (wi11_real), REAL_CST);
+  ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (wi11_real),
+			   TREE_REAL_CST_PTR (val44_11)));
+
+
+  tree cplx_type_12 = build_complex_type (float_type_node);
+  tree c12 = create_var (cplx_type_12, "c12");
+
+  vec<tree> decls12 {};
+  decls12.safe_push (c12);
+
+  context_builder builder12;
+  builder12.add_decls (&decls12);
+  simul_scope ctx12 = builder12.build (mem, printer);
+
+  data_storage *strg_c12 = ctx12.find_reachable_var (c12);
+  gcc_assert (strg_c12 != nullptr);
+
+  data_value c12_before = strg_c12->get_value ();
+  ASSERT_EQ (c12_before.classify (), VAL_UNDEFINED);
+
+  tree val33_12 = fold_convert (float_type_node,
+				build_int_cst (float_sized_int, 33));
+  ASSERT_EQ (TREE_CODE (val33_12), REAL_CST);
+
+  tree real12 = build1 (IMAGPART_EXPR, float_type_node, c12);
+  gimple *g12 = gimple_build_assign (real12, val33_12);
+  ctx12.simulate (g12);
+
+  data_value c12_after = strg_c12->get_value ();
+  ASSERT_EQ (c12_after.classify (), VAL_MIXED);
+  ASSERT_EQ (c12_after.get_bitwidth (), 2 * float_size);
+  ASSERT_EQ (c12_after.classify (0, float_size),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (c12_after.classify (float_size, float_size),
+	     VAL_KNOWN);
+  wide_int wi12 = c12_after.get_known_at (float_size, float_size);
+  ASSERT_PRED1 (wi::fits_shwi_p, wi12);
+  tree wi12_int = build_int_cst (float_sized_int, wi12.to_shwi ());
+  tree wi12_real = fold_build1 (VIEW_CONVERT_EXPR, float_type_node,
+			        wi12_int);
+  ASSERT_EQ (TREE_CODE (wi12_real), REAL_CST);
+  ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (wi12_real),
+			   TREE_REAL_CST_PTR (val33_12)));
 }
+
 
 void
 simul_scope_print_call_tests ()
