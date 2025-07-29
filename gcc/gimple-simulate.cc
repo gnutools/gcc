@@ -2838,6 +2838,7 @@ simulate (struct function * func, simul_scope & caller,
       data_storage *storage = ctx.find_reachable_var (arg);
       gcc_assert (storage != nullptr);
       storage->set (value);
+      printer.print_value_update (ctx, arg, value);
 
       arg = TREE_CHAIN (arg);
       i++;
