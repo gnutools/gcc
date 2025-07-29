@@ -2526,6 +2526,39 @@ simul_scope::simulate_call (gcall *g)
 
       storage0.set (dest_val);
     }
+  else if (gimple_call_builtin_p (g, BUILT_IN_REALLOC))
+    {
+      gcc_assert (lhs != NULL_TREE);
+      result.emplace (data_value (TREE_TYPE (lhs)));
+
+      gcc_assert (gimple_call_num_args (g) == 2);
+      tree arg0 = gimple_call_arg (g, 0);
+      tree arg1 = gimple_call_arg (g, 1);
+      data_value ptr0 = evaluate (arg0);
+      data_value size1 = evaluate (arg1);
+      gcc_assert (ptr0.classify () == VAL_ADDRESS);
+      gcc_assert (size1.classify () == VAL_KNOWN);
+
+      wide_int wi_size1 = size1.get_known ();
+      gcc_assert (wi::fits_uhwi_p (wi_size1));
+      HOST_WIDE_INT alloc_amount = wi_size1.to_uhwi ();
+      data_storage &storage = allocate (alloc_amount);
+
+      storage_address addr0 = *ptr0.get_address ();
+      data_storage & storage0 = addr0.storage.get ();
+      data_value src = storage0.get_value ();
+
+      wide_int wi_bitwidth = wi_size1 * CHAR_BIT;
+      gcc_assert (wi::fits_uhwi_p (wi_bitwidth));
+      HOST_WIDE_INT bitwidth = wi_bitwidth.to_uhwi ();
+      data_value dest (bitwidth);
+      dest.set_at (0, std::min (src.get_bitwidth (), dest.get_bitwidth ()),
+		   src, 0);
+      storage.set (dest);
+
+      storage_address address (storage.get_ref (), 0);
+      (*result).set_address (address);
+    }
   else
     {
       tree fn = gimple_call_fn (g);
@@ -6979,6 +7012,154 @@ simul_scope_simulate_call_tests ()
   wide_int wi105_after2 = val105_after2.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi105_after2);
   ASSERT_EQ (wi105_after2.to_shwi (), 17);
+
+
+  tree p1_11 = create_var (ptr_type_node, "p1");
+  tree p2_11 = create_var (ptr_type_node, "p2");
+  tree c29 = build_array_type_nelts (char_type_node, 29);
+  tree ac29_11 = create_var (c29, "ac29");
+
+  vec<tree> decls11{};
+  decls11.safe_push (p1_11);
+  decls11.safe_push (p2_11);
+  decls11.safe_push (ac29_11);
+
+  heap_memory mem11;
+  context_builder builder11 {};
+  builder11.add_decls (&decls11);
+  simul_scope ctx11 = builder11.build (mem11, printer);
+
+  data_storage * storage_ac29_11 = ctx11.find_reachable_var (ac29_11);
+  gcc_assert (storage_ac29_11 != nullptr);
+
+  storage_address addr29_11 (storage_ac29_11->get_ref (), CHAR_BIT);
+  data_value val_addr29_11 (ptr_type_node);
+  val_addr29_11.set_address (addr29_11);
+
+  data_storage * storage_p2_11 = ctx11.find_reachable_var (p2_11);
+  gcc_assert (storage_p2_11 != nullptr);
+  storage_p2_11->set (val_addr29_11);
+
+  storage_address addr_p2_11 (storage_p2_11->get_ref (), 0);
+  data_value val_c29 (c29);
+  val_c29.set_address_at (addr_p2_11, HOST_BITS_PER_PTR);
+  wide_int wi23_11 = wi::shwi (23, TYPE_PRECISION (integer_type_node));
+  val_c29.set_known_at (wi23_11, 20 * CHAR_BIT);
+  storage_ac29_11->set (val_c29);
+
+  tree realloc_fn = builtin_decl_explicit (BUILT_IN_REALLOC);
+  gcall *realloc_call11 = gimple_build_call (realloc_fn, 2, p2_11,
+					     build_int_cst (size_type_node, 31));
+  gimple_call_set_lhs (realloc_call11, p1_11);
+
+  data_storage * storage_p1_11 = ctx11.find_reachable_var (p1_11);
+  gcc_assert (storage_p1_11 != nullptr);
+
+  data_value val_p1_11_before = storage_p1_11->get_value ();
+  ASSERT_EQ (val_p1_11_before.classify (), VAL_UNDEFINED);
+
+  ctx11.simulate (realloc_call11);
+
+  data_value val_p1_11_after = storage_p1_11->get_value ();
+  ASSERT_EQ (val_p1_11_after.classify (), VAL_ADDRESS);
+  storage_address * addr_p1_11 = val_p1_11_after.get_address ();
+  storage_ref storage_ref_addr_p1_11 = addr_p1_11->storage;
+  ASSERT_EQ (storage_ref_addr_p1_11.type, STRG_ALLOC);
+  data_storage & storage_addr_p1_11 = storage_ref_addr_p1_11.get ();
+  ASSERT_EQ (storage_addr_p1_11.get_type (), STRG_ALLOC);
+
+  data_value val_strg_p1_11 = storage_addr_p1_11.get_value ();
+  ASSERT_EQ (val_strg_p1_11.get_bitwidth (), 31 * CHAR_BIT);
+  ASSERT_EQ (val_strg_p1_11.classify (), VAL_MIXED);
+
+  ASSERT_EQ (val_strg_p1_11.classify (0, HOST_BITS_PER_PTR),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val_strg_p1_11.classify (HOST_BITS_PER_PTR, HOST_BITS_PER_PTR),
+	     VAL_ADDRESS);
+  ASSERT_EQ (val_strg_p1_11.classify (2 * HOST_BITS_PER_PTR, HOST_BITS_PER_INT),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val_strg_p1_11.classify (20 * CHAR_BIT, HOST_BITS_PER_INT),
+	     VAL_KNOWN);
+
+  data_value val_ptr_strg_p1_11 = val_strg_p1_11.get_at (HOST_BITS_PER_PTR,
+							 HOST_BITS_PER_PTR);
+  storage_address *addr_ptr_strg_p1_11 = val_ptr_strg_p1_11.get_address ();
+  data_storage &strg_addr_ptr_strg_p1_11 = addr_ptr_strg_p1_11->storage.get ();
+  ASSERT_NE (&strg_addr_ptr_strg_p1_11, storage_ac29_11);
+  ASSERT_EQ (addr_ptr_strg_p1_11->offset, 0);
+
+  data_value val_known_strg_p1_11 = val_strg_p1_11.get_at (20 * CHAR_BIT,
+							   HOST_BITS_PER_INT);
+  wide_int wi_known_strg_p1_11 = val_known_strg_p1_11.get_known ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_known_strg_p1_11);
+  ASSERT_EQ (wi_known_strg_p1_11.to_shwi (), 23);
+
+
+  tree p1_12 = create_var (ptr_type_node, "p1");
+  tree p2_12 = create_var (ptr_type_node, "p2");
+  tree c13 = build_array_type_nelts (char_type_node, 13);
+  tree ac13_12 = create_var (c13, "ac13");
+
+  vec<tree> decls12{};
+  decls12.safe_push (p1_12);
+  decls12.safe_push (p2_12);
+  decls12.safe_push (ac13_12);
+
+  heap_memory mem12;
+  context_builder builder12 {};
+  builder12.add_decls (&decls12);
+  simul_scope ctx12 = builder12.build (mem12, printer);
+
+  data_storage * storage_ac13_12 = ctx12.find_reachable_var (ac13_12);
+  gcc_assert (storage_ac13_12 != nullptr);
+
+  storage_address addr13_12 (storage_ac13_12->get_ref (), CHAR_BIT);
+  data_value val_addr13_12 (ptr_type_node);
+  val_addr13_12.set_address (addr13_12);
+
+  data_storage * storage_p1_12 = ctx12.find_reachable_var (p1_12);
+  gcc_assert (storage_p1_12 != nullptr);
+  storage_p1_12->set (val_addr13_12);
+
+  wide_int wi18_12 = wi::shwi (18, TYPE_PRECISION (integer_type_node));
+  data_value val_c13 (c13);
+  val_c13.set_known_at (wi18_12, HOST_BITS_PER_INT);
+  storage_ac13_12->set (val_c13);
+
+  gcall *realloc_call12 = gimple_build_call (realloc_fn, 2, p1_12,
+					     build_int_cst (size_type_node, 8));
+  gimple_call_set_lhs (realloc_call12, p2_12);
+
+  data_storage * storage_p2_12 = ctx12.find_reachable_var (p2_12);
+  gcc_assert (storage_p2_12 != nullptr);
+
+  data_value val_p2_12_before = storage_p2_12->get_value ();
+  ASSERT_EQ (val_p2_12_before.classify (), VAL_UNDEFINED);
+
+  ctx12.simulate (realloc_call12);
+
+  data_value val_p2_12_after = storage_p2_12->get_value ();
+  ASSERT_EQ (val_p2_12_after.classify (), VAL_ADDRESS);
+  storage_address * addr_p2_12 = val_p2_12_after.get_address ();
+  storage_ref storage_ref_addr_p2_12 = addr_p2_12->storage;
+  ASSERT_EQ (storage_ref_addr_p2_12.type, STRG_ALLOC);
+  data_storage & storage_addr_p2_12 = storage_ref_addr_p2_12.get ();
+  ASSERT_EQ (storage_addr_p2_12.get_type (), STRG_ALLOC);
+
+  data_value val_strg_p2_12 = storage_addr_p2_12.get_value ();
+  ASSERT_EQ (val_strg_p2_12.get_bitwidth (), 8 * CHAR_BIT);
+  ASSERT_EQ (val_strg_p2_12.classify (), VAL_MIXED);
+
+  ASSERT_EQ (val_strg_p2_12.classify (0, HOST_BITS_PER_INT),
+	     VAL_UNDEFINED);
+  ASSERT_EQ (val_strg_p2_12.classify (HOST_BITS_PER_INT, HOST_BITS_PER_INT),
+	     VAL_KNOWN);
+
+  data_value val_known_strg_p2_12 = val_strg_p2_12.get_at (HOST_BITS_PER_INT,
+							   HOST_BITS_PER_INT);
+  wide_int wi_known_strg_p2_12 = val_known_strg_p2_12.get_known ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_known_strg_p2_12);
+  ASSERT_EQ (wi_known_strg_p2_12.to_shwi (), 18);
 }
 
 void
