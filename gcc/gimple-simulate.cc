@@ -2289,6 +2289,9 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage,
 	  parent_data_ref = TREE_OPERAND (data_ref, 0);
 	  break;
 
+	case VIEW_CONVERT_EXPR:
+	  return decompose_ref (TREE_OPERAND (data_ref, 0), storage, offset);
+
 	default:
 	  gcc_unreachable ();
 	}
@@ -6429,6 +6432,52 @@ simul_scope_simulate_assign_tests ()
   ASSERT_EQ (TREE_CODE (wi12_real), REAL_CST);
   ASSERT_TRUE (real_equal (TREE_REAL_CST_PTR (wi12_real),
 			   TREE_REAL_CST_PTR (val33_12)));
+
+
+  tree derived13_1 = make_node (RECORD_TYPE);
+  tree field13_1_1 = build_decl (input_location, FIELD_DECL,
+				 get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field13_1_1) = derived13_1;
+  DECL_CHAIN (field13_1_1) = NULL_TREE;
+  TYPE_FIELDS (derived13_1) = field13_1_1;
+  layout_type (derived13_1);
+
+  tree derived13_2 = make_node (RECORD_TYPE);
+  tree field13_2_1 = build_decl (input_location, FIELD_DECL,
+				 get_identifier ("field1"), integer_type_node);
+  DECL_CONTEXT (field13_2_1) = derived13_1;
+  DECL_CHAIN (field13_2_1) = NULL_TREE;
+  TYPE_FIELDS (derived13_2) = field13_2_1;
+  layout_type (derived13_2);
+
+  tree d13 = create_var (derived13_1, "d13");
+
+  vec<tree> decls13 {};
+  decls13.safe_push (d13);
+
+  context_builder builder13;
+  builder13.add_decls (&decls13);
+  simul_scope ctx13 = builder13.build (mem, printer);
+
+  data_storage *strg_d13 = ctx13.find_reachable_var (d13);
+  gcc_assert (strg_d13 != nullptr);
+
+  data_value d13_before = strg_d13->get_value ();
+  ASSERT_EQ (d13_before.classify (), VAL_UNDEFINED);
+
+  tree val77 = build_int_cst (integer_type_node, 77);
+
+  tree cvt13 = build1 (VIEW_CONVERT_EXPR, derived13_2, d13);
+  tree comp13 = build3 (COMPONENT_REF, integer_type_node, cvt13,
+			field13_2_1, NULL_TREE);
+  gimple *g13 = gimple_build_assign (comp13, val77);
+  ctx13.simulate (g13);
+
+  data_value d13_after = strg_d13->get_value ();
+  ASSERT_EQ (d13_after.classify (), VAL_KNOWN);
+  wide_int wi13_after = d13_after.get_known ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi13_after);
+  ASSERT_EQ (wi13_after.to_shwi (), 77);
 }
 
 
