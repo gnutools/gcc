@@ -1460,13 +1460,14 @@
 
 ;; Return 1 if OP is a comparison operator suitable for floating point
 ;; vector/scalar comparisons that generate a -1/0 mask.
-;;
-;; Do not match UNEQ, UNLT, UNLE, UNGT, or UNGE since the fpmask
-;; instructions can trap on signaling NaNs.
-;;
-;; Do not match NE, LT, or LE, ifcvt.c will handle reversing the results.
 (define_predicate "fpmask_comparison_operator"
   (match_code "eq,gt,ge"))
+
+;; Return 1 if OP is a comparison operator suitable for vector/scalar
+;; comparisons that generate a 0/-1 mask (i.e. the inverse of
+;; fpmask_comparison_operator).
+(define_predicate "invert_fpmask_comparison_operator"
+  (match_code "ne,unlt,unle"))
 
 ;; Return 1 if OP is a comparison operation suitable for integer vector/scalar
 ;; comparisons that generate a -1/0 mask.
