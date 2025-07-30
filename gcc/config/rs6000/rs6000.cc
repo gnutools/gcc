@@ -15282,17 +15282,27 @@ rs6000_print_patchable_function_entry (FILE *file,
 }
 
 enum rtx_code
-rs6000_reverse_condition (machine_mode mode, enum rtx_code code)
+rs6000_reverse_condition (machine_mode mode,
+			  enum rtx_code code,
+			  enum cond_reverse_fp do_fp_reverse)
 {
-  /* Reversal of FP compares takes care -- an ordered compare
-     becomes an unordered compare and vice versa.  */
+  /* Do not allow reversing comparisons if this is an IEEE comparison
+     (i.e. isgreater, etc.)  that must not trap.
+
+     We do allow the comparsion to be reversed for explicit jumps when
+     cond_reverse_fp::reverse_ok is passed.  */
   if (mode == CCFPmode
-      && (!flag_finite_math_only
-	  || code == UNLT || code == UNLE || code == UNGT || code == UNGE
+      && (code == UNLT || code == UNLE || code == UNGT || code == UNGE
 	  || code == UNEQ || code == LTGT))
-    return reverse_condition_maybe_unordered (code);
-  else
-    return reverse_condition (code);
+    {
+      if (!flag_finite_math_only
+	  && do_fp_reverse == cond_reverse_fp::no_reverse)
+	return UNKNOWN;
+
+      return reverse_condition_maybe_unordered (code);
+    }
+
+  return reverse_condition (code);
 }
 
 /* Check if C (as 64bit integer) can be rotated to a constant which constains
@@ -15900,14 +15910,17 @@ rs6000_emit_sCOND (machine_mode mode, rtx operands[])
 	   || cond_code == ORDERED || cond_code == UNGE || cond_code == UNLE)
     {
       rtx not_result = gen_reg_rtx (CCEQmode);
-      rtx not_op, rev_cond_rtx;
+      rtx not_op, rev_cmp_rtx;
       machine_mode cc_mode;
+      rtx_code rev;
 
       cc_mode = GET_MODE (XEXP (condition_rtx, 0));
 
-      rev_cond_rtx = gen_rtx_fmt_ee (rs6000_reverse_condition (cc_mode, cond_code),
-				     SImode, XEXP (condition_rtx, 0), const0_rtx);
-      not_op = gen_rtx_COMPARE (CCEQmode, rev_cond_rtx, const0_rtx);
+      rev = rs6000_reverse_condition (cc_mode, cond_code,
+				      cond_reverse_fp::no_reverse);
+      rev_cmp_rtx = gen_rtx_fmt_ee (rev, SImode, XEXP (condition_rtx, 0),
+				    const0_rtx);
+      not_op = gen_rtx_COMPARE (CCEQmode, rev_cmp_rtx, const0_rtx);
       emit_insn (gen_rtx_SET (not_result, not_op));
       condition_rtx = gen_rtx_EQ (VOIDmode, not_result, const0_rtx);
     }
