@@ -1,4 +1,4 @@
-==================== Branch work216-bugs, patch #111  ====================
+==================== Branch work216-bugs, patch #112  ====================
 
 Fix PR 118541, do not generate floating point cmoves for IEEE compares.
 
@@ -84,25 +84,31 @@ power11:
 gcc/
 
 	PR target/118541
-	* config/rs6000/predicates.md (fpmask_comparison_operator): Add comments.
-	(invert_fpmask_comparison_operator): Delete, ifcvt.cc will handle
-	inverting the comparison operator.
-	* config/rs6000/rs6000-protos.h (enum rev_cond_allowed): New enumeration.
+	* config/rs6000/predicates.md (fpmask_comparison_operator): Add NE, LT,
+	LE.
+	(invert_fpmask_comparison_operator): Delete.
+	* config/rs6000/rs6000-protos.h (enum cond_reverse_fp): New enumeration.
 	(rs6000_reverse_condition): Add argument.
 	* config/rs6000/rs6000.cc (rs6000_reverse_condition): Add argument which
-	controls whether comparisons can be reversed for floating point
-	conditional moves that involve IEEE comparison functions which cannot
-	trap on signaling NaNs.  If this is a jump, we allow the comparison to
-	be reversed.
+	controls whether floating point comparisons can be reversed for
+	conditional moves that involve IEEE comparison functions.  The IEEE
+	comparison functions are required to not trap on signaling NaNs.  If
+	this is a jump, we allow the comparison to  	be reversed.
 	(rs6000_emit_sCOND): Adjust rs6000_reverse_condition call to not allow
 	reversing floating point comparisons that involve IEEE comparison
 	functions.
 	* config/rs6000/rs6000.h (REVERSE_CONDITION): Likewise.
-	* config/rs6000/rs6000.md (mov<SFDF:mode><SFDF2:mode>cc_invert_p9):
-	Delete insn.
+	* config/rs6000/rs6000.md (mov<SFDF:mode><SFDF2:mode>cc_p9): Add support
+	to convert NE into EQ by swapping the true/false values during the
+	split.
+	(mov<SFDF:mode><SFDF2:mode>cc_invert_p9): Delete insn.
+	(fpmask<mode>, SFDF iterator): Add support for LT and LE.
+	(mov<mode>cc_p10): Add support to convert NE into EQ by swapping the
+	true/false values during the split.
 	(mov<mode>cc_invert_p10): Delete insn.
-	(reverse_branch_comparison): Name insn.  Adjust rs6000_reverse_condition
-	calls.
+	(fpmask<mode>, IEEE128 iterator): Add support for LT and LE.
+	(reverse_branch_comparison): Name the insn.  Adjust the
+	rs6000_reverse_condition calls.
 
 gcc/testsuite/
 
@@ -110,6 +116,7 @@ gcc/testsuite/
 	* gcc.target/powerpc/pr118541-1.c: New test.
 	* gcc.target/powerpc/pr118541-2.c: Likewise.
 
+==================== Branch work216-bugs, patch #111 was reverted  ====================
 ==================== Branch work216-bugs, patch #110 was reverted  ====================
 
 ==================== Branch work216-bugs, patch #102  ====================
