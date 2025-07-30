@@ -1804,11 +1804,17 @@ extern scalar_int_mode rs6000_pmode;
 
 /* Can the condition code MODE be safely reversed?  This is safe in
    all cases on this port, because at present it doesn't use the
-   trapping FP comparisons (fcmpo).  */
+   trapping FP comparisons (fcmpo).
+
+   However, this is not safe for IEEE comparisons (i.e. isgreater, etc.)
+   starting with the power9 because ifcvt.cc will want to create a fp cmove,
+   and the x{s,v}cmp{eq,gt,ge}{dp,qp} instructions will trap if one of the
+   arguments is a signalling NaN.  */
 #define REVERSIBLE_CC_MODE(MODE) 1
 
 /* Given a condition code and a mode, return the inverse condition.  */
-#define REVERSE_CONDITION(CODE, MODE) rs6000_reverse_condition (MODE, CODE)
+#define REVERSE_CONDITION(CODE, MODE)					\
+  rs6000_reverse_condition (MODE, CODE, cond_reverse_fp::no_reverse)
 
 
 /* Target cpu costs.  */

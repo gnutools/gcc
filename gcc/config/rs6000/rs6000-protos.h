@@ -114,8 +114,30 @@ extern const char *rs6000_sibcall_template (rtx *, unsigned int);
 extern const char *rs6000_indirect_call_template (rtx *, unsigned int);
 extern const char *rs6000_indirect_sibcall_template (rtx *, unsigned int);
 extern const char *rs6000_pltseq_template (rtx *, int);
+
+/* Whether we can reverse the sense of a floating point comparison.
+
+   If the comparison involves UNEQ, LTGT, UNGT, UNGE, UNLT, and UNLE
+   comparisons we cannot generate instructions that could generate a trap with
+   a signaling NaN.  These comprisons are created using the floating point
+   relational tests (like isgreater, isless, etc.), and these comparisons must
+   not trap on any value like a signaling NaN.  The fpmask instructions
+   (XSCMPEQDP, XSCMPGTQP, etc.) that do the comparison and produce 1's or 0's
+   to allow the XXSEL instruction to do a conditional move.
+
+   However, if we are not generating fpmask instructions, we have to allow
+   doing the reversals.  We need this reversal to handle condition jumps that
+   are too far away to jump to directly and we have to reverse the jump, so we
+   can generate a jump around an unconditional jump.  */
+
+enum class cond_reverse_fp {
+  reverse_ok,
+  no_reverse
+};
+
 extern enum rtx_code rs6000_reverse_condition (machine_mode,
-					       enum rtx_code);
+					       enum rtx_code,
+					       enum cond_reverse_fp);
 extern rtx rs6000_emit_eqne (machine_mode, rtx, rtx, rtx);
 extern rtx rs6000_emit_fp_cror (rtx_code, machine_mode, rtx);
 extern void rs6000_emit_sCOND (machine_mode, rtx[]);
