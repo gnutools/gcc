@@ -142,5 +142,8 @@ void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
 				   tree [GFC_MAX_DIMENSIONS],
 				   tree [GFC_MAX_DIMENSIONS], int, bool, bool,
 				   bool shift_bounds = true);
+void gfc_set_descriptor_for_assign_realloc (stmtblock_t *, gfc_loopinfo *,
+					    gfc_expr *, gfc_expr *, tree, tree,
+					    tree, tree, bool);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

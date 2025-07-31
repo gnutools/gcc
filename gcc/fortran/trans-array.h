@@ -71,6 +71,7 @@ tree gfc_allocate_pdt_comp (gfc_symbol *, tree, int, gfc_actual_arglist *);
 tree gfc_deallocate_pdt_comp (gfc_symbol *, tree, int);
 tree gfc_check_pdt_dummy (gfc_symbol *, tree, int, gfc_actual_arglist *);
 
+void gfc_update_reallocated_descriptor (stmtblock_t *, gfc_loopinfo *);
 tree gfc_alloc_allocatable_for_assignment (gfc_loopinfo*, gfc_expr*, gfc_expr*);
 
 /* Add initialization for class descriptors  */
