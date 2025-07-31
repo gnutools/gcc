@@ -2425,3 +2425,57 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
     gfc_conv_descriptor_dtype_set (block, desc,
 				   gfc_get_dtype (TREE_TYPE (desc)));
 }
+
+
+tree
+gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
+			      gfc_array_spec *as,
+			      gfc_actual_arglist *pdt_param_list)
+{
+  gfc_se tse;
+  tree size = gfc_index_one_node;
+  tree offset = gfc_index_zero_node;
+  gfc_expr *e;
+
+  /* This chunk takes the expressions for 'lower' and 'upper'
+     in the arrayspec and substitutes in the expressions for
+     the parameters from 'pdt_param_list'. The descriptor
+     fields can then be filled from the values so obtained.  */
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (descr)));
+  for (int i = 0; i < as->rank; i++)
+    {
+      gfc_init_se (&tse, NULL);
+      e = gfc_copy_expr (as->lower[i]);
+      gfc_insert_parameter_exprs (e, pdt_param_list);
+      gfc_conv_expr_type (&tse, e, gfc_array_index_type);
+      gfc_free_expr (e);
+      tree lower = tse.expr;
+      gfc_add_block_to_block (block, &tse.pre);
+      gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[i], lower);
+      gfc_add_block_to_block (block, &tse.post);
+      e = gfc_copy_expr (as->upper[i]);
+      gfc_insert_parameter_exprs (e, pdt_param_list);
+      gfc_conv_expr_type (&tse, e, gfc_array_index_type);
+      gfc_free_expr (e);
+      tree upper = tse.expr;
+      gfc_add_block_to_block (block, &tse.pre);
+      gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[i], upper);
+      gfc_add_block_to_block (block, &tse.post);
+      gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[i], size);
+      size = gfc_evaluate_now (size, block);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, size);
+      offset = gfc_evaluate_now (offset, block);
+      tree tmp = fold_build2_loc (input_location, MINUS_EXPR,
+				  gfc_array_index_type, upper, lower);
+      tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+			     tmp, gfc_index_one_node);
+      size = fold_build2_loc (input_location, MULT_EXPR,
+			      gfc_array_index_type, size, tmp);
+    }
+  gfc_conv_descriptor_offset_set (block, descr, offset);
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype (TREE_TYPE (descr)));
+
+  return size;
+}

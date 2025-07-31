@@ -145,5 +145,7 @@ void gfc_set_temporary_descriptor (stmtblock_t *, tree, tree, tree, tree,
 void gfc_set_descriptor_for_assign_realloc (stmtblock_t *, gfc_loopinfo *,
 					    gfc_expr *, gfc_expr *, tree, tree,
 					    tree, tree, bool);
+tree gfc_set_pdt_array_descriptor (stmtblock_t *, tree, gfc_array_spec *,
+				   gfc_actual_arglist *);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
