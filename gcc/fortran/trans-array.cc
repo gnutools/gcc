@@ -10169,24 +10169,21 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
 
 	  if (c->attr.pdt_array)
 	    {
-	      tree nelts = gfc_set_pdt_array_descriptor (&fnblock, comp, c->as,
-							 pdt_param_list);
-
+	      tree elt_size;
 	      if (c->ts.type == BT_CLASS)
 		{
 		  tmp = gfc_get_vptr_from_expr (comp);
 		  if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 		    tmp = build_fold_indirect_ref_loc (input_location, tmp);
-		  tmp = gfc_vptr_size_get (tmp);
+		  elt_size = gfc_vptr_size_get (tmp);
 		}
 	      else
-		tmp = TYPE_SIZE_UNIT (gfc_get_element_type (ctype));
-	      tmp = fold_convert (gfc_array_index_type, tmp);
-	      tree size = fold_build2_loc (input_location, MULT_EXPR,
-					   gfc_array_index_type, nelts, tmp);
-	      size = gfc_evaluate_now (size, &fnblock);
-	      tmp = gfc_call_malloc (&fnblock, NULL, size);
-	      gfc_conv_descriptor_data_set (&fnblock, comp, tmp);
+		elt_size = TYPE_SIZE_UNIT (gfc_get_element_type (ctype));
+	      elt_size = fold_convert (gfc_array_index_type, elt_size);
+
+	      tree size = gfc_set_pdt_array_descriptor (&fnblock, comp, c->as,
+							pdt_param_list,
+							elt_size);
 
 	      if (c->initializer && c->initializer->rank)
 		{

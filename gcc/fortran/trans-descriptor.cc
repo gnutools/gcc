@@ -2430,7 +2430,7 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
 tree
 gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
 			      gfc_array_spec *as,
-			      gfc_actual_arglist *pdt_param_list)
+			      gfc_actual_arglist *pdt_param_list, tree elt_size)
 {
   gfc_se tse;
   tree size = gfc_index_one_node;
@@ -2476,6 +2476,12 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
   gfc_conv_descriptor_offset_set (block, descr, offset);
   gfc_conv_descriptor_dtype_set (block, descr,
 				 gfc_get_dtype (TREE_TYPE (descr)));
+
+  size = fold_build2_loc (input_location, MULT_EXPR,
+			  gfc_array_index_type, size, elt_size);
+  size = gfc_evaluate_now (size, block);
+  gfc_conv_descriptor_data_set (block, descr,
+				gfc_call_malloc (block, NULL, size));
 
   return size;
 }
