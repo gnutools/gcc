@@ -760,31 +760,14 @@ gfc_get_vptr_from_expr (tree expr)
   return NULL_TREE;
 }
 
+
 void
 gfc_class_array_data_assign (stmtblock_t *block, tree lhs_desc, tree rhs_desc,
 			     bool lhs_type)
 {
-  tree tmp, tmp2, type;
-
-  gfc_conv_descriptor_data_set (block, lhs_desc,
-				gfc_conv_descriptor_data_get (rhs_desc));
-  gfc_conv_descriptor_offset_set (block, lhs_desc,
-				  gfc_conv_descriptor_offset_get (rhs_desc));
-
-  gfc_conv_descriptor_dtype_set (block, lhs_desc,
-				 gfc_conv_descriptor_dtype_get (rhs_desc));
-
-  /* Assign the dimension as range-ref.  */
-  tmp = gfc_get_descriptor_dimension (lhs_desc);
-  tmp2 = gfc_get_descriptor_dimension (rhs_desc);
-
-  type = lhs_type ? TREE_TYPE (tmp) : TREE_TYPE (tmp2);
-  tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
-		    gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
-		     gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  gfc_add_modify (block, tmp, tmp2);
+  gfc_copy_descriptor (block, lhs_desc, rhs_desc, lhs_type);
 }
+
 
 /* Takes a derived type expression and returns the address of a temporary
    class object of the 'declared' type.  If opt_vptr_src is not NULL, this is

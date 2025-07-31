@@ -1306,6 +1306,30 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
 
 
 void
+gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, bool lhs_type)
+{
+  gfc_conv_descriptor_data_set (block, dest,
+				gfc_conv_descriptor_data_get (src));
+  gfc_conv_descriptor_offset_set (block, dest,
+				  gfc_conv_descriptor_offset_get (src));
+
+  gfc_conv_descriptor_dtype_set (block, dest,
+				 gfc_conv_descriptor_dtype_get (src));
+
+  /* Assign the dimension as range-ref.  */
+  tree tmp = gfc_get_descriptor_dimension (dest);
+  tree tmp2 = gfc_get_descriptor_dimension (src);
+
+  tree type = lhs_type ? TREE_TYPE (tmp) : TREE_TYPE (tmp2);
+  tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
+		    gfc_index_zero_node, NULL_TREE, NULL_TREE);
+  tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
+		     gfc_index_zero_node, NULL_TREE, NULL_TREE);
+  gfc_add_modify (block, tmp, tmp2);
+}
+
+
+void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, tree ptr,
 		     int rank, gfc_ss *ss)
 {
