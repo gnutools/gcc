@@ -2524,3 +2524,286 @@ gfc_grow_array (stmtblock_t * pblock, tree desc, tree extra)
 }
 
 
+/* Fills in an array descriptor, and returns the size of the array.
+   The size will be a simple_val, ie a variable or a constant.  Also
+   calculates the offset of the base.  The pointer argument overflow,
+   which should be of integer type, will increase in value if overflow
+   occurs during the size calculation.  Returns the size of the array.
+   {
+    stride = 1;
+    offset = 0;
+    for (n = 0; n < rank; n++)
+      {
+	a.lbound[n] = specified_lower_bound;
+	offset = offset + a.lbond[n] * stride;
+	size = 1 - lbound;
+	a.ubound[n] = specified_upper_bound;
+	a.stride[n] = stride;
+	size = size >= 0 ? ubound + size : 0; //size = ubound + 1 - lbound
+	overflow += size == 0 ? 0: (MAX/size < stride ? 1: 0);
+	stride = stride * size;
+      }
+    for (n = rank; n < rank+corank; n++)
+      (Set lcobound/ucobound as above.)
+    element_size = sizeof (array element);
+    if (!rank)
+      return element_size
+    stride = (size_t) stride;
+    overflow += element_size == 0 ? 0: (MAX/element_size < stride ? 1: 0);
+    stride = stride * element_size;
+    return (stride);
+   }  */
+/*GCC ARRAYS*/
+
+tree
+gfc_descriptor_init_count (tree descriptor, int rank, int corank,
+			   gfc_expr ** lower, gfc_expr ** upper,
+			   stmtblock_t * pblock, stmtblock_t * descriptor_block,
+			   tree * overflow, tree expr3_elem_size,
+			   gfc_expr *expr3, tree expr3_desc,
+			   bool e3_has_nodescriptor, gfc_expr *expr,
+			   tree element_size, bool explicit_ts,
+			   tree *empty_array_cond)
+{
+  tree type;
+  tree tmp;
+  tree size;
+  tree offset;
+  tree stride;
+  tree cond;
+  gfc_expr *ubound;
+  gfc_se se;
+  int n;
+
+  type = TREE_TYPE (descriptor);
+
+  stride = gfc_index_one_node;
+  offset = gfc_index_zero_node;
+
+  /* Set the dtype before the alloc, because registration of coarrays needs
+     it initialized.  */
+  if (expr->ts.type == BT_CHARACTER
+      && expr->ts.deferred
+      && VAR_P (expr->ts.u.cl->backend_decl))
+    {
+      type = gfc_typenode_for_spec (&expr->ts);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor,
+				     gfc_get_dtype_rank_type (rank, type));
+    }
+  else if (expr->ts.type == BT_CHARACTER
+	   && expr->ts.deferred
+	   && TREE_CODE (descriptor) == COMPONENT_REF)
+    {
+      /* Deferred character components have their string length tucked away
+	 in a hidden field of the derived type. Obtain that and use it to
+	 set the dtype. The charlen backend decl is zero because the field
+	 type is zero length.  */
+      gfc_ref *ref;
+      tmp = NULL_TREE;
+      for (ref = expr->ref; ref; ref = ref->next)
+	if (ref->type == REF_COMPONENT
+	    && gfc_deferred_strlen (ref->u.c.component, &tmp))
+	  break;
+      gcc_assert (tmp != NULL_TREE);
+      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
+			     TREE_OPERAND (descriptor, 0), tmp, NULL_TREE);
+      tmp = fold_convert (gfc_charlen_type_node, tmp);
+      type = gfc_get_character_type_len (expr->ts.kind, tmp);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor,
+				     gfc_get_dtype_rank_type (rank, type));
+    }
+  else if (expr3_desc && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (expr3_desc)))
+    gfc_conv_descriptor_dtype_set (pblock, descriptor,
+				   gfc_conv_descriptor_dtype_get (expr3_desc));
+  else if (expr->ts.type == BT_CLASS && !explicit_ts
+	   && expr3 && expr3->ts.type != BT_CLASS
+	   && expr3_elem_size != NULL_TREE && expr3_desc == NULL_TREE)
+    gfc_conv_descriptor_elem_len_set (pblock, descriptor, expr3_elem_size);
+  else
+    gfc_conv_descriptor_dtype_set (pblock, descriptor, gfc_get_dtype (type));
+
+  tree empty_cond = logical_false_node;
+
+  for (n = 0; n < rank; n++)
+    {
+      tree conv_lbound;
+      tree conv_ubound;
+
+      /* We have 3 possibilities for determining the size of the array:
+	 lower == NULL    => lbound = 1, ubound = upper[n]
+	 upper[n] = NULL  => lbound = 1, ubound = lower[n]
+	 upper[n] != NULL => lbound = lower[n], ubound = upper[n]  */
+      ubound = upper[n];
+
+      /* Set lower bound.  */
+      gfc_init_se (&se, NULL);
+      if (expr3_desc != NULL_TREE)
+	{
+	  if (e3_has_nodescriptor)
+	    /* The lbound of nondescriptor arrays like array constructors,
+	       nonallocatable/nonpointer function results/variables,
+	       start at zero, but when allocating it, the standard expects
+	       the array to start at one.  */
+	    se.expr = gfc_index_one_node;
+	  else
+	    se.expr = gfc_conv_descriptor_lbound_get (expr3_desc,
+						      gfc_rank_cst[n]);
+	}
+      else if (lower == NULL)
+	se.expr = gfc_index_one_node;
+      else
+	{
+	  gcc_assert (lower[n]);
+	  if (ubound)
+	    {
+	      gfc_conv_expr_type (&se, lower[n], gfc_array_index_type);
+	      gfc_add_block_to_block (pblock, &se.pre);
+	    }
+	  else
+	    {
+	      se.expr = gfc_index_one_node;
+	      ubound = lower[n];
+	    }
+	}
+      gfc_conv_descriptor_lbound_set (descriptor_block, descriptor,
+				      gfc_rank_cst[n], se.expr);
+      conv_lbound = se.expr;
+
+      /* Work out the offset for this component.  */
+      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     se.expr, stride);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, tmp);
+
+      /* Set upper bound.  */
+      gfc_init_se (&se, NULL);
+      if (expr3_desc != NULL_TREE)
+	{
+	  if (e3_has_nodescriptor)
+	    {
+	      /* The lbound of nondescriptor arrays like array constructors,
+		 nonallocatable/nonpointer function results/variables,
+		 start at zero, but when allocating it, the standard expects
+		 the array to start at one.  Therefore fix the upper bound to be
+		 (desc.ubound - desc.lbound) + 1.  */
+	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
+				     gfc_array_index_type,
+				     gfc_conv_descriptor_ubound_get (
+				       expr3_desc, gfc_rank_cst[n]),
+				     gfc_conv_descriptor_lbound_get (
+				       expr3_desc, gfc_rank_cst[n]));
+	      tmp = fold_build2_loc (input_location, PLUS_EXPR,
+				     gfc_array_index_type, tmp,
+				     gfc_index_one_node);
+	      se.expr = gfc_evaluate_now (tmp, pblock);
+	    }
+	  else
+	    se.expr = gfc_conv_descriptor_ubound_get (expr3_desc,
+						      gfc_rank_cst[n]);
+	}
+      else
+	{
+	  gcc_assert (ubound);
+	  gfc_conv_expr_type (&se, ubound, gfc_array_index_type);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  if (ubound->expr_type == EXPR_FUNCTION)
+	    se.expr = gfc_evaluate_now (se.expr, pblock);
+	}
+      gfc_conv_descriptor_ubound_set (descriptor_block, descriptor,
+				      gfc_rank_cst[n], se.expr);
+      conv_ubound = se.expr;
+
+      /* Store the stride.  */
+      gfc_conv_descriptor_stride_set (descriptor_block, descriptor,
+				      gfc_rank_cst[n], stride);
+
+      /* Calculate size and check whether extent is negative.  */
+      size = gfc_conv_array_extent_dim (conv_lbound, conv_ubound, &empty_cond);
+      size = gfc_evaluate_now (size, pblock);
+
+      /* Check whether multiplying the stride by the number of
+	 elements in this dimension would overflow. We must also check
+	 whether the current dimension has zero size in order to avoid
+	 division by zero.
+      */
+      tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
+			     gfc_array_index_type,
+			     fold_convert (gfc_array_index_type,
+					   TYPE_MAX_VALUE (gfc_array_index_type)),
+					   size);
+      cond = gfc_unlikely (fold_build2_loc (input_location, LT_EXPR,
+					    logical_type_node, tmp, stride),
+			   PRED_FORTRAN_OVERFLOW);
+      tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
+			     integer_one_node, integer_zero_node);
+      cond = gfc_unlikely (fold_build2_loc (input_location, EQ_EXPR,
+					    logical_type_node, size,
+					    gfc_index_zero_node),
+			   PRED_FORTRAN_SIZE_ZERO);
+      tmp = fold_build3_loc (input_location, COND_EXPR, integer_type_node, cond,
+			     integer_zero_node, tmp);
+      tmp = fold_build2_loc (input_location, PLUS_EXPR, integer_type_node,
+			     *overflow, tmp);
+      *overflow = gfc_evaluate_now (tmp, pblock);
+
+      /* Multiply the stride by the number of elements in this dimension.  */
+      stride = fold_build2_loc (input_location, MULT_EXPR,
+				gfc_array_index_type, stride, size);
+      stride = gfc_evaluate_now (stride, pblock);
+    }
+
+  *empty_array_cond = empty_cond;
+
+  for (n = rank; n < rank + corank; n++)
+    {
+      ubound = upper[n];
+
+      /* Set lower bound.  */
+      gfc_init_se (&se, NULL);
+      if (lower == NULL || lower[n] == NULL)
+	{
+	  gcc_assert (n == rank + corank - 1);
+	  se.expr = gfc_index_one_node;
+	}
+      else
+	{
+	  if (ubound || n == rank + corank - 1)
+	    {
+	      gfc_conv_expr_type (&se, lower[n], gfc_array_index_type);
+	      gfc_add_block_to_block (pblock, &se.pre);
+	    }
+	  else
+	    {
+	      se.expr = gfc_index_one_node;
+	      ubound = lower[n];
+	    }
+	}
+      gfc_conv_descriptor_lbound_set (descriptor_block, descriptor,
+				      gfc_rank_cst[n], se.expr);
+
+      if (n < rank + corank - 1)
+	{
+	  gfc_init_se (&se, NULL);
+	  gcc_assert (ubound);
+	  gfc_conv_expr_type (&se, ubound, gfc_array_index_type);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  gfc_conv_descriptor_ubound_set (descriptor_block, descriptor,
+					  gfc_rank_cst[n], se.expr);
+	}
+    }
+
+  /* The stride is the number of elements in the array, so multiply by the
+     size of an element to get the total size.  */
+
+  if (rank == 0)
+    return gfc_index_one_node;
+
+  /* Update the array descriptor with the offset and the span.  */
+  offset = gfc_evaluate_now (offset, pblock);
+  gfc_conv_descriptor_offset_set (descriptor_block, descriptor, offset);
+  tmp = fold_convert (gfc_array_index_type, element_size);
+  gfc_conv_descriptor_span_set (descriptor_block, descriptor, tmp);
+
+  return stride;
+}
+
