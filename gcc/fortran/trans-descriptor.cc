@@ -2807,3 +2807,20 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
   return stride;
 }
 
+
+void
+gfc_set_empty_descriptor_bounds (stmtblock_t *block, tree descr, int rank)
+{
+  for (int n = 0; n < rank; n++)
+    {
+      gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[n],
+				      gfc_index_one_node);
+      gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[n],
+				      gfc_index_zero_node);
+      gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[n],
+				      gfc_index_zero_node);
+    }
+
+  gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
+}
+

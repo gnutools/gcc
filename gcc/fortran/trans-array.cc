@@ -10431,7 +10431,6 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   stmtblock_t realloc_block;
   stmtblock_t alloc_block;
   stmtblock_t fblock;
-  stmtblock_t loop_pre_block;
   gfc_ref *ref;
   gfc_ss *rss;
   gfc_ss *lss;
@@ -10530,22 +10529,9 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
       tree guard = gfc_create_var (logical_type_node, "unallocated_init_guard");
       gfc_add_modify (&unalloc_init_block, guard, logical_false_node);
 
+      stmtblock_t loop_pre_block;
       gfc_start_block (&loop_pre_block);
-      for (n = 0; n < expr1->rank; n++)
-	{
-	  gfc_conv_descriptor_lbound_set (&loop_pre_block, desc,
-					  gfc_rank_cst[n],
-					  gfc_index_one_node);
-	  gfc_conv_descriptor_ubound_set (&loop_pre_block, desc,
-					  gfc_rank_cst[n],
-					  gfc_index_zero_node);
-	  gfc_conv_descriptor_stride_set (&loop_pre_block, desc,
-					  gfc_rank_cst[n],
-					  gfc_index_zero_node);
-	}
-
-      gfc_conv_descriptor_offset_set (&loop_pre_block, desc,
-				      gfc_index_zero_node);
+      gfc_set_empty_descriptor_bounds (&loop_pre_block, desc, expr1->rank);
 
       tmp = fold_build2_loc (input_location, EQ_EXPR,
 			     logical_type_node, array1,
