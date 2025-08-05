@@ -431,7 +431,7 @@ I have built GCC with the patches in this patch set applied on both little and
 big endian PowerPC systems and there were no regressions.  Can I apply
 this patch to the trunk?
 
-2025-07-30  Michael Meissner  <meissner@linux.ibm.com>
+2025-08-04  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
