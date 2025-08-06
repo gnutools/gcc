@@ -795,3 +795,10 @@ gfc_init_descriptor_result (stmtblock_t *block, tree descr)
 {
   gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
 }
+
+
+void
+gfc_init_absent_descriptor (stmtblock_t *block, tree descr)
+{
+  gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
+}
