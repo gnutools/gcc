@@ -304,12 +304,17 @@ gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 
 
 static tree
+get_dtype_comp (tree desc, unsigned field_idx, tree type = NULL_TREE)
+{
+  tree dtype_ref = get_descriptor_dtype (desc);
+  return get_ref_comp (dtype_ref, field_idx, type);
+}
+
+
+static tree
 get_descriptor_rank (tree desc)
 {
-  tree dtype;
-
-  dtype = get_descriptor_dtype (desc);
-  return get_ref_comp (dtype, GFC_DTYPE_RANK, signed_char_type_node);
+  return get_dtype_comp (desc, GFC_DTYPE_RANK, signed_char_type_node);
 }
 
 tree
@@ -336,10 +341,7 @@ gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, int value)
 static tree
 get_descriptor_version (tree desc)
 {
-  tree dtype;
-
-  dtype = get_descriptor_dtype (desc);
-  return get_ref_comp (dtype, GFC_DTYPE_VERSION, integer_type_node);
+  return get_dtype_comp (desc, GFC_DTYPE_VERSION, integer_type_node);
 }
 
 tree
@@ -363,10 +365,7 @@ gfc_conv_descriptor_version_set (stmtblock_t *block, tree desc, tree value)
 static tree
 get_descriptor_elem_len (tree desc)
 {
-  tree dtype;
-
-  dtype = get_descriptor_dtype (desc);
-  return get_ref_comp (dtype, GFC_DTYPE_ELEM_LEN, size_type_node);
+  return get_dtype_comp (desc, GFC_DTYPE_ELEM_LEN, size_type_node);
 }
 
 tree
@@ -388,10 +387,7 @@ gfc_conv_descriptor_elem_len_set (stmtblock_t *block, tree desc, tree value)
 static tree
 get_descriptor_type (tree desc)
 {
-  tree dtype;
-
-  dtype = get_descriptor_dtype (desc);
-  return get_ref_comp (dtype, GFC_DTYPE_TYPE, signed_char_type_node);
+  return get_dtype_comp (desc, GFC_DTYPE_TYPE, signed_char_type_node);
 }
 
 tree
