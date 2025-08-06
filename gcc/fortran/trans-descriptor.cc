@@ -95,6 +95,14 @@ get_descr_comp (tree desc, unsigned field_idx, tree type = NULL_TREE)
   return get_ref_comp (desc, field_idx, type);
 }
 
+void
+set_value (stmtblock_t *block, tree ref, tree value)
+{
+  location_t loc = input_location;
+  gfc_add_modify_loc (loc, block, ref,
+		      fold_convert_loc (loc, TREE_TYPE (ref), value));
+}
+
 
 /* Return a reference to the data field of the array descriptor DESC.  */
 
@@ -124,10 +132,7 @@ gfc_conv_descriptor_data_get (tree desc)
 void
 gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree field = conv_descriptor_data (desc);
-  gfc_add_modify_loc (loc, block, field,
-		      fold_convert_loc (loc, TREE_TYPE (field), value));
+  set_value (block, conv_descriptor_data (desc), value);
 }
 
 
@@ -146,10 +151,7 @@ gfc_conv_descriptor_offset_get (tree desc)
 void
 gfc_conv_descriptor_offset_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_offset (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_offset (desc), value);
 }
 
 
@@ -175,10 +177,7 @@ gfc_conv_descriptor_dtype_get (tree desc)
 void
 gfc_conv_descriptor_dtype_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_dtype (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_dtype (desc), value);
 }
 
 
@@ -197,10 +196,7 @@ gfc_conv_descriptor_span_get (tree desc)
 void
 gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = gfc_conv_descriptor_span (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, gfc_conv_descriptor_span (desc), value);
 }
 
 
@@ -233,10 +229,7 @@ gfc_conv_descriptor_rank_get (tree desc)
 void
 gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_rank (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_rank (desc), value);
 }
 
 /* Add code to BLOCK setting to VALUE the rank of the array descriptor DESC.  */
@@ -269,10 +262,7 @@ gfc_conv_descriptor_version_get (tree desc)
 void
 gfc_conv_descriptor_version_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_version (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_version (desc), value);
 }
 
 
@@ -298,10 +288,7 @@ gfc_conv_descriptor_elem_len_get (tree desc)
 void
 gfc_conv_descriptor_elem_len_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_elem_len (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_elem_len (desc), value);
 }
 
 
@@ -327,10 +314,7 @@ gfc_conv_descriptor_type_get (tree desc)
 void
 gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_type (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_type (desc), value);
 }
 
 /* Add code to BLOCK setting to VALUE the type discriminator of the array
@@ -425,10 +409,7 @@ void
 gfc_conv_descriptor_dimension_set (stmtblock_t *block, tree desc, tree dim,
 				   tree value)
 {
-  location_t loc = input_location;
-  tree t = conv_descriptor_dimension (desc, dim);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, conv_descriptor_dimension (desc, dim), value);
 }
 
 /* Add code to BLOCK setting to VALUE the array access information of the
@@ -459,10 +440,7 @@ gfc_conv_descriptor_token (tree desc)
 void
 gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value)
 {
-  location_t loc = input_location;
-  tree t = gfc_conv_descriptor_token (desc);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, gfc_conv_descriptor_token (desc), value);
 }
 
 
@@ -511,10 +489,7 @@ void
 gfc_conv_descriptor_stride_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  location_t loc = input_location;
-  tree t = get_descriptor_stride (desc, dim);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, get_descriptor_stride (desc, dim), value);
 }
 
 
@@ -543,10 +518,7 @@ void
 gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  location_t loc = input_location;
-  tree t = get_descriptor_lbound (desc, dim);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, get_descriptor_lbound (desc, dim), value);
 }
 
 
@@ -575,10 +547,7 @@ void
 gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  location_t loc = input_location;
-  tree t = get_descriptor_ubound (desc, dim);
-  gfc_add_modify_loc (loc, block, t,
-		      fold_convert_loc (loc, TREE_TYPE (t), value));
+  set_value (block, get_descriptor_ubound (desc, dim), value);
 }
 
 
