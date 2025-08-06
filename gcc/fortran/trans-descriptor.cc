@@ -843,13 +843,14 @@ gfc_init_static_descriptor (tree descr)
 
 
 void
-gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
+gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, gfc_expr *expr, tree descr)
 {
   symbol_attribute attr = gfc_symbol_attr (sym);
 
   /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
      pointers when -fcheck=pointer is specified.  */
   if (attr.allocatable
+      || attr.optional
       || (attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER)))
     {
       gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
@@ -863,8 +864,24 @@ gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
   else
     as = sym->as;
 
-  gcc_assert (as && as->rank >= 0);
+  int rank;
+  if (as == nullptr)
+    rank = 0;
+  else if (as->type != AS_ASSUMED_RANK)
+    rank = as->rank;
+  else if (expr)
+    rank = expr->rank;
+  else
+    rank = -1;
+
   tree etype = gfc_get_element_type (TREE_TYPE (descr));
   gfc_conv_descriptor_dtype_set (block, descr,
-				 gfc_get_dtype_rank_type (as->rank, etype));
+				 gfc_get_dtype_rank_type (rank, etype));
+}
+
+
+void
+gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
+{
+  return gfc_init_descriptor_variable (block, sym, nullptr, descr);
 }
