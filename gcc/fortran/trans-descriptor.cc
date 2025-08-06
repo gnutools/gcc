@@ -65,10 +65,12 @@ along with GCC; see the file COPYING3.  If not see
 /* Get FIELD_IDX'th field in struct TYPE.  */
 
 static tree
-get_type_field (tree type, unsigned field_idx)
+get_type_field (tree type, unsigned field_idx, tree field_type = NULL_TREE)
 {
   tree field = gfc_advance_chain (TYPE_FIELDS (type), field_idx);
-  gcc_assert (field != NULL_TREE);
+  gcc_assert (field != NULL_TREE
+	      && (field_type == NULL_TREE
+		  || TREE_TYPE (field) == field_type));
 
   return field;
 }
@@ -79,22 +81,19 @@ get_type_field (tree type, unsigned field_idx)
 static tree
 get_ref_comp (tree ref, unsigned field_idx, tree type = NULL_TREE)
 {
-  tree field = get_type_field (TREE_TYPE (ref), field_idx);
-  gcc_assert (field != NULL_TREE
-	      && (type == NULL_TREE
-		  || TREE_TYPE (field) == type));
-
+  tree field = get_type_field (TREE_TYPE (ref), field_idx, type);
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
 			  ref, field, NULL_TREE);
 }
 
 
 static tree
-gfc_get_descriptor_field (tree desc, unsigned field_idx)
+gfc_get_descriptor_field (tree desc, unsigned field_idx,
+			  tree type = NULL_TREE)
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)));
 
-  return get_ref_comp (desc, field_idx);
+  return get_ref_comp (desc, field_idx, type);
 }
 
 
@@ -134,9 +133,7 @@ gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value)
 static tree
 conv_descriptor_offset (tree desc)
 {
-  tree field = gfc_get_descriptor_field (desc, OFFSET_FIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
+  return gfc_get_descriptor_field (desc, OFFSET_FIELD, gfc_array_index_type);
 }
 
 tree
@@ -158,9 +155,7 @@ gfc_conv_descriptor_offset_set (stmtblock_t *block, tree desc, tree value)
 static tree
 conv_descriptor_dtype (tree desc)
 {
-  tree field = gfc_get_descriptor_field (desc, DTYPE_FIELD);
-  gcc_assert (TREE_TYPE (field) == get_dtype_type_node ());
-  return field;
+  return gfc_get_descriptor_field (desc, DTYPE_FIELD, get_dtype_type_node ());
 }
 
 /* Return the value of the dtype field of the array descriptor DESC.  */
@@ -187,9 +182,7 @@ gfc_conv_descriptor_dtype_set (stmtblock_t *block, tree desc, tree value)
 static tree
 gfc_conv_descriptor_span (tree desc)
 {
-  tree field = gfc_get_descriptor_field (desc, SPAN_FIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
+  return gfc_get_descriptor_field (desc, SPAN_FIELD, gfc_array_index_type);
 }
 
 tree
@@ -349,10 +342,8 @@ gfc_conv_descriptor_type_set (stmtblock_t *block, tree desc, int value)
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
 
   tree dtype = get_type_field (type, DTYPE_FIELD);
-  gcc_assert (dtype != NULL_TREE);
 
   tree field = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_TYPE);
-  gcc_assert (field != NULL_TREE);
 
   tree type_value = build_int_cst (TREE_TYPE (field), value);
   gfc_conv_descriptor_type_set (block, desc, type_value);
