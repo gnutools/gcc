@@ -512,18 +512,17 @@ gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value)
 
 
 static tree
-gfc_conv_descriptor_subfield (tree desc, tree dim, unsigned field_idx)
+get_descr_dim_comp (tree desc, tree dim, unsigned field_idx,
+		    tree type = NULL_TREE)
 {
   tree tmp = get_descriptor_dimension (desc, dim);
-  return get_ref_comp (tmp, field_idx);
+  return get_ref_comp (tmp, field_idx, type);
 }
 
 static tree
 get_descriptor_stride (tree desc, tree dim)
 {
-  tree field = gfc_conv_descriptor_subfield (desc, dim, STRIDE_SUBFIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
+  return get_descr_dim_comp (desc, dim, STRIDE_SUBFIELD, gfc_array_index_type);
 }
 
 tree
@@ -554,9 +553,7 @@ gfc_conv_descriptor_stride_set (stmtblock_t *block, tree desc,
 static tree
 get_descriptor_lbound (tree desc, tree dim)
 {
-  tree field = gfc_conv_descriptor_subfield (desc, dim, LBOUND_SUBFIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
+  return get_descr_dim_comp (desc, dim, LBOUND_SUBFIELD, gfc_array_index_type);
 }
 
 tree
@@ -576,9 +573,7 @@ gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
 static tree
 get_descriptor_ubound (tree desc, tree dim)
 {
-  tree field = gfc_conv_descriptor_subfield (desc, dim, UBOUND_SUBFIELD);
-  gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
-  return field;
+  return get_descr_dim_comp (desc, dim, UBOUND_SUBFIELD, gfc_array_index_type);
 }
 
 tree
