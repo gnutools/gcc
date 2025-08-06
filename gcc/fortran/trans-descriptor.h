@@ -20,9 +20,6 @@ along with GCC; see the file COPYING3.  If not see
 #define GFC_TRANS_DESCRIPTOR_H
 
 /* Build a null array descriptor constructor.  */
-tree gfc_build_null_descriptor (tree);
-tree gfc_build_default_class_descriptor (tree, gfc_typespec &);
-void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, tree);
 void gfc_nullify_descriptor (stmtblock_t *block, gfc_expr *, tree);
 void gfc_clear_descriptor (stmtblock_t *block, gfc_symbol *, gfc_expr *, tree);
 void gfc_set_scalar_null_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc_expr *, tree);
@@ -99,5 +96,6 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 /* Build a null array descriptor constructor.  */
 void gfc_nullify_descriptor (stmtblock_t *block, tree);
 void gfc_init_descriptor_result (stmtblock_t *block, tree descr);
+void gfc_init_absent_descriptor (stmtblock_t *block, tree descr);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
