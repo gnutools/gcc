@@ -91,33 +91,12 @@ gfc_get_character_len_in_bytes (tree type)
 }
 
 
-/* Convert a scalar to an array descriptor. To be used for assumed-rank
-   arrays.  */
-
-static tree
-get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr)
-{
-  enum gfc_array_kind akind;
-
-  if (attr.pointer)
-    akind = GFC_ARRAY_POINTER_CONT;
-  else if (attr.allocatable)
-    akind = GFC_ARRAY_ALLOCATABLE;
-  else
-    akind = GFC_ARRAY_ASSUMED_SHAPE_CONT;
-
-  if (POINTER_TYPE_P (TREE_TYPE (scalar)))
-    scalar = TREE_TYPE (scalar);
-  return gfc_get_array_type_bounds (TREE_TYPE (scalar), 0, 0, NULL, NULL, 1,
-				    akind, !(attr.pointer || attr.target));
-}
-
 tree
 gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
   tree desc, type, etype;
 
-  type = get_scalar_to_descriptor_type (scalar, attr);
+  type = gfc_get_scalar_to_descriptor_type (scalar, attr);
   etype = TREE_TYPE (scalar);
   desc = gfc_create_var (type, "desc");
   DECL_ARTIFICIAL (desc) = 1;
@@ -924,8 +903,8 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	  if (fsym->ts.u.derived->components->as)
 	    {
 	      tree type;
-	      type = get_scalar_to_descriptor_type (parmse->expr,
-						    gfc_expr_attr (e));
+	      type = gfc_get_scalar_to_descriptor_type (parmse->expr,
+							gfc_expr_attr (e));
 	      gfc_conv_descriptor_dtype_set (&parmse->pre, ctree,
 					     gfc_get_dtype (type));
 	      if (optional)
@@ -1333,8 +1312,8 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
     {
       if (e->rank == 0)
 	{
-	  tree type = get_scalar_to_descriptor_type (parmse->expr,
-						     gfc_expr_attr (e));
+	  tree type = gfc_get_scalar_to_descriptor_type (parmse->expr,
+							 gfc_expr_attr (e));
 	  gfc_conv_descriptor_dtype_set (&block, ctree,
 					 gfc_get_dtype (type));
 
