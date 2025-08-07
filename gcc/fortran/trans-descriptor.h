@@ -25,8 +25,6 @@ void gfc_set_scalar_null_descriptor (stmtblock_t *block, tree, gfc_symbol *, gfc
 void gfc_set_descriptor_with_shape (stmtblock_t *, tree, tree,
 				    gfc_expr *, locus *);
 tree gfc_get_scalar_to_descriptor_type (tree scalar, symbol_attribute attr);
-void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree,
-				     symbol_attribute *, tree = NULL_TREE);
 void gfc_copy_sequence_descriptor (stmtblock_t &, tree, tree, bool);
 void gfc_set_gfc_from_cfi (stmtblock_t *, stmtblock_t *, tree, tree, tree,
 			   gfc_symbol *, bool, bool, bool);
@@ -101,5 +99,7 @@ tree gfc_create_null_actual_descriptor (stmtblock_t *, gfc_typespec *,
 					symbol_attribute, int);
 
 void gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr);
+
+void gfc_set_descriptor_from_scalar_class (stmtblock_t *, tree, tree, gfc_expr *);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */

@@ -933,3 +933,20 @@ gfc_create_null_actual_descriptor (stmtblock_t *block, gfc_typespec *ts,
 
   return desc;
 }
+
+
+void
+gfc_set_descriptor_from_scalar_class (stmtblock_t *block, tree descr,
+				      tree scalar, gfc_expr *scalar_expr)
+{
+  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
+						 gfc_expr_attr (scalar_expr));
+  gfc_conv_descriptor_dtype_set (block, descr,
+				 gfc_get_dtype (type));
+
+  tree tmp = gfc_class_data_get (scalar);
+  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
+    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+
+  gfc_conv_descriptor_data_set (block, descr, tmp);
+}
