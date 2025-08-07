@@ -96,7 +96,7 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
 {
   tree desc, type, etype;
 
-  type = gfc_get_scalar_to_descriptor_type (scalar, attr);
+  type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar), attr);
   etype = TREE_TYPE (scalar);
   desc = gfc_create_var (type, "desc");
   DECL_ARTIFICIAL (desc) = 1;
@@ -903,7 +903,7 @@ gfc_conv_derived_to_class (gfc_se *parmse, gfc_expr *e, gfc_symbol *fsym,
 	  if (fsym->ts.u.derived->components->as)
 	    {
 	      tree type;
-	      type = gfc_get_scalar_to_descriptor_type (parmse->expr,
+	      type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (parmse->expr),
 							gfc_expr_attr (e));
 	      gfc_conv_descriptor_dtype_set (&parmse->pre, ctree,
 					     gfc_get_dtype (type));
@@ -1312,7 +1312,7 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
     {
       if (e->rank == 0)
 	{
-	  tree type = gfc_get_scalar_to_descriptor_type (parmse->expr,
+	  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (parmse->expr),
 							 gfc_expr_attr (e));
 	  gfc_conv_descriptor_dtype_set (&block, ctree,
 					 gfc_get_dtype (type));
