@@ -597,12 +597,11 @@ gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
    unknown cases abort.  */
 
 tree
-gfc_get_dtype_rank_type (int rank, tree etype)
+gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
 {
   tree ptype;
   tree size;
   int n;
-  tree tmp;
   tree dtype;
   tree field;
   vec<constructor_elt, va_gc> *v = NULL;
@@ -666,7 +665,7 @@ gfc_get_dtype_rank_type (int rank, tree etype)
     {
     case BT_CHARACTER:
       gcc_assert (TREE_CODE (ptype) == ARRAY_TYPE);
-      size = gfc_get_character_len_in_bytes (ptype);
+      size = gfc_get_character_len_in_bytes (ptype, length);
       break;
     case BT_VOID:
       gcc_assert (TREE_CODE (ptype) == POINTER_TYPE);
@@ -677,14 +676,12 @@ gfc_get_dtype_rank_type (int rank, tree etype)
       break;
     }
 
-  tree dtype_type_node = get_dtype_type_node ();
-
   gcc_assert (size);
 
   STRIP_NOPS (size);
   size = fold_convert (size_type_node, size);
-  tmp = get_dtype_type_node ();
-  field = gfc_advance_chain (TYPE_FIELDS (tmp),
+  tree dtype_type_node = get_dtype_type_node ();
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
 			     GFC_DTYPE_ELEM_LEN);
   CONSTRUCTOR_APPEND_ELT (v, field,
 			  fold_convert (TREE_TYPE (field), size));
@@ -704,10 +701,18 @@ gfc_get_dtype_rank_type (int rank, tree etype)
   CONSTRUCTOR_APPEND_ELT (v, field,
 			  build_int_cst (TREE_TYPE (field), n));
 
-  dtype = build_constructor (tmp, v);
+  dtype = build_constructor (dtype_type_node, v);
 
   return dtype;
 }
+
+
+tree
+gfc_get_dtype_rank_type (int rank, tree etype)
+{
+  return gfc_get_dtype_rank_type_slen (rank, etype, NULL_TREE);
+}
+
 
 /* Build a null array descriptor constructor.  */
 
@@ -843,7 +848,8 @@ gfc_init_static_descriptor (tree descr)
 
 
 void
-gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, gfc_expr *expr, tree descr)
+gfc_nullify_descriptor (stmtblock_t *block, gfc_symbol *sym, gfc_expr *expr,
+			tree descr, tree string_length)
 {
   symbol_attribute attr = gfc_symbol_attr (sym);
 
@@ -875,8 +881,15 @@ gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, gfc_expr *exp
     rank = -1;
 
   tree etype = gfc_get_element_type (TREE_TYPE (descr));
-  gfc_conv_descriptor_dtype_set (block, descr,
-				 gfc_get_dtype_rank_type (rank, etype));
+  tree dtype = gfc_get_dtype_rank_type_slen (rank, etype, string_length);
+  gfc_conv_descriptor_dtype_set (block, descr, dtype);
+}
+
+void
+gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym,
+			      gfc_expr *expr, tree descr)
+{
+  return gfc_nullify_descriptor (block, sym, expr, descr, NULL_TREE);
 }
 
 

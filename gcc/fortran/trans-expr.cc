@@ -66,7 +66,7 @@ gfc_get_character_len (tree type)
 /* Calculate the number of bytes in a string.  */
 
 tree
-gfc_get_character_len_in_bytes (tree type)
+gfc_get_character_len_in_bytes (tree type, tree slen)
 {
   tree tmp, len;
 
@@ -76,11 +76,18 @@ gfc_get_character_len_in_bytes (tree type)
   tmp = TYPE_SIZE_UNIT (TREE_TYPE (type));
   tmp = (tmp && !integer_zerop (tmp))
     ? (fold_convert (gfc_charlen_type_node, tmp)) : (NULL_TREE);
-  len = gfc_get_character_len (type);
+  len = slen ? slen : gfc_get_character_len (type);
   if (tmp && len && !integer_zerop (len))
     len = fold_build2_loc (input_location, MULT_EXPR,
 			   gfc_charlen_type_node, len, tmp);
   return len;
+}
+
+
+tree
+gfc_get_character_len_in_bytes (tree type)
+{
+  return gfc_get_character_len_in_bytes (type, NULL_TREE);
 }
 
 
