@@ -1,3 +1,464 @@
+2025-08-08  Release Manager
+
+	* GCC 15.2.0 released.
+
+2025-08-07  Uros Bizjak  <ubizjak@gmail.com>
+
+	Backported from master:
+	2025-08-06  Uros Bizjak  <ubizjak@gmail.com>
+
+	PR target/96226
+	* config/i386/predicates.md (and_operator): New operator.
+	* config/i386/i386.md (splitter after *<rotate_insn><mode>3_mask):
+	Use and_operator to match AND RTX and use its mode
+	in the split pattern.
+
+2025-08-01  Richard Earnshaw  <rearnsha@arm.com>
+
+	Backported from master:
+	2025-05-19  Richard Earnshaw  <rearnsha@arm.com>
+
+	PR target/120351
+	* config/arm/predicates.md (mem_noofs_operand): Also check the op
+	is a valid memory_operand.
+
+2025-08-01  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121323
+	* tree-ssa-alias.cc (ao_ref_init_from_ptr_and_range): Check
+	the pointer offset fits in a HWI when represented in bits.
+
+2025-08-01  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121320
+	* tree-ssa-sccvn.cc (ao_ref_init_from_vn_reference): Convert
+	op->off to poly_offset_int before multiplying by
+	BITS_PER_UNIT.
+
+2025-08-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-08-01  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/121322
+	* gimple-ssa-store-merging.cc (find_bswap_or_nop): Return NULL if
+	count is 0.
+
+2025-07-31  Georg-Johann Lay  <avr@gjlay.de>
+
+	Backported from master:
+	2025-07-31  Georg-Johann Lay  <avr@gjlay.de>
+
+	PR rtl-optimization/121340
+	* config/avr/avr.opt (-mfuse-move2): New option.
+	* config/avr/avr-passes.def (avr_pass_2moves): Insert after combine.
+	* config/avr/avr-passes.cc (make_avr_pass_2moves): New function.
+	(pass_data avr_pass_data_2moves): New static variable.
+	(avr_pass_2moves): New rtl_opt_pass.
+	* config/avr/avr-protos.h (make_avr_pass_2moves): New proto.
+	* common/config/avr/avr-common.cc
+	(default_options avr_option_optimization_table) <-mfuse-move2>:
+	Set for -O1 and higher.
+	* doc/invoke.texi (AVR Options) <-mfuse-move2>: Document.
+	* config/avr/avr.opt.urls (-mfuse-move2): Add url.
+
+2025-07-31  Georg-Johann Lay  <avr@gjlay.de>
+
+	Backported from master:
+	2025-07-31  Georg-Johann Lay  <avr@gjlay.de>
+
+	* config/avr/avr.cc (avr_output_addr_vec) <labl>: Asm out its .type.
+
+2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	Backported from master:
+	2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	PR target/121028
+	* config/aarch64/aarch64-sme.md (aarch64_smstart_sm): Use the .inst
+	directive if !TARGET_SME.
+	(aarch64_smstop_sm): Likewise.
+
+2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121256
+	* tree-vect-loop.cc (vectorizable_recurr): Handle the case
+	of a NULL SLP node.
+
+2025-07-31  Andreas Schwab  <schwab@suse.de>
+
+	Backported from master:
+	2025-07-21  Andreas Schwab  <schwab@suse.de>
+
+	PR target/121121
+	* config/riscv/riscv.cc (riscv_allocate_and_probe_stack_space):
+	Use temp2 instead of temp1 for the CFA note.
+
+2025-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/121264
+	* machmode.h (get_best_mode): Change type of first 2 arguments
+	from int to HOST_WIDE_INT.
+	* stor-layout.cc (get_best_mode): Likewise.
+
+2025-07-31  Jan Hubicka  <hubicka@ucw.cz>
+
+	Backported from master:
+	2025-07-11  Jan Hubicka  <hubicka@ucw.cz>
+
+	PR ipa/114790
+	* cgraph.cc (cgraph_update_edges_for_call_stmt_node): Resolve devirtualization
+	if call statement was optimized out or turned to direct call.
+
+2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121256
+	* tree-vect-loop.cc (vectorizable_recurr): Build a correct
+	initialization vector for SLP_TREE_LANES > 1.
+
+2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-30  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121130
+	* tree-vect-stmts.cc (vectorizable_call): Bail out for
+	.MASK_CALL.
+
+2025-07-31  Pengfei Li  <Pengfei.Li2@arm.com>
+
+	Backported from master:
+	2025-07-30  Pengfei Li  <Pengfei.Li2@arm.com>
+
+	PR tree-optimization/121190
+	* tree-vect-data-refs.cc (vect_enhance_data_refs_alignment):
+	Increase alignment requirement for speculative loads.
+
+2025-07-31  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-07-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* config/i386/i386.md (peephole2): Transform "movq $-1,reg" to
+	"pushq $-1; popq reg" for -Oz if reg is a legacy integer register.
+
+2025-07-31  liuhongt  <hongtao.liu@intel.com>
+
+	Backported from master:
+	2025-07-30  liuhongt  <hongtao.liu@intel.com>
+
+	PR target/121274
+	* config/i386/sse.md (*vec_concatv2di_0): Add a splitter
+	before it.
+
+2025-07-30  Jennifer Schmitz  <jschmitz@nvidia.com>
+	    Dhruv Chawla  <dhruvc@nvidia.com>
+
+	* config/aarch64/aarch64-cores.def (olympus): Use olympus tuning
+	model.
+	* config/aarch64/aarch64.cc: Include olympus.h.
+	* config/aarch64/tuning_models/olympus.h: New file.
+
+2025-07-29  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-14  François-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+
+	PR target/120645
+	* config/darwin-driver.cc: Account for latest macOS numbering
+	scheme.
+
+2025-07-29  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2025-07-23  Martin Jambor  <mjambor@suse.cz>
+
+	PR tree-optimization/119085
+	* tree-sra.cc (sort_and_splice_var_accesses): Prevent total
+	scalarization if two incompatible aggregates access the same place.
+
+2025-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/121159
+	* calls.cc (can_implement_as_sibling_call_p): Don't reject declared
+	noreturn functions in musttail calls.
+
+2025-07-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-06-19  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* config/i386/i386.md (*mov<mode>_and): Changed to
+	define_insn_and_split.  Split it to "mov $0,mem" if not -Oz.
+	(*mov<mode>_or): Changed to define_insn_and_split.  Split it
+	to "mov $-1,mem" if not -Oz.
+	(peephole2): Don't transform "mov $-1,reg" to "push $-1; pop reg"
+	for -Oz since it will be transformed to "or $-1,reg".
+
+2025-07-28  Georg-Johann Lay  <avr@gjlay.de>
+
+	Backported from master:
+	2025-07-28  Georg-Johann Lay  <avr@gjlay.de>
+
+	PR target/121277
+	* config/avr/avr.cc (avr_addr_space_convert): When converting
+	from generic AS to __flashx, don't set bit 23.
+	(avr_convert_to_type): Don't -Waddr-space-convert when NULL
+	is converted to __flashx or to __flash.
+
+2025-07-28  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2025-07-17  Xi Ruoyao  <xry111@xry111.site>
+
+	PR target/121064
+	* config/loongarch/lsx.md (lsx_vshuf_<lsxfmt_f>): Add '@' to
+	generate a mode-aware helper.  Use <VIMODE> as the mode of the
+	operand 1 (selector).
+	* config/loongarch/lasx.md (lasx_xvshuf_<lasxfmt_f>): Likewise.
+	* config/loongarch/loongarch.cc
+	(loongarch_try_expand_lsx_vshuf_const): Create a new pseudo for
+	the selector.  Use the mode-aware helper to simplify the code.
+	(loongarch_expand_vec_perm_const): Likewise.
+
+2025-07-27  Alexey Merzlyakov  <alexey.merzlyakov@samsung.com>
+
+	Backported from master:
+	2025-06-30  Alexey Merzlyakov  <alexey.merzlyakov@samsung.com>
+
+	PR target/120714
+	* config/riscv/riscv.cc (riscv_allocate_and_probe_stack_space):
+	Fix SP-addresses in REG_CFA_DEF_CFA notes for stack-clash case.
+
+2025-07-26  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	Backported from master:
+	2025-07-17  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	PR middle-end/121095
+	* gcse.cc (execute_hardreg_pre): Skip if the hardreg which is never live.
+
+2025-07-26  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	Backported from master:
+	2025-07-23  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	PR target/120119
+	* config/aarch64/cortex-a57-fma-steering.cc (func_fma_steering::analyze):
+	Skip if renaming fails.
+
+2025-07-24  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-22  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121202
+	* tree-vect-slp.cc (vect_schedule_slp_node): Do not take
+	an out-of-region stmt as "last".
+
+2025-07-23  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2025-07-18  Martin Jambor  <mjambor@suse.cz>
+
+	PR tree-optimization/117423
+	* tree-sra.cc (analyze_access_subtree): Fix computation of grp_covered
+	flag.
+
+2025-07-22  Tobias Burnus  <tburnus@baylibre.com>
+
+	Backported from master:
+	2025-06-17  Tobias Burnus  <tburnus@baylibre.com>
+
+	* omp-offload.cc (omp_discover_declare_target_tgt_fn_r): Also
+	walk external functions that are declare inline (and have a
+	DECL_SAVED_TREE).
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-06-04  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* config/nvptx/mkoffload.cc (process): Use an 'auto_vec' for
+	'file_idx'.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-30  Thomas Schwinge  <tschwinge@baylibre.com>
+		    Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/119835
+	* tree-nrv.cc (pass_nrv::execute): Defuse 'RESULT_DECL' check.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-19  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	PR lto/120308
+	* lto-streamer-out.cc (hash_tree): Don't handle 'TYPE_EMPTY_P' for
+	'lto_stream_offload_p'.
+	* tree-streamer-in.cc (unpack_ts_type_common_value_fields):
+	Likewise.
+	* tree-streamer-out.cc (pack_ts_type_common_value_fields):
+	Likewise.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-12  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* config/nvptx/nvptx-sm.def: Add '61'.
+	* config/nvptx/nvptx-gen.h: Regenerate.
+	* config/nvptx/nvptx-gen.opt: Likewise.
+	* config/nvptx/nvptx.cc (first_ptx_version_supporting_sm): Adjust.
+	* config/nvptx/nvptx.opt (-march-map=sm_61, -march-map=sm_62):
+	Likewise.
+	* config.gcc: Likewise.
+	* doc/invoke.texi (Nvidia PTX Options): Document '-march=sm_61'.
+	* config/nvptx/gen-multilib-matches-tests: Extend.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-12  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* config/nvptx/nvptx-opts.h (enum ptx_version): Add
+	'PTX_VERSION_5_0'.
+	* config/nvptx/nvptx.cc (ptx_version_to_string)
+	(ptx_version_to_number): Adjust.
+	* config/nvptx/nvptx.h (TARGET_PTX_5_0): New.
+	* config/nvptx/nvptx.opt (Enum(ptx_version)): Add 'EnumValue'
+	'5.0' for 'PTX_VERSION_5_0'.
+	* doc/invoke.texi (Nvidia PTX Options): Document '-mptx=5.0'.
+
+2025-07-22  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	Backported from master:
+	2025-04-25  Andrew Pinski  <quic_apinski@quicinc.com>
+		    Thomas Schwinge  <tschwinge@baylibre.com>
+
+	PR target/119737
+	* config/gcn/gcn.cc (gcn_hsa_declare_function_name): Properly
+	switch sections.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-11  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/121027
+	* config/aarch64/aarch64.cc (aarch64_evpc_sve_tbl): Punt on 2-input
+	operations that can be handled by vec_perm.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-10  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* config/aarch64/aarch64-sve2.md (aarch64_gather_ld1q): Replace with...
+	(@aarch64_gather_ld1q<mode>): ...this, parameterizing based on mode.
+	* config/aarch64/aarch64-sve-builtins-sve2.cc
+	(svld1q_gather_impl::expand): Update accordingly.
+	(svst1q_scatter_impl::expand): Use aarch64_sve_reinterpret
+	instead of force_lowpart_subreg.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-10  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* doc/sourcebuild.texi (aarch64_sve2_hw, aarch64_sve2p1_hw): Document.
+	* config/aarch64/aarch64.cc (aarch64_evpc_hvla): Extend to
+	BYTES_BIG_ENDIAN.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-09  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* config/aarch64/aarch64.cc (aarch64_simd_valid_imm): Account
+	for FLOAT_WORDS_BIG_ENDIAN when building a floating-point value.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-09  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* config/aarch64/aarch64.cc (aarch64_sve_index_series_p): New
+	function, split out from...
+	(aarch64_simd_valid_imm): ...here.  Account for the different
+	SVE and Advanced SIMD element orders on big-endian targets.
+	Check each vector in a structure mode.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-09  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* read-rtl-function.cc (function_reader::read_rtx_operand_r): Use
+	hard_regno_nregs to work out REG_NREGS for hard registers.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-09  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* ext-dce.cc (ext_dce_process_uses): Apply is_constant directly
+	to the subreg_lsb.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-07  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/118891
+	* config/aarch64/aarch64.cc (aarch64_expand_vector_init): Fix the
+	ZIP1 operand order for big-endian targets.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-07  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* config/aarch64/aarch64-sve.md (@aarch64_sve_set_neonq_<mode>):
+	Use %Z instead of lowpart_subreg.  Tweak formatting.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-07  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* ext-dce.cc (ext_dce_process_uses): Apply is_constant directly
+	to the subreg_lsb.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-07  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR tree-optimization/118891
+	* tree-vect-stmts.cc (supportable_widening_operation): Swap the
+	hi and lo internal functions on big-endian targets.
+
 2025-07-18  Hans-Peter Nilsson  <hp@bitrange.com>
 	    Pietro Monteiro  <pietro@sociotechnical.xyz>
 

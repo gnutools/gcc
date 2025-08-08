@@ -3363,10 +3363,10 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 	      && TREE_CODE (new_obj) == COMPONENT_REF
 	      && TREE_CODE (TREE_TYPE (TREE_OPERAND (new_obj, 0))) == UNION_TYPE)
 	    {
+	      tree ctor = build_constructor (TREE_TYPE (new_obj), NULL);
+	      CONSTRUCTOR_NO_CLEARING (ctor) = true;
 	      tree activate = build2 (INIT_EXPR, TREE_TYPE (new_obj),
-				      new_obj,
-				      build_constructor (TREE_TYPE (new_obj),
-							 NULL));
+				      new_obj, ctor);
 	      cxx_eval_constant_expression (ctx, activate,
 					    lval, non_constant_p, overflow_p);
 	      ggc_free (activate);
@@ -4876,6 +4876,18 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
     }
 
   /* If there's no explicit init for this field, it's value-initialized.  */
+
+  if (AGGREGATE_TYPE_P (TREE_TYPE (t)))
+    {
+      /* As in cxx_eval_store_expression, insert an empty CONSTRUCTOR
+	 and copy the flags.  */
+      constructor_elt *e = get_or_insert_ctor_field (whole, part);
+      e->value = value = build_constructor (TREE_TYPE (part), NULL);
+      CONSTRUCTOR_ZERO_PADDING_BITS (value)
+	= CONSTRUCTOR_ZERO_PADDING_BITS (whole);
+      return value;
+    }
+
   value = build_value_init (TREE_TYPE (t), tf_warning_or_error);
   return cxx_eval_constant_expression (ctx, value,
 				       lval,
@@ -5641,6 +5653,9 @@ cxx_eval_vec_init_1 (const constexpr_ctx *ctx, tree atype, tree init,
   if (init && TREE_CODE (init) == CONSTRUCTOR)
     return cxx_eval_bare_aggregate (ctx, init, lval,
 				    non_constant_p, overflow_p);
+
+  /* We already checked access when building the VEC_INIT_EXPR.  */
+  deferring_access_check_sentinel acs (dk_deferred);
 
   /* For the default constructor, build up a call to the default
      constructor of the element type.  We only need to handle class types
@@ -11023,6 +11038,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
     case CO_AWAIT_EXPR:
     case CO_YIELD_EXPR:
     case CO_RETURN_EXPR:
+      if (flags & tf_error)
+	constexpr_error (cp_expr_loc_or_loc (t, input_location), fundef_p,
+			 "%qE is not a constant expression", t);
       return false;
 
     /* Assume a TU-local entity is not constant, we'll error later when

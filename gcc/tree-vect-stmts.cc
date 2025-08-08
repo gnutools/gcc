@@ -3560,7 +3560,13 @@ vectorizable_call (vec_info *vinfo,
 
   int mask_opno = -1;
   if (internal_fn_p (cfn))
-    mask_opno = internal_fn_mask_index (as_internal_fn (cfn));
+    {
+      /* We can only handle direct internal masked calls here,
+	 vectorizable_simd_clone_call is for the rest.  */
+      if (cfn == CFN_MASK_CALL)
+	return false;
+      mask_opno = internal_fn_mask_index (as_internal_fn (cfn));
+    }
 
   for (i = 0; i < nargs; i++)
     {
@@ -15042,6 +15048,8 @@ supportable_widening_operation (vec_info *vinfo,
 
       internal_fn lo, hi, even, odd;
       lookup_hilo_internal_fn (ifn, &lo, &hi);
+      if (BYTES_BIG_ENDIAN)
+	std::swap (lo, hi);
       *code1 = as_combined_fn (lo);
       *code2 = as_combined_fn (hi);
       optab1 = direct_internal_fn_optab (lo, {vectype, vectype});

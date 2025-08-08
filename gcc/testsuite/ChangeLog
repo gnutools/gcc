@@ -1,3 +1,941 @@
+2025-08-08  Release Manager
+
+	* GCC 15.2.0 released.
+
+2025-08-06  Tejas Belagod  <tejas.belagod@arm.com>
+
+	* gcc.target/aarch64/sve/acle/general/cops.c: Fix test.
+
+2025-08-01  Richard Earnshaw  <rearnsha@arm.com>
+
+	Backported from master:
+	2025-05-19  Richard Earnshaw  <rearnsha@arm.com>
+
+	PR target/120351
+	* gcc.target/arm/pr120351.c: New test.
+
+2025-08-01  Florian Weimer  <fweimer@redhat.com>
+
+	Backported from master:
+	2025-05-02  Florian Weimer  <fweimer@redhat.com>
+
+	* gcc.dg/Wdeprecated-non-prototype-6.c: New test.
+
+2025-08-01  Florian Weimer  <fweimer@redhat.com>
+
+	Backported from master:
+	2025-05-01  Florian Weimer  <fweimer@redhat.com>
+
+	* gcc.dg/Wdeprecated-non-prototype-5.c: New test.
+
+2025-08-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-08-01  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/121322
+	* gcc.dg/pr121322.c: New test.
+
+2025-08-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-08-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/108080
+	* g++.dg/modules/pr108080.H: New test.
+
+2025-08-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-08-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/121238
+	* g++.dg/modules/merge-19.h: New test.
+	* g++.dg/modules/merge-19_a.H: New test.
+	* g++.dg/modules/merge-19_b.C: New test.
+
+2025-07-31  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-07-31  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120800
+	* g++.dg/cpp0x/constexpr-array30.C: New test.
+
+2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	Backported from master:
+	2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	PR target/121028
+	* gcc.target/aarch64/sme/call_sm_switch_1.c: Tell check-function
+	-bodies not to ignore .inst directives, and replace the test for
+	"smstart sm" with one for it's encoding.
+	* gcc.target/aarch64/sme/call_sm_switch_11.c: Likewise.
+	* gcc.target/aarch64/sme/pr121028.c: New test.
+
+2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	Backported from master:
+	2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	* lib/target-supports.exp: Split the extensions that require SME into
+	a separate set, and use armv9-a as their baseline.
+
+2025-07-31  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-06-05  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/120224
+	* g++.dg/cpp0x/alias-decl-80.C: New test.
+
+2025-07-31  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2025-06-27  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/120756
+	* g++.dg/warn/deprecated-22.C: New test.
+
+2025-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/121264
+	* gcc.dg/tree-ssa/pr121264.c: New test.
+
+2025-07-31  Jan Hubicka  <hubicka@ucw.cz>
+
+	Backported from master:
+	2025-07-11  Jan Hubicka  <hubicka@ucw.cz>
+
+	* g++.dg/lto/pr114790_0.C: New test.
+	* g++.dg/lto/pr114790_1.C: New test.
+
+2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121256
+	* gcc.dg/vect/vect-recurr-pr121256.c: New testcase.
+	* gcc.dg/vect/vect-recurr-pr121256-2.c: Likewise.
+
+2025-07-31  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-30  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121130
+	* gcc.dg/vect/vect-simd-pr121130.c: New testcase.
+
+2025-07-31  Pengfei Li  <Pengfei.Li2@arm.com>
+
+	Backported from master:
+	2025-07-30  Pengfei Li  <Pengfei.Li2@arm.com>
+
+	PR tree-optimization/121190
+	* gcc.dg/vect/vect-early-break_52.c: Update an unsafe test.
+	* gcc.dg/vect/vect-early-break_137-pr121190.c: New test.
+
+2025-07-31  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-07-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* gcc.target/i386/pr120427-5.c: New test.
+
+2025-07-31  liuhongt  <hongtao.liu@intel.com>
+
+	Backported from master:
+	2025-07-30  liuhongt  <hongtao.liu@intel.com>
+
+	* gcc.target/i386/pr121274.c: New test.
+
+2025-07-30  Qing Zhao  <qing.zhao@oracle.com>
+
+	Backported from master:
+	2025-05-30  Qing Zhao  <qing.zhao@oracle.com>
+
+	PR c/120354
+	* gcc.dg/pr120354.c: New test.
+
+2025-07-30  Qing Zhao  <qing.zhao@oracle.com>
+
+	Backported from master:
+	2025-05-30  Qing Zhao  <qing.zhao@oracle.com>
+
+	PR c/120353
+	* gcc.dg/pr120353.c: New test.
+
+2025-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/121133
+	* g++.dg/warn/pr121133-1.C: New test.
+	* g++.dg/warn/pr121133-2.C: New test.
+	* g++.dg/warn/pr121133-3.C: New test.
+	* g++.dg/warn/pr121133-4.C: New test.
+
+2025-07-30  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2025-07-24  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	PR testsuite/119382
+	* gcc.target/powerpc/vsx-builtin-7.c: Add '-fno-ipa-icf' to dg-options.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-07-24  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group2/_-static__compilation.cob: Modify for -static warning.
+	* cobol.dg/group2/_-static__compilation.out: Removed.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-07-01  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group2/Intrinsics_without_FUNCTION_keyword__2_.cob:
+	Append INTRINSIC keyword.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-20  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group2/FUNCTION_SQRT__2_.cob: Testcase.
+	* cobol.dg/group2/FUNCTION_SQRT__2_.out: Known-good for the testcase.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-16  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group1/declarative_1.cob: Handle modified exception handling.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-15  Robert Dubner  <rdubner@symas.com>
+
+	PR cobol/120251
+	* cobol.dg/group1/check_88.cob: One final regex "." instead of "ß"
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-15  Robert Dubner  <rdubner@symas.com>
+
+	PR cobol/120251
+	* cobol.dg/group1/check_88.cob: Ignore characters above 0x80.
+	* cobol.dg/group2/ALLOCATE_Rule_8_OPTION_INITIALIZE_with_figconst.cob:
+	Output HIGH-VALUE as hex, rather than as characters.
+	* cobol.dg/group2/ALLOCATE_Rule_8_OPTION_INITIALIZE_with_figconst.out:
+	Likewise.
+	* cobol.dg/group2/INSPECT_CONVERTING_TO_figurative_constants.cob: Typo.
+	* cobol.dg/group2/INSPECT_CONVERTING_TO_figurative_constants.out: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_1.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_2.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_3.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_4.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_5-f.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_6.cob: Likewise.
+	* cobol.dg/group2/INSPECT_ISO_Example_7.cob: Likewise.
+	* cobol.dg/group2/Multiple_INDEXED_BY_variables_with_the_same_name.cob: New test.
+	* cobol.dg/group2/Multiple_INDEXED_BY_variables_with_the_same_name.out: New test.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-11  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group2/258_Nested_PERFORM.cob: New testcase.
+	* cobol.dg/group2/259_PERFORM_VARYING_BY_-0.2.cob: Likewise.
+	* cobol.dg/group2/338_Default_Arithmetic__1_.cob: Likewise.
+	* cobol.dg/group2/access_to_OPTIONAL_LINKAGE_item_not_passed.cob: Likewise.
+	* cobol.dg/group2/ALLOCATE___FREE_basic_default_versions.cob: Likewise.
+	* cobol.dg/group2/ALLOCATE___FREE_with_BASED_item__1_.cob: Likewise.
+	* cobol.dg/group2/ALLOCATE___FREE_with_BASED_item__2_.cob: Likewise.
+	* cobol.dg/group2/ALLOCATE_Rule_8_OPTION_INITIALIZE_with_figconst.cob: Likewise.
+	* cobol.dg/group2/Alphanumeric_and_binary_numeric.cob: Likewise.
+	* cobol.dg/group2/Alphanumeric_MOVE_with_truncation.cob: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__1_.cob: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__2_.cob: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__3_.cob: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__4_.cob: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__5_.cob: Likewise.
+	* cobol.dg/group2/CALL_with_OMITTED_parameter.cob: Likewise.
+	* cobol.dg/group2/Class_check_with_reference_modification.cob: Likewise.
+	* cobol.dg/group2/Complex_HEX__VALUE_and_MOVE.cob: Likewise.
+	* cobol.dg/group2/Complex_IF.cob: Likewise.
+	* cobol.dg/group2/Concatenation_operator.cob: Likewise.
+	* cobol.dg/group2/CONTINUE_AFTER_1_SECONDS.cob: Likewise.
+	* cobol.dg/group2/CURRENCY_SIGN.cob: Likewise.
+	* cobol.dg/group2/CURRENCY_SIGN_WITH_PICTURE_SYMBOL.cob: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__1_.cob: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__2_.cob: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__3_.cob: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__4_.cob: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__5_.cob: Likewise.
+	* cobol.dg/group2/EC-SIZE-TRUNCATION_EC-SIZE-OVERFLOW.cob: Likewise.
+	* cobol.dg/group2/EC-SIZE-ZERO-DIVIDE__fixed_and_float.cob: Likewise.
+	* cobol.dg/group2/EXIT_PARAGRAPH.cob: Likewise.
+	* cobol.dg/group2/EXIT_PERFORM.cob: Likewise.
+	* cobol.dg/group2/EXIT_PERFORM_CYCLE.cob: Likewise.
+	* cobol.dg/group2/EXIT_SECTION.cob: Likewise.
+	* cobol.dg/group2/Fixed_continuation_indicator.cob: Likewise.
+	* cobol.dg/group2/FLOAT-LONG_with_SIZE_ERROR.cob: Likewise.
+	* cobol.dg/group2/FLOAT-SHORT___FLOAT-LONG_w_o_SIZE_ERROR.cob: Likewise.
+	* cobol.dg/group2/FLOAT-SHORT_with_SIZE_ERROR.cob: Likewise.
+	* cobol.dg/group2/Index_and_parenthesized_expression.cob: Likewise.
+	* cobol.dg/group2/LENGTH_OF_omnibus.cob: Likewise.
+	* cobol.dg/group2/LOCAL-STORAGE__3__with_recursive_PROGRAM-ID.cob: Likewise.
+	* cobol.dg/group2/LOCAL-STORAGE__4__with_recursive_PROGRAM-ID_..._USING.cob: Likewise.
+	* cobol.dg/group2/MOVE_indexes.cob: Likewise.
+	* cobol.dg/group2/MOVE_integer_literal_to_alphanumeric.cob: Likewise.
+	* cobol.dg/group2/MOVE_to_edited_item__1_.cob: Likewise.
+	* cobol.dg/group2/MOVE_to_edited_item__2_.cob: Likewise.
+	* cobol.dg/group2/MOVE_to_item_with_simple_and_floating_insertion.cob: Likewise.
+	* cobol.dg/group2/MOVE_to_itself.cob: Likewise.
+	* cobol.dg/group2/MOVE_to_JUSTIFIED_item.cob: Likewise.
+	* cobol.dg/group2/MOVE_with_group_refmod.cob: Likewise.
+	* cobol.dg/group2/MOVE_with_refmod.cob: Likewise.
+	* cobol.dg/group2/MOVE_with_refmod__variable_.cob: Likewise.
+	* cobol.dg/group2/MOVE_Z_literal_.cob: Likewise.
+	* cobol.dg/group2/Multi-target_MOVE_with_subscript_re-evaluation.cob: Likewise.
+	* cobol.dg/group2/Non-numeric_data_in_numeric_items__1_.cob: Likewise.
+	* cobol.dg/group2/Non-numeric_data_in_numeric_items__2_.cob: Likewise.
+	* cobol.dg/group2/Non-overflow_after_overflow.cob: Likewise.
+	* cobol.dg/group2/OCCURS_clause_with_1_entry.cob: Likewise.
+	* cobol.dg/group2/OSVS_Arithmetic_Test__2_.cob: Likewise.
+	* cobol.dg/group2/PERFORM_..._CONTINUE.cob: Likewise.
+	* cobol.dg/group2/PERFORM_inline__1_.cob: Likewise.
+	* cobol.dg/group2/PERFORM_inline__2_.cob: Likewise.
+	* cobol.dg/group2/PERFORM_type_OSVS.cob: Likewise.
+	* cobol.dg/group2/PIC_ZZZ-__ZZZ_.cob: Likewise.
+	* cobol.dg/group2/Quick_check_of_PIC_XX_COMP-5.cob: Likewise.
+	* cobol.dg/group2/Quote_marks_in_comment_paragraphs.cob: Likewise.
+	* cobol.dg/group2/Recursive_PERFORM_paragraph.cob: Likewise.
+	* cobol.dg/group2/REDEFINES_values_on_FILLER_and_INITIALIZE.cob: Likewise.
+	* cobol.dg/group2/SORT__EBCDIC_table_sort__1_.cob: Likewise.
+	* cobol.dg/group2/SORT__EBCDIC_table_sort__2_.cob: Likewise.
+	* cobol.dg/group2/SORT__table_sort__2_.cob: Likewise.
+	* cobol.dg/group2/SORT__table_sort__3A_.cob: Likewise.
+	* cobol.dg/group2/SORT__table_sort__3B_.cob: Likewise.
+	* cobol.dg/group2/SORT__table_sort.cob: Likewise.
+	* cobol.dg/group2/SOURCE_FIXED_FREE_directives.cob: Likewise.
+	* cobol.dg/group2/Static_CALL_with_ON_EXCEPTION__with_-fno-static-call_.cob: Likewise.
+	* cobol.dg/group2/_-static__compilation.cob: Likewise.
+	* cobol.dg/group2/STOP_RUN_WITH_ERROR_STATUS.cob: Likewise.
+	* cobol.dg/group2/STOP_RUN_WITH_NORMAL_STATUS.cob: Likewise.
+	* cobol.dg/group2/STRING___UNSTRING__NOT__ON_OVERFLOW.cob: Likewise.
+	* cobol.dg/group2/STRING_with_subscript_reference.cob: Likewise.
+	* cobol.dg/group2/UNSTRING_DELIMITED_ALL_LOW-VALUE.cob: Likewise.
+	* cobol.dg/group2/UNSTRING_DELIMITED_ALL_SPACE-2.cob: Likewise.
+	* cobol.dg/group2/UNSTRING_DELIMITED_POINTER.cob: Likewise.
+	* cobol.dg/group2/UNSTRING_DELIMITER_IN.cob: Likewise.
+	* cobol.dg/group2/UNSTRING_with_FUNCTION___literal.cob: Likewise.
+	* cobol.dg/group2/258_Nested_PERFORM.out: Known-good results file.
+	* cobol.dg/group2/259_PERFORM_VARYING_BY_-0.2.out: Likewise.
+	* cobol.dg/group2/338_Default_Arithmetic__1_.out: Likewise.
+	* cobol.dg/group2/access_to_OPTIONAL_LINKAGE_item_not_passed.out: Likewise.
+	* cobol.dg/group2/ALLOCATE___FREE_basic_default_versions.out: Likewise.
+	* cobol.dg/group2/ALLOCATE_Rule_8_OPTION_INITIALIZE_with_figconst.out: Likewise.
+	* cobol.dg/group2/Alphanumeric_MOVE_with_truncation.out: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__1_.out: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__2_.out: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__3_.out: Likewise.
+	* cobol.dg/group2/ANY_LENGTH__5_.out: Likewise.
+	* cobol.dg/group2/CALL_with_OMITTED_parameter.out: Likewise.
+	* cobol.dg/group2/Complex_HEX__VALUE_and_MOVE.out: Likewise.
+	* cobol.dg/group2/Complex_IF.out: Likewise.
+	* cobol.dg/group2/Concatenation_operator.out: Likewise.
+	* cobol.dg/group2/CONTINUE_AFTER_1_SECONDS.out: Likewise.
+	* cobol.dg/group2/CURRENCY_SIGN.out: Likewise.
+	* cobol.dg/group2/CURRENCY_SIGN_WITH_PICTURE_SYMBOL.out: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__1_.out: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__2_.out: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__3_.out: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__4_.out: Likewise.
+	* cobol.dg/group2/DECIMAL-POINT_is_COMMA__5_.out: Likewise.
+	* cobol.dg/group2/EC-SIZE-TRUNCATION_EC-SIZE-OVERFLOW.out: Likewise.
+	* cobol.dg/group2/EC-SIZE-ZERO-DIVIDE__fixed_and_float.out: Likewise.
+	* cobol.dg/group2/EXIT_PERFORM_CYCLE.out: Likewise.
+	* cobol.dg/group2/EXIT_PERFORM.out: Likewise.
+	* cobol.dg/group2/Fixed_continuation_indicator.out: Likewise.
+	* cobol.dg/group2/FLOAT-LONG_with_SIZE_ERROR.out: Likewise.
+	* cobol.dg/group2/FLOAT-SHORT___FLOAT-LONG_w_o_SIZE_ERROR.out: Likewise.
+	* cobol.dg/group2/FLOAT-SHORT_with_SIZE_ERROR.out: Likewise.
+	* cobol.dg/group2/Index_and_parenthesized_expression.out: Likewise.
+	* cobol.dg/group2/LENGTH_OF_omnibus.out: Likewise.
+	* cobol.dg/group2/LOCAL-STORAGE__3__with_recursive_PROGRAM-ID.out: Likewise.
+	* cobol.dg/group2/LOCAL-STORAGE__4__with_recursive_PROGRAM-ID_..._USING.out: Likewise.
+	* cobol.dg/group2/MOVE_integer_literal_to_alphanumeric.out: Likewise.
+	* cobol.dg/group2/MOVE_to_edited_item__1_.out: Likewise.
+	* cobol.dg/group2/MOVE_to_edited_item__2_.out: Likewise.
+	* cobol.dg/group2/MOVE_to_item_with_simple_and_floating_insertion.out: Likewise.
+	* cobol.dg/group2/MOVE_to_JUSTIFIED_item.out: Likewise.
+	* cobol.dg/group2/MOVE_Z_literal_.out: Likewise.
+	* cobol.dg/group2/Multi-target_MOVE_with_subscript_re-evaluation.out: Likewise.
+	* cobol.dg/group2/Non-numeric_data_in_numeric_items__1_.out: Likewise.
+	* cobol.dg/group2/Non-numeric_data_in_numeric_items__2_.out: Likewise.
+	* cobol.dg/group2/OSVS_Arithmetic_Test__2_.out: Likewise.
+	* cobol.dg/group2/Quick_check_of_PIC_XX_COMP-5.out: Likewise.
+	* cobol.dg/group2/Quote_marks_in_comment_paragraphs.out: Likewise.
+	* cobol.dg/group2/Recursive_PERFORM_paragraph.out: Likewise.
+	* cobol.dg/group2/REDEFINES_values_on_FILLER_and_INITIALIZE.out: Likewise.
+	* cobol.dg/group2/SORT__table_sort__2_.out: Likewise.
+	* cobol.dg/group2/SORT__table_sort__3A_.out: Likewise.
+	* cobol.dg/group2/SORT__table_sort__3B_.out: Likewise.
+	* cobol.dg/group2/SOURCE_FIXED_FREE_directives.out: Likewise.
+	* cobol.dg/group2/Static_CALL_with_ON_EXCEPTION__with_-fno-static-call_.out: Likewise.
+	* cobol.dg/group2/_-static__compilation.out: Likewise.
+	* cobol.dg/group2/STRING___UNSTRING__NOT__ON_OVERFLOW.out: Likewise.
+	* cobol.dg/group2/UNSTRING_with_FUNCTION___literal.out: Likewise.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-05-10  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group1/simple-if.cob: Make explicitly >>SOURCE FREE
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-04-25  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group2/88_level_with_FALSE_IS_clause.cob: New testcase.
+	* cobol.dg/group2/88_level_with_FILLER.cob: Likewise.
+	* cobol.dg/group2/88_level_with_THRU.cob: Likewise.
+	* cobol.dg/group2/ADD_CORRESPONDING.cob: Likewise.
+	* cobol.dg/group2/ADD_SUBTRACT_CORR_mixed_fix___float.cob: Likewise.
+	* cobol.dg/group2/ALPHABETIC-LOWER_test.cob: Likewise.
+	* cobol.dg/group2/ALPHABETIC_test.cob: Likewise.
+	* cobol.dg/group2/ALPHABETIC-UPPER_test.cob: Likewise.
+	* cobol.dg/group2/BLANK_WHEN_ZERO.cob: Likewise.
+	* cobol.dg/group2/Check_for_equality_of_COMP-1___COMP-2.cob: Likewise.
+	* cobol.dg/group2/Compare_COMP-2_with_floating-point_literal.cob: Likewise.
+	* cobol.dg/group2/Contained_program_visibility__3_.cob: Likewise.
+	* cobol.dg/group2/Contained_program_visibility__4_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__1_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__2_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__3_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__4_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__5_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__6_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__7_.cob: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__8_.cob: Likewise.
+	* cobol.dg/group2/debugging_lines__not_active_.cob: Likewise.
+	* cobol.dg/group2/debugging_lines__WITH_DEBUGGING_MODE_.cob: Likewise.
+	* cobol.dg/group2/DEBUG_Line.cob: Likewise.
+	* cobol.dg/group2/DISPLAY_and_assignment_NumericDisplay.cob: Likewise.
+	* cobol.dg/group2/DISPLAY_data_items_with_MOVE_statement.cob: Likewise.
+	* cobol.dg/group2/DISPLAY_data_items_with_VALUE_clause.cob: Likewise.
+	* cobol.dg/group2/DISPLAY_literals__DECIMAL-POINT_is_COMMA.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_at_lower_level.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_at_same_level.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_FD__1_.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_FD__2_.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_FD__3_.cob: Likewise.
+	* cobol.dg/group2/GLOBAL_FD__4_.cob: Likewise.
+	* cobol.dg/group2/Hexadecimal_literal.cob: Likewise.
+	* cobol.dg/group2/integer_arithmetic_on_floating-point_var.cob: Likewise.
+	* cobol.dg/group2/MULTIPLY_BY_literal_in_INITIAL_program.cob: Likewise.
+	* cobol.dg/group2/Named_conditionals_-_fixed__float__and_alphabetic.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__1_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__2_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__3_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__4_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__5_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__7_.cob: Likewise.
+	* cobol.dg/group2/Numeric_operations__8_.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_AWAY-FROM-ZERO.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-AWAY-FROM-ZERO.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-EVEN.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-TOWARD-ZERO.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_TOWARD-GREATER.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_TOWARD-LESSER.cob: Likewise.
+	* cobol.dg/group2/ROUNDED_TRUNCATION.cob: Likewise.
+	* cobol.dg/group2/ROUNDING_omnibus_Floating-Point_from_COMPUTE.cob: Likewise.
+	* cobol.dg/group2/ROUNDING_omnibus_NumericDisplay_from_COMPUTE.cob: Likewise.
+	* cobol.dg/group2/Separate_sign_positions__1_.cob: Likewise.
+	* cobol.dg/group2/Separate_sign_positions__2_.cob: Likewise.
+	* cobol.dg/group2/Simple_p-scaling.cob: Likewise.
+	* cobol.dg/group2/Simple_TYPEDEF.cob: Likewise.
+	* cobol.dg/group2/ADD_SUBTRACT_CORR_mixed_fix___float.out: New known-good result.
+	* cobol.dg/group2/BLANK_WHEN_ZERO.out: Likewise.
+	* cobol.dg/group2/Contained_program_visibility__4_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__1_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__2_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__3_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__4_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__5_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__6_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__7_.out: Likewise.
+	* cobol.dg/group2/Context_sensitive_words__8_.out: Likewise.
+	* cobol.dg/group2/debugging_lines__not_active_.out: Likewise.
+	* cobol.dg/group2/debugging_lines__WITH_DEBUGGING_MODE_.out: Likewise.
+	* cobol.dg/group2/DEBUG_Line.out: Likewise.
+	* cobol.dg/group2/DISPLAY_and_assignment_NumericDisplay.out: Likewise.
+	* cobol.dg/group2/DISPLAY_data_items_with_MOVE_statement.out: Likewise.
+	* cobol.dg/group2/DISPLAY_data_items_with_VALUE_clause.out: Likewise.
+	* cobol.dg/group2/DISPLAY_literals__DECIMAL-POINT_is_COMMA.out: Likewise.
+	* cobol.dg/group2/GLOBAL_at_lower_level.out: Likewise.
+	* cobol.dg/group2/GLOBAL_at_same_level.out: Likewise.
+	* cobol.dg/group2/Hexadecimal_literal.out: Likewise.
+	* cobol.dg/group2/Named_conditionals_-_fixed__float__and_alphabetic.out: Likewise.
+	* cobol.dg/group2/ROUNDED_AWAY-FROM-ZERO.out: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-AWAY-FROM-ZERO.out: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-EVEN.out: Likewise.
+	* cobol.dg/group2/ROUNDED_NEAREST-TOWARD-ZERO.out: Likewise.
+	* cobol.dg/group2/ROUNDED_TOWARD-GREATER.out: Likewise.
+	* cobol.dg/group2/ROUNDED_TOWARD-LESSER.out: Likewise.
+	* cobol.dg/group2/ROUNDED_TRUNCATION.out: Likewise.
+	* cobol.dg/group2/ROUNDING_omnibus_Floating-Point_from_COMPUTE.out: Likewise.
+	* cobol.dg/group2/ROUNDING_omnibus_NumericDisplay_from_COMPUTE.out: Likewise.
+	* cobol.dg/group2/Separate_sign_positions__1_.out: Likewise.
+	* cobol.dg/group2/Separate_sign_positions__2_.out: Likewise.
+	* cobol.dg/group2/Simple_p-scaling.out: Likewise.
+
+2025-07-29  Robert Dubner  <rdubner@symas.com>
+
+	Backported from master:
+	2025-04-24  Robert Dubner  <rdubner@symas.com>
+
+	* cobol.dg/group1/declarative_1.cob: Adjust for repaired exception logic.
+
+2025-07-29  Juergen Christ  <jchrist@linux.ibm.com>
+
+	PR testsuite/121286
+	PR testsuite/121288
+	* gcc.dg/vect/pr112325.c: Adjust parameters for s390.
+	* gcc.dg/vect/pr117888-1.c: Ditto.
+
+2025-07-29  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-14  François-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+
+	* gcc.dg/darwin-minversion-link.c: Account for macOS 26.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-07-25  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/121219
+	* g++.dg/coroutines/torture/pr121219.C: New test.
+
+2025-07-29  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-07-09  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120243
+	* g++.dg/coroutines/torture/pr120243-unhandled-1.C: New test.
+	* g++.dg/coroutines/torture/pr120243-unhandled-2.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-18  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/115908
+	PR c++/118074
+	PR c++/95615
+	* g++.dg/coroutines/pr115908.C: Move to...
+	* g++.dg/coroutines/torture/pr115908.C: ...here.
+	* g++.dg/coroutines/torture/pr95615-02.C: Move to...
+	* g++.dg/coroutines/torture/pr95615-01-promise-ctor-throws.C: ...here.
+	* g++.dg/coroutines/torture/pr95615-03.C: Move to...
+	* g++.dg/coroutines/torture/pr95615-02-get-return-object-throws.C: ...here.
+	* g++.dg/coroutines/torture/pr95615-01.C: Move to...
+	* g++.dg/coroutines/torture/pr95615-03-initial-suspend-throws.C: ...here.
+	* g++.dg/coroutines/torture/pr95615-04.C: Move to...
+	* g++.dg/coroutines/torture/pr95615-04-initial-await-ready-throws.C: ...here.
+	* g++.dg/coroutines/torture/pr95615-05.C: Move to...
+	* g++.dg/coroutines/torture/pr95615-05-initial-await-suspend-throws.C: ...here.
+	* g++.dg/coroutines/torture/pr95615.inc: Add more cases and ensure that the
+	code completes properly when no exceptions are thrown.
+	* g++.dg/coroutines/torture/pr95615-00-nothing-throws.C: New test.
+	* g++.dg/coroutines/torture/pr95615-06-initial-await-resume-throws.C: New test.
+	* g++.dg/coroutines/torture/pr95615-07-body-throws.C: New test.
+	* g++.dg/coroutines/torture/pr95615-08-initial-suspend-throws-uhe-throws.C: New test.
+	* g++.dg/coroutines/torture/pr95615-09-body-throws-uhe-throws.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-17  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* g++.dg/coroutines/assume.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-17  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* g++.dg/coroutines/unevaluated.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-17  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/120273
+	* g++.dg/coroutines/pr120273.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-14  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* g++.dg/coroutines/coro1-missing-await-method.C: Adjust for
+	improved diagnostics.
+	* g++.dg/coroutines/coro-missing-final-suspend.C: Likewise.
+	* g++.dg/coroutines/pr104051.C: Move to...
+	* g++.dg/coroutines/pr104051-0.C: ...here.
+	* g++.dg/coroutines/pr104051-1.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-13  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/116775
+	* g++.dg/coroutines/pr116775.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-09  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/120495
+	PR c++/115605
+	* g++.dg/coroutines/pr120495.C: New test.
+	* g++.dg/pr115605.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-06-02  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/118903
+	* g++.dg/coroutines/pr118903.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-05-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/109283
+	* g++.dg/coroutines/pr109283.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-05-21  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* g++.dg/coroutines/pr115908.C: Count promise construction
+	and destruction. Run the test and XFAIL it.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-05-21  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/119916
+	* g++.dg/coroutines/torture/special-termination-00-sync-completion.C:
+	Amend for CWG2563 expected behaviour.
+	* g++.dg/coroutines/torture/special-termination-01-self-destruct.C:
+	Likewise.
+	* g++.dg/coroutines/torture/pr119916.C: New test.
+
+2025-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2025-05-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR c++/120453
+	* g++.dg/coroutines/pr120453.C: New test.
+
+2025-07-29  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2025-07-23  Martin Jambor  <mjambor@suse.cz>
+
+	PR tree-optimization/119085
+	* gcc.dg/tree-ssa/pr119085.c: New test.
+
+2025-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/121159
+	* c-c++-common/pr121159.c: New test.
+	* gcc.dg/plugin/must-tail-call-2.c (test_5): Don't expect an error.
+
+2025-07-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-06-19  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* gcc.target/i386/cold-attribute-4.c: Compile with -Oz.
+	* gcc.target/i386/pr120427-1.c: New test.
+	* gcc.target/i386/pr120427-2.c: Likewise.
+	* gcc.target/i386/pr120427-3.c: Likewise.
+	* gcc.target/i386/pr120427-4.c: Likewise.
+
+2025-07-28  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-21  Andre Vehreschild  <vehre@gcc.gnu.org>
+
+	PR fortran/119106
+	* gfortran.dg/array_constructor_58.f90: New test.
+
+2025-07-28  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2025-07-17  Xi Ruoyao  <xry111@xry111.site>
+
+	PR target/121064
+	* gcc.target/loongarch/pr121064.c: New test.
+
+2025-07-27  Alexey Merzlyakov  <alexey.merzlyakov@samsung.com>
+
+	Backported from master:
+	2025-06-30  Alexey Merzlyakov  <alexey.merzlyakov@samsung.com>
+
+	PR target/120714
+	* gcc.target/riscv/pr120714.c: New test.
+
+2025-07-26  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	Backported from master:
+	2025-07-23  Andrew Pinski  <quic_apinski@quicinc.com>
+
+	PR target/120119
+	* g++.dg/torture/pr120119-1.C: New test.
+
+2025-07-26  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2025-07-23  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/121203
+	* gfortran.dg/function_charlen_4.f90: New test.
+
+2025-07-26  Gaius Mulley  <gaiusmod2@gmail.com>
+
+	Backported from master:
+	2025-07-23  Gaius Mulley  <gaiusmod2@gmail.com>
+
+	PR modula2/121164
+	* gm2/switches/pedantic-params/fail/arrayofchar.def: New test.
+	* gm2/switches/pedantic-params/fail/arrayofchar.mod: New test.
+
+2025-07-25  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-07-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120577
+	* g++.dg/cpp2a/constexpr-union9.C: New test.
+
+2025-07-24  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-07-23  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121055
+	* g++.dg/ext/is_invocable5.C: New test.
+
+2025-07-24  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2025-07-22  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121202
+	* gcc.dg/pr121202.c: New testcase.
+
+2025-07-24  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-07-24  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/120412
+	* g++.dg/modules/internal-14_a.C: New test.
+	* g++.dg/modules/internal-14_b.C: New test.
+	* g++.dg/modules/internal-14_c.C: New test.
+
+2025-07-23  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2025-07-18  Martin Jambor  <mjambor@suse.cz>
+
+	PR tree-optimization/117423
+	* gcc.dg/tree-ssa/pr117423.c: New test.
+
+2025-07-23  Siddhesh Poyarekar  <siddhesh@gotplt.org>
+
+	Backported from master:
+	2025-07-23  Siddhesh Poyarekar  <siddhesh@gotplt.org>
+
+	* gcc.dg/vect/pr116125.c (mem_overlap): Expand A to 10 members.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-19  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	PR lto/120308
+	* gcc.target/nvptx/abi-struct-arg.c: Add empty structure testing.
+	* gcc.target/nvptx/abi-struct-ret.c: Likewise.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-12  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* gcc.target/nvptx/march-map=sm_61.c: Adjust.
+	* gcc.target/nvptx/march-map=sm_62.c: Likewise.
+	* gcc.target/nvptx/march=sm_61.c: New.
+
+2025-07-22  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	Backported from master:
+	2025-05-12  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* gcc.target/nvptx/mptx=5.0.c: New.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-11  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/121027
+	* gcc.target/aarch64/sve/acle/general/perm_1.c: New test.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-10  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* gcc.target/aarch64/sve/pfalse-binary.c: Add -funwind-tables.
+	* gcc.target/aarch64/sve/pfalse-binary_int_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binary_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binary_opt_single_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binary_rotate.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binary_uint64_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binary_uint_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-binaryxn.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-clast.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-compare_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-compare_wide_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-count_pred.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-fold_left.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_ext.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_ext_gather_index.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_ext_gather_offset.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_gather_sv.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_gather_vs.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-load_replicate.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-prefetch.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-prefetch_gather_index.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-prefetch_gather_offset.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-ptest.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-rdffr.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-reduction.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-reduction_wide.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-shift_right_imm.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-store.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-store_scatter_index.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-store_scatter_offset.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-storexn.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-ternary_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-ternary_rotate.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary_convert_narrowt.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary_convertxn.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary_n.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary_pred.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unary_to_uint.c: Likewise.
+	* gcc.target/aarch64/sve/pfalse-unaryxn.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_int_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_int_opt_single_n.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_opt_single_n.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_to_uint.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_uint_opt_n.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-binary_wide.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-compare.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-load_ext_gather_index_restricted.c,
+	* gcc.target/aarch64/sve2/pfalse-load_ext_gather_offset_restricted.c,
+	* gcc.target/aarch64/sve2/pfalse-load_gather_sv_restricted.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-load_gather_vs.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-shift_left_imm_to_uint.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-shift_right_imm.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-store_scatter_index_restricted.c,
+	* gcc.target/aarch64/sve2/pfalse-store_scatter_offset_restricted.c,
+	* gcc.target/aarch64/sve2/pfalse-unary.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-unary_convert.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-unary_convert_narrowt.c: Likewise.
+	* gcc.target/aarch64/sve2/pfalse-unary_to_int.c: Likewise.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-10  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* lib/target-supports.exp (check_effective_target_aarch64_sve2p1_hw):
+	New proc.
+	* gcc.target/aarch64/sve2/dupq_1.c: Extend to big-endian.  Add
+	noipa attributes.
+	* gcc.target/aarch64/sve2/extq_1.c: Likewise.
+	* gcc.target/aarch64/sve2/uzpq_1.c: Likewise.
+	* gcc.target/aarch64/sve2/zipq_1.c: Likewise.
+	* gcc.target/aarch64/sve2/dupq_1_run.c: New test.
+	* gcc.target/aarch64/sve2/extq_1_run.c: Likewise.
+	* gcc.target/aarch64/sve2/uzpq_1_run.c: Likewise.
+	* gcc.target/aarch64/sve2/zipq_1_run.c: Likewise.
+
+2025-07-21  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-09  Richard Sandiford  <richard.sandiford@arm.com>
+
+	* gcc.dg/rtl/aarch64/vec-series-1.c: New test.
+	* gcc.dg/rtl/aarch64/vec-series-2.c: Likewise.
+	* gcc.target/aarch64/sve/acle/general/dupq_2.c: Fix expected
+	output for this big-endian test.
+	* gcc.target/aarch64/sve/acle/general/dupq_4.c: Likewise.
+	* gcc.target/aarch64/sve/vec_init_3.c: Restrict to little-endian
+	targets and add more tests.
+	* gcc.target/aarch64/sve/vec_init_4.c: New big-endian version
+	of vec_init_3.c.
+
+2025-07-20  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2025-07-18  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/121145
+	* gfortran.dg/pointer_check_15.f90: New test.
+
 2025-07-18  Thomas Schwinge  <tschwinge@baylibre.com>
 
 	Backported from master:

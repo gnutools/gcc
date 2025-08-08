@@ -651,9 +651,8 @@ ext_dce_process_uses (rtx_insn *insn, rtx obj,
 
 	  /* ?!? How much of this should mirror SET handling, potentially
 	     being shared?   */
-	  if (SUBREG_P (dst) && SUBREG_BYTE (dst).is_constant ())
+	  if (SUBREG_P (dst) && subreg_lsb (dst).is_constant (&bit))
 	    {
-	      bit = subreg_lsb (dst).to_constant ();
 	      if (bit >= HOST_BITS_PER_WIDE_INT)
 		bit = HOST_BITS_PER_WIDE_INT - 1;
 	      dst = SUBREG_REG (dst);
@@ -758,7 +757,7 @@ ext_dce_process_uses (rtx_insn *insn, rtx obj,
 		     and process the inner object.  */
 		  if (paradoxical_subreg_p (y))
 		    y = XEXP (y, 0);
-		  else if (SUBREG_P (y) && SUBREG_BYTE (y).is_constant ())
+		  else if (SUBREG_P (y) && subreg_lsb (y).is_constant (&bit))
 		    {
 		      /* If !TRULY_NOOP_TRUNCATION_MODES_P, the mode
 			 change performed by Y would normally need to be a
@@ -774,8 +773,6 @@ ext_dce_process_uses (rtx_insn *insn, rtx obj,
 				    GET_MODE (y),
 				    GET_MODE (SUBREG_REG (y))))))
 			break;
-
-		      bit = subreg_lsb (y).to_constant ();
 
 		      /* If this is a wide object (more bits than we can fit
 			 in a HOST_WIDE_INT), then just break from the SET
