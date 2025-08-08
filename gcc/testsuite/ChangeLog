@@ -1,3 +1,182 @@
+2025-08-01  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-07-31  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120800
+	* g++.dg/cpp0x/constexpr-array30.C: New test.
+
+2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	Backported from master:
+	2025-07-31  Spencer Abson  <spencer.abson@arm.com>
+
+	PR target/121028
+	* gcc.target/aarch64/sme/call_sm_switch_1.c: Tell check-function
+	-bodies not to ignore .inst directives, and replace the test for
+	"smstart sm" with one for it's encoding.
+	* gcc.target/aarch64/sme/call_sm_switch_11.c: Likewise.
+	* gcc.target/aarch64/sme/pr121028.c: New test.
+
+2025-07-31  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2025-07-24  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	PR testsuite/119382
+	* gcc.target/powerpc/vsx-builtin-7.c: Add '-fno-ipa-icf' to dg-options.
+
+2025-07-31  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-07-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* gcc.target/i386/pr120427-5.c: New test.
+
+2025-07-31  liuhongt  <hongtao.liu@intel.com>
+
+	Backported from master:
+	2025-07-30  liuhongt  <hongtao.liu@intel.com>
+
+	* gcc.target/i386/pr121274.c: New test.
+
+2025-07-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-06-19  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120427
+	* gcc.target/i386/cold-attribute-4.c: Compile with -Oz.
+	* gcc.target/i386/pr120427-1.c: New test.
+	* gcc.target/i386/pr120427-2.c: Likewise.
+	* gcc.target/i386/pr120427-3.c: Likewise.
+	* gcc.target/i386/pr120427-4.c: Likewise.
+
+2025-07-28  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2025-07-17  Xi Ruoyao  <xry111@xry111.site>
+
+	PR target/121064
+	* gcc.target/loongarch/pr121064.c: New test.
+
+2025-07-26  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-07-11  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/121027
+	* gcc.target/aarch64/sve/acle/general/perm_1.c: New test.
+
+2025-07-26  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2024-10-07  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/121027
+	* gcc.target/aarch64/sve/permute_5.c: New test.
+
+2025-07-26  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-07-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120577
+	* g++.dg/cpp2a/constexpr-union9.C: New test.
+
+2025-07-22  Haochen Gui  <guihaoc@gcc.gnu.org>
+
+	Backported from master:
+	2024-08-15  Haochen Gui  <guihaoc@gcc.gnu.org>
+
+	* gcc.target/powerpc/float128-cmp2-runnable.c: Replace
+	ppc_float128_sw with ppc_float128_hw and remove p9vector_hw.
+
+2025-07-18  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/121131
+	* gcc.dg/bitint-124.c: New test.
+
+2025-07-17  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2025-07-03  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/120908
+	* gcc.target/i386/pr120908.c: New test.
+
+2025-07-17  Jason Merrill  <jason@redhat.com>
+
+	PR c++/87097
+	* g++.dg/cpp0x/constexpr-array29.C: New test.
+
+2025-07-16  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2025-07-16  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/121060
+	* gfortran.dg/associate_75.f90: New test.
+
+2025-07-03  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120940
+	* g++.dg/parse/pr120940.C: New test.
+	* g++.dg/warn/Wduplicated-branches9.C: New test.
+
+2025-07-03  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-07-01  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120471
+	* g++.dg/ubsan/pr120471.C: New test.
+	* g++.dg/parse/pr120471.C: New test.
+
+2025-07-03  Richard Sandiford  <richard.sandiford@arm.com>
+
+	Backported from master:
+	2025-06-12  Richard Sandiford  <richard.sandiford@arm.com>
+
+	PR target/120624
+	* gcc.target/aarch64/sme/za_state_7.c: New test.
+
+2025-06-27  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/sso20.adb: New test.
+
+2025-06-20  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2024-09-11  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/116674
+	* g++.dg/vect/pr116674.cc: New testcase.
+
+2025-06-19  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-06-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/120631
+	* gcc.dg/dfp/bitint-10.c: New test.
+	* gcc.dg/dfp/pr120631.c: New test.
+
+2025-06-19  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-06-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/120631
+	* gcc.dg/dfp/bitint-9.c: New test.
+
 2025-06-13  Georg-Johann Lay  <avr@gjlay.de>
 
 	Backported from master:

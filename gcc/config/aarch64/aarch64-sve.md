@@ -6422,10 +6422,10 @@
 ;; by providing this, but we need to use UNSPECs since rtx logical ops
 ;; aren't defined for floating-point modes.
 (define_insn "*<optab><mode>3"
-  [(set (match_operand:SVE_FULL_F 0 "register_operand" "=w")
-	(unspec:SVE_FULL_F
-	  [(match_operand:SVE_FULL_F 1 "register_operand" "w")
-	   (match_operand:SVE_FULL_F 2 "register_operand" "w")]
+  [(set (match_operand:SVE_F 0 "register_operand" "=w")
+	(unspec:SVE_F
+	  [(match_operand:SVE_F 1 "register_operand" "w")
+	   (match_operand:SVE_F 2 "register_operand" "w")]
 	  LOGICALF))]
   "TARGET_SVE"
   "<logicalf_op>\t%0.d, %1.d, %2.d"
@@ -10989,16 +10989,12 @@
 
 (define_insn "@aarch64_sve_set_neonq_<mode>"
   [(set (match_operand:SVE_FULL 0 "register_operand" "=w")
-      (unspec:SVE_FULL
-	[(match_operand:SVE_FULL 1 "register_operand" "w")
-	(match_operand:<V128> 2 "register_operand" "w")
-	(match_operand:<VPRED> 3 "register_operand" "Upl")]
-	UNSPEC_SET_NEONQ))]
+	(unspec:SVE_FULL
+	  [(match_operand:SVE_FULL 1 "register_operand" "w")
+	   (match_operand:<V128> 2 "register_operand" "w")
+	   (match_operand:<VPRED> 3 "register_operand" "Upl")]
+	  UNSPEC_SET_NEONQ))]
   "TARGET_SVE
    && BYTES_BIG_ENDIAN"
-  {
-    operands[2] = lowpart_subreg (<MODE>mode, operands[2],
-                                  GET_MODE (operands[2]));
-    return "sel\t%0.<Vetype>, %3, %2.<Vetype>, %1.<Vetype>";
-  }
+  "sel\t%0.<Vetype>, %3, %Z2.<Vetype>, %1.<Vetype>"
 )
