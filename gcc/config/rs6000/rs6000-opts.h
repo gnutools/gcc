@@ -71,6 +71,10 @@ enum processor_type
    PROCESSOR_TITAN
 };
 
+/* At the current time, we do not have a separate FUTURE processor.  Map FUTURE
+   to POWER11 until we have tuning changes for the potential future
+   processor.  */
+#define PROCESSOR_FUTURE	PROCESSOR_POWER11
 
 /* Types of costly dependences.  */
 enum rs6000_dependence_cost
