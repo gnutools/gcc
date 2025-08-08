@@ -1,0 +1,14 @@
+==================== Branch work218-float16, baseline ====================
+
+2025-08-08   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.float16 and update REVISION.
+
+2025-08-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.float16: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
