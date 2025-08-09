@@ -15298,17 +15298,36 @@ rs6000_print_patchable_function_entry (FILE *file,
 }
 
 enum rtx_code
-rs6000_reverse_condition (machine_mode mode, enum rtx_code code)
+rs6000_reverse_condition (machine_mode mode,
+			  enum rtx_code code,
+			  enum cond_reverse_fp do_reverse)
 {
   /* Reversal of FP compares takes care -- an ordered compare
-     becomes an unordered compare and vice versa.  */
-  if (mode == CCFPmode
-      && (!flag_finite_math_only
-	  || code == UNLT || code == UNLE || code == UNGT || code == UNGE
-	  || code == UNEQ || code == LTGT))
-    return reverse_condition_maybe_unordered (code);
-  else
-    return reverse_condition (code);
+     becomes an unordered compare and vice versa.
+
+     Do not allow reversing comparisons if this is an IEEE comparison that must
+     not trap.  We do allow the comparsion to be reversed for explicit jumps
+     when cond_reverse_fp::reverse_ok is passed.  */
+  if (mode == CCFPmode)
+    {
+      /* If NaNs are allowed, don't allow the reversal of floating point
+	 comparisons when the comparison is used in the context of a floating
+	 point conditional move when no_ordered is passed.  We do allow the
+	 comparsion to be reversed for explicit jumps when ordered_ok is
+	 passed.  */
+      if (!flag_finite_math_only)
+	return (do_reverse == cond_reverse_fp::no_reverse
+		? UNKNOWN
+		: reverse_condition_maybe_unordered (code));
+
+      /* Explicit ordered comparisons can be reversed if NaNs are not
+	 allowed.  */
+      else if (code == UNLT || code == UNLE || code == UNGT || code == UNGE
+	       || code == UNEQ || code == LTGT)
+	return reverse_condition_maybe_unordered (code);
+    }
+
+  return reverse_condition (code);
 }
 
 /* Check if C (as 64bit integer) can be rotated to a constant which constains
@@ -15918,11 +15937,14 @@ rs6000_emit_sCOND (machine_mode mode, rtx operands[])
       rtx not_result = gen_reg_rtx (CCEQmode);
       rtx not_op, rev_cond_rtx;
       machine_mode cc_mode;
+      rtx_code rev;
 
       cc_mode = GET_MODE (XEXP (condition_rtx, 0));
 
-      rev_cond_rtx = gen_rtx_fmt_ee (rs6000_reverse_condition (cc_mode, cond_code),
-				     SImode, XEXP (condition_rtx, 0), const0_rtx);
+      rev = rs6000_reverse_condition (cc_mode, cond_code,
+				      cond_reverse_fp::no_reverse);
+      rev_cond_rtx = gen_rtx_fmt_ee (rev, SImode, XEXP (condition_rtx, 0),
+				     const0_rtx);
       not_op = gen_rtx_COMPARE (CCEQmode, rev_cond_rtx, const0_rtx);
       emit_insn (gen_rtx_SET (not_result, not_op));
       condition_rtx = gen_rtx_EQ (VOIDmode, not_result, const0_rtx);
