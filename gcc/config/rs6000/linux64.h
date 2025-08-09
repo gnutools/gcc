@@ -564,8 +564,7 @@ extern int dot_symbols;
 
 /* Enable using prefixed PC-relative addressing on POWER10 if the ABI
    supports it.  The ELF v2 ABI only supports PC-relative relocations for
-   the medium/large code models.  */
+   the medium code model.  */
 #define PCREL_SUPPORTED_BY_OS	(TARGET_POWER10 && TARGET_PREFIXED	\
 				 && ELFv2_ABI_CHECK			\
-				 && (TARGET_CMODEL == CMODEL_MEDIUM	\
-				     || TARGET_CMODEL == CMODEL_LARGE))
+				 && TARGET_CMODEL == CMODEL_MEDIUM)
