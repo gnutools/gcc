@@ -898,3 +898,38 @@ gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
 {
   return gfc_init_descriptor_variable (block, sym, nullptr, descr);
 }
+
+
+tree
+gfc_create_null_actual_descriptor (stmtblock_t *block, gfc_typespec *ts,
+				   symbol_attribute attr, int rank)
+{
+  tree etype = gfc_typenode_for_spec (ts);
+
+  enum gfc_array_kind akind;
+
+  if (attr.pointer)
+    akind = GFC_ARRAY_POINTER_CONT;
+  else if (attr.allocatable)
+    akind = GFC_ARRAY_ALLOCATABLE;
+  else
+    akind = GFC_ARRAY_ASSUMED_SHAPE_CONT;
+
+  tree lower[GFC_MAX_DIMENSIONS];
+  tree upper[GFC_MAX_DIMENSIONS];
+  memset (&lower, 0, rank * sizeof (lower[0]));
+  memset (&upper, 0, rank * sizeof (upper[0]));
+
+  tree type = gfc_get_array_type_bounds (etype, rank, 0, lower, upper, 1,
+					 akind, !(attr.pointer || attr.target));
+  tree desc = gfc_create_var (type, "desc");
+  DECL_ARTIFICIAL (desc) = 1;
+
+  gfc_conv_descriptor_dtype_set (block, desc,
+				 gfc_get_dtype_rank_type (rank, etype));
+  gfc_conv_descriptor_data_set (block, desc, null_pointer_node);
+  gfc_conv_descriptor_span_set (block, desc,
+				gfc_conv_descriptor_elem_len_get (desc));
+
+  return desc;
+}

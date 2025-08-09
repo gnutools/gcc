@@ -6758,8 +6758,8 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	  if (fsym->as && fsym->as->type == AS_ASSUMED_RANK)
 	    {
 	      tree tmp = parmse->expr;
-	      tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
-	      gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
+	      tmp = gfc_create_null_actual_descriptor (&parmse->pre, &e->ts,
+						       fsym->attr, e->rank);
 	      parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	    }
 	  else
@@ -6811,26 +6811,19 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	{
 	  tree tmp = parmse->expr;
 
-	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, gfc_expr_attr (e));
-	  gfc_conv_descriptor_rank_set (&parmse->pre, tmp, e->rank);
-	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
+	  tmp = gfc_create_null_actual_descriptor (&parmse->pre, &e->ts,
+						   fsym->attr, e->rank);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
       else
 	/* MOLD is not present.  Use attributes from dummy argument, which is
 	   not allowed to be assumed-rank.  */
 	{
-	  int dummy_rank;
 	  tree tmp = parmse->expr;
 
-	  if ((fsym->attr.allocatable || fsym->attr.pointer)
-	      && fsym->attr.intent == INTENT_UNKNOWN)
-	    fsym->attr.intent = INTENT_IN;
-	  tmp = gfc_conv_scalar_to_descriptor (parmse, tmp, fsym->attr);
-	  dummy_rank = fsym->as ? fsym->as->rank : 0;
-	  if (dummy_rank > 0)
-	    gfc_conv_descriptor_rank_set (&parmse->pre, tmp, dummy_rank);
-	  gfc_conv_descriptor_data_set (&parmse->pre, tmp, null_pointer_node);
+	  int dummy_rank = fsym->as ? fsym->as->rank : 0;
+	  tmp = gfc_create_null_actual_descriptor (&parmse->pre, &fsym->ts,
+						   fsym->attr, dummy_rank);
 	  parmse->expr = gfc_build_addr_expr (NULL_TREE, tmp);
 	}
     }
