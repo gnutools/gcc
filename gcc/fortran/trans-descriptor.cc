@@ -847,9 +847,8 @@ gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, tree descr)
 {
   /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
      pointers when -fcheck=pointer is specified.  */
-  if (!sym->attr.save
-      && (sym->attr.allocatable
-	  || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER))))
+  if (sym->attr.allocatable
+      || (sym->attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER)))
     {
       gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
       if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)

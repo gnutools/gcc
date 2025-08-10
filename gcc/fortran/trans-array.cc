@@ -11927,12 +11927,10 @@ gfc_trans_deferred_array (gfc_symbol * sym, gfc_wrapped_block * block)
 
   /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
      pointers when -fcheck=pointer is specified.  */
-  if (GFC_DESCRIPTOR_TYPE_P (type)
+  if (GFC_DESCRIPTOR_TYPE_P (type) && !sym->attr.save
       && (sym->attr.allocatable || sym->attr.pointer))
     {
-      if (flag_coarray == GFC_FCOARRAY_LIB
-	  && sym->attr.codimension
-	  && !sym->attr.save)
+      if (flag_coarray == GFC_FCOARRAY_LIB && sym->attr.codimension)
 	{
 	  /* Declare the variable static so its array descriptor stays present
 	     after leaving the scope.  It may still be accessed through another
