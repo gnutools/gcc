@@ -169,8 +169,9 @@ tree gfc_trans_array_bounds (tree, gfc_symbol *, tree *, stmtblock_t *);
 void gfc_trans_array_cobounds (tree, stmtblock_t *, const gfc_symbol *);
 
 /* Build expressions for accessing components of an array descriptor.  */
-void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *, tree *,
-					  tree *, tree *, tree *, tree *);
+void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *,
+					  tree *, tree *, tree *, tree *,
+					  tree *, tree *);
 
 /* Shift lower bound of descriptor, updating ubound and offset.  */
 void gfc_conv_shift_descriptor_lbound (stmtblock_t*, tree, int, tree);

@@ -1010,12 +1010,6 @@ extern GTY(()) tree gfor_fndecl_caf_random_init;
 /* gfortran-specific declaration information, the _CONT versions denote
    arrays with CONTIGUOUS attribute.  */
 
-#define GFC_DTYPE_ELEM_LEN 0
-#define GFC_DTYPE_VERSION 1
-#define GFC_DTYPE_RANK 2
-#define GFC_DTYPE_TYPE 3
-#define GFC_DTYPE_ATTRIBUTE 4
-
 enum gfc_array_kind
 {
   GFC_ARRAY_UNKNOWN,
