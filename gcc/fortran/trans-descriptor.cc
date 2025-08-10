@@ -722,6 +722,103 @@ gfc_get_dtype_rank_type (int rank, tree etype)
 }
 
 
+class constructor_elements
+{
+  vec<constructor_elt, va_gc> *values;
+  bool constant;
+
+public:
+  constructor_elements () : values (nullptr), constant (true) {}
+  void add_value (tree elt, tree val);
+  tree build (tree type);
+};
+
+
+void
+constructor_elements::add_value (tree elt, tree val)
+{
+  CONSTRUCTOR_APPEND_ELT (values, elt, val);
+  if (!TREE_CONSTANT (val))
+    constant = false;
+}
+
+
+tree
+constructor_elements::build (tree type)
+{
+  tree cstr = build_constructor (type, values);
+  if (constant)
+    TREE_CONSTANT (cstr) = 1;
+
+  return cstr;
+}
+
+
+struct write_destination
+{
+  enum write_type
+  {
+    STATIC_INIT,
+    REGULAR_ASSIGN
+  }
+  type;
+
+  tree ref;
+
+  union u
+  {
+    struct rw
+    {
+      stmtblock_t *block;
+
+      rw (stmtblock_t *b) : block(b) {}
+    }
+    regular_assign;
+
+    constructor_elements static_init;
+
+    u(stmtblock_t *block) : regular_assign (block) {}
+    u() : static_init () {}
+  }
+  u;
+
+  write_destination (tree r, stmtblock_t *b)
+      : type (REGULAR_ASSIGN), ref (r), u (b) {}
+  write_destination (tree d) : type (STATIC_INIT), ref (d), u () {}
+};
+
+
+static void
+set_descriptor_field (write_destination &dest, descriptor_field field, tree value)
+{
+  if (dest.type == write_destination::STATIC_INIT)
+    {
+      tree field_decl = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (dest.ref)),
+					   field);
+      dest.u.static_init.add_value (field_decl, value);
+    }
+  else
+    {
+      tree comp_ref = get_ref_comp (dest.ref, field);
+      set_value (dest.u.regular_assign.block, comp_ref, value);
+    }
+}
+
+
+static void
+set_descriptor (write_destination &dest)
+{
+  set_descriptor_field (dest, DATA_FIELD, null_pointer_node);
+  if (dest.type == write_destination::STATIC_INIT)
+    {
+      tree decl = dest.ref;
+      tree type = TREE_TYPE (decl);
+      tree cstr = dest.u.static_init.build (type);
+      DECL_INITIAL (decl) = cstr;
+    }
+}
+
+
 /* Build a null array descriptor constructor.  */
 
 tree
@@ -829,21 +926,22 @@ gfc_conv_descriptor_cosize (tree desc, int rank, int corank)
 void
 gfc_nullify_descriptor (stmtblock_t *block, tree descr)
 {
-  gfc_conv_descriptor_data_set (block, descr, null_pointer_node); 
+  write_destination dest(descr, block);
+  set_descriptor (dest);
 }
 
 
 void
 gfc_init_descriptor_result (stmtblock_t *block, tree descr)
 {
-  gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
+  gfc_nullify_descriptor (block, descr);
 }
 
 
 void
 gfc_init_absent_descriptor (stmtblock_t *block, tree descr)
 {
-  gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
+  gfc_nullify_descriptor (block, descr);
 }
 
 
