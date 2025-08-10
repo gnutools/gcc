@@ -848,10 +848,38 @@ gfc_init_absent_descriptor (stmtblock_t *block, tree descr)
 
 
 void
-gfc_init_static_descriptor (tree descr)
+gfc_init_static_descriptor (gfc_symbol *sym)
 {
+  vec<constructor_elt, va_gc> *v = NULL;
+
+  tree descr = sym->backend_decl;
   tree type = TREE_TYPE (descr);
-  DECL_INITIAL (descr) = gfc_build_null_descriptor (type);
+
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
+  tree fields = TYPE_FIELDS (type);
+
+  tree data_field = gfc_advance_chain (fields, DATA_FIELD);
+  CONSTRUCTOR_APPEND_ELT (v, data_field,
+			  fold_convert (TREE_TYPE (data_field),
+					null_pointer_node));
+
+  gfc_array_spec *as;
+  if (sym->ts.type == BT_CLASS)
+    as = CLASS_DATA (sym)->as;
+  else
+    as = sym->as;
+
+  int rank = as ? as->rank : 0;
+  tree dtype_field = gfc_advance_chain (fields, DTYPE_FIELD);
+  tree dtype_value = gfc_get_dtype_rank_type (rank,
+					      gfc_get_element_type (type));
+  CONSTRUCTOR_APPEND_ELT (v, dtype_field,
+			  fold_convert (TREE_TYPE (dtype_field), dtype_value));
+
+  tree constr = build_constructor (type, v);
+  TREE_CONSTANT (constr) = 1;
+
+  DECL_INITIAL (descr) = constr;
 }
 
 
@@ -2823,4 +2851,3 @@ gfc_set_empty_descriptor_bounds (stmtblock_t *block, tree descr, int rank)
 
   gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
 }
-

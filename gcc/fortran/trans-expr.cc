@@ -5904,50 +5904,6 @@ expr_may_alias_variables (gfc_expr *e, bool array_may_alias)
 }
 
 
-/* A helper function to set the dtype for unallocated or unassociated
-   entities.  */
-
-static void
-set_dtype_for_unallocated (gfc_se *parmse, gfc_expr *e)
-{
-  tree tmp;
-  tree desc;
-  tree cond;
-  tree type;
-  stmtblock_t block;
-
-  /* TODO Figure out how to handle optional dummies.  */
-  if (e && e->expr_type == EXPR_VARIABLE
-      && e->symtree->n.sym->attr.optional)
-    return;
-
-  desc = parmse->expr;
-  if (desc == NULL_TREE)
-    return;
-
-  if (POINTER_TYPE_P (TREE_TYPE (desc)))
-    desc = build_fold_indirect_ref_loc (input_location, desc);
-  if (GFC_CLASS_TYPE_P (TREE_TYPE (desc)))
-    desc = gfc_class_data_get (desc);
-  if (!GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
-    return;
-
-  gfc_init_block (&block);
-  tmp = gfc_conv_descriptor_data_get (desc);
-  cond = fold_build2_loc (input_location, EQ_EXPR,
-			  logical_type_node, tmp,
-			  build_int_cst (TREE_TYPE (tmp), 0));
-  type = gfc_get_element_type (TREE_TYPE (desc));
-  gfc_conv_descriptor_dtype_set (&block, desc, 
-				 gfc_get_dtype_rank_type (e->rank, type));
-  cond = build3_v (COND_EXPR, cond,
-		   gfc_finish_block (&block),
-		   build_empty_stmt (input_location));
-  gfc_add_expr_to_block (&parmse->pre, cond);
-}
-
-
-
 /* Provide an interface between gfortran array descriptors and the F2018:18.4
    ISO_Fortran_binding array descriptors. */
 
@@ -7719,40 +7675,32 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  && (fsym->ts.type == BT_CLASS
 	      ? (CLASS_DATA (fsym)->as
 		 && CLASS_DATA (fsym)->as->type == AS_ASSUMED_RANK)
-	      : (fsym->as && fsym->as->type == AS_ASSUMED_RANK)))
+	      : (fsym->as && fsym->as->type == AS_ASSUMED_RANK))
+	  && !(fsym->ts.type == BT_CLASS
+	       ? (CLASS_DATA (fsym)->attr.class_pointer
+		  || CLASS_DATA (fsym)->attr.allocatable)
+	       : (fsym->attr.pointer || fsym->attr.allocatable))
+	  && e->expr_type == EXPR_VARIABLE
+	  && e->symtree->n.sym->attr.dummy
+	  && (e->ts.type == BT_CLASS
+	      ? (e->ref && e->ref->next
+		 && e->ref->next->type == REF_ARRAY
+		 && e->ref->next->u.ar.type == AR_FULL
+		 && e->ref->next->u.ar.as->type == AS_ASSUMED_SIZE)
+	      : (e->ref && e->ref->type == REF_ARRAY
+		 && e->ref->u.ar.type == AR_FULL
+		 && e->ref->u.ar.as->type == AS_ASSUMED_SIZE)))
 	{
-	  if (fsym->ts.type == BT_CLASS
-	      ? (CLASS_DATA (fsym)->attr.class_pointer
-		 || CLASS_DATA (fsym)->attr.allocatable)
-	      : (fsym->attr.pointer || fsym->attr.allocatable))
-	    {
-	      /* Unallocated allocatable arrays and unassociated pointer
-		 arrays need their dtype setting if they are argument
-		 associated with assumed rank dummies to set the rank.  */
-	      set_dtype_for_unallocated (&parmse, e);
-	    }
-	  else if (e->expr_type == EXPR_VARIABLE
-		   && e->symtree->n.sym->attr.dummy
-		   && (e->ts.type == BT_CLASS
-		       ? (e->ref && e->ref->next
-			  && e->ref->next->type == REF_ARRAY
-			  && e->ref->next->u.ar.type == AR_FULL
-			  && e->ref->next->u.ar.as->type == AS_ASSUMED_SIZE)
-		       : (e->ref && e->ref->type == REF_ARRAY
-			  && e->ref->u.ar.type == AR_FULL
-			  && e->ref->u.ar.as->type == AS_ASSUMED_SIZE)))
-	    {
-	      /* Assumed-size actual to assumed-rank dummy requires
-		 dim[rank-1].ubound = -1. */
-	      tree minus_one;
-	      tmp = build_fold_indirect_ref_loc (input_location, parmse.expr);
-	      if (fsym->ts.type == BT_CLASS)
-		tmp = gfc_class_data_get (tmp);
-	      minus_one = build_int_cst (gfc_array_index_type, -1);
-	      gfc_conv_descriptor_ubound_set (&parmse.pre, tmp,
-					      gfc_rank_cst[e->rank - 1],
-					      minus_one);
-	    }
+	  /* Assumed-size actual to assumed-rank dummy requires
+	     dim[rank-1].ubound = -1. */
+	  tree minus_one;
+	  tmp = build_fold_indirect_ref_loc (input_location, parmse.expr);
+	  if (fsym->ts.type == BT_CLASS)
+	    tmp = gfc_class_data_get (tmp);
+	  minus_one = build_int_cst (gfc_array_index_type, -1);
+	  gfc_conv_descriptor_ubound_set (&parmse.pre, tmp,
+					  gfc_rank_cst[e->rank - 1],
+					  minus_one);
 	}
 
       /* The case with fsym->attr.optional is that of a user subroutine

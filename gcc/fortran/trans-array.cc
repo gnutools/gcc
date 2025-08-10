@@ -547,7 +547,7 @@ void
 gfc_trans_static_array_pointer (gfc_symbol * sym)
 {
   gcc_assert (TREE_STATIC (sym->backend_decl));
-  gfc_init_static_descriptor (sym->backend_decl);
+  gfc_init_static_descriptor (sym);
 }
 
 
