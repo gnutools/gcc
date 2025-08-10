@@ -7670,38 +7670,6 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 		}
 	    }
 	}
-      /* Special case for an assumed-rank dummy argument. */
-      if (!sym->attr.is_bind_c && e && fsym && e->rank > 0
-	  && (fsym->ts.type == BT_CLASS
-	      ? (CLASS_DATA (fsym)->as
-		 && CLASS_DATA (fsym)->as->type == AS_ASSUMED_RANK)
-	      : (fsym->as && fsym->as->type == AS_ASSUMED_RANK))
-	  && !(fsym->ts.type == BT_CLASS
-	       ? (CLASS_DATA (fsym)->attr.class_pointer
-		  || CLASS_DATA (fsym)->attr.allocatable)
-	       : (fsym->attr.pointer || fsym->attr.allocatable))
-	  && e->expr_type == EXPR_VARIABLE
-	  && e->symtree->n.sym->attr.dummy
-	  && (e->ts.type == BT_CLASS
-	      ? (e->ref && e->ref->next
-		 && e->ref->next->type == REF_ARRAY
-		 && e->ref->next->u.ar.type == AR_FULL
-		 && e->ref->next->u.ar.as->type == AS_ASSUMED_SIZE)
-	      : (e->ref && e->ref->type == REF_ARRAY
-		 && e->ref->u.ar.type == AR_FULL
-		 && e->ref->u.ar.as->type == AS_ASSUMED_SIZE)))
-	{
-	  /* Assumed-size actual to assumed-rank dummy requires
-	     dim[rank-1].ubound = -1. */
-	  tree minus_one;
-	  tmp = build_fold_indirect_ref_loc (input_location, parmse.expr);
-	  if (fsym->ts.type == BT_CLASS)
-	    tmp = gfc_class_data_get (tmp);
-	  minus_one = build_int_cst (gfc_array_index_type, -1);
-	  gfc_conv_descriptor_ubound_set (&parmse.pre, tmp,
-					  gfc_rank_cst[e->rank - 1],
-					  minus_one);
-	}
 
       /* The case with fsym->attr.optional is that of a user subroutine
 	 with an interface indicating an optional argument.  When we call

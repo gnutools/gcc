@@ -7826,21 +7826,28 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	    expr->ts.u.cl->backend_decl = tmp;
 	}
 
-      /* If we have an array section, are assigning  or passing an array
-	 section argument make sure that the lower bound is 1.  References
-	 to the full array should otherwise keep the original bounds.  */
-      if (!info->ref || info->ref->u.ar.type != AR_FULL)
-	for (dim = 0; dim < loop.dimen; dim++)
-	  if (!integer_onep (loop.from[dim]))
-	    {
-	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				     gfc_array_index_type, gfc_index_one_node,
-				     loop.from[dim]);
-	      loop.to[dim] = fold_build2_loc (input_location, PLUS_EXPR,
-					      gfc_array_index_type,
-					      loop.to[dim], tmp);
-	      loop.from[dim] = gfc_index_one_node;
-	    }
+      if (info->ref && info->ref->u.ar.type == AR_FULL)
+	{
+	  if (info->ref->u.ar.as->type == AS_ASSUMED_SIZE)
+	    loop.to[loop.dimen - 1] = build_int_cst (gfc_array_index_type, -1);
+	}
+      else
+	{
+	  /* If we have an array section, are assigning  or passing an array
+	     section argument make sure that the lower bound is 1.  References
+	     to the full array should otherwise keep the original bounds.  */
+	  for (dim = 0; dim < loop.dimen; dim++)
+	    if (!integer_onep (loop.from[dim]))
+	      {
+		tmp = fold_build2_loc (input_location, MINUS_EXPR,
+				       gfc_array_index_type, gfc_index_one_node,
+				       loop.from[dim]);
+		loop.to[dim] = fold_build2_loc (input_location, PLUS_EXPR,
+						gfc_array_index_type,
+						loop.to[dim], tmp);
+		loop.from[dim] = gfc_index_one_node;
+	      }
+	}
 
       desc = info->descriptor;
       if (se->direct_byref && !se->byref_noassign)
