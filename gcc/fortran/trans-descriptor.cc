@@ -50,16 +50,31 @@ along with GCC; see the file COPYING3.  If not see
 
    Don't forget to #undef these!  */
 
-#define DATA_FIELD 0
-#define OFFSET_FIELD 1
-#define DTYPE_FIELD 2
-#define SPAN_FIELD 3
-#define DIMENSION_FIELD 4
-#define CAF_TOKEN_FIELD 5
+enum descriptor_field
+{
+  DATA_FIELD = 0,
+  OFFSET_FIELD,
+  DTYPE_FIELD,
+  SPAN_FIELD,
+  DIMENSION_FIELD,
+  CAF_TOKEN_FIELD,
+};
 
-#define STRIDE_SUBFIELD 0
-#define LBOUND_SUBFIELD 1
-#define UBOUND_SUBFIELD 2
+enum dim_subfield
+{
+  STRIDE_SUBFIELD = 0,
+  LBOUND_SUBFIELD,
+  UBOUND_SUBFIELD,
+};
+
+enum dtype_subfield
+{
+  GFC_DTYPE_ELEM_LEN = 0,
+  GFC_DTYPE_VERSION,
+  GFC_DTYPE_RANK,
+  GFC_DTYPE_TYPE,
+  GFC_DTYPE_ATTRIBUTE
+};
 
 
 /* Get FIELD_IDX'th field in struct TYPE.  */
@@ -88,14 +103,15 @@ get_ref_comp (tree ref, unsigned field_idx, tree type = NULL_TREE)
 
 
 static tree
-get_descr_comp (tree desc, unsigned field_idx, tree type = NULL_TREE)
+get_descr_comp (tree desc, descriptor_field field, tree type = NULL_TREE)
 {
   gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)));
 
-  return get_ref_comp (desc, field_idx, type);
+  return get_ref_comp (desc, field, type);
 }
 
-void
+
+static void
 set_value (stmtblock_t *block, tree ref, tree value)
 {
   location_t loc = input_location;
@@ -203,10 +219,10 @@ gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 /* Return a reference to the rank of array descriptor DESC.  */
 
 static tree
-get_dtype_comp (tree desc, unsigned field_idx, tree type = NULL_TREE)
+get_dtype_comp (tree desc, dtype_subfield field, tree type = NULL_TREE)
 {
   tree dtype_ref = conv_descriptor_dtype (desc);
-  return get_ref_comp (dtype_ref, field_idx, type);
+  return get_ref_comp (dtype_ref, field, type);
 }
 
 
@@ -445,11 +461,11 @@ gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value)
 
 
 static tree
-get_descr_dim_comp (tree desc, tree dim, unsigned field_idx,
+get_descr_dim_comp (tree desc, tree dim, dim_subfield field,
 		    tree type = NULL_TREE)
 {
   tree tmp = conv_descriptor_dimension (desc, dim);
-  return get_ref_comp (tmp, field_idx, type);
+  return get_ref_comp (tmp, field, type);
 }
 
 
@@ -555,22 +571,26 @@ gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
 
 void
 gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
-				     tree *dtype_off, tree *span_off,
-				     tree *dim_off, tree *dim_size,
-				     tree *stride_suboff, tree *lower_suboff,
-				     tree *upper_suboff)
+				     tree *dtype_off, tree *rank_suboff,
+				     tree *span_off, tree *dim_off,
+				     tree *dim_size, tree *stride_suboff,
+				     tree *lower_suboff, tree *upper_suboff)
 {
   tree field;
   tree type;
 
   type = TYPE_MAIN_VARIANT (desc_type);
-  field = gfc_advance_chain (TYPE_FIELDS (type), DATA_FIELD);
+  tree fields = TYPE_FIELDS (type);
+  field = gfc_advance_chain (fields, DATA_FIELD);
   *data_off = byte_position (field);
-  field = gfc_advance_chain (TYPE_FIELDS (type), DTYPE_FIELD);
+  field = gfc_advance_chain (fields, DTYPE_FIELD);
   *dtype_off = byte_position (field);
-  field = gfc_advance_chain (TYPE_FIELDS (type), SPAN_FIELD);
+  type = TREE_TYPE (field);
+  field = gfc_advance_chain (TYPE_FIELDS (type), GFC_DTYPE_RANK);
+  *rank_suboff = byte_position (field);
+  field = gfc_advance_chain (fields, SPAN_FIELD);
   *span_off = byte_position (field);
-  field = gfc_advance_chain (TYPE_FIELDS (type), DIMENSION_FIELD);
+  field = gfc_advance_chain (fields, DIMENSION_FIELD);
   *dim_off = byte_position (field);
   type = TREE_TYPE (TREE_TYPE (field));
   *dim_size = TYPE_SIZE_UNIT (type);
@@ -619,6 +639,125 @@ gfc_build_null_descriptor (tree type)
 #undef LBOUND_SUBFIELD
 #undef UBOUND_SUBFIELD
 
+
+
+/* Return the DTYPE for an array.  This describes the type and type parameters
+   of the array.  */
+/* TODO: Only call this when the value is actually used, and make all the
+   unknown cases abort.  */
+
+tree
+gfc_get_dtype_rank_type (int rank, tree etype)
+{
+  tree ptype;
+  tree size;
+  int n;
+  tree tmp;
+  tree dtype;
+  tree field;
+  vec<constructor_elt, va_gc> *v = NULL;
+
+  ptype = etype;
+  while (TREE_CODE (etype) == POINTER_TYPE
+	 || TREE_CODE (etype) == ARRAY_TYPE)
+    {
+      ptype = etype;
+      etype = TREE_TYPE (etype);
+    }
+
+  gcc_assert (etype);
+
+  switch (TREE_CODE (etype))
+    {
+    case INTEGER_TYPE:
+      if (TREE_CODE (ptype) == ARRAY_TYPE
+	  && TYPE_STRING_FLAG (ptype))
+	n = BT_CHARACTER;
+      else
+	{
+	  if (TYPE_UNSIGNED (etype))
+	    n = BT_UNSIGNED;
+	  else
+	    n = BT_INTEGER;
+	}
+      break;
+
+    case BOOLEAN_TYPE:
+      n = BT_LOGICAL;
+      break;
+
+    case REAL_TYPE:
+      n = BT_REAL;
+      break;
+
+    case COMPLEX_TYPE:
+      n = BT_COMPLEX;
+      break;
+
+    case RECORD_TYPE:
+      if (GFC_CLASS_TYPE_P (etype))
+	n = BT_CLASS;
+      else
+	n = BT_DERIVED;
+      break;
+
+    case FUNCTION_TYPE:
+    case VOID_TYPE:
+      n = BT_VOID;
+      break;
+
+    default:
+      /* TODO: Don't do dtype for temporary descriptorless arrays.  */
+      /* We can encounter strange array types for temporary arrays.  */
+      gcc_unreachable ();
+    }
+
+  switch (n)
+    {
+    case BT_CHARACTER:
+      gcc_assert (TREE_CODE (ptype) == ARRAY_TYPE);
+      size = gfc_get_character_len_in_bytes (ptype);
+      break;
+    case BT_VOID:
+      gcc_assert (TREE_CODE (ptype) == POINTER_TYPE);
+      size = size_in_bytes (ptype);
+      break;
+    default:
+      size = size_in_bytes (etype);
+      break;
+    }
+
+  tree dtype_type_node = get_dtype_type_node ();
+
+  gcc_assert (size);
+
+  STRIP_NOPS (size);
+  size = fold_convert (size_type_node, size);
+  tmp = get_dtype_type_node ();
+  field = gfc_advance_chain (TYPE_FIELDS (tmp),
+			     GFC_DTYPE_ELEM_LEN);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  fold_convert (TREE_TYPE (field), size));
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_VERSION);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_zero_cst (TREE_TYPE (field)));
+
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_RANK);
+  if (rank >= 0)
+    CONSTRUCTOR_APPEND_ELT (v, field,
+			    build_int_cst (TREE_TYPE (field), rank));
+
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_TYPE);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_int_cst (TREE_TYPE (field), n));
+
+  dtype = build_constructor (tmp, v);
+
+  return dtype;
+}
 
 /* For an array descriptor, get the total number of elements.  This is just
    the product of the extents along from_dim to to_dim.  */

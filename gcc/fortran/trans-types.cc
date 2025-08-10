@@ -1694,123 +1694,6 @@ gfc_get_desc_dim_type (void)
 }
 
 
-/* Return the DTYPE for an array.  This describes the type and type parameters
-   of the array.  */
-/* TODO: Only call this when the value is actually used, and make all the
-   unknown cases abort.  */
-
-tree
-gfc_get_dtype_rank_type (int rank, tree etype)
-{
-  tree ptype;
-  tree size;
-  int n;
-  tree tmp;
-  tree dtype;
-  tree field;
-  vec<constructor_elt, va_gc> *v = NULL;
-
-  ptype = etype;
-  while (TREE_CODE (etype) == POINTER_TYPE
-	 || TREE_CODE (etype) == ARRAY_TYPE)
-    {
-      ptype = etype;
-      etype = TREE_TYPE (etype);
-    }
-
-  gcc_assert (etype);
-
-  switch (TREE_CODE (etype))
-    {
-    case INTEGER_TYPE:
-      if (TREE_CODE (ptype) == ARRAY_TYPE
-	  && TYPE_STRING_FLAG (ptype))
-	n = BT_CHARACTER;
-      else
-	{
-	  if (TYPE_UNSIGNED (etype))
-	    n = BT_UNSIGNED;
-	  else
-	    n = BT_INTEGER;
-	}
-      break;
-
-    case BOOLEAN_TYPE:
-      n = BT_LOGICAL;
-      break;
-
-    case REAL_TYPE:
-      n = BT_REAL;
-      break;
-
-    case COMPLEX_TYPE:
-      n = BT_COMPLEX;
-      break;
-
-    case RECORD_TYPE:
-      if (GFC_CLASS_TYPE_P (etype))
-	n = BT_CLASS;
-      else
-	n = BT_DERIVED;
-      break;
-
-    case FUNCTION_TYPE:
-    case VOID_TYPE:
-      n = BT_VOID;
-      break;
-
-    default:
-      /* TODO: Don't do dtype for temporary descriptorless arrays.  */
-      /* We can encounter strange array types for temporary arrays.  */
-      gcc_unreachable ();
-    }
-
-  switch (n)
-    {
-    case BT_CHARACTER:
-      gcc_assert (TREE_CODE (ptype) == ARRAY_TYPE);
-      size = gfc_get_character_len_in_bytes (ptype);
-      break;
-    case BT_VOID:
-      gcc_assert (TREE_CODE (ptype) == POINTER_TYPE);
-      size = size_in_bytes (ptype);
-      break;
-    default:
-      size = size_in_bytes (etype);
-      break;
-    }
-
-  gcc_assert (size);
-
-  STRIP_NOPS (size);
-  size = fold_convert (size_type_node, size);
-  tmp = get_dtype_type_node ();
-  field = gfc_advance_chain (TYPE_FIELDS (tmp),
-			     GFC_DTYPE_ELEM_LEN);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  fold_convert (TREE_TYPE (field), size));
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_VERSION);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  build_zero_cst (TREE_TYPE (field)));
-
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_RANK);
-  if (rank >= 0)
-    CONSTRUCTOR_APPEND_ELT (v, field,
-			    build_int_cst (TREE_TYPE (field), rank));
-
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_TYPE);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  build_int_cst (TREE_TYPE (field), n));
-
-  dtype = build_constructor (tmp, v);
-
-  return dtype;
-}
-
-
 tree
 gfc_get_dtype (tree type, int * rank)
 {
@@ -3718,9 +3601,9 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
   int rank, dim;
   bool indirect = false;
   tree etype, ptype, t, base_decl;
-  tree data_off, span_off, dim_off, dtype_off, dim_size, elem_size;
+  tree data_off, span_off, dim_off, dtype_off, rank_suboff, dim_size, elem_size;
   tree lower_suboff, upper_suboff, stride_suboff;
-  tree dtype, field, rank_off;
+  tree dtype;
 
   if (! GFC_DESCRIPTOR_TYPE_P (type))
     {
@@ -3773,9 +3656,10 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
   if (indirect)
     base_decl = build1 (INDIRECT_REF, ptype, base_decl);
 
-  gfc_get_descriptor_offsets_for_info (type, &data_off, &dtype_off, &span_off,
-				       &dim_off, &dim_size, &stride_suboff,
-				       &lower_suboff, &upper_suboff);
+  gfc_get_descriptor_offsets_for_info (type, &data_off, &dtype_off,
+				       &rank_suboff, &span_off, &dim_off,
+				       &dim_size, &stride_suboff, &lower_suboff,
+				       &upper_suboff);
 
   t = fold_build_pointer_plus (base_decl, span_off);
   elem_size = build1 (INDIRECT_REF, gfc_array_index_type, t);
@@ -3807,12 +3691,13 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
       info->ndimensions = 1;
       t = fold_build_pointer_plus (base_decl, dtype_off);
       dtype = TYPE_MAIN_VARIANT (get_dtype_type_node ());
-      field = gfc_advance_chain (TYPE_FIELDS (dtype), GFC_DTYPE_RANK);
-      rank_off = byte_position (field);
-      t = fold_build_pointer_plus (t, rank_off);
-
-      t = build1 (NOP_EXPR, build_pointer_type (TREE_TYPE (field)), t);
-      t = build1 (INDIRECT_REF, TREE_TYPE (field), t);
+      t = fold_build_pointer_plus (t, rank_suboff);
+      tree field = TYPE_FIELDS (dtype);
+      while (field && byte_position (field) != rank_suboff)
+	field = DECL_CHAIN (field);
+      tree rank_type = TREE_TYPE (field);
+      t = build1 (NOP_EXPR, build_pointer_type (rank_type), t);
+      t = build1 (INDIRECT_REF, rank_type, t);
       info->rank = t;
       t = build0 (PLACEHOLDER_EXPR, TREE_TYPE (dim_off));
       t = size_binop (MULT_EXPR, t, dim_size);

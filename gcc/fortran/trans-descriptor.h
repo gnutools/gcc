@@ -59,7 +59,7 @@ void gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value);
 /* Build expressions for accessing components of an array descriptor.  */
 void gfc_get_descriptor_offsets_for_info (const_tree, tree *, tree *, tree *,
 					  tree *, tree *, tree *, tree *,
-					  tree *);
+					  tree *, tree *);
 
 /* Build a null array descriptor constructor.  */
 tree gfc_build_null_descriptor (tree type);
