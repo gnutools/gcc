@@ -727,7 +727,8 @@ enum descriptor_write_case
   POINTER_NULLIFY,
   RESULT_INIT,
   ABSENT_ARG_INIT,
-  STATIC_INIT
+  STATIC_INIT,
+  NONSTATIC_INIT
 };
 
 
@@ -797,6 +798,44 @@ struct descriptor_write
 };
 
 
+struct value_source
+{
+  const descriptor_write_case type;
+
+  union u
+  {
+    struct nsi
+    {
+      gfc_symbol * const sym;
+      gfc_expr * const expr;
+      tree string_length;
+
+      nsi (gfc_symbol *s, gfc_expr *e, tree sl)
+	  : sym (s), expr (e), string_length (sl) {}
+    }
+    nonstatic_init;
+
+    struct si
+    {
+      gfc_symbol * const sym;
+
+      si (gfc_symbol *s) : sym (s) {}
+    }
+    static_init;
+
+    u () {}
+    u (gfc_symbol *s) : static_init (s) {}
+    u (gfc_symbol *s, gfc_expr *e, tree sl) : nonstatic_init (s, e, sl) {}
+  }
+  u;
+
+  value_source (descriptor_write_case t) : type (t), u () {}
+  value_source (gfc_symbol *s) : type (STATIC_INIT), u (s) {}
+  value_source (gfc_symbol *s, gfc_expr *e, tree sl)
+      : type (NONSTATIC_INIT), u (s, e, sl) {}
+};
+
+
 static void
 set_descriptor_field (descriptor_write &dest, descriptor_field field, tree value)
 {
@@ -814,10 +853,117 @@ set_descriptor_field (descriptor_write &dest, descriptor_field field, tree value
 }
 
 
-static void
-set_descriptor (descriptor_write &dest)
+static tree
+get_descriptor_data_value (const value_source &src)
 {
-  set_descriptor_field (dest, DATA_FIELD, null_pointer_node);
+  if (src.type == NONSTATIC_INIT)
+    {
+      gfc_symbol *sym = src.u.nonstatic_init.sym;
+
+      symbol_attribute attr = gfc_symbol_attr (sym);
+      if (!attr.save
+	  && (attr.allocatable
+	      || (attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER))))
+	return null_pointer_node;
+      else
+	return NULL_TREE;
+    }
+  else
+    return null_pointer_node;
+}
+
+
+static tree
+get_descriptor_dtype_value (tree descr, const value_source &src)
+{
+  if (src.type == NONSTATIC_INIT)
+    {
+      gfc_symbol *sym = src.u.nonstatic_init.sym;
+      gfc_expr *expr = src.u.nonstatic_init.expr;
+      tree string_length = src.u.nonstatic_init.string_length;
+
+      gfc_array_spec *as;
+      if (sym->ts.type == BT_CLASS)
+	as = CLASS_DATA (sym)->as;
+      else
+	as = sym->as;
+
+      int rank;
+      if (as == nullptr)
+	rank = 0;
+      else if (as->type != AS_ASSUMED_RANK)
+	rank = as->rank;
+      else if (expr)
+	rank = expr->rank;
+      else
+	rank = -1;
+
+      tree etype = gfc_get_element_type (TREE_TYPE (descr));
+      return gfc_get_dtype_rank_type_slen (rank, etype, string_length);
+    }
+  else if (src.type == STATIC_INIT)
+    {
+      gfc_symbol *sym = src.u.nonstatic_init.sym;
+
+      gfc_array_spec *as;
+      if (sym->ts.type == BT_CLASS)
+	as = CLASS_DATA (sym)->as;
+      else
+	as = sym->as;
+
+      int rank;
+      if (as == nullptr)
+	rank = 0;
+      else if (as->type != AS_ASSUMED_RANK)
+	rank = as->rank;
+      else
+	rank = -1;
+
+      tree etype = gfc_get_element_type (TREE_TYPE (descr));
+      return gfc_get_dtype_rank_type (rank, etype);
+    }
+
+  return NULL_TREE;
+}
+
+
+static tree
+get_descriptor_offset_value (const value_source &src)
+{
+  if (src.type == NONSTATIC_INIT)
+    {
+      gfc_symbol *sym = src.u.nonstatic_init.sym;
+
+      symbol_attribute attr = gfc_symbol_attr (sym);
+      if ((attr.allocatable
+	   || attr.optional
+	   || (attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER)))
+	  && attr.codimension)
+	return null_pointer_node;
+    }
+
+  return NULL_TREE;
+}
+
+
+static void
+set_descriptor (descriptor_write &dest, const value_source &src)
+{
+  tree data_value = get_descriptor_data_value (src);
+  if (data_value != NULL_TREE)
+    set_descriptor_field (dest, DATA_FIELD, data_value);
+
+  tree dtype_value = get_descriptor_dtype_value (dest.ref, src);
+  if (dtype_value != NULL_TREE)
+    set_descriptor_field (dest, DTYPE_FIELD, dtype_value);
+
+  if (flag_coarray == GFC_FCOARRAY_LIB)
+    {
+      tree offset_value = get_descriptor_offset_value (src);
+      if (offset_value != NULL_TREE)
+	set_descriptor_field (dest, OFFSET_FIELD, offset_value);
+    }
+
   if (dest.type == descriptor_write::STATIC_INIT)
     {
       tree decl = dest.ref;
@@ -936,103 +1082,47 @@ void
 gfc_nullify_descriptor (stmtblock_t *block, tree descr)
 {
   descriptor_write dest(descr, block);
-  set_descriptor (dest);
+  set_descriptor (dest, value_source (POINTER_NULLIFY));
 }
 
 
 void
 gfc_init_descriptor_result (stmtblock_t *block, tree descr)
 {
-  gfc_nullify_descriptor (block, descr);
+  descriptor_write dest(descr, block);
+  set_descriptor (dest, value_source (RESULT_INIT));
 }
 
 
 void
 gfc_init_absent_descriptor (stmtblock_t *block, tree descr)
 {
-  gfc_nullify_descriptor (block, descr);
+  descriptor_write dest(descr, block);
+  set_descriptor (dest, value_source (ABSENT_ARG_INIT));
 }
 
 
 void
 gfc_init_static_descriptor (gfc_symbol *sym)
 {
-  vec<constructor_elt, va_gc> *v = NULL;
-
-  tree descr = sym->backend_decl;
-  tree type = TREE_TYPE (descr);
-
-  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
-  tree fields = TYPE_FIELDS (type);
-
-  tree data_field = gfc_advance_chain (fields, DATA_FIELD);
-  CONSTRUCTOR_APPEND_ELT (v, data_field,
-			  fold_convert (TREE_TYPE (data_field),
-					null_pointer_node));
-
-  gfc_array_spec *as;
-  if (sym->ts.type == BT_CLASS)
-    as = CLASS_DATA (sym)->as;
-  else
-    as = sym->as;
-
-  int rank = as ? as->rank : 0;
-  tree dtype_field = gfc_advance_chain (fields, DTYPE_FIELD);
-  tree dtype_value = gfc_get_dtype_rank_type (rank,
-					      gfc_get_element_type (type));
-  CONSTRUCTOR_APPEND_ELT (v, dtype_field,
-			  fold_convert (TREE_TYPE (dtype_field), dtype_value));
-
-  tree constr = build_constructor (type, v);
-  TREE_CONSTANT (constr) = 1;
-
-  DECL_INITIAL (descr) = constr;
+  descriptor_write dest (sym->backend_decl);
+  set_descriptor (dest, value_source (sym));
 }
 
 
-void
-gfc_nullify_descriptor (stmtblock_t *block, gfc_symbol *sym, gfc_expr *expr,
-			tree descr, tree string_length)
+static void
+init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym, gfc_expr *expr,
+			  tree descr, tree string_length)
 {
-  symbol_attribute attr = gfc_symbol_attr (sym);
-
-  /* NULLIFY the data pointer for non-saved allocatables, or for non-saved
-     pointers when -fcheck=pointer is specified.  */
-  if (attr.allocatable
-      || attr.optional
-      || (attr.pointer && (gfc_option.rtcheck & GFC_RTCHECK_POINTER)))
-    {
-      gfc_conv_descriptor_data_set (block, descr, null_pointer_node);
-      if (flag_coarray == GFC_FCOARRAY_LIB && attr.codimension)
-	gfc_conv_descriptor_token_set (block, descr, null_pointer_node);
-    }
-
-  gfc_array_spec *as;
-  if (sym->ts.type == BT_CLASS)
-    as = CLASS_DATA (sym)->as;
-  else
-    as = sym->as;
-
-  int rank;
-  if (as == nullptr)
-    rank = 0;
-  else if (as->type != AS_ASSUMED_RANK)
-    rank = as->rank;
-  else if (expr)
-    rank = expr->rank;
-  else
-    rank = -1;
-
-  tree etype = gfc_get_element_type (TREE_TYPE (descr));
-  tree dtype = gfc_get_dtype_rank_type_slen (rank, etype, string_length);
-  gfc_conv_descriptor_dtype_set (block, descr, dtype);
+  descriptor_write dest (descr, block);
+  set_descriptor (dest, value_source (sym, expr, string_length));
 }
 
 void
 gfc_init_descriptor_variable (stmtblock_t *block, gfc_symbol *sym,
 			      gfc_expr *expr, tree descr)
 {
-  return gfc_nullify_descriptor (block, sym, expr, descr, NULL_TREE);
+  return init_descriptor_variable (block, sym, expr, descr, NULL_TREE);
 }
 
 

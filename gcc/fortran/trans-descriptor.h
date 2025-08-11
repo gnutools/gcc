@@ -82,7 +82,7 @@ gfc_get_descriptor_offsets_for_info (const_tree desc_type, tree *data_off,
 void gfc_nullify_descriptor (stmtblock_t *block, tree);
 void gfc_init_descriptor_result (stmtblock_t *block, tree descr);
 void gfc_init_absent_descriptor (stmtblock_t *block, tree descr);
-void gfc_init_static_descriptor (gfc_symbol *);
+void gfc_init_static_descriptor (gfc_symbol *sym);
 tree gfc_create_null_actual_descriptor (stmtblock_t *, gfc_typespec *,
 					symbol_attribute, int);
 
