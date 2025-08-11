@@ -722,6 +722,15 @@ gfc_get_dtype_rank_type (int rank, tree etype)
 }
 
 
+enum descriptor_write_case
+{
+  POINTER_NULLIFY,
+  RESULT_INIT,
+  ABSENT_ARG_INIT,
+  STATIC_INIT
+};
+
+
 class constructor_elements
 {
   vec<constructor_elt, va_gc> *values;
@@ -754,22 +763,22 @@ constructor_elements::build (tree type)
 }
 
 
-struct write_destination
+struct descriptor_write
 {
-  enum write_type
+  const enum write_type
   {
     STATIC_INIT,
     REGULAR_ASSIGN
   }
   type;
 
-  tree ref;
+  const tree ref;
 
   union u
   {
     struct rw
     {
-      stmtblock_t *block;
+      stmtblock_t * const block;
 
       rw (stmtblock_t *b) : block(b) {}
     }
@@ -782,16 +791,16 @@ struct write_destination
   }
   u;
 
-  write_destination (tree r, stmtblock_t *b)
+  descriptor_write (tree r, stmtblock_t *b)
       : type (REGULAR_ASSIGN), ref (r), u (b) {}
-  write_destination (tree d) : type (STATIC_INIT), ref (d), u () {}
+  descriptor_write (tree d) : type (STATIC_INIT), ref (d), u () {}
 };
 
 
 static void
-set_descriptor_field (write_destination &dest, descriptor_field field, tree value)
+set_descriptor_field (descriptor_write &dest, descriptor_field field, tree value)
 {
-  if (dest.type == write_destination::STATIC_INIT)
+  if (dest.type == descriptor_write::STATIC_INIT)
     {
       tree field_decl = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (dest.ref)),
 					   field);
@@ -806,10 +815,10 @@ set_descriptor_field (write_destination &dest, descriptor_field field, tree valu
 
 
 static void
-set_descriptor (write_destination &dest)
+set_descriptor (descriptor_write &dest)
 {
   set_descriptor_field (dest, DATA_FIELD, null_pointer_node);
-  if (dest.type == write_destination::STATIC_INIT)
+  if (dest.type == descriptor_write::STATIC_INIT)
     {
       tree decl = dest.ref;
       tree type = TREE_TYPE (decl);
@@ -926,7 +935,7 @@ gfc_conv_descriptor_cosize (tree desc, int rank, int corank)
 void
 gfc_nullify_descriptor (stmtblock_t *block, tree descr)
 {
-  write_destination dest(descr, block);
+  descriptor_write dest(descr, block);
   set_descriptor (dest);
 }
 
