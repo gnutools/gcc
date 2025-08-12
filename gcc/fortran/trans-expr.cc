@@ -108,7 +108,7 @@ gfc_conv_scalar_to_descriptor (gfc_se *se, tree scalar, symbol_attribute attr)
       scalar = tmp;
     }
 
-  gfc_set_descriptor_from_scalar (&se->pre, desc, scalar);
+  gfc_set_descriptor_from_scalar (&se->pre, desc, scalar, attr);
 
   /* Copy pointer address back - but only if it could have changed and
      if the actual argument is a pointer and not, e.g., NULL().  */

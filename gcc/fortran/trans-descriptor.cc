@@ -600,7 +600,6 @@ tree
 gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
 {
   tree ptype;
-  tree size;
   int n;
   tree dtype;
   tree field;
@@ -661,6 +660,7 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
       gcc_unreachable ();
     }
 
+  tree size = NULL_TREE;
   switch (n)
     {
     case BT_CHARACTER:
@@ -668,23 +668,24 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
       size = gfc_get_character_len_in_bytes (ptype, length);
       break;
     case BT_VOID:
-      gcc_assert (TREE_CODE (ptype) == POINTER_TYPE);
-      size = size_in_bytes (ptype);
+      if (TREE_CODE (ptype) == POINTER_TYPE)
+	size = size_in_bytes (ptype);
       break;
     default:
       size = size_in_bytes (etype);
       break;
     }
 
-  gcc_assert (size);
-
-  STRIP_NOPS (size);
-  size = fold_convert (size_type_node, size);
   tree dtype_type_node = get_dtype_type_node ();
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_ELEM_LEN);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  fold_convert (TREE_TYPE (field), size));
+  if (size)
+    {
+      STRIP_NOPS (size);
+      size = fold_convert (size_type_node, size);
+      field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+				 GFC_DTYPE_ELEM_LEN);
+      CONSTRUCTOR_APPEND_ELT (v, field,
+			      fold_convert (TREE_TYPE (field), size));
+    }
   field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
 			     GFC_DTYPE_VERSION);
   CONSTRUCTOR_APPEND_ELT (v, field,
@@ -936,19 +937,37 @@ gfc_create_null_actual_descriptor (stmtblock_t *block, gfc_typespec *ts,
 
 
 void
+gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr, tree scalar,
+				symbol_attribute attr,
+				tree cond_presence = NULL_TREE,
+				tree caf_token = NULL_TREE)
+{
+  if (flag_coarray == GFC_FCOARRAY_LIB && caf_token)
+    gfc_conv_descriptor_token_set (block, descr, caf_token);
+
+  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar), attr);
+  if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
+    scalar = gfc_build_addr_expr (NULL_TREE, scalar);
+  if (cond_presence)
+    scalar = build3_loc (input_location, COND_EXPR,
+			 TREE_TYPE (scalar),
+			 cond_presence, scalar,
+			 fold_convert (TREE_TYPE (scalar),
+				       null_pointer_node));
+
+  gfc_conv_descriptor_dtype_set (block, descr, gfc_get_dtype (type));
+  gfc_conv_descriptor_data_set (block, descr, scalar);
+  gfc_conv_descriptor_span_set (block, descr,
+				gfc_conv_descriptor_elem_len_get (descr));
+}
+
+
+void
 gfc_set_descriptor_from_scalar_class (stmtblock_t *block, tree descr,
 				      tree scalar, gfc_expr *scalar_expr)
 {
-  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
-						 gfc_expr_attr (scalar_expr));
-  gfc_conv_descriptor_dtype_set (block, descr,
-				 gfc_get_dtype (type));
-
-  tree tmp = gfc_class_data_get (scalar);
-  if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
-    tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-
-  gfc_conv_descriptor_data_set (block, descr, tmp);
+  gfc_set_descriptor_from_scalar (block, descr, gfc_class_data_get (scalar),
+				  gfc_expr_attr (scalar_expr));
 }
 
 
@@ -957,35 +976,7 @@ gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr,
 				tree scalar, gfc_expr *scalar_expr,
 				tree cond_presence, tree caf_token)
 {
-  if (flag_coarray == GFC_FCOARRAY_LIB && caf_token)
-    gfc_conv_descriptor_token_set (block, descr, caf_token);
-
-  tree type = gfc_get_scalar_to_descriptor_type (TREE_TYPE (scalar),
-						 gfc_expr_attr (scalar_expr));
-  gfc_conv_descriptor_dtype_set (block, descr,
-				 gfc_get_dtype (type));
-  if (cond_presence)
-    scalar = build3_loc (input_location, COND_EXPR,
-			 TREE_TYPE (scalar),
-			 cond_presence, scalar,
-			 fold_convert (TREE_TYPE (scalar),
-				       null_pointer_node));
-  gfc_conv_descriptor_data_set (block, descr, scalar);
-}
-
-
-void
-gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr, tree scalar)
-{
-  tree etype = TREE_TYPE (scalar);
-  if (!POINTER_TYPE_P (TREE_TYPE (scalar)))
-    scalar = gfc_build_addr_expr (NULL_TREE, scalar);
-  else if (TREE_TYPE (etype) && TREE_CODE (TREE_TYPE (etype)) == ARRAY_TYPE)
-    etype = TREE_TYPE (etype);
-
-  gfc_conv_descriptor_dtype_set (block, descr,
-				 gfc_get_dtype_rank_type (0, etype));
-  gfc_conv_descriptor_data_set (block, descr, scalar);
-  gfc_conv_descriptor_span_set (block, descr,
-				gfc_conv_descriptor_elem_len_get (descr));
+  gfc_set_descriptor_from_scalar (block, descr, scalar,
+				  gfc_expr_attr (scalar_expr), cond_presence,
+				  caf_token);
 }
