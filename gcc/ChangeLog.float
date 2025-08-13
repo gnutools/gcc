@@ -1,3 +1,22 @@
+==================== Branch work219-float, patch #301 ====================
+
+Pass _Float16 arguments and return values in memory
+
+2025-08-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/121525
+	* config/rs6000/rs6000-call.cc (rs6000_return_in_memory): Return
+	_Float16 values in memory unless -mno-ieee16-return-in-memory.
+	(rs6000_pass_by_reference): Pass _Float16 values by reference unless
+	-mno-ieee16-pass-by-reference.
+	* config/rs6000/rs6000.md (movhf): Make sure memory <- memory moves are
+	not generated.
+	* config/rs6000/rs6000.opt (-mieee16-return-in-memory): New debug
+	option.
+	(-mieee16-pass-by-reference): Likewise.
+
 ==================== Branch work219-float, patch #300 ====================
 
 Add _Float16 support.
