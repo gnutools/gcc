@@ -1,3 +1,46 @@
+==================== Branch work219-float, patch #300 ====================
+
+Add _Float16 support.
+
+2025-08-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* gcc/config/rs6000/predicates.md (easy_fp_constant): Add support for
+	_Float16 constants.
+	(ieee16_xxspltiw_constant): New predicate.
+	* gcc/config/rs6000/rs6000-builtin.cc (rs6000_type_string): Add _Float16
+	support.
+	* gcc/config/rs6000/rs6000-modes.def (HFmode): Add mode for _Float16.
+	* gcc/config/rs6000/rs6000-p8swap.cc (rs6000_gen_stvx): Remove old code
+	for V8HFmode that was never used.
+	(rs6000_gen_lvx): Likewise.
+	(replace_swapped_load_constant): Likewise.
+	* gcc/config/rs6000/rs6000-protos.h (vec_const_128bit_type): Add mode
+	field.
+	* gcc/config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached): Add
+	support for HFmode.
+	(rs6000_modes_tieable_p): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_can_change_mode_class): Likewise.
+	(rs6000_mangle_type): Likewise.
+	(rs6000_scalar_mode_supported_p): Likewise.
+	(rs6000_floatn_mode): Likewise.
+	(constant_fp_to_128bit_vector): Add support for _Float16 constants.
+	(vec_const_128bit_to_bytes): Likewise.
+	(constant_generates_xxspltiw): Likewise.
+	* config/rs6000/rs6000.h (TARGET_IEEE16): New macro.
+	* config/rs6000/rs6000.md (RELOAD): Add HFmode.
+	(movhf): New define_expand.
+	(movhf_xxspltiw): New insn.
+	(movhf_internal): Likewise.
+	* config/rs6000/vsx.md (extendhf<mode>2): Likewise.
+	(trunc<mode>hf2): Likewise.
+
 ==================== Branch work219-float, baseline ====================
 
 2025-08-08   Michael Meissner  <meissner@linux.ibm.com>
