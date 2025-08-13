@@ -642,6 +642,14 @@ mieee128-constant
 Target Var(TARGET_IEEE128_CONSTANT) Init(1) Save
 Generate (do not generate) code that uses the LXVKQ instruction.
 
+mieee16-return-in-memory
+Target Undocumented Var(TARGET_IEEE16_RETURN_IN_MEMORY) Init(1) Save
+Return _Float16 values in memory.
+
+mieee16-pass-by-reference
+Target Undocumented Var(TARGET_IEEE16_PASS_BY_REFERENCE) Init(1) Save
+Pass _Float16 by reference.
+
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=
