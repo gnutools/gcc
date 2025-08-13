@@ -3121,6 +3121,25 @@
   [(set_attr "type" "vecdouble")])
 
 
+;; Convert IEEE 16-bit floating point to/from SF and DF modes.
+
+(define_insn "extendhf<mode>2"
+  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+	(float_extend:SFDF
+	 (match_operand:HF 1 "vsx_register_operand" "wa")))]
+  "TARGET_IEEE16"
+  "xscvhpdp %x0,%x1"
+  [(set_attr "type" "fpsimple")])
+
+(define_insn "trunc<mode>hf2"
+  [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
+	(float_truncate:HF
+	 (match_operand:SFDF 1 "vsx_register_operand" "wa")))]
+  "TARGET_IEEE16"
+  "xscvdphp %x0,%1"
+  [(set_attr "type" "fpsimple")])
+
+
 ;; Permute operations
 
 ;; Build a V2DF/V2DI vector from two scalars
