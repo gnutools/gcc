@@ -1,3 +1,27 @@
+==================== Branch work219-float, patch #302 ====================
+
+Pass _Float16 arguments and return values in GPRs
+
+2025-08-14  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/121525
+	* config/rs6000/rs6000-call.cc (USE_FP_FOR_ARG_P): Don't pass _Float16
+	arguments in vector registers unless -mieee16-gpr-args.
+	(rs6000_return_in_memory): Remove previous code possibly returning
+	_Float16 values in memory and passing arguments in memory.
+	(rs6000_pass_by_reference): Likewise.
+	(rs6000_function_value): Return _Float16 values in GPRs unless
+	-mno-ieee16-gpr-args is used.
+	* config/rs6000/rs6000.cc (rs6000_function_value): Return _Float16
+	variables in GPRs unless -mno-ieee16-gpr-args.
+	* config/rs6000/rs6000.md (movhf_xxspltiw): Add support for loading
+	_Float16 constants in GPRs.
+	* config/rs6000/rs6000.opt (-mieee16-return-in-memory): Delete.
+	(-mieee16-pass-by-reference): Likewise.
+	(-mieee16-gpr-args): New options.
+
 ==================== Branch work219-float, patch #301 ====================
 
 Pass _Float16 arguments and return values in memory
