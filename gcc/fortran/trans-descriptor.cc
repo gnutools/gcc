@@ -985,19 +985,20 @@ gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr,
 /* Modify a descriptor such that the lbound of a given dimension is the value
    specified.  This also updates ubound and offset accordingly.  */
 
-void
-gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
-				  int dim, tree new_lbound)
+static void
+conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
+			      int dim, tree new_lbound, tree *offset)
 {
-  tree offs, ubound, lbound, stride;
-  tree diff, offs_diff;
+  tree ubound, lbound, stride;
+  tree diff;
 
   new_lbound = fold_convert (gfc_array_index_type, new_lbound);
+  new_lbound = gfc_evaluate_now (new_lbound, block);
 
-  offs = gfc_conv_descriptor_offset_get (desc);
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
   ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
   stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[dim]);
+  stride = gfc_evaluate_now (stride, block);
 
   /* Get difference (new - old) by which to shift stuff.  */
   diff = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
@@ -1008,11 +1009,10 @@ gfc_conv_shift_descriptor_lbound (stmtblock_t* block, tree desc,
   ubound = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
 			    ubound, diff);
   gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[dim], ubound);
-  offs_diff = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			       diff, stride);
-  offs = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			  offs, offs_diff);
-  gfc_conv_descriptor_offset_set (block, desc, offs);
+  tree tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			      new_lbound, stride);
+  *offset = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			     *offset, tmp);
 
   /* Finally set lbound to value we want.  */
   gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[dim], new_lbound);
@@ -1023,9 +1023,11 @@ void
 gfc_conv_shift_descriptor (stmtblock_t* block, tree desc, int rank)
 {
   /* Apply a shift of the lbound when supplied.  */
+  tree offset = gfc_index_zero_node;
   for (int dim = 0; dim < rank; ++dim)
-    gfc_conv_shift_descriptor_lbound (block, desc, dim,
-				      gfc_index_one_node);
+    conv_shift_descriptor_lbound (block, desc, dim,
+				  gfc_index_one_node, &offset);
+  gfc_conv_descriptor_offset_set (block, desc, offset);
 }
 
 
@@ -1034,6 +1036,7 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 		       gfc_expr * const (lbound[GFC_MAX_DIMENSIONS]))
 {
   /* Apply a shift of the lbound when supplied.  */
+  tree offset = gfc_index_zero_node;
   for (int dim = 0; dim < rank; ++dim)
     {
       gfc_expr *lb_expr = lbound[dim];
@@ -1056,8 +1059,9 @@ conv_shift_descriptor (stmtblock_t *block, tree desc, int rank,
 	  lower_bound = lb_var;
 	}
 
-      gfc_conv_shift_descriptor_lbound (block, desc, dim, lower_bound);
+      conv_shift_descriptor_lbound (block, desc, dim, lower_bound, &offset);
     }
+  gfc_conv_descriptor_offset_set (block, desc, offset);
 }
 
 
@@ -1177,9 +1181,7 @@ gfc_set_subarray_descriptor (stmtblock_t *block, tree descr, tree value,
 
   /* Shift the lbound and ubound of temporaries to being unity,
      rather than zero, based. Always calculate the offset.  */
-  gfc_conv_descriptor_offset_set (block, descr, gfc_index_zero_node);
-  tree offset = gfc_conv_descriptor_offset_get (descr);
-  tree tmp2 = gfc_create_var (gfc_array_index_type, NULL);
+  tree offset = gfc_index_zero_node;
 
   for (int n = 0; n < value_expr->rank; n++)
     {
