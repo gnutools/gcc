@@ -82,10 +82,12 @@
 #endif
 
 /* Nonzero if we can use a floating-point register to pass this arg.  */
-#define USE_FP_FOR_ARG_P(CUM,MODE)		\
-  (SCALAR_FLOAT_MODE_NOT_VECTOR_P (MODE)		\
-   && (CUM)->fregno <= FP_ARG_MAX_REG		\
-   && TARGET_HARD_FLOAT)
+#define USE_FP_FOR_ARG_P(CUM,MODE)				\
+  (SCALAR_FLOAT_MODE_NOT_VECTOR_P (MODE)			\
+   && (CUM)->fregno <= FP_ARG_MAX_REG				\
+   && TARGET_HARD_FLOAT						\
+   && ((MODE) != HFmode || !TARGET_IEEE16_GPR_ARGS))
+
 
 /* Nonzero if we can use an AltiVec register to pass this arg.  */
 #define USE_ALTIVEC_FOR_ARG_P(CUM,MODE,NAMED)			\
@@ -432,11 +434,6 @@ rs6000_discover_homogeneous_aggregate (machine_mode mode, const_tree type,
 bool
 rs6000_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 {
-  /* Because it is not covered by the ABI, return _Float16 (HFmode) in
-     memory.  */
-  if (TYPE_MODE (type) == HFmode && TARGET_IEEE16_RETURN_IN_MEMORY)
-    return true;
-
   /* We do not allow MMA types being used as return values.  Only report
      the invalid return value usage the first time we encounter it.  */
   if (cfun
@@ -1989,11 +1986,6 @@ rs6000_pass_by_reference (cumulative_args_t, const function_arg_info &arg)
 {
   if (!arg.type)
     return 0;
-
-  /* Because it is not covered by the ABI, pass _Float16 (HFmode) by
-     reference.  */
-  if (arg.mode == HFmode && TARGET_IEEE16_PASS_BY_REFERENCE)
-    return true;
 
   if (DEFAULT_ABI == ABI_V4 && TARGET_IEEEQUAD
       && FLOAT128_IEEE_P (TYPE_MODE (arg.type)))
