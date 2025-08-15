@@ -990,12 +990,39 @@ gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr,
 
 
 static void
+set_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
+		      tree lbound, tree ubound, tree stride, tree *offset)
+{
+  lbound = gfc_evaluate_now (lbound, block);
+
+  gfc_conv_descriptor_ubound_set (block, descr, dim, ubound);
+
+  tree tmp = fold_build2_loc (input_location, MULT_EXPR,
+			      gfc_array_index_type, lbound, stride);
+  *offset = fold_build2_loc (input_location, MINUS_EXPR,
+			     gfc_array_index_type, *offset, tmp);
+
+  /* Finally set lbound to value we want.  */
+  gfc_conv_descriptor_lbound_set (block, descr, dim, lbound);
+}
+
+
+static void
+set_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
+		      tree lbound, tree ubound, tree stride, tree offset_var)
+{
+  tree offset = offset_var;
+  set_dimension_bounds (block, descr, dim, lbound, ubound, stride, &offset);
+  gfc_add_modify (block, offset_var, offset);
+}
+
+
+static void
 shift_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
 			tree new_lbound, tree orig_lbound, tree orig_ubound,
 			tree orig_stride, tree *offset_value)
 {
   new_lbound = fold_convert (gfc_array_index_type, new_lbound);
-  new_lbound = gfc_evaluate_now (new_lbound, block);
 
   orig_stride = gfc_evaluate_now (orig_stride, block);
 
@@ -1007,14 +1034,9 @@ shift_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
      updating the lbound, as they depend on the lbound expression!  */
   tree ubound = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, orig_ubound, diff);
-  gfc_conv_descriptor_ubound_set (block, descr, dim, ubound);
-  tree tmp = fold_build2_loc (input_location, MULT_EXPR,
-			      gfc_array_index_type, new_lbound, orig_stride);
-  *offset_value = fold_build2_loc (input_location, MINUS_EXPR,
-				   gfc_array_index_type, *offset_value, tmp);
 
-  /* Finally set lbound to value we want.  */
-  gfc_conv_descriptor_lbound_set (block, descr, dim, new_lbound);
+  set_dimension_bounds (block, descr, dim, new_lbound, ubound, orig_stride,
+			offset_value);
 }
 
 
@@ -1815,15 +1837,12 @@ set_gfc_dimension_from_cfi (stmtblock_t *block, tree gfc, tree cfi, tree idx,
 {
   /* gfc->dim[i].lbound = ... */
   lbound = fold_convert (gfc_array_index_type, lbound);
-  lbound = gfc_evaluate_now (lbound, block);
-  gfc_conv_descriptor_lbound_set (block, gfc, idx, lbound);
 
   /* gfc->dim[i].ubound = gfc->dim[i].lbound + cfi->dim[i].extent - 1. */
   tree tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			      lbound, gfc_index_one_node);
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			 gfc_get_cfi_dim_extent (cfi, idx), tmp);
-  gfc_conv_descriptor_ubound_set (block, gfc, idx, tmp);
+  tree ubound = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+				 gfc_get_cfi_dim_extent (cfi, idx), tmp);
 
   tree stride;
   if (contiguous)
@@ -1852,14 +1871,9 @@ set_gfc_dimension_from_cfi (stmtblock_t *block, tree gfc, tree cfi, tree idx,
 					   gfc_get_cfi_desc_elem_len (cfi)));
       stride = gfc_evaluate_now (tmp, block);
     }
-  gfc_conv_descriptor_stride_set (block, gfc, idx, stride);
 
-  /* gfc->offset -= gfc->dim[i].stride * gfc->dim[i].lbound. */
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			 stride, lbound);
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 offset_var, tmp);
-  gfc_add_modify (block, offset_var, tmp);
+  set_dimension_bounds (block, gfc, idx, lbound, ubound, stride, offset_var);
+  gfc_conv_descriptor_stride_set (block, gfc, idx, stride);
 }
 
 
