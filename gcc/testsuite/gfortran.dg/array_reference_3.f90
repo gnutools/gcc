@@ -65,7 +65,7 @@ contains
     call ccfis(x)
     if (any(x /= 13)) stop 13
     ! The cfi descriptor’s dim array is referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times {cfi_descriptor->dim\[idx.\d+\]\.ubound = _cfi_descriptor->dim\[idx.\d+\]\.extent \+ \((?:NON_LVALUE_EXPR <)?cfi_descriptor->dim\[idx.\d+\]\.lbound>? \+ -1\);} 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {cfi_descriptor->dim\[[^]]+\]\.ubound = (?:NON_LVALUE_EXPR <)?_cfi_descriptor->dim\[[^]]+\]\.extent>?(?: \+ \(D\.\d+ \+ -1\))?;} 1 "original" } }
   end subroutine check_cfi_dim
   subroutine css(c) bind(c)
     character :: c
