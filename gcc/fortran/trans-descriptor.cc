@@ -2055,26 +2055,6 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
   tree offset = gfc_create_var (gfc_array_index_type, "offset");
   gfc_add_modify (block2, offset, gfc_index_zero_node);
 
-  if (sym->as->rank > 0 && !sym->attr.pointer && !sym->attr.allocatable)
-    for (int i = 0; i < sym->as->rank; ++i)
-      {
-	gfc_se se;
-	gfc_init_se (&se, NULL );
-	if (sym->as->lower[i])
-	  {
-	    gfc_conv_expr (&se, sym->as->lower[i]);
-	    tmp = se.expr;
-	  }
-	else
-	  tmp = gfc_index_one_node;
-	gfc_add_block_to_block (block2, &se.pre);
-	gfc_conv_descriptor_lbound_set (block2, gfc_desc, gfc_rank_cst[i], tmp);
-	gfc_add_block_to_block (block2, &se.post);
-      }
-
-  /* Loop: for (i = 0; i < rank; ++i).  */
-  tree idx = gfc_create_var (TREE_TYPE (rank), "idx");
-
   /* Stride  */
   tree stride;
   if (do_copy_inout)
@@ -2082,25 +2062,51 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
   else
     stride = NULL_TREE;
 
-  /* Loop body.  */
-  stmtblock_t loop_body;
-  gfc_init_block (&loop_body);
-  /* gfc->dim[i].lbound = ... */
-  tree lbound;
-  if (sym->attr.pointer || sym->attr.allocatable)
-    lbound = gfc_get_cfi_dim_lbound (cfi, idx);
-  else if (sym->as->rank < 0)
-    lbound = gfc_index_one_node;
+  if (sym->as->rank > 0 && !sym->attr.pointer && !sym->attr.allocatable)
+    {
+      for (int i = 0; i < sym->as->rank; ++i)
+	{
+	  gfc_se se;
+	  gfc_init_se (&se, NULL );
+	  if (sym->as->lower[i])
+	    {
+	      gfc_conv_expr (&se, sym->as->lower[i]);
+	      tmp = se.expr;
+	    }
+	  else
+	    tmp = gfc_index_one_node;
+	  gfc_add_block_to_block (block2, &se.pre);
+	  tree lbound = gfc_evaluate_now (tmp, block2);
+	  gfc_add_block_to_block (block2, &se.post);
+	  set_gfc_dimension_from_cfi (block2, gfc_desc, cfi, gfc_rank_cst[i],
+				      lbound, offset, stride, do_copy_inout);
+	}
+    }
   else
-    lbound = gfc_conv_descriptor_lbound_get (gfc_desc, idx);
+    {
+      /* Loop: for (i = 0; i < rank; ++i).  */
+      tree idx = gfc_create_var (TREE_TYPE (rank), "idx");
 
-  set_gfc_dimension_from_cfi (&loop_body, gfc_desc, cfi, idx, lbound, offset,
-			      stride, do_copy_inout);
+      /* Loop body.  */
+      stmtblock_t loop_body;
+      gfc_init_block (&loop_body);
+      /* gfc->dim[i].lbound = ... */
+      tree lbound;
+      if (sym->attr.pointer || sym->attr.allocatable)
+	lbound = gfc_get_cfi_dim_lbound (cfi, idx);
+      else if (sym->as->rank < 0)
+	lbound = gfc_index_one_node;
+      else
+	gcc_unreachable ();
 
-  /* Generate loop.  */
-  gfc_simple_for_loop (block2, idx, build_zero_cst (TREE_TYPE (idx)),
-		       rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
-		       gfc_finish_block (&loop_body));
+      set_gfc_dimension_from_cfi (&loop_body, gfc_desc, cfi, idx, lbound, offset,
+				  stride, do_copy_inout);
+
+      /* Generate loop.  */
+      gfc_simple_for_loop (block2, idx, build_zero_cst (TREE_TYPE (idx)),
+			   rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
+			   gfc_finish_block (&loop_body));
+    }
 
   gfc_conv_descriptor_offset_set (block2, gfc_desc, offset);
 }
