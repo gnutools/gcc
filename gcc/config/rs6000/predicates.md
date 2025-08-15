@@ -1458,6 +1458,17 @@
   (and (match_operand 0 "branch_comparison_operator")
        (match_code "ne,le,ge,leu,geu,ordered")))
 
+;; Return 1 if OP is a comparison operator suitable for floating point
+;; vector/scalar comparisons that generate a -1/0 mask.
+(define_predicate "fpmask_comparison_operator"
+  (match_code "eq,gt,ge"))
+
+;; Return 1 if OP is a comparison operator suitable for vector/scalar
+;; comparisons that generate a 0/-1 mask (i.e. the inverse of
+;; fpmask_comparison_operator).
+(define_predicate "invert_fpmask_comparison_operator"
+  (match_code "ne,unlt,unle"))
+
 ;; Return 1 if OP is a comparison operation suitable for integer vector/scalar
 ;; comparisons that generate a -1/0 mask.
 (define_predicate "vecint_comparison_operator"
