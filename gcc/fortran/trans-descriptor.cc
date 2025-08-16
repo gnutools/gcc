@@ -1284,6 +1284,18 @@ shift_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
 }
 
 
+static void
+shift_dimension_fields (stmtblock_t * block, tree descr, tree dim,
+			tree new_lbound, tree orig_lbound, tree orig_ubound,
+			tree orig_stride, tree *offset_value)
+{
+  tree stride = gfc_evaluate_now (orig_stride, block);
+  shift_dimension_bounds (block, descr, dim, new_lbound, orig_lbound, orig_ubound,
+			  stride, offset_value);
+  gfc_conv_descriptor_stride_set (block, descr, dim, stride);
+}
+
+
 /* Modify a descriptor such that the lbound of a given dimension is the value
    specified.  This also updates ubound and offset accordingly.  */
 
@@ -1428,12 +1440,10 @@ gfc_conv_shift_descriptor (stmtblock_t *block, tree dest, tree src,
 
       tree dim = gfc_rank_cst[n];
       tree stride = gfc_conv_descriptor_stride_get (src, dim);
-      shift_dimension_bounds (block, dest, gfc_rank_cst[n],
+      shift_dimension_fields (block, dest, gfc_rank_cst[n],
 			      lbound, gfc_index_zero_node,
 			      gfc_conv_descriptor_ubound_get (src, dim),
 			      stride, &offset);
-
-      gfc_conv_descriptor_stride_set (block, dest, dim, stride);
     }
 
   gfc_conv_descriptor_offset_set (block, dest, offset);
@@ -2371,39 +2381,13 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
   if (!callee_allocated)
     for (int n = 0; n < rank; n++)
       {
-	/* Store the stride and bound components in the descriptor.  */
-	gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[n],
-					stride[n]);
-
-	tree this_lbound = shift_bounds ? gfc_index_zero_node : lbound[n];
-	gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[n],
-					this_lbound);
-
-	tree this_ubound;
 	if (shift_bounds)
-	  {
-	    tree lbound_diff = fold_build2_loc (input_location, MINUS_EXPR,
-						gfc_array_index_type,
-						this_lbound, lbound[n]);
-	    this_ubound = fold_build2_loc (input_location, PLUS_EXPR,
-					   gfc_array_index_type,
-					   ubound[n], lbound_diff);
-	  }
+	  shift_dimension_fields (block, descr, gfc_rank_cst[n],
+				  gfc_index_zero_node, lbound[n], ubound[n],
+				  stride[n], &offset);
 	else
-	  this_ubound = ubound[n];
-
-	gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[n],
-					this_ubound);
-
-	if (!shift_bounds)
-	  {
-	    tree tmp = fold_build2_loc (input_location, MULT_EXPR,
-					gfc_array_index_type, this_lbound,
-					stride[n]);
-	    tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				   gfc_array_index_type, offset, tmp);
-	    offset = gfc_evaluate_now (tmp, block);
-	  }
+	  set_dimension_fields (block, descr, gfc_rank_cst[n], lbound[n],
+				ubound[n], stride[n], &offset);
       }
 
   gfc_conv_descriptor_span_set (block, descr, elemsize);
