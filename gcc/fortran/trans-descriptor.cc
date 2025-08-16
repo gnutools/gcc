@@ -1425,7 +1425,7 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
 
   /* Copy offset but adjust it such that it would correspond
      to a lbound of zero.  */
-  gfc_conv_descriptor_offset_set (block, dest, gfc_index_zero_node);
+  tree offset = gfc_index_zero_node;
 
   /* Set the bounds as declared for the LHS and calculate strides as
      well as another offset update accordingly.  */
@@ -1476,17 +1476,15 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
       gfc_conv_descriptor_stride_set (block, dest, gfc_rank_cst[dim], stride);
 
       /* Update offset.  */
-      tree offs = gfc_conv_descriptor_offset_get (dest);
       tree tmp = fold_build2_loc (input_location, MULT_EXPR,
 				  gfc_array_index_type, lbound, stride);
-      offs = fold_build2_loc (input_location, MINUS_EXPR,
-			      gfc_array_index_type, offs, tmp);
-      offs = gfc_evaluate_now (offs, block);
-      gfc_conv_descriptor_offset_set (block, dest, offs);
+      offset = fold_build2_loc (input_location, MINUS_EXPR,
+				gfc_array_index_type, offset, tmp);
 
       /* Update stride.  */
       tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
       stride = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, stride, tmp);
     }
+  gfc_conv_descriptor_offset_set (block, dest, offset);
 }
