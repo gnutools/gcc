@@ -1018,6 +1018,25 @@ set_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
 
 
 static void
+set_dimension_fields (stmtblock_t * block, tree descr, tree dim,
+		      tree lbound, tree ubound, tree stride, tree *offset)
+{
+  stride = gfc_evaluate_now (stride, block);
+  set_dimension_bounds (block, descr, dim, lbound, ubound, stride, offset);
+  gfc_conv_descriptor_stride_set (block, descr, dim, stride);
+}
+
+
+static void
+set_dimension_fields (stmtblock_t * block, tree descr, tree dim,
+		      tree lbound, tree ubound, tree stride, tree offset_var)
+{
+  stride = gfc_evaluate_now (stride, block);
+  set_dimension_bounds (block, descr, dim, lbound, ubound, stride, offset_var);
+  gfc_conv_descriptor_stride_set (block, descr, dim, stride);
+}
+
+static void
 shift_dimension_bounds (stmtblock_t * block, tree descr, tree dim,
 			tree new_lbound, tree orig_lbound, tree orig_ubound,
 			tree orig_stride, tree *offset_value)
@@ -1496,22 +1515,13 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
       gfc_add_block_to_block (block, &lower_se.post);
       gfc_add_block_to_block (block, &upper_se.post);
 
-      /* Set bounds in descriptor.  */
-      gfc_conv_descriptor_lbound_set (block, dest, gfc_rank_cst[dim], lbound);
-      gfc_conv_descriptor_ubound_set (block, dest, gfc_rank_cst[dim], ubound);
-
-      /* Set stride.  */
       stride = gfc_evaluate_now (stride, block);
-      gfc_conv_descriptor_stride_set (block, dest, gfc_rank_cst[dim], stride);
 
-      /* Update offset.  */
-      tree tmp = fold_build2_loc (input_location, MULT_EXPR,
-				  gfc_array_index_type, lbound, stride);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, tmp);
+      set_dimension_fields (block, dest, gfc_rank_cst[dim],
+			    lbound, ubound, stride, &offset);
 
       /* Update stride.  */
-      tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+      tree tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
       stride = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, stride, tmp);
     }
@@ -1865,15 +1875,13 @@ set_gfc_dimension_from_cfi (stmtblock_t *block, tree gfc, tree cfi, tree idx,
     {
       /* gfc->dim[i].stride = cfi->dim[i].sm / cfi>elem_len */
       tmp = gfc_get_cfi_dim_sm (cfi, idx);
-      tmp = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
-			     gfc_array_index_type, tmp,
-			     fold_convert (gfc_array_index_type,
-					   gfc_get_cfi_desc_elem_len (cfi)));
-      stride = gfc_evaluate_now (tmp, block);
+      stride = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
+				gfc_array_index_type, tmp,
+				fold_convert (gfc_array_index_type,
+					      gfc_get_cfi_desc_elem_len (cfi)));
     }
 
-  set_dimension_bounds (block, gfc, idx, lbound, ubound, stride, offset_var);
-  gfc_conv_descriptor_stride_set (block, gfc, idx, stride);
+  set_dimension_fields (block, gfc, idx, lbound, ubound, stride, offset_var);
 }
 
 
