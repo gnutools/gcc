@@ -2620,19 +2620,17 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
       gfc_free_expr (e);
       tree lower = tse.expr;
       gfc_add_block_to_block (block, &tse.pre);
-      gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[i], lower);
+
       e = gfc_copy_expr (as->upper[i]);
       gfc_insert_parameter_exprs (e, pdt_param_list);
       gfc_conv_expr_type (&tse, e, gfc_array_index_type);
       gfc_free_expr (e);
       tree upper = tse.expr;
       gfc_add_block_to_block (block, &tse.pre);
-      gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[i], upper);
-      gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[i], size);
-      size = gfc_evaluate_now (size, block);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, size);
-      offset = gfc_evaluate_now (offset, block);
+
+      set_dimension_fields (block, descr, gfc_rank_cst[i], lower, upper, size,
+			    &offset);
+
       tree tmp = fold_build2_loc (input_location, MINUS_EXPR,
 				  gfc_array_index_type, upper, lower);
       tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
