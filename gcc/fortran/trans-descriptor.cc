@@ -2008,14 +2008,11 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
       gfc_conv_expr (&lowerse, lower);
       gfc_add_block_to_block (&body, &lowerse.pre);
       lbound = fold_convert (gfc_array_index_type, lowerse.expr);
+      lbound = gfc_evaluate_now (lbound, &body);
       gfc_add_block_to_block (&body, &lowerse.post);
     }
   else
     lbound = gfc_index_one_node;
-
-  /* Set bounds and stride.  */
-  gfc_conv_descriptor_lbound_set (&body, desc, dim, lbound);
-  gfc_conv_descriptor_stride_set (&body, desc, dim, stride);
 
   gfc_conv_expr (&shapese, shape);
   gfc_add_block_to_block (&body, &shapese.pre);
@@ -2025,29 +2022,22 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
 			 lbound, gfc_index_one_node);
   tree ubound = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, tmp, shapeval);
-  gfc_conv_descriptor_ubound_set (&body, desc, dim, ubound);
+  ubound = gfc_evaluate_now (ubound, &body);
   gfc_add_block_to_block (&body, &shapese.post);
 
-  /* Calculate offset.  */
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			 stride, lbound);
-  gfc_add_modify (&body, offset,
-		  fold_build2_loc (input_location, PLUS_EXPR,
-				   gfc_array_index_type, offset, tmp));
+  set_dimension_fields (&body, desc, dim, lbound, ubound, stride, offset);
 
   /* Update stride.  */
   gfc_add_modify (&body, stride,
 		  fold_build2_loc (input_location, MULT_EXPR,
 				   gfc_array_index_type, stride, shapeval));
+
   /* Finish scalarization loop.  */
   gfc_trans_scalarizing_loops (&loop, &body);
   gfc_add_block_to_block (block, &loop.pre);
   gfc_add_block_to_block (block, &loop.post);
   gfc_cleanup_loop (&loop);
 
-  gfc_add_modify (block, offset,
-		  fold_build1_loc (input_location, NEGATE_EXPR,
-				   gfc_array_index_type, offset));
   gfc_conv_descriptor_offset_set (block, desc, offset);
 }
 
