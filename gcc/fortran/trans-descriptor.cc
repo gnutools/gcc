@@ -1400,7 +1400,7 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, tree ptr,
 
 void
 gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
-			   tree src, gfc_array_ref *ar)
+			   tree src, bool contiguous_src, gfc_array_ref *ar)
 {
   /* Set dtype.  */
   gfc_conv_descriptor_dtype_set (block, dest,
@@ -1429,7 +1429,12 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
 
   /* Set the bounds as declared for the LHS and calculate strides as
      well as another offset update accordingly.  */
-  tree stride = gfc_conv_descriptor_stride_get (src, gfc_rank_cst[0]);
+  tree stride;
+  if (contiguous_src)
+    stride = gfc_index_one_node;
+  else
+    stride = gfc_conv_descriptor_stride_get (src, gfc_rank_cst[0]);
+
   for (int dim = 0; dim < dest_rank; ++dim)
     {
       gfc_se lower_se;
