@@ -1860,27 +1860,14 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
       tree from = lowers[dim];
       tree to = uppers[dim];
 
-      gfc_conv_descriptor_lbound_set (block, dest,
-				      gfc_rank_cst[dim], from);
-
-      /* Set the new upper bound.  */
-      gfc_conv_descriptor_ubound_set (block, dest,
-				      gfc_rank_cst[dim], to);
-
       /* Multiply the stride by the section stride to get the
 	 total stride.  */
       stride = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type,
 				stride, info->stride[n]);
 
-      tmp = fold_build2_loc (input_location, MULT_EXPR,
-			     TREE_TYPE (offset), stride, from);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-			       TREE_TYPE (offset), offset, tmp);
-
-      /* Store the new stride.  */
-      gfc_conv_descriptor_stride_set (block, dest,
-				      gfc_rank_cst[dim], stride);
+      set_dimension_fields (block, dest, gfc_rank_cst[dim], from, to, stride,
+			    &offset);
     }
 
   /* For deferred-length character we need to take the dynamic length
