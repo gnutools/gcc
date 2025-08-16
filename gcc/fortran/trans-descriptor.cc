@@ -2830,15 +2830,8 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 	      ubound = lower[n];
 	    }
 	}
-      gfc_conv_descriptor_lbound_set (descriptor_block, descriptor,
-				      gfc_rank_cst[n], se.expr);
       conv_lbound = se.expr;
-
-      /* Work out the offset for this component.  */
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     se.expr, stride);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, tmp);
+      conv_lbound = gfc_evaluate_now (conv_lbound, pblock);
 
       /* Set upper bound.  */
       gfc_init_se (&se, NULL);
@@ -2874,13 +2867,11 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 	  if (ubound->expr_type == EXPR_FUNCTION)
 	    se.expr = gfc_evaluate_now (se.expr, pblock);
 	}
-      gfc_conv_descriptor_ubound_set (descriptor_block, descriptor,
-				      gfc_rank_cst[n], se.expr);
       conv_ubound = se.expr;
+      conv_ubound = gfc_evaluate_now (conv_ubound, pblock);
 
-      /* Store the stride.  */
-      gfc_conv_descriptor_stride_set (descriptor_block, descriptor,
-				      gfc_rank_cst[n], stride);
+      set_dimension_fields (descriptor_block, descriptor, gfc_rank_cst[n],
+			    conv_lbound, conv_ubound, stride, &offset);
 
       /* Calculate size and check whether extent is negative.  */
       size = gfc_conv_array_extent_dim (conv_lbound, conv_ubound, &empty_cond);
@@ -2964,7 +2955,6 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
     return gfc_index_one_node;
 
   /* Update the array descriptor with the offset and the span.  */
-  offset = gfc_evaluate_now (offset, pblock);
   gfc_conv_descriptor_offset_set (descriptor_block, descriptor, offset);
   tmp = fold_convert (gfc_array_index_type, element_size);
   gfc_conv_descriptor_span_set (descriptor_block, descriptor, tmp);
