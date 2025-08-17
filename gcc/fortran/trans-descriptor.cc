@@ -1768,12 +1768,12 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
 
   gfc_conv_expr (&shapese, shape);
   gfc_add_block_to_block (&body, &shapese.pre);
+  tree shapeval = fold_convert (gfc_array_index_type, shapese.expr);
+  shapeval = gfc_evaluate_now (shapeval, &body);
   tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			 lbound, gfc_index_one_node);
   tree ubound = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type, tmp,
-				 fold_convert (gfc_array_index_type,
-					       shapese.expr));
+				 gfc_array_index_type, tmp, shapeval);
   gfc_conv_descriptor_ubound_set (&body, desc, dim, ubound);
   gfc_add_block_to_block (&body, &shapese.post);
 
@@ -1787,9 +1787,7 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
   /* Update stride.  */
   gfc_add_modify (&body, stride,
 		  fold_build2_loc (input_location, MULT_EXPR,
-				   gfc_array_index_type, stride,
-				   fold_convert (gfc_array_index_type,
-						 shapese.expr)));
+				   gfc_array_index_type, stride, shapeval));
   /* Finish scalarization loop.  */
   gfc_trans_scalarizing_loops (&loop, &body);
   gfc_add_block_to_block (block, &loop.pre);
