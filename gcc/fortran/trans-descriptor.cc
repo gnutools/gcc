@@ -2505,38 +2505,21 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       tree tmp = fold_build2_loc (input_location, MINUS_EXPR,
 				  gfc_array_index_type,
 				  loop->to[n], loop->from[n]);
-      tmp = fold_build2_loc (input_location, PLUS_EXPR,
-			     gfc_array_index_type,
-			     tmp, gfc_index_one_node);
-
-      tree lbound = gfc_index_one_node;
-      tree ubound = tmp;
+      tree ubound = fold_build2_loc (input_location, PLUS_EXPR,
+				     gfc_array_index_type,
+				     tmp, gfc_index_one_node);
 
       if (as)
-	{
-	  tree lbd = get_std_lbound (expr2, desc2, n,
-				     as->type == AS_ASSUMED_SIZE);
-	  ubound = fold_build2_loc (input_location,
-				    MINUS_EXPR,
-				    gfc_array_index_type,
-				    ubound, lbound);
-	  ubound = fold_build2_loc (input_location,
-				    PLUS_EXPR,
-				    gfc_array_index_type,
-				    ubound, lbd);
-	  lbound = lbd;
-	}
+	shift_dimension_fields (block, desc, gfc_rank_cst[n],
+				get_std_lbound (expr2, desc2, n,
+						as->type == AS_ASSUMED_SIZE),
+				gfc_index_one_node, ubound, size1, &offset);
+      else
+	set_dimension_fields (block, desc, gfc_rank_cst[n], gfc_index_one_node,
+			      ubound, size1, &offset);
 
-      gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[n], lbound);
-      gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[n], ubound);
-      gfc_conv_descriptor_stride_set (block, desc, gfc_rank_cst[n], size1);
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[n]);
-      tree tmp2 = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-				   lbound, size1);
-      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				gfc_array_index_type, offset, tmp2);
       size1 = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			       tmp, size1);
+			       ubound, size1);
     }
 
   /* Set the lhs descriptor and scalarizer offsets.  For rank > 1,
