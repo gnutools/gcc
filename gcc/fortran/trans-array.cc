@@ -10642,6 +10642,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
       gfc_add_modify (&unalloc_init_block, guard, logical_false_node);
 
       stmtblock_t loop_pre_block;
+      gfc_init_block (&loop_pre_block);
       gfc_set_empty_descriptor (&loop_pre_block, desc, expr1->rank);
 
       tmp = fold_build2_loc (input_location, EQ_EXPR,
