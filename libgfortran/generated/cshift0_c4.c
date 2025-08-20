@@ -116,8 +116,9 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
       roffset = sizeof (GFC_COMPLEX_4);
       soffset = sizeof (GFC_COMPLEX_4);
       len = GFC_DESCRIPTOR_SPACING(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_SPACING(array, which);
+	* GFC_DESCRIPTOR_EXTENT(array, which)
+	/ sizeof (GFC_COMPLEX_4);      
+      shift *= GFC_DESCRIPTOR_SPACING(array, which) / sizeof (GFC_COMPLEX_4);
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;
@@ -175,8 +176,8 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 	{
 	  size_t len1 = shift * sizeof (GFC_COMPLEX_4);
 	  size_t len2 = (len - shift) * sizeof (GFC_COMPLEX_4);
-	  memcpy (rptr, sptr + shift, len2);
-	  memcpy (rptr + (len - shift), sptr, len1);
+	  memcpy (rptr, ((char*) sptr) + len1, len2);
+	  memcpy (((char*) rptr) + len2, sptr, len1);
 	}
       else
 	{

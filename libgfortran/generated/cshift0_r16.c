@@ -116,8 +116,9 @@ cshift0_r16 (gfc_array_r16 *ret, const gfc_array_r16 *array, ptrdiff_t shift,
       roffset = sizeof (GFC_REAL_16);
       soffset = sizeof (GFC_REAL_16);
       len = GFC_DESCRIPTOR_SPACING(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_SPACING(array, which);
+	* GFC_DESCRIPTOR_EXTENT(array, which)
+	/ sizeof (GFC_REAL_16);      
+      shift *= GFC_DESCRIPTOR_SPACING(array, which) / sizeof (GFC_REAL_16);
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;
@@ -175,8 +176,8 @@ cshift0_r16 (gfc_array_r16 *ret, const gfc_array_r16 *array, ptrdiff_t shift,
 	{
 	  size_t len1 = shift * sizeof (GFC_REAL_16);
 	  size_t len2 = (len - shift) * sizeof (GFC_REAL_16);
-	  memcpy (rptr, sptr + shift, len2);
-	  memcpy (rptr + (len - shift), sptr, len1);
+	  memcpy (rptr, ((char*) sptr) + len1, len2);
+	  memcpy (((char*) rptr) + len2, sptr, len1);
 	}
       else
 	{

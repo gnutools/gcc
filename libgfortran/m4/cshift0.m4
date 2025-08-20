@@ -117,8 +117,9 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
       roffset = sizeof ('rtype_name`);
       soffset = sizeof ('rtype_name`);
       len = GFC_DESCRIPTOR_SPACING(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_SPACING(array, which);
+	* GFC_DESCRIPTOR_EXTENT(array, which)
+	/ sizeof ('rtype_name`);      
+      shift *= GFC_DESCRIPTOR_SPACING(array, which) / sizeof ('rtype_name`);
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;
@@ -176,8 +177,8 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	{
 	  size_t len1 = shift * sizeof ('rtype_name`);
 	  size_t len2 = (len - shift) * sizeof ('rtype_name`);
-	  memcpy (rptr, sptr + shift, len2);
-	  memcpy (rptr + (len - shift), sptr, len1);
+	  memcpy (rptr, ((char*) sptr) + len1, len2);
+	  memcpy (((char*) rptr) + len2, sptr, len1);
 	}
       else
 	{
