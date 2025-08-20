@@ -150,8 +150,9 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 
 	 so a block move can be used for dim>1.  */
       len = GFC_DESCRIPTOR_SPACING(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);
-      shift *= GFC_DESCRIPTOR_SPACING(array, which);
+	* GFC_DESCRIPTOR_EXTENT(array, which)
+	/ size;
+      shift *= GFC_DESCRIPTOR_SPACING(array, which) / size;
       roffset = size;
       soffset = size;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
