@@ -452,7 +452,6 @@ struct {\
   size_t offset;\
   dtype_type dtype;\
   index_type span;\
-  index_type align;\
   descriptor_dimension dim[r];\
 }
 
