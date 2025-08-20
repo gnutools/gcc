@@ -104,7 +104,6 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = sizeof ('rtype_name`);
       spacing = sizeof('rtype_name`);
       for (index_type n = 0; n < rdim; n++)
 	{
@@ -112,15 +111,14 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, rex - 1, spacing);
 
-	  rs *= rex;
 	  spacing *= rex;
 	}
       ret->offset = 0;
 
-      if (unlikely (rs < 1))
+      if (unlikely (spacing < 1))
         alloc_size = 0;
       else
-        alloc_size = rs;
+        alloc_size = spacing;
 
       ret->base_addr = xmalloc (alloc_size);
       ret->dtype.rank = rdim;
@@ -165,7 +163,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type ret_extent, source_extent;
 
-      rs = sizeof ('rtype_name`);
+      rs = 1;
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rs *= shape_data[n];

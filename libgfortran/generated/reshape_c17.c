@@ -100,7 +100,6 @@ reshape_c17 (gfc_array_c17 * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = sizeof (GFC_COMPLEX_17);
       spacing = sizeof(GFC_COMPLEX_17);
       for (index_type n = 0; n < rdim; n++)
 	{
@@ -108,15 +107,14 @@ reshape_c17 (gfc_array_c17 * const restrict ret,
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, rex - 1, spacing);
 
-	  rs *= rex;
 	  spacing *= rex;
 	}
       ret->offset = 0;
 
-      if (unlikely (rs < 1))
+      if (unlikely (spacing < 1))
         alloc_size = 0;
       else
-        alloc_size = rs;
+        alloc_size = spacing;
 
       ret->base_addr = xmalloc (alloc_size);
       ret->dtype.rank = rdim;
@@ -161,7 +159,7 @@ reshape_c17 (gfc_array_c17 * const restrict ret,
     {
       index_type ret_extent, source_extent;
 
-      rs = sizeof (GFC_COMPLEX_17);
+      rs = 1;
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rs *= shape_data[n];
