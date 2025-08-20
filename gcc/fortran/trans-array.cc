@@ -3177,7 +3177,7 @@ gfc_conv_ss_descriptor (stmtblock_t * block, gfc_ss * ss, int base)
 	 analysis by pulling the expressions for elemental array indices
 	 inside the loop.  */
       if (save_descriptor_data (se.expr, data) && !ss->is_alloc_lhs)
-	tmp = gfc_evaluate_now (data, block);
+	data = gfc_evaluate_now (data, block);
       info->data = data;
 
       tmp = gfc_conv_array_offset (se.expr);
