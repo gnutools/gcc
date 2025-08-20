@@ -7224,22 +7224,6 @@ select_intrinsic_set_tmp (gfc_typespec *ts, const char *var_name)
 }
 
 
-static const char *
-get_select_type_var_name ()
-{
-  const char *name = "";
-  gfc_expr *e = gfc_state_stack->construct->expr1;
-  if (e->symtree)
-    name = e->symtree->name;
-  for (gfc_ref *r = e->ref; r; r = r->next)
-    if (r->type == REF_COMPONENT
-	&& strcmp (r->u.c.component->name, "_data") != 0)
-      name = r->u.c.component->name;
-
-  return name;
-}
-
-
 /* Set up a temporary for the current TYPE IS / CLASS IS branch .  */
 
 static void
