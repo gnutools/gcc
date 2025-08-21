@@ -2414,12 +2414,16 @@ simul_scope::simulate_call (gcall *g)
 
   tree lhs = gimple_call_lhs (g);
   optional <data_value> result;
-  if (gimple_call_builtin_p (g, BUILT_IN_MALLOC))
+  if (gimple_call_builtin_p (g, BUILT_IN_MALLOC)
+      || gimple_call_builtin_p (g, BUILT_IN_ALLOCA_WITH_ALIGN))
     {
       gcc_assert (lhs != NULL_TREE);
       result.emplace (data_value (TREE_TYPE (lhs)));
 
-      gcc_assert (gimple_call_num_args (g) == 1);
+      gcc_assert ((gimple_call_builtin_p (g, BUILT_IN_MALLOC)
+		   && gimple_call_num_args (g) == 1)
+		  || (gimple_call_builtin_p (g, BUILT_IN_ALLOCA_WITH_ALIGN)
+		      && gimple_call_num_args (g) == 2));
       tree arg = gimple_call_arg (g, 0);
       data_value size = evaluate (arg);
       gcc_assert (size.classify () == VAL_KNOWN);
@@ -7160,6 +7164,57 @@ simul_scope_simulate_call_tests ()
   wide_int wi_known_strg_p2_12 = val_known_strg_p2_12.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_known_strg_p2_12);
   ASSERT_EQ (wi_known_strg_p2_12.to_shwi (), 18);
+
+
+  tree p13 = create_var (ptr_type_node, "p");
+
+  vec<tree> decls13{};
+  decls13.safe_push (p13);
+
+  heap_memory mem13;
+  context_builder builder13 {};
+  builder13.add_decls (&decls13);
+  simul_scope ctx13 = builder13.build (mem13, printer);
+
+  tree alloca_align_fn = builtin_decl_explicit (BUILT_IN_ALLOCA_WITH_ALIGN);
+  tree cst12_13 = build_int_cst (size_type_node, 12);
+  tree cst32_13 = build_int_cst (size_type_node, 32);
+
+  gcall * alloca_align_call = gimple_build_call (alloca_align_fn, 2,
+						 cst12_13, cst32_13);
+  gimple_set_lhs (alloca_align_call, p13);
+
+  ASSERT_EQ (ctx13.find_alloc (0), nullptr);
+
+  ctx13.simulate (alloca_align_call);
+
+  data_storage *alloca_align_strg = ctx13.find_alloc (0);
+  ASSERT_NE (alloca_align_strg, nullptr);
+  data_value alloca_align_val = alloca_align_strg->get_value ();
+  ASSERT_EQ (alloca_align_val.classify (), VAL_UNDEFINED);
+  ASSERT_EQ (alloca_align_val.get_bitwidth (), 96);
+
+  data_storage *p13_strg = ctx13.find_var (p13);
+  ASSERT_NE (p13_strg, nullptr);
+  data_value p13_val = p13_strg->get_value ();
+  ASSERT_EQ (p13_val.classify (), VAL_ADDRESS);
+  ASSERT_EQ (&p13_val.get_address ()->storage.get (), alloca_align_strg);
+
+  tree cst10_13 = build_int_cst (size_type_node, 10);
+
+  gcall * alloca_align_call2 = gimple_build_call (alloca_align_fn, 2,
+						  cst10_13, cst32_13);
+  gimple_set_lhs (alloca_align_call2, p13);
+
+  ASSERT_EQ (ctx13.find_alloc (1), nullptr);
+
+  ctx13.simulate (alloca_align_call2);
+
+  data_storage *alloca_align_strg2 = ctx13.find_alloc (1);
+  ASSERT_NE (alloca_align_strg2, nullptr);
+  data_value alloca_align_val2 = alloca_align_strg2->get_value ();
+  ASSERT_EQ (alloca_align_val2.classify (), VAL_UNDEFINED);
+  ASSERT_EQ (alloca_align_val2.get_bitwidth (), 80);
 }
 
 void
