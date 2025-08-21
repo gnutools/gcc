@@ -1302,9 +1302,7 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
 	  tree elem_len = GFC_TYPE_ARRAY_ELEM_LEN (type);
 	  elem_len = fold_convert_loc (input_location, gfc_array_index_type,
 				       elem_len);
-	  off = fold_build2_loc (input_location, PLUS_EXPR,
-				 gfc_array_index_type, off, elem_len);
-	  tree size_units = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+	  tree size_units = fold_build2_loc (input_location, PLUS_EXPR,
 					     gfc_array_index_type,
 					     off, elem_len);
 	  tree size = fold_build2_loc (input_location, MULT_EXPR,
