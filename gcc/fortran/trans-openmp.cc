@@ -3372,7 +3372,7 @@ gfc_trans_omp_array_section (stmtblock_t *block, gfc_exec_op op,
 			   offset, fold_convert (ptrdiff_type_node, elemsz));
 	  offset = build4_loc (input_location, ARRAY_REF,
 			       TREE_TYPE (TREE_TYPE (decl)),
-			       decl, offset, NULL_TREE, NULL_TREE);
+			       decl, offset, gfc_index_zero_node, NULL_TREE);
 	  OMP_CLAUSE_DECL (node) = offset;
 
 	  if (ptr_kind == GOMP_MAP_ATTACH_DETACH && openmp)
