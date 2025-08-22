@@ -102,7 +102,11 @@ end program main
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:ppp\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(inout:ppp\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:&bbb\\)" 1 "gimple" } }
-! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(depobj:&obj\\\[0\\\]\\) depend\\(depobj:&obj\\\[1\\\]\\)" 1 "gimple" } }
+! { dg-final { global addr1 addr2; scan-tree-dump-vars {#pragma omp task depend\(depobj:([^)]+)\) depend\(depobj:([^)]+)\)} [list addr1 addr2] "gimple" } }
+! { dg-final { global addr1 lbound1; scan-tree-dump-vars "$addr1 = &obj\\\[0\\\]{lb: (\[^ \]+) sz: 16};" [list lbound1] "gimple" } }
+! { dg-final { global lbound1; scan-tree-dump "$lbound1 = 0;" "gimple" } }
+! { dg-final { global addr2 lbound2; scan-tree-dump-vars "$addr2 = &obj\\\[1\\\]{lb: (\[^ \]+) sz: 16};" [list lbound2] "gimple" } }
+! { dg-final { global lbound2; scan-tree-dump "$lbound2 = 0;" "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(in:ppp\\)" 1 "gimple" } }
 
 ! { dg-final { scan-tree-dump-times "MEM\\\[\[^\r\n]+\\\] = ppp;" 1 "gimple" } }

@@ -98,25 +98,25 @@ proc scan-tree-dump-not { args } {
 # Call pass if pattern is present, otherwise fail.
 #
 # Argument 0 is the regexp to match
-# Argument 1 is the name of the dumped tree pass
-# Argument 2 is the variable name to store the matched content
+# Argument 1 is the list of variable names to store the matched content
+# Argument 2 is the name of the dumped tree pass
 # Argument 3 handles expected failures and the like
-proc scan-tree-dump-var { args } {
+proc scan-tree-dump-vars { args } {
 
     if { [llength $args] < 3 } {
 	error "scan-tree-dump-var: too few arguments"
 	return
     }
     if { [llength $args] > 4 } {
-	error "scan-tree-dump-var: too many arguments"
-	return
+       error "scan-tree-dump-var: too many arguments"
+       return
     }
     if { [llength $args] >= 4 } {
-	scan-dump-var "tree" [lindex $args 0] \
-		  "\[0-9\]\[0-9\]\[0-9\]t.[lindex $args 1]" "" [lindex $args 2] [lindex $args 3]
+	scan-dump-vars "tree" [lindex $args 0] \
+		  "\[0-9\]\[0-9\]\[0-9\]t.[lindex $args 2]" "" [lindex $args 1] [lindex $args 3]
     } else {
-	scan-dump-var "tree" [lindex $args 0] \
-		  "\[0-9\]\[0-9\]\[0-9\]t.[lindex $args 1]" "" [lindex $args 2]
+	scan-dump-vars "tree" [lindex $args 0] \
+		  "\[0-9\]\[0-9\]\[0-9\]t.[lindex $args 2]" "" [lindex $args 1]
     }
 }
 

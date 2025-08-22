@@ -221,9 +221,9 @@ proc scan-dump-not { args } {
 # Argument 1 is the regexp to match.
 # Argument 2 is the suffix for the dump file
 # Argument 3 is the suffix of the dump base
-# Argument 4 is the variable name to store the matched content
+# Argument 4 is the list of variable names to store the matched content
 # Argument 5 handles expected failures and the like
-proc scan-dump-var { args } {
+proc scan-dump-vars { args } {
 
     if { [llength $args] >= 6 } {
         switch [dg-process-target [lindex $args 5]] {
@@ -255,9 +255,11 @@ proc scan-dump-var { args } {
     set text [read $fd]
     close $fd
 
-    global [lindex $args 4]
-    set [lindex $args 4] {}
-    if [regexp -- [lindex $args 1] $text scratch [lindex $args 4]] {
+    foreach var [lindex $args 4] {
+	global $var
+	set $var {}
+    }
+    if [regexp -- [lindex $args 1] $text scratch {*}[lindex $args 4]] {
 	pass "$testname"
     } else {
 	fail "$testname"
