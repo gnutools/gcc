@@ -1,7 +1,7 @@
 ! Based on libgomp.c/target-23.c
 
 ! { dg-additional-options "-fdump-tree-original" }
-! { dg-final { scan-tree-dump "omp target update to\\(xxs\\\[3\\\] \\\[len: 2\\\]\\)" "original" } }
+! { dg-final { scan-tree-dump {omp target update to\(xxs\[3\]{lb: 0 sz: 2} \[len: 2\]\)} "original" } }
 ! { dg-final { scan-tree-dump "omp target update to\\(s\\.s \\\[len: 4\\\]\\)" "original" } }
 ! { dg-final { scan-tree-dump "omp target update from\\(s\\.s \\\[len: 4\\\]\\)" "original" } }
 
