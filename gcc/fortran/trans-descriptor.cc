@@ -1532,7 +1532,8 @@ init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
     {
       tree value = values.single;
       if (TREE_STATIC (data_ref)
-	  || !modifiable_p (data_ref))
+	  && (block == nullptr
+	      || !modifiable_p (data_ref)))
 	DECL_INITIAL (data_ref) = value;
       else if (TREE_CODE (value) == CONSTRUCTOR
 	       && !(TREE_CONSTANT (value)
@@ -1552,7 +1553,9 @@ init_struct (stmtblock_t *block, tree data_ref, init_kind kind,
       else
 	gfc_add_modify (block, data_ref, value);
     }
-  else if (TREE_STATIC (data_ref))
+  else if (TREE_STATIC (data_ref)
+	   && (block == nullptr
+	       || !modifiable_p (data_ref)))
     return init_struct (block, data_ref,
 			build_constructor (type, values.multiple));
   else
