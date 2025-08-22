@@ -4551,6 +4551,13 @@ gfc_trans_vla_type_sizes (gfc_symbol *sym, stmtblock_t *body)
       type = TREE_TYPE (TREE_VALUE (current_fake_result_decl));
     }
 
+  return gfc_trans_vla_type_sizes (type, root_decl, body);
+}
+
+
+void
+gfc_trans_vla_type_sizes (tree type, tree root_decl, stmtblock_t *body)
+{
   while (POINTER_TYPE_P (type))
     type = TREE_TYPE (type);
 

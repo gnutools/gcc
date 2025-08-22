@@ -605,6 +605,7 @@ tree gfc_get_expr_charlen (gfc_expr *);
 void gfc_conv_string_length (gfc_charlen *, gfc_expr *, stmtblock_t *);
 /* Ensure type sizes can be gimplified.  */
 void gfc_trans_vla_type_sizes (gfc_symbol *, stmtblock_t *);
+void gfc_trans_vla_type_sizes (tree, tree, stmtblock_t *);
 
 /* Add an expression to the end of a block.  */
 void gfc_add_expr_to_block (stmtblock_t *, tree);
