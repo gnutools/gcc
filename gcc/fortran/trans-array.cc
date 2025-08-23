@@ -6531,20 +6531,18 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
       if (!(array_info && INTEGER_CST_P (array_info)))
 	{
 	  if (dim + 1 < as->rank)
-	    {
-	      tmp = fold_build2_loc (input_location, MULT_EXPR,
-				     gfc_array_index_type, spacing, tmp);
-	      spacing = array_info;
-	    }
+	    tmp = fold_build2_loc (input_location, MULT_EXPR,
+				   gfc_array_index_type, spacing, tmp);
 	  else
-	    {
-	      tmp = size;
-	      spacing = NULL_TREE;
-	    }
+	    tmp = size;
 
 	  gcc_assert (array_info);
 	  gfc_add_modify (pblock, array_info, tmp);
 	}
+      if (dim + 1 < as->rank)
+	spacing = array_info;
+      else
+	spacing = NULL_TREE;
     }
 
   gfc_trans_array_cobounds (type, pblock, sym);
