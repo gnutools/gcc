@@ -1283,9 +1283,9 @@ gfc_omp_linear_clause_add_loop (stmtblock_t *block, tree dest, tree src,
   if (TREE_CODE (TREE_TYPE (dest)) == ARRAY_TYPE)
     {
       desta = gfc_build_array_ref (dest, index, false, NULL_TREE,
-				   GFC_TYPE_ARRAY_SPACING (dest, 0));
+				   GFC_TYPE_ARRAY_SPACING (TREE_TYPE (dest), 0));
       srca = gfc_build_array_ref (src, index, false, NULL_TREE,
-				  GFC_TYPE_ARRAY_SPACING (src, 0));
+				  GFC_TYPE_ARRAY_SPACING (TREE_TYPE (src), 0));
     }
   else
     {
