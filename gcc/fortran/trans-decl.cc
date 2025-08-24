@@ -1269,11 +1269,15 @@ gfc_build_qualified_array (tree decl, gfc_symbol * sym)
       tree lower = TYPE_MIN_VALUE (TYPE_DOMAIN (type));
       if (lower == NULL_TREE)
 	lower = gfc_index_zero_node;
+      if (TREE_CODE (lower) == NON_LVALUE_EXPR)
+	lower = TREE_OPERAND (lower, 0);
 
       size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			      GFC_TYPE_ARRAY_SIZE (type), gfc_index_one_node);
       size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
 			      size, lower);
+      if (TREE_CODE (size) == NON_LVALUE_EXPR)
+	size = TREE_OPERAND (size, 0);
       range = build_range_type (gfc_array_index_type, lower, size);
       TYPE_DOMAIN (type) = range;
       if (GFC_TYPE_PACKED_ARRAY (type))
