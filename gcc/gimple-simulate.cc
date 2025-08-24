@@ -2083,7 +2083,8 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
 		      && TYPE_PRECISION (TREE_TYPE (lhs))
 			 == TYPE_PRECISION (TREE_TYPE (rhs))
 		      && TYPE_UNSIGNED (TREE_TYPE (lhs))
-			 == TYPE_UNSIGNED (TREE_TYPE (rhs))));
+			 == TYPE_UNSIGNED (TREE_TYPE (rhs)))
+		  || code == RSHIFT_EXPR);
       tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
       tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
       tree t = fold_binary (code, type, lval, rval);
