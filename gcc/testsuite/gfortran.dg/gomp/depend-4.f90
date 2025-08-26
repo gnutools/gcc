@@ -244,7 +244,7 @@ end
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:daa\\) shared\\(daa\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:doss\\) shared\\(doss\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:doaa\\) shared\\(doaa\\)" 1 "gimple" } }
-! { dg-final { scan-tree-dump-var { (D\.[0-9]+) = &aa\[1\](?:\{lb: (?:.*?) sz: 4\})?;} "gimple" {aa_address} } }
+! { dg-final { scan-tree-dump-vars { (D\.[0-9]+) = &aa\[1\](?:\{lb: (?:.*?) sz: 4\})?;} [list aa_address] "gimple"  } }
 ! { dg-final { global aa_address; scan-tree-dump-times "#pragma omp task depend\\(out:${aa_address}\\) shared\\(aa\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:&dossv\\) shared\\(dossv\\)" 1 "gimple" } }
 ! { dg-final { scan-tree-dump-times "#pragma omp task depend\\(out:&dssv\\) shared\\(dssv\\)" 1 "gimple" } }
