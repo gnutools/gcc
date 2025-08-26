@@ -415,8 +415,9 @@ tree
 gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 		     tree min_idx, tree spacing_bytes, tree offset)
 {
-  if (DECL_P (base))
-    TREE_ADDRESSABLE (base) = 1;
+  tree base_root = get_base_address (base);
+  if (DECL_P (base_root))
+    TREE_ADDRESSABLE (base_root) = 1;
 
   /* Strip NON_LVALUE_EXPR nodes.  */
   STRIP_TYPE_NOPS (index);
