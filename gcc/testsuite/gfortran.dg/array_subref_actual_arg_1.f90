@@ -158,29 +158,29 @@ program p
 
   ! Descriptor without data copy: one single usage of the data pointer for its initialisation.
   call sub_assumed_shape(x%t)
-  ! { dg-final { scan-tree-dump-var {sub_assumed_shape \(&parm\.(\d+)\);} original ashp_parm_id } }
+  ! { dg-final { scan-tree-dump-vars {sub_assumed_shape \(&parm\.(\d+)\);} [list ashp_parm_id] original } }
   ! { dg-final { global ashp_parm_id; scan-tree-dump-times "parm.${ashp_parm_id}\\.data" 1 original } }
 
   ! Use a temporary; there are three usages of the data pointer: one for its initialisation,
   ! one for the data copy, and one for passing as actual argument
   call sub_explicit(x%t)       ! { dg-warning "array temporary" }
-  ! { dg-final { scan-tree-dump-var {sub_explicit \(\(.*?\) atmp.(\d+)\.data\);} original expl_tmp_id } }
+  ! { dg-final { scan-tree-dump-vars {sub_explicit \(\(.*?\) atmp.(\d+)\.data\);} [list expl_tmp_id] original } }
   ! { dg-final { global expl_tmp_id; scan-tree-dump-times "atmp.${expl_tmp_id}\\.data" 3 original } }
 
   ! Use a temporary; there are three usages of the data pointer: one for its initialisation,
   ! one for the data copy, and one for passing as actual argument
   call sub_assumed_size(x%t)   ! { dg-warning "array temporary" }
-  ! { dg-final { scan-tree-dump-var {sub_assumed_size \(\(.*?\) atmp.(\d+)\.data\);} original asz_tmp_id } }
+  ! { dg-final { scan-tree-dump-vars {sub_assumed_size \(\(.*?\) atmp.(\d+)\.data\);} [list asz_tmp_id] original } }
   ! { dg-final { global asz_tmp_id; scan-tree-dump-times "atmp.${asz_tmp_id}\\.data" 3 original } }
 
   ! Use a temporary; there are four usages of the data pointer: one for its initialisation,
   ! one for the data copy in, one for passing as actual argument, and one for data copy out
   call sub_implicit(x%t)       ! { dg-warning "array temporary" }
-  ! { dg-final { scan-tree-dump-var {sub_implicit \(\(.*?\) atmp.(\d+)\.data\);} original impl_tmp_id } }
+  ! { dg-final { scan-tree-dump-vars {sub_implicit \(\(.*?\) atmp.(\d+)\.data\);} [list impl_tmp_id] original } }
   ! { dg-final { global impl_tmp_id; scan-tree-dump-times "atmp.${impl_tmp_id}\\.data" 4 original } }
 
   ! Descriptor without data copy: one single usage of the data pointer for its initialisation.
   call sub_assumed_rank(x%t)
-  ! { dg-final { scan-tree-dump-var {sub_assumed_rank \(&parm\.(\d+)\);} original arnk_parm_id } }
+  ! { dg-final { scan-tree-dump-vars {sub_assumed_rank \(&parm\.(\d+)\);} [list arnk_parm_id] original } }
   ! { dg-final { global arnk_parm_id; scan-tree-dump-times "parm.${arnk_parm_id}\\.data" 1 original } }
 end program p
