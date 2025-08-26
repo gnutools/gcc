@@ -4036,7 +4036,11 @@ scan_omp_1_op (tree *tp, int *walk_subtrees, void *data)
 	{
 	  tree block = BIND_EXPR_BLOCK (t);
 	  for (tree var = BLOCK_VARS (block); var; var = DECL_CHAIN (var))
-	    insert_decl_map (&ctx->cb, var, var);
+	    {
+	      tree t = maybe_lookup_decl (var, ctx);
+	      if (t == NULL_TREE)
+		insert_decl_map (&ctx->cb, var, var);
+	    }
 	}
       break;
 
