@@ -406,6 +406,17 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
 }
 
 
+static bool
+is_dim_descriptor_comp_array_ref_base (tree ref)
+{
+  STRIP_NOPS (ref);
+  if (TREE_CODE (ref) != COMPONENT_REF)
+    return false;
+
+  tree base = TREE_OPERAND (ref, 0);
+  return GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (base));
+}
+
 /* Build an ARRAY_REF with its natural type.
    NON_NEGATIVE_SPACING indicates if it’s true that SPACING can’t be negative,
    and thus that an ARRAY_REF can safely be generated.  If it’s false, we
@@ -415,9 +426,13 @@ tree
 gfc_build_array_ref (tree type, tree base, tree index, bool non_negative_offset,
 		     tree min_idx, tree spacing_bytes, tree offset)
 {
-  tree base_root = get_base_address (base);
-  if (DECL_P (base_root))
-    TREE_ADDRESSABLE (base_root) = 1;
+  if (non_negative_offset
+      && !is_dim_descriptor_comp_array_ref_base (base))
+    {
+      tree base_root = get_base_address (base);
+      if (DECL_P (base_root))
+	TREE_ADDRESSABLE (base_root) = 1;
+    }
 
   /* Strip NON_LVALUE_EXPR nodes.  */
   STRIP_TYPE_NOPS (index);
