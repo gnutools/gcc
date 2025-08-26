@@ -181,6 +181,9 @@ struct omp_context
      than teams is strictly nested in it.  */
   bool nonteams_nested_p;
 
+  /* The block we are currently processing.  */
+  bool keep_local_vars;
+
   /* Candidates for adjusting OpenACC privatization level.  */
   vec<tree> oacc_privatization_candidates;
 };
@@ -985,6 +988,7 @@ new_omp_context (gimple *stmt, omp_context *outer_ctx)
       ctx->cb = outer_ctx->cb;
       ctx->cb.block = NULL;
       ctx->depth = outer_ctx->depth + 1;
+      ctx->keep_local_vars = outer_ctx->keep_local_vars;
     }
   else
     {
@@ -4008,7 +4012,7 @@ scan_omp_1_op (tree *tp, int *walk_subtrees, void *data)
 	  else if (tmp == NULL_TREE)
 	    *tp = repl;
 	}
-      break;
+      return NULL_TREE;
 
     case INDIRECT_REF:
     case MEM_REF:
@@ -4023,31 +4027,40 @@ scan_omp_1_op (tree *tp, int *walk_subtrees, void *data)
 	  gcc_checking_assert (TREE_CODE (repl) != ERROR_MARK);
 	  if (tmp != repl)
 	    *tp = repl;
-	  break;
+	  return NULL_TREE;
 	}
-      gcc_fallthrough ();
+      break;
+
+    case BIND_EXPR:
+      if (ctx->keep_local_vars)
+	{
+	  tree block = BIND_EXPR_BLOCK (t);
+	  for (tree var = BLOCK_VARS (block); var; var = DECL_CHAIN (var))
+	    insert_decl_map (&ctx->cb, var, var);
+	}
+      break;
 
     default:
-      if (ctx && TYPE_P (t))
-	*tp = remap_type (t, &ctx->cb);
-      else if (!DECL_P (t))
-	{
-	  *walk_subtrees = 1;
-	  if (ctx)
-	    {
-	      tree tem = remap_type (TREE_TYPE (t), &ctx->cb);
-	      if (tem != TREE_TYPE (t))
-		{
-		  if (TREE_CODE (t) == INTEGER_CST)
-		    *tp = wide_int_to_tree (tem, wi::to_wide (t));
-		  else
-		    TREE_TYPE (t) = tem;
-		}
-	    }
-	}
       break;
     }
 
+  if (ctx && TYPE_P (t))
+    *tp = remap_type (t, &ctx->cb);
+  else if (!DECL_P (t))
+    {
+      *walk_subtrees = 1;
+      if (ctx)
+	{
+	  tree tem = remap_type (TREE_TYPE (t), &ctx->cb);
+	  if (tem != TREE_TYPE (t))
+	    {
+	      if (TREE_CODE (t) == INTEGER_CST)
+		*tp = wide_int_to_tree (tem, wi::to_wide (t));
+	      else
+		TREE_TYPE (t) = tem;
+	    }
+	}
+    }
   return NULL_TREE;
 }
 
@@ -6199,6 +6212,11 @@ lower_rec_input_clauses (tree clauses, gimple_seq *ilist, gimple_seq *dlist,
 
 			  x = lang_hooks.decls.omp_clause_linear_ctor
 							(c, new_var, x, t);
+			  bool cleanup = ctx->keep_local_vars == false;
+			  ctx->keep_local_vars = true;
+			  scan_omp_op (&x, ctx);
+			  if (cleanup)
+			    ctx->keep_local_vars = false;
 			  gimplify_and_add (x, ilist);
 			  goto do_dtor;
 			}
