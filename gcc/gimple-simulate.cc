@@ -2105,7 +2105,9 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
 		      && TYPE_PRECISION (TREE_TYPE (lhs))
 			 == TYPE_PRECISION (TREE_TYPE (rhs))
 		      && TYPE_UNSIGNED (TREE_TYPE (lhs))
-			 == TYPE_UNSIGNED (TREE_TYPE (rhs))));
+			 == TYPE_UNSIGNED (TREE_TYPE (rhs)))
+		  || code == LSHIFT_EXPR
+		  || code == RSHIFT_EXPR);
       tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
       tree rval = val_rhs.to_tree (TREE_TYPE (rhs));
       tree t = fold_binary (code, type, lval, rval);
@@ -5723,6 +5725,43 @@ simul_scope_evaluate_binary_tests ()
   wide_int wi_ne5 = val_ne5.get_known ();
   ASSERT_PRED1 (wi::fits_uhwi_p, wi_ne5);
   ASSERT_EQ (wi_ne5.to_uhwi (), 1);
+
+
+  tree l6 = create_var (long_integer_type_node, "l6");
+
+  vec<tree> decls6{};
+  decls6.safe_push (l6);
+
+  context_builder builder6 {};
+  builder6.add_decls (&decls6);
+  simul_scope ctx6 = builder6.build (mem, printer);
+
+  wide_int wi11_6 = wi::shwi (11, TYPE_PRECISION (long_integer_type_node));
+  data_value cst11_6 (long_integer_type_node);
+  cst11_6.set_known (wi11_6);
+  data_storage *strg_l6 = ctx6.find_reachable_var (l6);
+  gcc_assert (strg_l6 != nullptr);
+  strg_l6->set (cst11_6);
+
+  tree int3 = build_int_cst (integer_type_node, 3);
+  data_value lshift_6 = ctx6.evaluate_binary (LSHIFT_EXPR,
+					      long_integer_type_node,
+					      l6, int3);
+
+  ASSERT_EQ (lshift_6.classify (), VAL_KNOWN);
+  wide_int wi_lshift6 = lshift_6.get_known ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_lshift6);
+  ASSERT_EQ (wi_lshift6.to_shwi (), 88);
+
+  tree int1 = build_int_cst (integer_type_node, 1);
+  data_value rshift_6 = ctx6.evaluate_binary (RSHIFT_EXPR,
+					      long_integer_type_node,
+					      l6, int1);
+
+  ASSERT_EQ (rshift_6.classify (), VAL_KNOWN);
+  wide_int wi_rshift6 = rshift_6.get_known ();
+  ASSERT_PRED1 (wi::fits_shwi_p, wi_rshift6);
+  ASSERT_EQ (wi_rshift6.to_shwi (), 5);
 }
 
 
