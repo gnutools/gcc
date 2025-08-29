@@ -43,6 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-pretty-print.h"
 #include "gimple-iterator.h"
 #include "gimple-ssa.h"
+#include "gimple-fold.h"
 #include "cgraph.h"
 #include "stringpool.h"
 #include "value-range.h"
@@ -1849,6 +1850,26 @@ simul_scope::get_storage (unsigned idx) const
 }
 
 
+tree
+simul_valueize (tree t)
+{
+  if (TREE_CODE (t) == SSA_NAME)
+    {
+      gimple * def = SSA_NAME_DEF_STMT (t);
+
+      if (gimple_code (def) == GIMPLE_ASSIGN
+	  && gimple_assign_rhs_code (def) == ADDR_EXPR)
+	return gimple_assign_rhs1 (def);
+
+      tree c = gimple_fold_stmt_to_constant (def, simul_valueize);
+      if (c != NULL_TREE)
+	return c;
+    }
+
+  return t;
+}
+
+
 /* Evaluate the expression EXPR using the values currently stored in
    accessible variables and allocated storages and return the resulting value.
    */
@@ -1916,8 +1937,9 @@ simul_scope::evaluate (tree expr) const
 	else
 	  {
 	    poly_int64 offset;
-	    tree var = get_addr_base_and_unit_offset (TREE_OPERAND (expr, 0),
-						      &offset);
+	    tree var = get_addr_base_and_unit_offset_1 (TREE_OPERAND (expr, 0),
+							&offset,
+							simul_valueize);
 
 	    HOST_WIDE_INT off;
 	    bool is_constant = offset.is_constant (&off);
