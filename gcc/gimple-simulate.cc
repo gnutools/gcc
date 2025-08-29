@@ -899,9 +899,9 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
    size MIN_SIZE bits.  Return NULL_TREE if such a data reference was not found,
    otherwise return the reference found.  */
 
-static tree
-find_mem_ref_replacement (simul_scope & context, tree data_ref,
-			  unsigned offset, unsigned min_size)
+static bool
+find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
+			  tree data_ref)
 {
   gcc_assert (TREE_CODE (data_ref) == MEM_REF
 	      || TREE_CODE (data_ref) == TARGET_MEM_REF);
@@ -909,26 +909,30 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
   tree ptr = TREE_OPERAND (data_ref, 0);
   data_value ptr_val = context.evaluate (ptr);
   if (ptr_val.classify () != VAL_ADDRESS)
-    return NULL_TREE;
+    return false;
 
   storage_address *ptr_address = ptr_val.get_address ();
   data_storage &ptr_target = ptr_address->storage.get ();
   if (ptr_target.get_type () != STRG_VARIABLE)
-    return NULL_TREE;
+    return false;
 
   tree access_type = TREE_TYPE (data_ref);
   tree var_ref = ptr_target.get_variable ();
   tree var_type = TREE_TYPE (var_ref);
 
   if (var_type == access_type)
-    return var_ref;
+    {
+      *repl = var_ref;
+      gcc_assert (*offset == 0 && ptr_address->offset == 0);
+      return true;
+    }
   else
     {
       tree access_offset = TREE_OPERAND (data_ref, 1);
       gcc_assert (TREE_CONSTANT (access_offset));
       wide_int wi_offset = wi::to_wide (access_offset);
       wide_int remaining_offset = wi_offset * CHAR_BIT
-				  + offset + ptr_address->offset;
+				  + *offset + ptr_address->offset;
 
       gcc_assert (wi::ges_p (remaining_offset, 0)
 		  && wi::fits_shwi_p (remaining_offset));
@@ -948,8 +952,9 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
 	  remaining_offset += wi_idx * CHAR_BIT;
 	}
 
-      return pick_subref_at (var_ref, remaining_offset.to_shwi (), nullptr,
-			     min_size);
+      *repl = var_ref;
+      *offset = remaining_offset.to_shwi ();
+      return true;
     }
 }
 
@@ -974,16 +979,20 @@ context_printer::print_first_data_ref_part (simul_scope & context,
     min_size = CHAR_BIT;
 
   tree default_ref = NULL_TREE;
+  tree ref = NULL_TREE;
   switch (TREE_CODE (data_ref))
     {
     case MEM_REF:
     case TARGET_MEM_REF:
       {
-	tree mem_replacement = find_mem_ref_replacement (context, data_ref,
-							 offset, min_size);
-	if (mem_replacement != NULL_TREE)
-	  return print_first_data_ref_part (context, mem_replacement, 0,
-					    ignored_bits, val_type);
+	tree mem_replacement;
+	if (find_mem_ref_replacement (&mem_replacement, &offset, context,
+				      data_ref))
+	  {
+	    ref = pick_subref_at (mem_replacement, offset, ignored_bits, min_size);
+	    if (ref != NULL_TREE)
+	      break;
+	  }
 
 	unsigned orig_type_size;
 	orig_type_size = get_constant_type_size (TREE_TYPE (data_ref));
@@ -1008,7 +1017,7 @@ context_printer::print_first_data_ref_part (simul_scope & context,
     /* Fall through.  */
 
     default:
-      tree ref = pick_subref_at (data_ref, offset, ignored_bits, min_size);
+      ref = pick_subref_at (data_ref, offset, ignored_bits, min_size);
       if (ref == NULL_TREE)
 	{
 	  if (ignored_bits != nullptr && *ignored_bits > 0)
@@ -1018,13 +1027,14 @@ context_printer::print_first_data_ref_part (simul_scope & context,
 	  if (ref == NULL_TREE)
 	    ref = data_ref;
 	}
-
-      pp_indent (&pp);
-      pp_character (&pp, '#');
-      pp_space (&pp);
-      print (&context, ref);
-      return TREE_TYPE (ref);
+      break;
     }
+
+  pp_indent (&pp);
+  pp_character (&pp, '#');
+  pp_space (&pp);
+  print (&context, ref);
+  return TREE_TYPE (ref);
 }
 
 
@@ -3898,8 +3908,8 @@ context_printer_print_first_data_ref_part_tests ()
   simul_scope ctx3 = builder3.build (mem1, printer3);
 
   tree long_var2i = build2 (MEM_REF, long_integer_type_node,
-			   build1 (ADDR_EXPR, ptr_type_node, var2i),
-			   build_zero_cst (ptr_type_node));
+			    build1 (ADDR_EXPR, ptr_type_node, var2i),
+			    build_zero_cst (ptr_type_node));
 
   tree res3 = printer3.print_first_data_ref_part (ctx3, long_var2i, 0, nullptr,
 						  VAL_UNDEFINED);
@@ -4225,6 +4235,62 @@ context_printer_print_first_data_ref_part_tests ()
   ASSERT_EQ (res12, integer_type_node);
   const char * str12 = pp_formatted_text (&pp12);
   ASSERT_STREQ (str12, "# i12[0]");
+
+
+  tree der1s1l = make_node (RECORD_TYPE);
+  tree der1s1l_l2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1s1l_l2"),
+				long_integer_type_node);
+  DECL_CONTEXT (der1s1l_l2) = der1s1l;
+  DECL_CHAIN (der1s1l_l2) = NULL_TREE;
+  tree der1s1l_s1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1s1l_s1"),
+				short_integer_type_node);
+  DECL_CONTEXT (der1s1l_s1) = der1s1l;
+  DECL_CHAIN (der1s1l_s1) = der1s1l_l2;
+  TYPE_FIELDS (der1s1l) = der1s1l_s1;
+  layout_type (der1s1l);
+
+  tree ad1s1l = build_array_type_nelts (der1s1l, 2);
+  tree var1s1l_13 = create_var (ad1s1l, "var1s1l");
+  tree pd1s1l = build_pointer_type (der1s1l);
+  tree p13 = create_var (pd1s1l, "p");
+
+  vec<tree> decls13{};
+  decls13.safe_push (var1s1l_13);
+  decls13.safe_push (p13);
+
+  heap_memory mem13;
+  context_printer printer13;
+  pretty_printer & pp13 = printer13.pp;
+
+  context_builder builder13 {};
+  builder13.add_decls (&decls13);
+  simul_scope ctx13 = builder13.build (mem13, printer13);
+
+  data_storage *strg_var13 = ctx13.find_reachable_var (var1s1l_13);
+  gcc_assert (strg_var13 != nullptr);
+
+  storage_address addr_var13 (strg_var13->get_ref (), 0);
+  data_value val_p13 (pd1s1l);
+  val_p13.set_address (addr_var13);
+
+  data_storage *strg_p13 = ctx13.find_reachable_var (p13);
+  gcc_assert (strg_p13 != nullptr);
+  strg_p13->set (val_p13);
+
+  tree ref_p13 = build2 (MEM_REF, der1s1l, p13, build_int_cst (pd1s1l, 0));
+
+  int ignored_bits;
+  tree res13 = printer13.print_first_data_ref_part (ctx13, ref_p13,
+						    HOST_BITS_PER_SHORT,
+						    &ignored_bits,
+						    VAL_UNDEFINED);
+
+  ASSERT_EQ (res13, long_integer_type_node);
+  const char * str13 = pp_formatted_text (&pp13);
+  ASSERT_STREQ (str13, "# var1s1l[0].der1s1l_l2");
+  ASSERT_EQ (ignored_bits, HOST_BITS_PER_LONG - HOST_BITS_PER_SHORT);
 }
 
 
