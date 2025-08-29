@@ -807,6 +807,8 @@ static tree
 pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
 		unsigned min_size)
 {
+  if (ignored_bits != nullptr)
+    *ignored_bits = 0;
   tree ref = var_ref;
   unsigned remaining_offset = offset;
   while (true)
@@ -953,8 +955,20 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
 	  remaining_offset += wi_idx * CHAR_BIT;
 	}
 
-      *repl = var_ref;
-      *offset = remaining_offset.to_shwi ();
+      int ignored_bits;
+      tree t = pick_subref_at (var_ref, remaining_offset.to_shwi (),
+			       &ignored_bits,
+			       get_constant_type_size (access_type));
+      if (t == NULL_TREE)
+	{
+	  *repl = var_ref;
+	  *offset = remaining_offset.to_shwi ();
+	}
+      else
+	{
+	  *repl = t;
+	  *offset = ignored_bits;
+	}
       return true;
     }
 }
