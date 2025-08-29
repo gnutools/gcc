@@ -2115,6 +2115,9 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
 			 == TYPE_PRECISION (TREE_TYPE (rhs))
 		      && TYPE_UNSIGNED (TREE_TYPE (lhs))
 			 == TYPE_UNSIGNED (TREE_TYPE (rhs)))
+		  || (TREE_CODE (TREE_TYPE (lhs)) == POINTER_TYPE
+		      && TREE_CODE (TREE_TYPE (rhs)) == POINTER_TYPE
+		      && integer_zerop (rhs))
 		  || code == LSHIFT_EXPR
 		  || code == RSHIFT_EXPR);
       tree lval = val_lhs.to_tree (TREE_TYPE (lhs));
@@ -3688,6 +3691,17 @@ data_value_get_at_tests ()
   ASSERT_EQ (sub_val.classify (tree_to_shwi (bit_position (p2)),
 			       HOST_BITS_PER_PTR),
 	     VAL_ADDRESS);
+
+
+  heap_memory mem2;
+  simul_scope ctx2 = context_builder ().build (mem2, printer);
+
+  data_value val2 = ctx2.evaluate (boolean_true_node);
+
+  ASSERT_EQ (val2.classify (), VAL_KNOWN);
+  wide_int wi_val2 = val2.get_known ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_val2);
+  ASSERT_EQ (wi_val2.to_uhwi (), 1);
 }
 
 
@@ -5897,6 +5911,35 @@ simul_scope_evaluate_binary_tests ()
 					      i1_7, cst_i1);
 
   ASSERT_EQ (undef7_2.classify (), VAL_UNDEFINED);
+
+
+  tree pint_8 = build_pointer_type (integer_type_node);
+  tree p_8 = create_var (pint_8, "p");
+
+  vec<tree> decls8{};
+  decls8.safe_push (p_8);
+
+  context_builder builder8 {};
+  builder8.add_decls (&decls8);
+  simul_scope ctx8 = builder8.build (mem, printer);
+
+  wide_int wi_zero = wi::shwi (0, HOST_BITS_PER_PTR);
+  
+  data_value val_p8 (pint_8);
+  val_p8.set_known (wi_zero);
+
+  data_storage *strg_p8 = ctx8.find_reachable_var (p_8);
+  gcc_assert (strg_p8 != nullptr);
+  strg_p8->set (val_p8);
+
+  tree null = build_zero_cst (build_pointer_type (void_type_node));
+  data_value eq_8 = ctx8.evaluate_binary (EQ_EXPR, boolean_type_node,
+					  p_8, null);
+
+  ASSERT_EQ (eq_8.classify (), VAL_KNOWN);
+  wide_int wi_eq8 = eq_8.get_known ();
+  ASSERT_PRED1 (wi::fits_uhwi_p, wi_eq8);
+  ASSERT_EQ (wi_eq8.to_uhwi (), 1);
 }
 
 
