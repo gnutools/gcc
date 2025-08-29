@@ -926,12 +926,12 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
     {
       tree access_offset = TREE_OPERAND (data_ref, 1);
       gcc_assert (TREE_CONSTANT (access_offset));
-      gcc_assert (tree_fits_uhwi_p (access_offset));
-      HOST_WIDE_INT uhwi_offset = tree_to_uhwi (access_offset);
-      gcc_assert (offset < UINT_MAX - uhwi_offset);
-      HOST_WIDE_INT remaining_offset = uhwi_offset * CHAR_BIT
-				       + offset + ptr_address->offset;
+      wide_int wi_offset = wi::to_wide (access_offset);
+      wide_int remaining_offset = wi_offset * CHAR_BIT
+				  + offset + ptr_address->offset;
 
+      gcc_assert (wi::ges_p (remaining_offset, 0)
+		  && wi::fits_shwi_p (remaining_offset));
       if (TREE_CODE (data_ref) == TARGET_MEM_REF)
 	{
 	  tree idx = TREE_OPERAND (data_ref, 2);
@@ -945,12 +945,11 @@ find_mem_ref_replacement (simul_scope & context, tree data_ref,
 	  wide_int wi_step = step_val.get_known ();
 
 	  wi_idx *= wi_step;
-	  gcc_assert (wi::fits_uhwi_p (wi_idx));
-	  HOST_WIDE_INT idx_offset = wi_idx.to_uhwi ();
-	  remaining_offset += idx_offset * CHAR_BIT;
+	  remaining_offset += wi_idx * CHAR_BIT;
 	}
 
-      return pick_subref_at (var_ref, remaining_offset, nullptr, min_size);
+      return pick_subref_at (var_ref, remaining_offset.to_shwi (), nullptr,
+			     min_size);
     }
 }
 
@@ -4181,6 +4180,42 @@ context_printer_print_first_data_ref_part_tests ()
   ASSERT_EQ (res11, integer_type_node);
   const char * str11 = pp_formatted_text (&pp11);
   ASSERT_STREQ (str11, "# var_i");
+
+
+  tree a2i = build_array_type_nelts (integer_type_node, 2);
+  tree i12 = create_var (a2i, "i12");
+  tree p12 = create_var (ptr_type_node, "p12");
+
+  context_printer printer12;
+  pretty_printer & pp12 = printer12.pp;
+
+  vec<tree> decls12{};
+  decls12.safe_push (i12);
+  decls12.safe_push (p12);
+
+  context_builder builder12 {};
+  builder12.add_decls (&decls12);
+  heap_memory mem12;
+  simul_scope ctx12 = builder12.build (mem12, printer12);
+
+  data_storage *strg_i12 = ctx12.find_reachable_var (i12);
+  storage_address addr_i12 (strg_i12->get_ref (), 8);
+
+  data_value val_addr12 (ptr_type_node);
+  val_addr12.set_address (addr_i12);
+
+  data_storage *strg_p12 = ctx12.find_reachable_var (p12);
+  strg_p12->set (val_addr12);
+
+  tree ref_i12 = build2 (MEM_REF, integer_type_node, p12,
+			 build_minus_one_cst (ptr_type_node));
+
+  tree res12 = printer12.print_first_data_ref_part (ctx12, ref_i12, 0, nullptr,
+						    VAL_UNDEFINED);
+
+  ASSERT_EQ (res12, integer_type_node);
+  const char * str12 = pp_formatted_text (&pp12);
+  ASSERT_STREQ (str12, "# i12[0]");
 }
 
 
