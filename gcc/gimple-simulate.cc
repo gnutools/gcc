@@ -2167,6 +2167,15 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
       else
 	gcc_unreachable ();
     }
+  else if ((lhs_type == VAL_UNDEFINED || rhs_type == VAL_UNDEFINED)
+	   && (lhs_type != VAL_ADDRESS
+	       && rhs_type != VAL_ADDRESS
+	       && lhs_type != VAL_MIXED
+	       && rhs_type != VAL_MIXED))
+    {
+      data_value result (type);
+      return result;
+    }
   else
     gcc_unreachable ();
 }
@@ -5797,6 +5806,31 @@ simul_scope_evaluate_binary_tests ()
   wide_int wi_rshift6 = rshift_6.get_known ();
   ASSERT_PRED1 (wi::fits_shwi_p, wi_rshift6);
   ASSERT_EQ (wi_rshift6.to_shwi (), 5);
+
+
+  tree i1_7 = create_var (integer_type_node, "i1");
+  tree i2_7 = create_var (integer_type_node, "i2");
+
+  vec<tree> decls7{};
+  decls7.safe_push (i1_7);
+  decls7.safe_push (i2_7);
+
+  context_builder builder7 {};
+  builder7.add_decls (&decls7);
+  simul_scope ctx7 = builder7.build (mem, printer);
+
+  data_value undef7_1 = ctx7.evaluate_binary (PLUS_EXPR,
+					      integer_type_node,
+					      i1_7, i2_7);
+
+  ASSERT_EQ (undef7_1.classify (), VAL_UNDEFINED);
+
+  tree cst_i1 = build_one_cst (integer_type_node);
+  data_value undef7_2 = ctx7.evaluate_binary (PLUS_EXPR,
+					      integer_type_node,
+					      i1_7, cst_i1);
+
+  ASSERT_EQ (undef7_2.classify (), VAL_UNDEFINED);
 }
 
 
