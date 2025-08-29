@@ -1850,6 +1850,9 @@ simul_scope::get_storage (unsigned idx) const
 }
 
 
+const simul_scope * current_scope;
+
+
 tree
 simul_valueize (tree t)
 {
@@ -1861,9 +1864,21 @@ simul_valueize (tree t)
 	  && gimple_assign_rhs_code (def) == ADDR_EXPR)
 	return gimple_assign_rhs1 (def);
 
+      data_value val = current_scope->evaluate (t);
+      switch (val.classify ())
+	{
+	case VAL_KNOWN:
+	  return val.to_tree (TREE_TYPE (t));
+
+	default:
+	  gcc_unreachable ();
+	}
+
+#if 0
       tree c = gimple_fold_stmt_to_constant (def, simul_valueize);
       if (c != NULL_TREE)
 	return c;
+#endif
     }
 
   return t;
@@ -1937,9 +1952,13 @@ simul_scope::evaluate (tree expr) const
 	else
 	  {
 	    poly_int64 offset;
+
+	    const simul_scope * sauv = current_scope;
+	    current_scope = this;
 	    tree var = get_addr_base_and_unit_offset_1 (TREE_OPERAND (expr, 0),
 							&offset,
 							simul_valueize);
+	    current_scope = sauv;
 
 	    HOST_WIDE_INT off;
 	    bool is_constant = offset.is_constant (&off);
@@ -4327,6 +4346,47 @@ context_printer_print_first_data_ref_part_tests ()
   const char * str13 = pp_formatted_text (&pp13);
   ASSERT_STREQ (str13, "# var1s1l[0].der1s1l_l2");
   ASSERT_EQ (ignored_bits, HOST_BITS_PER_LONG - HOST_BITS_PER_SHORT);
+
+
+  heap_memory mem14;
+  context_printer printer14;
+  pretty_printer & pp14 = printer14.pp;
+
+  tree a2d2i = build_array_type_nelts (der2i, 2);
+  tree a14 = create_var (a2d2i, "a14");
+  tree p_14 = create_var (ptr_type_node, "p");
+
+  vec<tree> decls14{};
+  decls14.safe_push (a14);
+  decls14.safe_push (p_14);
+
+  context_builder builder14 {};
+  builder14.add_decls (&decls14);
+  simul_scope ctx14 = builder14.build (mem14, printer14);
+
+  data_storage *strg_a14 = ctx14.find_reachable_var (a14);
+  gcc_assert (strg_a14 != nullptr);
+
+  storage_address addr_a14 (strg_a14->get_ref (), 0);
+  data_value val_p14 (ptr_type_node);
+  val_p14.set_address (addr_a14);
+
+  data_storage *strg_p14 = ctx14.find_reachable_var (p_14);
+  gcc_assert (strg_p14 != nullptr);
+  strg_p14->set (val_p14);
+
+  tree zero_off = build_zero_cst (build_pointer_type (void_type_node));
+  tree ref_a14 = build2 (MEM_REF, der2i, p_14, zero_off);
+  tree ref14 = build3 (COMPONENT_REF, integer_type_node, ref_a14,
+		       der2i_i2, NULL_TREE);
+
+  tree res14 = printer14.print_first_data_ref_part (ctx14, ref14, 0,
+						    nullptr,
+						    VAL_UNDEFINED);
+
+  ASSERT_EQ (res14, integer_type_node);
+  const char * str14 = pp_formatted_text (&pp14);
+  ASSERT_STREQ (str14, "# a14[0].der2i_i2");
 }
 
 
