@@ -797,36 +797,40 @@ context_printer::print_bb_entry (basic_block bb)
 }
 
 
-/* Find the smallest subreference of VAR_REF starting at at least OFFSET
+/* Find the smallest subreference of VAR_REF starting at at least MIN_OFFSET
    bit and of minimal size min_size.  If no subreference was found at
-   OFFSET exactly but a reference was found at a further offset, store the
+   MIN_OFFSET exactly but a reference was found at a further offset, store the
    difference of offset in IGNORED_BITS.  Return NULL_TREE if the smallest
-   reference is smaller than MIN_SIZE.  Otherwise return the reference found.
-*/
+   reference is smaller than MIN_SIZE.  Otherwise return the reference
+   found.  */
+
 static tree
-pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
-		unsigned min_size)
+pick_subref_at (tree var_ref, unsigned min_offset,
+		int * ignored_bits, unsigned min_size)
 {
   if (ignored_bits != nullptr)
     *ignored_bits = 0;
   tree ref = var_ref;
-  unsigned remaining_offset = offset;
+  unsigned remaining_offset = min_offset;
   while (true)
     {
       tree var_type = TREE_TYPE (ref);
+      unsigned type_size = get_constant_type_size (var_type);
+      if (type_size == min_size)
+	break;
+
       if (TREE_CODE (var_type) == ARRAY_TYPE)
 	{
 	  tree elt_type = TREE_TYPE (var_type);
 	  unsigned elt_width = get_constant_type_size (elt_type);
 	  if (elt_width < min_size)
 	    return NULL_TREE;
+
 	  unsigned HOST_WIDE_INT hw_idx = remaining_offset / elt_width;
 	  tree t_idx = build_int_cst (integer_type_node, hw_idx);
 	  ref = build4 (ARRAY_REF, elt_type, ref,
 			t_idx, NULL_TREE, NULL_TREE);
 	  remaining_offset -= hw_idx * elt_width;
-	  if (elt_width == min_size)
-	    break;
 	}
       else if (TREE_CODE (var_type) == RECORD_TYPE)
 	{
@@ -865,8 +869,7 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
 	  tree field_type = TREE_TYPE (field);
 
 	  unsigned field_width = get_constant_type_size (field_type);
-	  if (field_width < min_size)
-	    return NULL_TREE;
+	  gcc_assert (field_width >= min_size);
 
 	  ref = build3 (COMPONENT_REF, field_type,
 			ref, field, NULL_TREE);
@@ -878,9 +881,6 @@ pick_subref_at (tree var_ref, unsigned offset, int * ignored_bits,
 	    }
 	  else
 	    remaining_offset -= field_position;
-
-	  if (field_width == min_size)
-	    break;
 	}
       else
 	break;
@@ -934,11 +934,9 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
       tree access_offset = TREE_OPERAND (data_ref, 1);
       gcc_assert (TREE_CONSTANT (access_offset));
       wide_int wi_offset = wi::to_wide (access_offset);
-      wide_int remaining_offset = wi_offset * CHAR_BIT
-				  + *offset + ptr_address->offset;
-
-      gcc_assert (wi::ges_p (remaining_offset, 0)
-		  && wi::fits_shwi_p (remaining_offset));
+      int align = TYPE_ALIGN (access_type);
+      wide_int total_offset = wi_offset * CHAR_BIT
+			      + *offset + ptr_address->offset;
       if (TREE_CODE (data_ref) == TARGET_MEM_REF)
 	{
 	  tree idx = TREE_OPERAND (data_ref, 2);
@@ -952,25 +950,166 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
 	  wide_int wi_step = step_val.get_known ();
 
 	  wi_idx *= wi_step;
-	  remaining_offset += wi_idx * CHAR_BIT;
+	  total_offset += wi_idx * CHAR_BIT;
 	}
 
-      int ignored_bits;
-      tree t = pick_subref_at (var_ref, remaining_offset.to_shwi (),
-			       &ignored_bits,
+      wide_int ref_offset = total_offset
+			    & wi::mask (exact_log2 (align), true,
+					total_offset.get_precision ());
+      gcc_assert (wi::ges_p (ref_offset, 0)
+		  && wi::fits_uhwi_p (ref_offset));
+
+      tree t = pick_subref_at (var_ref, ref_offset.to_uhwi (), nullptr,
 			       get_constant_type_size (access_type));
       if (t == NULL_TREE)
 	{
 	  *repl = var_ref;
-	  *offset = remaining_offset.to_shwi ();
+	  gcc_assert (wi::ges_p (total_offset, 0)
+		      && wi::fits_shwi_p (total_offset));
+	  *offset = total_offset.to_shwi ();
 	}
       else
 	{
 	  *repl = t;
-	  *offset = ignored_bits;
+	  *offset = (total_offset - ref_offset).to_uhwi ();
 	}
       return true;
     }
+}
+
+
+static bool
+rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
+{
+  tree ref = *data_ref;
+  switch (TREE_CODE (*data_ref))
+    {
+    case MEM_REF:
+    case TARGET_MEM_REF:
+      return find_mem_ref_replacement (data_ref, offset, context, ref);
+
+    case COMPONENT_REF:
+      {
+	tree base = TREE_OPERAND (ref, 0);
+	tree comp = TREE_OPERAND (ref, 1);
+
+	tree rewritten_base = base;
+	unsigned off = *offset;
+	if (!rewrite_ref (&rewritten_base, &off, context))
+	  return false;
+	if (rewritten_base == base
+	    && off == *offset)
+	  return true;
+	tree t = build3 (COMPONENT_REF, TREE_TYPE (ref), rewritten_base,
+			 comp, NULL_TREE);
+	*data_ref = t;
+	*offset = off;
+	return true;
+      }
+
+#if 0
+    case ARRAY_REF:
+      {
+	tree base = TREE_OPERAND (ref, 0);
+	tree index = TREE_OPERAND (ref, 1);
+	tree type = TREE_TYPE (ref);
+	unsigned type_size = get_constant_type_size (type);
+	data_value idx_val = context.evaluate (index);
+	gcc_assert (idx_val.classify () == VAL_KNOWN);
+	wide_int wi_idx = idx_val.get_known ();
+	wide_int total_off = wi::shwi (*offset, HOST_BITS_PER_WIDE_INT);
+	wide_int idx_off = wi_idx * type_size;
+	gcc_assert (wi::ges_p (total_off, idx_off));
+	wide_int remaining_off = total_off - idx_off;
+	gcc_assert (wi::fits_uhwi_p (remaining_off));
+	unsigned rem = remaining_off.to_uhwi ();
+
+	tree rewritten_base = base;
+	if (!rewrite_ref (&base, &rem, context,
+			  get_constant_type_size (TREE_TYPE (base))))
+	  return false;
+	*data_ref = build4 (ARRAY_REF, type, rewritten_base,
+			    idx_val.to_tree (TREE_TYPE (index)),
+			    NULL_TREE, NULL_TREE);
+	*offset = rem;
+	return true;
+      }
+#endif
+
+    default:
+      return false;
+    }
+}
+
+
+static tree
+select_subref (simul_scope & context, tree data_ref, unsigned offset,
+	       int * ignored_bits, enum value_type val_type)
+{
+  unsigned min_size;
+  if (val_type == VAL_ADDRESS)
+    min_size = HOST_BITS_PER_PTR;
+  else
+    min_size = CHAR_BIT;
+
+  int first_ignored = 0;
+  tree default_ref = NULL_TREE;
+  tree rewritten_ref = data_ref;
+  unsigned rewritten_offset = offset;
+  if (rewrite_ref (&rewritten_ref, &rewritten_offset, context))
+    {
+      tree ref = pick_subref_at (rewritten_ref, rewritten_offset, &first_ignored,
+				 min_size);
+      if (ref != NULL_TREE)
+	{
+	  if (first_ignored > 0)
+	    {
+	      gcc_assert (ignored_bits != nullptr);
+	      *ignored_bits = first_ignored;
+	    }
+
+	  return ref;
+	}
+
+      if (TREE_CODE (data_ref) == MEM_REF)
+	{
+	  unsigned orig_type_size;
+	  orig_type_size = get_constant_type_size (TREE_TYPE (data_ref));
+	  if (min_size < orig_type_size)
+	    {
+	      tree elt_type;
+	      if (val_type == VAL_ADDRESS)
+		elt_type = ptr_type_node;
+	      else
+		elt_type = char_type_node;
+
+	      gcc_assert (offset % CHAR_BIT == 0);
+	      tree ptr_type = build_pointer_type (elt_type);
+	      default_ref = build2 (MEM_REF, elt_type,
+				    TREE_OPERAND (data_ref, 0),
+				    build_int_cst (ptr_type, offset / CHAR_BIT));
+	    }
+	  else
+	    gcc_assert (min_size == orig_type_size);
+	}
+    }
+
+  tree ref = pick_subref_at (data_ref, offset, ignored_bits, min_size);
+  if (ref != NULL_TREE)
+    return ref;
+
+  if (ignored_bits != nullptr && *ignored_bits > 0)
+    {
+      if (first_ignored > 0
+	  && first_ignored < *ignored_bits)
+	*ignored_bits = first_ignored;
+      return NULL_TREE;
+    }
+
+  if (default_ref != NULL_TREE)
+    return default_ref;
+
+  return data_ref;
 }
 
 
@@ -987,63 +1126,10 @@ context_printer::print_first_data_ref_part (simul_scope & context,
 					    int * ignored_bits,
 					    enum value_type val_type)
 {
-  unsigned min_size;
-  if (val_type == VAL_ADDRESS)
-    min_size = HOST_BITS_PER_PTR;
-  else
-    min_size = CHAR_BIT;
-
-  tree default_ref = NULL_TREE;
-  tree ref = NULL_TREE;
-  switch (TREE_CODE (data_ref))
-    {
-    case MEM_REF:
-    case TARGET_MEM_REF:
-      {
-	tree mem_replacement;
-	if (find_mem_ref_replacement (&mem_replacement, &offset, context,
-				      data_ref))
-	  {
-	    ref = pick_subref_at (mem_replacement, offset, ignored_bits, min_size);
-	    if (ref != NULL_TREE)
-	      break;
-	  }
-
-	unsigned orig_type_size;
-	orig_type_size = get_constant_type_size (TREE_TYPE (data_ref));
-	if (min_size < orig_type_size)
-	  {
-	    tree elt_type;
-	    if (val_type == VAL_ADDRESS)
-	      elt_type = ptr_type_node;
-	    else
-	      elt_type = char_type_node;
-
-	    gcc_assert (offset % CHAR_BIT == 0);
-	    tree ptr_type = build_pointer_type (elt_type);
-	    default_ref = build2 (MEM_REF, elt_type,
-				  TREE_OPERAND (data_ref, 0),
-				  build_int_cst (ptr_type, offset / CHAR_BIT));
-	  }
-	else
-	  gcc_assert (min_size == orig_type_size);
-      }
-
-    /* Fall through.  */
-
-    default:
-      ref = pick_subref_at (data_ref, offset, ignored_bits, min_size);
-      if (ref == NULL_TREE)
-	{
-	  if (ignored_bits != nullptr && *ignored_bits > 0)
-	    return NULL_TREE;
-
-	  ref = default_ref;
-	  if (ref == NULL_TREE)
-	    ref = data_ref;
-	}
-      break;
-    }
+  tree ref = select_subref (context, data_ref, offset, ignored_bits,
+			    val_type);
+  if (ref == NULL_TREE)
+    return NULL_TREE;
 
   pp_indent (&pp);
   pp_character (&pp, '#');
@@ -4096,7 +4182,7 @@ context_printer_print_first_data_ref_part_tests ()
   builder6.add_decls (&decls6);
   simul_scope ctx6 = builder6.build (mem1, printer6);
 
-  tree mem_var4c = build2 (MEM_REF, long_integer_type_node,
+  tree mem_var4c = build2 (MEM_REF, char_type_node,
 			   build1 (ADDR_EXPR, ptr_type_node, var4c),
 			   build_int_cst (ptr_type_node, 2));
 
@@ -4161,7 +4247,7 @@ context_printer_print_first_data_ref_part_tests ()
   builder8.add_decls (&decls8);
   simul_scope ctx8 = builder8.build (mem1, printer8);
 
-  tree mem_var_i5 = build2 (MEM_REF, char_type_node,
+  tree mem_var_i5 = build2 (MEM_REF, integer_type_node,
 			    build1 (ADDR_EXPR, ptr_type_node, var_i5),
 			    build_int_cst (ptr_type_node,
 					   3 * sizeof (int)));
@@ -4181,7 +4267,7 @@ context_printer_print_first_data_ref_part_tests ()
   builder9.add_decls (&decls8);
   simul_scope ctx9 = builder9.build (mem1, printer9);
 
-  tree mem2_var_i5 = build2 (MEM_REF, char_type_node,
+  tree mem2_var_i5 = build2 (MEM_REF, integer_type_node,
 			     build1 (ADDR_EXPR, ptr_type_node, var_i5),
 			     build_int_cst (ptr_type_node,
 					    sizeof (int)));
