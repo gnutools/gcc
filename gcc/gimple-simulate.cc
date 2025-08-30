@@ -982,6 +982,9 @@ static bool
 rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 {
   tree ref = *data_ref;
+  if (DECL_P (ref))
+    return true;
+
   switch (TREE_CODE (*data_ref))
     {
     case MEM_REF:
@@ -1007,34 +1010,24 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	return true;
       }
 
-#if 0
     case ARRAY_REF:
       {
 	tree base = TREE_OPERAND (ref, 0);
 	tree index = TREE_OPERAND (ref, 1);
-	tree type = TREE_TYPE (ref);
-	unsigned type_size = get_constant_type_size (type);
-	data_value idx_val = context.evaluate (index);
-	gcc_assert (idx_val.classify () == VAL_KNOWN);
-	wide_int wi_idx = idx_val.get_known ();
-	wide_int total_off = wi::shwi (*offset, HOST_BITS_PER_WIDE_INT);
-	wide_int idx_off = wi_idx * type_size;
-	gcc_assert (wi::ges_p (total_off, idx_off));
-	wide_int remaining_off = total_off - idx_off;
-	gcc_assert (wi::fits_uhwi_p (remaining_off));
-	unsigned rem = remaining_off.to_uhwi ();
 
 	tree rewritten_base = base;
-	if (!rewrite_ref (&base, &rem, context,
-			  get_constant_type_size (TREE_TYPE (base))))
+	unsigned rewritten_off = *offset;
+	if (!rewrite_ref (&rewritten_base, &rewritten_off, context)
+	    && TREE_CODE (index) == INTEGER_CST)
 	  return false;
-	*data_ref = build4 (ARRAY_REF, type, rewritten_base,
+
+	data_value idx_val = context.evaluate (index);
+	*data_ref = build4 (ARRAY_REF, TREE_TYPE (ref), rewritten_base,
 			    idx_val.to_tree (TREE_TYPE (index)),
 			    NULL_TREE, NULL_TREE);
-	*offset = rem;
+	*offset = rewritten_off;
 	return true;
       }
-#endif
 
     default:
       return false;
@@ -4487,6 +4480,60 @@ context_printer_print_first_data_ref_part_tests ()
   ASSERT_EQ (res14, integer_type_node);
   const char * str14 = pp_formatted_text (&pp14);
   ASSERT_STREQ (str14, "# a14[0].der2i_i2");
+
+
+  tree der1a1i = make_node (RECORD_TYPE);
+  tree der1a1i_i2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1a1i_i2"),
+				integer_type_node);
+  DECL_CONTEXT (der1a1i_i2) = der1a1i;
+  DECL_CHAIN (der1a1i_i2) = NULL_TREE;
+  tree der1a1i_a1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1a1i_a1"), a2i);
+  DECL_CONTEXT (der1a1i_a1) = der1a1i;
+  DECL_CHAIN (der1a1i_a1) = der1a1i_i2;
+  TYPE_FIELDS (der1a1i) = der1a1i_a1;
+  layout_type (der1a1i);
+
+  heap_memory mem15;
+
+  context_printer printer15;
+  pretty_printer & pp15 = printer15.pp;
+
+  tree d_15 = create_var (der1a1i, "d");
+  tree p_15 = create_var (ptr_type_node, "p");
+
+  vec<tree> decls15{};
+  decls15.safe_push (d_15);
+  decls15.safe_push (p_15);
+
+  context_builder builder15 {};
+  builder15.add_decls (&decls15);
+  simul_scope ctx15 = builder15.build (mem15, printer15);
+
+  data_storage *strg_d15 = ctx15.find_reachable_var (d_15);
+  gcc_assert (strg_d15 != nullptr);
+
+  storage_address addr_d15 (strg_d15->get_ref (), 0);
+  data_value val_p15 (ptr_type_node);
+  val_p15.set_address (addr_d15);
+
+  data_storage *strg_p15 = ctx15.find_reachable_var (p_15);
+  gcc_assert (strg_p15 != nullptr);
+  strg_p15->set (val_p15);
+
+  tree zero_15 = build_zero_cst (build_pointer_type (void_type_node));
+  tree ref_d15 = build2 (MEM_REF, a2i, p_15, zero_15);
+  tree ref15 = build4 (ARRAY_REF, integer_type_node, ref_d15,
+		       build_one_cst (integer_type_node), NULL_TREE, NULL_TREE);
+
+  tree res15 = printer15.print_first_data_ref_part (ctx15, ref15, 0,
+						    nullptr,
+						    VAL_UNDEFINED);
+
+  ASSERT_EQ (res15, integer_type_node);
+  const char * str15 = pp_formatted_text (&pp15);
+  ASSERT_STREQ (str15, "# d.der1a1i_a1[1]");
 }
 
 
