@@ -806,17 +806,30 @@ context_printer::print_bb_entry (basic_block bb)
 
 static tree
 pick_subref_at (tree var_ref, unsigned min_offset,
-		int * ignored_bits, unsigned min_size)
+		int * ignored_bits, unsigned min_size,
+		tree target_type = NULL_TREE)
 {
   if (ignored_bits != nullptr)
     *ignored_bits = 0;
+  if (target_type != NULL_TREE
+      && TYPE_SIZE (target_type) != NULL_TREE)
+    min_size = get_constant_type_size (target_type);
   tree ref = var_ref;
   unsigned remaining_offset = min_offset;
   while (true)
     {
       tree var_type = TREE_TYPE (ref);
-      unsigned type_size = get_constant_type_size (var_type);
-      if (type_size == min_size)
+      if (target_type == NULL_TREE
+	  || TYPE_SIZE (target_type) != NULL_TREE)
+	{
+	  unsigned type_size = get_constant_type_size (var_type);
+	  if (type_size == min_size)
+	    break;
+	}
+      else if (var_type == target_type
+	       || (TREE_CODE (var_type) == ARRAY_TYPE
+		   && TREE_CODE (target_type) == ARRAY_TYPE
+		   && TREE_TYPE (var_type) == TREE_TYPE (target_type)))
 	break;
 
       if (TREE_CODE (var_type) == ARRAY_TYPE)
@@ -868,8 +881,13 @@ pick_subref_at (tree var_ref, unsigned min_offset,
 
 	  tree field_type = TREE_TYPE (field);
 
-	  unsigned field_width = get_constant_type_size (field_type);
-	  gcc_assert (field_width >= min_size);
+	  if (TYPE_SIZE (field_type) == NULL_TREE)
+	    gcc_assert (next_field == NULL_TREE);
+	  else
+	    {
+	      unsigned field_width = get_constant_type_size (field_type);
+	      gcc_assert (field_width >= min_size);
+	    }
 
 	  ref = build3 (COMPONENT_REF, field_type,
 			ref, field, NULL_TREE);
@@ -960,7 +978,7 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
 		  && wi::fits_uhwi_p (ref_offset));
 
       tree t = pick_subref_at (var_ref, ref_offset.to_uhwi (), nullptr,
-			       get_constant_type_size (access_type));
+			       0, access_type);
       if (t == NULL_TREE)
 	{
 	  *repl = var_ref;
@@ -4534,6 +4552,66 @@ context_printer_print_first_data_ref_part_tests ()
   ASSERT_EQ (res15, integer_type_node);
   const char * str15 = pp_formatted_text (&pp15);
   ASSERT_STREQ (str15, "# d.der1a1i_a1[1]");
+
+
+  tree range = build_range_type (integer_type_node,
+				 build_zero_cst (integer_type_node),
+				 NULL_TREE);
+  tree ai = build_array_type (integer_type_node, range, false);
+
+  tree der1i1a = make_node (RECORD_TYPE);
+  tree der1i1a_a2 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1i1a_a2"), ai);
+  DECL_CONTEXT (der1i1a_a2) = der1i1a;
+  DECL_CHAIN (der1i1a_a2) = NULL_TREE;
+  tree der1i1a_i1 = build_decl (input_location, FIELD_DECL,
+				get_identifier ("der1i1a_i1"),
+				integer_type_node);
+  DECL_CONTEXT (der1i1a_i1) = der1i1a;
+  DECL_CHAIN (der1i1a_i1) = der1i1a_a2;
+  TYPE_FIELDS (der1i1a) = der1i1a_i1;
+  layout_type (der1i1a);
+
+  heap_memory mem16;
+
+  context_printer printer16;
+  pretty_printer & pp16 = printer16.pp;
+
+  tree d_16 = create_var (der1i1a, "d");
+  tree p_16 = create_var (ptr_type_node, "p");
+
+  vec<tree> decls16{};
+  decls16.safe_push (d_16);
+  decls16.safe_push (p_16);
+
+  context_builder builder16 {};
+  builder16.add_decls (&decls16);
+  simul_scope ctx16 = builder16.build (mem16, printer16);
+
+  data_storage *strg_d16 = ctx16.find_reachable_var (d_16);
+  gcc_assert (strg_d16 != nullptr);
+
+  storage_address addr_d16 (strg_d16->get_ref (), 0);
+  data_value val_p16 (ptr_type_node);
+  val_p16.set_address (addr_d16);
+
+  data_storage *strg_p16 = ctx16.find_reachable_var (p_16);
+  gcc_assert (strg_p16 != nullptr);
+  strg_p16->set (val_p16);
+
+  tree four_16 = build_int_cst (build_pointer_type (void_type_node),
+				HOST_BITS_PER_INT / CHAR_BIT);
+  tree ref_d16 = build2 (MEM_REF, ai, p_16, four_16);
+  tree ref16 = build4 (ARRAY_REF, integer_type_node, ref_d16,
+		       build_one_cst (integer_type_node), NULL_TREE, NULL_TREE);
+
+  tree res16 = printer16.print_first_data_ref_part (ctx16, ref16, 0,
+						    nullptr,
+						    VAL_UNDEFINED);
+
+  ASSERT_EQ (res16, integer_type_node);
+  const char * str16 = pp_formatted_text (&pp16);
+  ASSERT_STREQ (str16, "# d.der1i1a_a2[1]");
 }
 
 
