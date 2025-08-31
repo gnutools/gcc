@@ -1022,14 +1022,14 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	tree comp = TREE_OPERAND (ref, 1);
 
 	tree rewritten_base = base;
-	unsigned off = 0;
+	unsigned off = *offset;
 	if (!rewrite_ref (&rewritten_base, &off, context))
 	  return false;
 
 	tree t = build3 (COMPONENT_REF, TREE_TYPE (ref), rewritten_base,
 			 comp, NULL_TREE);
 	*data_ref = t;
-	*offset += off;
+	*offset = off;
 	return true;
       }
 
@@ -1039,16 +1039,28 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	tree index = TREE_OPERAND (ref, 1);
 
 	tree rewritten_base = base;
-	unsigned rewritten_off = 0;
+	unsigned rewritten_off = *offset;
 	if (!rewrite_ref (&rewritten_base, &rewritten_off, context)
 	    && TREE_CODE (index) == INTEGER_CST)
 	  return false;
 
 	data_value idx_val = context.evaluate (index);
+	wide_int wi_idx = idx_val.get_known ();
+	unsigned elt_size;
+	elt_size = get_constant_type_size (TREE_TYPE (TREE_TYPE (base)));
+	wide_int total_off = wi_idx * elt_size + rewritten_off;
+	wide_int wi_elt_size = wi::uhwi (elt_size, total_off.get_precision ());
+	wide_int global_idx = wi::udiv_trunc (total_off, wi_elt_size);
+	gcc_assert (wi::ges_p (global_idx, 0)
+		    && wi::fits_uhwi_p (global_idx));
 	*data_ref = build4 (ARRAY_REF, TREE_TYPE (ref), rewritten_base,
-			    idx_val.to_tree (TREE_TYPE (index)),
+			    build_int_cst (TREE_TYPE (index),
+					   global_idx.to_uhwi ()),
 			    NULL_TREE, NULL_TREE);
-	*offset += rewritten_off;
+	wide_int remaining_offset = total_off - global_idx * elt_size;
+	gcc_assert (wi::ges_p (remaining_offset, 0)
+		    && wi::fits_uhwi_p (remaining_offset));
+	*offset = remaining_offset.to_uhwi ();
 	return true;
       }
 
