@@ -827,9 +827,13 @@ pick_subref_at (tree var_ref, unsigned min_offset,
 	    break;
 	}
       else if (var_type == target_type
+	       || TYPE_MAIN_VARIANT (var_type)
+		  == TYPE_MAIN_VARIANT (target_type)
 	       || (TREE_CODE (var_type) == ARRAY_TYPE
 		   && TREE_CODE (target_type) == ARRAY_TYPE
-		   && TREE_TYPE (var_type) == TREE_TYPE (target_type)))
+		   && (TREE_TYPE (var_type) == TREE_TYPE (target_type)
+		       || TYPE_MAIN_VARIANT (TREE_TYPE (var_type))
+			  == TYPE_MAIN_VARIANT (TREE_TYPE (target_type)))))
 	break;
 
       if (TREE_CODE (var_type) == ARRAY_TYPE)
@@ -910,7 +914,10 @@ pick_subref_at (tree var_ref, unsigned min_offset,
     {
       gcc_assert (ignored_bits != nullptr);
       *ignored_bits = remaining_offset;
-      return NULL_TREE;
+      if (target_type == NULL_TREE)
+	return NULL_TREE;
+      else
+	return ref;
     }
 }
 
@@ -976,8 +983,8 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
 					total_offset.get_precision ());
       gcc_assert (wi::ges_p (ref_offset, 0)
 		  && wi::fits_uhwi_p (ref_offset));
-
-      tree t = pick_subref_at (var_ref, ref_offset.to_uhwi (), nullptr,
+      int ignored_bits;
+      tree t = pick_subref_at (var_ref, ref_offset.to_uhwi (), &ignored_bits,
 			       0, access_type);
       if (t == NULL_TREE)
 	{
@@ -989,7 +996,7 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
       else
 	{
 	  *repl = t;
-	  *offset = (total_offset - ref_offset).to_uhwi ();
+	  *offset = (total_offset - ref_offset + ignored_bits).to_uhwi ();
 	}
       return true;
     }
@@ -1015,16 +1022,14 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	tree comp = TREE_OPERAND (ref, 1);
 
 	tree rewritten_base = base;
-	unsigned off = *offset;
+	unsigned off = 0;
 	if (!rewrite_ref (&rewritten_base, &off, context))
 	  return false;
-	if (rewritten_base == base
-	    && off == *offset)
-	  return true;
+
 	tree t = build3 (COMPONENT_REF, TREE_TYPE (ref), rewritten_base,
 			 comp, NULL_TREE);
 	*data_ref = t;
-	*offset = off;
+	*offset += off;
 	return true;
       }
 
@@ -1034,7 +1039,7 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	tree index = TREE_OPERAND (ref, 1);
 
 	tree rewritten_base = base;
-	unsigned rewritten_off = *offset;
+	unsigned rewritten_off = 0;
 	if (!rewrite_ref (&rewritten_base, &rewritten_off, context)
 	    && TREE_CODE (index) == INTEGER_CST)
 	  return false;
@@ -1043,7 +1048,7 @@ rewrite_ref (tree * data_ref, unsigned * offset, simul_scope & context)
 	*data_ref = build4 (ARRAY_REF, TREE_TYPE (ref), rewritten_base,
 			    idx_val.to_tree (TREE_TYPE (index)),
 			    NULL_TREE, NULL_TREE);
-	*offset = rewritten_off;
+	*offset += rewritten_off;
 	return true;
       }
 
