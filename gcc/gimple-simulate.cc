@@ -890,7 +890,8 @@ pick_subref_at (tree var_ref, unsigned min_offset,
 	  else
 	    {
 	      unsigned field_width = get_constant_type_size (field_type);
-	      gcc_assert (field_width >= min_size);
+	      if (field_width < min_size)
+		break;
 	    }
 
 	  ref = build3 (COMPONENT_REF, field_type,
