@@ -642,6 +642,10 @@ mieee128-constant
 Target Var(TARGET_IEEE128_CONSTANT) Init(1) Save
 Generate (do not generate) code that uses the LXVKQ instruction.
 
+mieee16-gpr-args
+Target Undocumented Var(TARGET_IEEE16_GPR_ARGS) Init(1) Save
+Pass _Float16 in GPR registers.
+
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=

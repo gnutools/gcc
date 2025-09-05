@@ -82,10 +82,12 @@
 #endif
 
 /* Nonzero if we can use a floating-point register to pass this arg.  */
-#define USE_FP_FOR_ARG_P(CUM,MODE)		\
-  (SCALAR_FLOAT_MODE_NOT_VECTOR_P (MODE)		\
-   && (CUM)->fregno <= FP_ARG_MAX_REG		\
-   && TARGET_HARD_FLOAT)
+#define USE_FP_FOR_ARG_P(CUM,MODE)				\
+  (SCALAR_FLOAT_MODE_NOT_VECTOR_P (MODE)			\
+   && (CUM)->fregno <= FP_ARG_MAX_REG				\
+   && TARGET_HARD_FLOAT						\
+   && ((MODE) != HFmode || !TARGET_IEEE16_GPR_ARGS))
+
 
 /* Nonzero if we can use an AltiVec register to pass this arg.  */
 #define USE_ALTIVEC_FOR_ARG_P(CUM,MODE,NAMED)			\

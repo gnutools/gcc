@@ -567,6 +567,9 @@ extern int rs6000_vector_align[];
    below.  */
 #define RS6000_FN_TARGET_INFO_HTM 1
 
+/* Support for IEEE 16-bit floating point.  */
+#define TARGET_IEEE16		TARGET_P9_VECTOR
+
 /* Whether the various reciprocal divide/square root estimate instructions
    exist, and whether we should automatically generate code for the instruction
    by default.  */

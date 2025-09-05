@@ -46,9 +46,14 @@
 ;; Iterator for vector floating point types supported by VSX
 (define_mode_iterator VSX_F [V4SF V2DF])
 
+;; Iterator for 8 element vectors
+(define_mode_iterator V8HI_V8HF [V8HI
+				 (V8HF "TARGET_IEEE16")])
+
 ;; Iterator for logical types supported by VSX
 (define_mode_iterator VSX_L [V16QI
 			     V8HI
+			     (V8HF	"TARGET_IEEE16")
 			     V4SI
 			     V2DI
 			     V4SF
@@ -61,6 +66,7 @@
 ;; Iterator for memory moves.
 (define_mode_iterator VSX_M [V16QI
 			     V8HI
+			     (V8HF	"TARGET_IEEE16")
 			     V4SI
 			     V2DI
 			     V4SF
@@ -71,6 +77,7 @@
 			     TI])
 
 (define_mode_attr VSX_XXBR  [(V8HI  "h")
+			     (V8HF  "h")
 			     (V4SI  "w")
 			     (V4SF  "w")
 			     (V2DF  "d")
@@ -80,6 +87,7 @@
 ;; Map into the appropriate load/store name based on the type
 (define_mode_attr VSm  [(V16QI "vw4")
 			(V8HI  "vw4")
+			(V8HF  "vw4")
 			(V4SI  "vw4")
 			(V4SF  "vw4")
 			(V2DF  "vd2")
@@ -93,6 +101,7 @@
 ;; Map the register class used
 (define_mode_attr VSr	[(V16QI "v")
 			 (V8HI  "v")
+			 (V8HF  "v")
 			 (V4SI  "v")
 			 (V4SF  "wa")
 			 (V2DI  "wa")
@@ -108,6 +117,7 @@
 ;; What value we need in the "isa" field, to make the IEEE QP float work.
 (define_mode_attr VSisa	[(V16QI "*")
 			 (V8HI  "*")
+			 (V8HF  "p9v")
 			 (V4SI  "*")
 			 (V4SF  "*")
 			 (V2DI  "*")
@@ -124,6 +134,7 @@
 ;; integer modes.
 (define_mode_attr ??r	[(V16QI	"??r")
 			 (V8HI	"??r")
+			 (V8HF	"??r")
 			 (V4SI	"??r")
 			 (V4SF	"??r")
 			 (V2DI	"??r")
@@ -136,6 +147,7 @@
 ;; A mode attribute used for 128-bit constant values.
 (define_mode_attr nW	[(V16QI	"W")
 			 (V8HI	"W")
+			 (V8HF	"W")
 			 (V4SI	"W")
 			 (V4SF	"W")
 			 (V2DI	"W")
@@ -163,6 +175,7 @@
 ;; operation
 (define_mode_attr VSv	[(V16QI "v")
 			 (V8HI  "v")
+			 (V8HF  "v")
 			 (V4SI  "v")
 			 (V4SF  "v")
 			 (V2DI  "v")
@@ -396,6 +409,7 @@
 ;; Like VM2 in altivec.md, just do char, short, int, long, float and double
 (define_mode_iterator VM3 [V4SI
 			   V8HI
+			   V8HF
 			   V16QI
 			   V4SF
 			   V2DF
@@ -407,6 +421,7 @@
 (define_mode_attr VM3_char [(V2DI "d")
 			   (V4SI "w")
 			   (V8HI "h")
+			   (V8HF "h")
 			   (V16QI "b")
 			   (V2DF  "d")
 			   (V4SF  "w")])
@@ -541,21 +556,21 @@
   [(set_attr "type" "vecload")
    (set_attr "length" "8")])
 
-(define_insn_and_split "*vsx_le_perm_load_v8hi"
-  [(set (match_operand:V8HI 0 "vsx_register_operand" "=wa")
-        (match_operand:V8HI 1 "indexed_or_indirect_operand" "Z"))]
+(define_insn_and_split "*vsx_le_perm_load_<mode>"
+  [(set (match_operand:V8HI_V8HF 0 "vsx_register_operand" "=wa")
+        (match_operand:V8HI_V8HF 1 "indexed_or_indirect_operand" "Z"))]
   "!BYTES_BIG_ENDIAN && TARGET_VSX && !TARGET_P9_VECTOR"
   "#"
   "&& 1"
   [(set (match_dup 2)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 1)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))
    (set (match_dup 0)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 2)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
@@ -802,27 +817,27 @@
 	             (const_int 0) (const_int 1)])))]
   "")
 
-(define_insn "*vsx_le_perm_store_v8hi"
-  [(set (match_operand:V8HI 0 "indexed_or_indirect_operand" "=Z")
-        (match_operand:V8HI 1 "vsx_register_operand" "wa"))]
+(define_insn "*vsx_le_perm_store_<mode>"
+  [(set (match_operand:V8HI_V8HF 0 "indexed_or_indirect_operand" "=Z")
+        (match_operand:V8HI_V8HF 1 "vsx_register_operand" "wa"))]
   "!BYTES_BIG_ENDIAN && TARGET_VSX && !TARGET_P9_VECTOR"
   "#"
   [(set_attr "type" "vecstore")
    (set_attr "length" "12")])
 
 (define_split
-  [(set (match_operand:V8HI 0 "indexed_or_indirect_operand")
-        (match_operand:V8HI 1 "vsx_register_operand"))]
+  [(set (match_operand:V8HI_V8HF 0 "indexed_or_indirect_operand")
+        (match_operand:V8HI_V8HF 1 "vsx_register_operand"))]
   "!BYTES_BIG_ENDIAN && TARGET_VSX && !TARGET_P9_VECTOR && !reload_completed"
   [(set (match_dup 2)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 1)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))
    (set (match_dup 0)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 2)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
@@ -861,25 +876,25 @@
 ;; The post-reload split requires that we re-permute the source
 ;; register in case it is still live.
 (define_split
-  [(set (match_operand:V8HI 0 "indexed_or_indirect_operand")
-        (match_operand:V8HI 1 "vsx_register_operand"))]
+  [(set (match_operand:V8HI_V8HF 0 "indexed_or_indirect_operand")
+        (match_operand:V8HI_V8HF 1 "vsx_register_operand"))]
   "!BYTES_BIG_ENDIAN && TARGET_VSX && !TARGET_P9_VECTOR && reload_completed"
   [(set (match_dup 1)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 1)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))
    (set (match_dup 0)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 1)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))
    (set (match_dup 1)
-        (vec_select:V8HI
+        (vec_select:V8HI_V8HF
           (match_dup 1)
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
@@ -1434,15 +1449,15 @@
   "lxvw4x %x0,%y1"
   [(set_attr "type" "vecload")])
 
-(define_expand "vsx_ld_elemrev_v8hi"
-  [(set (match_operand:V8HI 0 "vsx_register_operand" "=wa")
-        (vec_select:V8HI
-	  (match_operand:V8HI 1 "memory_operand" "Z")
+(define_expand "vsx_ld_elemrev_<mode>"
+  [(set (match_operand:V8HI_V8HF 0 "vsx_register_operand" "=wa")
+        (vec_select:V8HI_V8HF
+	  (match_operand:V8HI_V8HF 1 "memory_operand" "Z")
 	  (parallel [(const_int 7) (const_int 6)
 	             (const_int 5) (const_int 4)
 		     (const_int 3) (const_int 2)
 	             (const_int 1) (const_int 0)])))]
-  "VECTOR_MEM_VSX_P (V8HImode) && !BYTES_BIG_ENDIAN"
+  "VECTOR_MEM_VSX_P (<MODE>mode) && !BYTES_BIG_ENDIAN"
 {
   if (!TARGET_P9_VECTOR)
     {
@@ -1452,9 +1467,9 @@
       unsigned int reorder[16] = {13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2};
       int i;
 
-      subreg = simplify_gen_subreg (V4SImode, operands[1], V8HImode, 0);
+      subreg = simplify_gen_subreg (V4SImode, operands[1], <MODE>mode, 0);
       emit_insn (gen_vsx_ld_elemrev_v4si (tmp, subreg));
-      subreg2 = simplify_gen_subreg (V8HImode, tmp, V4SImode, 0);
+      subreg2 = simplify_gen_subreg (<MODE>mode, tmp, V4SImode, 0);
 
       for (i = 0; i < 16; ++i)
       	perm[i] = GEN_INT (reorder[i]);
@@ -1462,21 +1477,21 @@
       pcv = force_reg (V16QImode,
                        gen_rtx_CONST_VECTOR (V16QImode,
                                              gen_rtvec_v (16, perm)));
-      emit_insn (gen_altivec_vperm_v8hi_direct (operands[0], subreg2,
-                                                subreg2, pcv));
+      emit_insn (gen_altivec_vperm_<mode>_direct (operands[0], subreg2,
+                                                  subreg2, pcv));
       DONE;
     }
 })
 
-(define_insn "*vsx_ld_elemrev_v8hi_internal"
-  [(set (match_operand:V8HI 0 "vsx_register_operand" "=wa")
-        (vec_select:V8HI
-          (match_operand:V8HI 1 "memory_operand" "Z")
+(define_insn "*vsx_ld_elemrev_<mode>_internal"
+  [(set (match_operand:V8HI_V8HF 0 "vsx_register_operand" "=wa")
+        (vec_select:V8HI_V8HF
+          (match_operand:V8HI_V8HF 1 "memory_operand" "Z")
           (parallel [(const_int 7) (const_int 6)
                      (const_int 5) (const_int 4)
                      (const_int 3) (const_int 2)
                      (const_int 1) (const_int 0)])))]
-  "VECTOR_MEM_VSX_P (V8HImode) && !BYTES_BIG_ENDIAN && TARGET_P9_VECTOR"
+  "VECTOR_MEM_VSX_P (<MODE>mode) && !BYTES_BIG_ENDIAN && TARGET_P9_VECTOR"
   "lxvh8x %x0,%y1"
   [(set_attr "type" "vecload")])
 
@@ -1584,20 +1599,20 @@
   "stxvw4x %x1,%y0"
   [(set_attr "type" "vecstore")])
 
-(define_expand "vsx_st_elemrev_v8hi"
-  [(set (match_operand:V8HI 0 "memory_operand" "=Z")
-        (vec_select:V8HI
-          (match_operand:V8HI 1 "vsx_register_operand" "wa")
+(define_expand "vsx_st_elemrev_<mode>"
+  [(set (match_operand:V8HI_V8HF 0 "memory_operand" "=Z")
+        (vec_select:V8HI_V8HF
+          (match_operand:V8HI_V8HF 1 "vsx_register_operand" "wa")
           (parallel [(const_int 7) (const_int 6)
                      (const_int 5) (const_int 4)
                      (const_int 3) (const_int 2)
                      (const_int 1) (const_int 0)])))]
-  "VECTOR_MEM_VSX_P (V8HImode) && !BYTES_BIG_ENDIAN"
+  "VECTOR_MEM_VSX_P (<MODE>mode) && !BYTES_BIG_ENDIAN"
 {
   if (!TARGET_P9_VECTOR)
     {
       rtx mem_subreg, subreg, perm[16], pcv;
-      rtx tmp = gen_reg_rtx (V8HImode);
+      rtx tmp = gen_reg_rtx (<MODE>mode);
       /* 2 is leftmost element in register */
       unsigned int reorder[16] = {13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2};
       int i;
@@ -1608,10 +1623,10 @@
       pcv = force_reg (V16QImode,
                        gen_rtx_CONST_VECTOR (V16QImode,
                                              gen_rtvec_v (16, perm)));
-      emit_insn (gen_altivec_vperm_v8hi_direct (tmp, operands[1],
-                                                operands[1], pcv));
-      subreg = simplify_gen_subreg (V4SImode, tmp, V8HImode, 0);
-      mem_subreg = simplify_gen_subreg (V4SImode, operands[0], V8HImode, 0);
+      emit_insn (gen_altivec_vperm_<mode>_direct (tmp, operands[1],
+                                                  operands[1], pcv));
+      subreg = simplify_gen_subreg (V4SImode, tmp, <MODE>mode, 0);
+      mem_subreg = simplify_gen_subreg (V4SImode, operands[0], <MODE>mode, 0);
       emit_insn (gen_vsx_st_elemrev_v4si (mem_subreg, subreg));
       DONE;
     }
@@ -1626,15 +1641,15 @@
   "stxvd2x %x1,%y0"
   [(set_attr "type" "vecstore")])
 
-(define_insn "*vsx_st_elemrev_v8hi_internal"
-  [(set (match_operand:V8HI 0 "memory_operand" "=Z")
-        (vec_select:V8HI
-          (match_operand:V8HI 1 "vsx_register_operand" "wa")
+(define_insn "*vsx_st_elemrev_<mode>_internal"
+  [(set (match_operand:V8HI_V8HF 0 "memory_operand" "=Z")
+        (vec_select:V8HI_V8HF
+          (match_operand:V8HI_V8HF 1 "vsx_register_operand" "wa")
           (parallel [(const_int 7) (const_int 6)
                      (const_int 5) (const_int 4)
                      (const_int 3) (const_int 2)
                      (const_int 1) (const_int 0)])))]
-  "VECTOR_MEM_VSX_P (V8HImode) && !BYTES_BIG_ENDIAN && TARGET_P9_VECTOR"
+  "VECTOR_MEM_VSX_P (<MODE>mode) && !BYTES_BIG_ENDIAN && TARGET_P9_VECTOR"
   "stxvh8x %x1,%y0"
   [(set_attr "type" "vecstore")])
 
@@ -2420,6 +2435,7 @@
   [(set_attr "type" "fp")])
 
 ;; Generate xvcvhpsp instruction
+;; Used for the built-in function
 (define_insn "vsx_xvcvhpsp"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand: V16QI 1 "vsx_register_operand" "wa")]
@@ -2428,10 +2444,29 @@
   "xvcvhpsp %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
+;; Used for conversion to/from _Float16
+(define_insn "vsx_xvcvhpsp_v8hf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:V8HF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_CVHPSP))]
+  "TARGET_P9_VECTOR"
+  "xvcvhpsp %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
 ;; Generate xvcvsphp
+;; Used for the built-in function
 (define_insn "vsx_xvcvsphp"
   [(set (match_operand:V4SI 0 "register_operand" "=wa")
 	(unspec:V4SI [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_XVCVSPHP))]
+  "TARGET_P9_VECTOR"
+  "xvcvsphp %x0,%x1"
+[(set_attr "type" "vecfloat")])
+
+;; Used for conversion to/from _Float16
+(define_insn "vsx_xvcvsphp_v8hf"
+  [(set (match_operand:V8HF 0 "register_operand" "=wa")
+	(unspec:V8HF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_XVCVSPHP))]
   "TARGET_P9_VECTOR"
   "xvcvsphp %x0,%x1"
@@ -3121,6 +3156,25 @@
   [(set_attr "type" "vecdouble")])
 
 
+;; Convert IEEE 16-bit floating point to/from SF and DF modes.
+
+(define_insn "extendhf<mode>2"
+  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+	(float_extend:SFDF
+	 (match_operand:HF 1 "vsx_register_operand" "wa")))]
+  "TARGET_IEEE16"
+  "xscvhpdp %x0,%x1"
+  [(set_attr "type" "fpsimple")])
+
+(define_insn "trunc<mode>hf2"
+  [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
+	(float_truncate:HF
+	 (match_operand:SFDF 1 "vsx_register_operand" "wa")))]
+  "TARGET_IEEE16"
+  "xscvdphp %x0,%1"
+  [(set_attr "type" "fpsimple")])
+
+
 ;; Permute operations
 
 ;; Build a V2DF/V2DI vector from two scalars
@@ -3299,10 +3353,10 @@
   "xxpermdi %x0,%x1,%x1,2"
   [(set_attr "type" "vecperm")])
 
-(define_insn "xxswapd_v8hi"
-  [(set (match_operand:V8HI 0 "vsx_register_operand" "=wa")
-	(vec_select:V8HI
-	  (match_operand:V8HI 1 "vsx_register_operand" "wa")
+(define_insn "xxswapd_<mode>"
+  [(set (match_operand:V8HI_V8HF 0 "vsx_register_operand" "=wa")
+	(vec_select:V8HI_V8HF
+	  (match_operand:V8HI_V8HF 1 "vsx_register_operand" "wa")
 	  (parallel [(const_int 4) (const_int 5)
 		     (const_int 6) (const_int 7)
 		     (const_int 0) (const_int 1)
@@ -3402,15 +3456,15 @@
   "lxvd2x %x0,%y1"
   [(set_attr "type" "vecload")])
 
-(define_insn "*vsx_lxvd2x8_le_V8HI"
-  [(set (match_operand:V8HI 0 "vsx_register_operand" "=wa")
-        (vec_select:V8HI
-          (match_operand:V8HI 1 "memory_operand" "Z")
+(define_insn "*vsx_lxvd2x8_le_<MODE>"
+  [(set (match_operand:V8HI_V8HF 0 "vsx_register_operand" "=wa")
+        (vec_select:V8HI_V8HF
+          (match_operand:V8HI_V8HF 1 "memory_operand" "Z")
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))]
-  "!BYTES_BIG_ENDIAN && VECTOR_MEM_VSX_P (V8HImode) && !TARGET_P9_VECTOR"
+  "!BYTES_BIG_ENDIAN && VECTOR_MEM_VSX_P (<MODE>mode) && !TARGET_P9_VECTOR"
   "lxvd2x %x0,%y1"
   [(set_attr "type" "vecload")])
 
@@ -3478,15 +3532,15 @@
   [(set_attr "type" "vecstore")
    (set_attr "length" "8")])
 
-(define_insn "*vsx_stxvd2x8_le_V8HI"
-  [(set (match_operand:V8HI 0 "memory_operand" "=Z")
-        (vec_select:V8HI
-          (match_operand:V8HI 1 "vsx_register_operand" "wa")
+(define_insn "*vsx_stxvd2x8_le_<MODE>"
+  [(set (match_operand:V8HI_V8HF 0 "memory_operand" "=Z")
+        (vec_select:V8HI_V8HF
+          (match_operand:V8HI_V8HF 1 "vsx_register_operand" "wa")
           (parallel [(const_int 4) (const_int 5)
                      (const_int 6) (const_int 7)
                      (const_int 0) (const_int 1)
                      (const_int 2) (const_int 3)])))]
-  "!BYTES_BIG_ENDIAN && VECTOR_MEM_VSX_P (V8HImode) && !TARGET_P9_VECTOR"
+  "!BYTES_BIG_ENDIAN && VECTOR_MEM_VSX_P (<MODE>mode) && !TARGET_P9_VECTOR"
   "stxvd2x %x1,%y0"
   [(set_attr "type" "vecstore")])
 
@@ -4060,7 +4114,7 @@
   if (which_alternative == 0
       && ((<MODE>mode == V16QImode
 	   && INTVAL (operands[2]) == (BYTES_BIG_ENDIAN ? 7 : 8))
-	  || (<MODE>mode == V8HImode
+	  || ((<MODE>mode == V8HImode || <MODE>mode == V8HFmode)
 	      && INTVAL (operands[2]) == (BYTES_BIG_ENDIAN ? 3 : 4))))
     {
       enum machine_mode dest_mode = GET_MODE (operands[0]);
@@ -4139,7 +4193,7 @@
       else
 	vec_tmp = src;
     }
-  else if (<MODE>mode == V8HImode)
+  else if (<MODE>mode == V8HImode || <MODE>mode == V8HFmode)
     {
       if (value != 3)
 	emit_insn (gen_altivec_vsplth_direct (vec_tmp, src, element));
