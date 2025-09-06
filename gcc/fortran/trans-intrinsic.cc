@@ -1825,7 +1825,7 @@ trans_this_image (gfc_se * se, gfc_expr *expr)
 {
   stmtblock_t loop;
   tree type, desc, dim_arg, cond, tmp, m, loop_var, exit_label, min_var, lbound,
-    ubound, extent, ml, team;
+      extent, ml, team;
   gfc_se argse;
   int rank, corank;
 
@@ -1991,9 +1991,7 @@ trans_this_image (gfc_se * se, gfc_expr *expr)
   gfc_add_modify (&loop, ml, m);
 
   /* extent = ...  */
-  lbound = gfc_conv_descriptor_lbound_get (desc, loop_var);
-  ubound = gfc_conv_descriptor_ubound_get (desc, loop_var);
-  extent = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+  extent = gfc_conv_descriptor_extent_get (desc, loop_var);
   extent = fold_convert (type, extent);
 
   /* m = m/extent.  */
@@ -2200,12 +2198,10 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 
   for (codim = corank + rank - 2; codim >= rank; codim--)
     {
-      tree extent, ubound;
+      tree extent;
 
       /* coindex = coindex*extent(codim) + sub(codim) - lcobound(codim).  */
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[codim]);
-      ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[codim]);
-      extent = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+      extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[codim]);
 
       /* coindex *= extent.  */
       coindex = fold_build2_loc (input_location, MULT_EXPR,
@@ -2357,13 +2353,7 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
 
       for (i = 0; i < arg->rank - 1; i++)
 	{
-	  tmp = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[i]);
-	  extent = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[i]);
-	  extent = fold_build2_loc (input_location, MINUS_EXPR,
-				    gfc_array_index_type, extent, tmp);
-	  extent = fold_build2_loc (input_location, PLUS_EXPR,
-				    gfc_array_index_type, extent,
-				    gfc_index_one_node);
+	  extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[i]);
 	  tmp = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[i]);
 	  tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
 				 tmp, extent);
@@ -2483,10 +2473,7 @@ gfc_conv_intrinsic_bound (gfc_se * se, gfc_expr * expr, enum gfc_isym_id op)
 
   ubound = gfc_conv_descriptor_ubound_get (desc, bound);
   lbound = gfc_conv_descriptor_lbound_get (desc, bound);
-  size = fold_build2_loc (input_location, MINUS_EXPR,
-			  gfc_array_index_type, ubound, lbound);
-  size = fold_build2_loc (input_location, PLUS_EXPR,
-			  gfc_array_index_type, size, gfc_index_one_node);
+  size = gfc_conv_descriptor_extent_get (desc, bound);
 
   /* 13.14.53: Result value for LBOUND
 
@@ -12831,7 +12818,7 @@ conv_intrinsic_event_query (gfc_code *code)
       /* For arrays, obtain the array index.  */
       if (gfc_expr_attr (event_expr).dimension)
 	{
-	  tree desc, tmp, extent, lbound, ubound;
+	  tree desc, tmp, extent, lbound;
           gfc_array_ref *ar, ar2;
           int i;
 
@@ -12864,8 +12851,7 @@ conv_intrinsic_event_query (gfc_code *code)
 				       TREE_TYPE (tmp), index, tmp);
 	      if (i < ar->dimen - 1)
 		{
-		  ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[i]);
-		  tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+		  tmp = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[i]);
 		  extent = fold_build2_loc (input_location, MULT_EXPR,
 					    TREE_TYPE (tmp), extent, tmp);
 		}

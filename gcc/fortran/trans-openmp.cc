@@ -829,12 +829,7 @@ gfc_omp_clause_default_ctor (tree clause, tree decl, tree outer)
     {
       gfc_add_modify (&cond_block, decl, outer);
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
-      size = gfc_conv_descriptor_ubound_get (decl, rank);
-      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			      size,
-			      gfc_conv_descriptor_lbound_get (decl, rank));
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (decl, rank);
       if (GFC_TYPE_ARRAY_RANK (type) > 1)
 	size = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, size,
@@ -1020,12 +1015,7 @@ gfc_omp_clause_copy_ctor (tree clause, tree dest, tree src)
   if (GFC_DESCRIPTOR_TYPE_P (type))
     {
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
-      size = gfc_conv_descriptor_ubound_get (dest, rank);
-      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			      size,
-			      gfc_conv_descriptor_lbound_get (dest, rank));
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (dest, rank);
       if (GFC_TYPE_ARRAY_RANK (type) > 1)
 	size = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, size,
@@ -1143,12 +1133,7 @@ gfc_omp_clause_assign_op (tree clause, tree dest, tree src)
   if (GFC_DESCRIPTOR_TYPE_P (type))
     {
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
-      size = gfc_conv_descriptor_ubound_get (src, rank);
-      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			      size,
-			      gfc_conv_descriptor_lbound_get (src, rank));
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (src, rank);
       if (GFC_TYPE_ARRAY_RANK (type) > 1)
 	size = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, size,
@@ -1374,12 +1359,7 @@ gfc_omp_clause_linear_ctor (tree clause, tree dest, tree src, tree add)
   if (GFC_DESCRIPTOR_TYPE_P (type))
     {
       tree rank = gfc_rank_cst[GFC_TYPE_ARRAY_RANK (type) - 1];
-      size = gfc_conv_descriptor_ubound_get (dest, rank);
-      size = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			      size,
-			      gfc_conv_descriptor_lbound_get (dest, rank));
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (dest, rank);
       if (GFC_TYPE_ARRAY_RANK (type) > 1)
 	size = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, size,
@@ -2058,11 +2038,7 @@ gfc_omp_get_array_size (location_t loc, tree desc, gimple_seq *seq)
   gfc_omp_gen_simple_loop (idx, begin, end, LT_EXPR, step, loc, &seq1, &seq2);
   gimple_seq_add_seq (seq, seq1);
 
-  tmp = fold_build2_loc (loc, MINUS_EXPR, gfc_array_index_type,
-			 gfc_conv_descriptor_ubound_get (desc, idx),
-			 gfc_conv_descriptor_lbound_get (desc, idx));
-  tmp = fold_build2_loc (loc, PLUS_EXPR, gfc_array_index_type,
-			 tmp, gfc_index_one_node);
+  tmp = gfc_conv_descriptor_extent_get (desc, idx);
   gimplify_assign (extent, tmp, seq);
   tmp = fold_build2_loc (loc, LT_EXPR, boolean_type_node,
 			 extent, gfc_index_zero_node);

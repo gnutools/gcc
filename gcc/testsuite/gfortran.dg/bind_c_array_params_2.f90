@@ -46,7 +46,7 @@ end
 
 ! { dg-final { scan-tree-dump "if \\(idx.. <= 1\\) goto L..;" "original" } }
 ! { dg-final { scan-tree-dump "cfi...dim\\\[idx..\\\].lower_bound = 0;" "original" } }
-! { dg-final { scan-tree-dump {cfi..\.dim\[idx..\].extent = \((?:NON_LVALUE_EXPR <)?parm..\.dim\[idx..\]\.ubound>? - (?:NON_LVALUE_EXPR <)?parm..\.dim\[idx..\]\.lbound>?\) \+ 1;} "original" } }
+! { dg-final { scan-tree-dump {cfi..\.dim\[idx..\].extent = (?:NON_LVALUE_EXPR <)?parm..\.dim\[idx..\]\.ubound>? - \((?:NON_LVALUE_EXPR <)?parm..\.dim\[idx..\]\.lbound>? \+ -1\);} "original" } }
 ! { dg-final { scan-tree-dump {cfi..\.dim\[idx..\].sm = (?:NON_LVALUE_EXPR <)?parm...dim\[idx..\].stride>? \* (?:NON_LVALUE_EXPR <)?parm..\.span>?;} "original" } }
 ! { dg-final { scan-tree-dump "idx.. = idx.. \\+ 1;" "original" } }
 

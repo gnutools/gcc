@@ -1049,7 +1049,7 @@ gfc_trans_lock_unlock (gfc_code *code, gfc_exec_op op)
       /* For arrays, obtain the array index.  */
       if (gfc_expr_attr (code->expr1).dimension)
 	{
-	  tree desc, tmp, extent, lbound, ubound;
+	  tree desc, tmp, extent, lbound;
 	  gfc_array_ref *ar, ar2;
 	  int i, rank;
 
@@ -1085,8 +1085,7 @@ gfc_trans_lock_unlock (gfc_code *code, gfc_exec_op op)
 				       TREE_TYPE (tmp), index, tmp);
 	      if (i < ar->dimen - 1)
 		{
-		  ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[i]);
-		  tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+		  tmp = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[i]);
 		  extent = fold_build2_loc (input_location, MULT_EXPR,
 					    TREE_TYPE (tmp), extent, tmp);
 		}
@@ -1250,7 +1249,7 @@ gfc_trans_event_post_wait (gfc_code *code, gfc_exec_op op)
   /* For arrays, obtain the array index.  */
   if (gfc_expr_attr (code->expr1).dimension)
     {
-      tree desc, tmp, extent, lbound, ubound;
+      tree desc, tmp, extent, lbound;
       gfc_array_ref *ar, ar2;
       int i;
 
@@ -1283,8 +1282,7 @@ gfc_trans_event_post_wait (gfc_code *code, gfc_exec_op op)
 				   TREE_TYPE (tmp), index, tmp);
 	  if (i < ar->dimen - 1)
 	    {
-	      ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[i]);
-	      tmp = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+	      tmp = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[i]);
 	      extent = fold_build2_loc (input_location, MULT_EXPR,
 					TREE_TYPE (tmp), extent, tmp);
 	    }

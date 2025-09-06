@@ -594,6 +594,20 @@ gfc_conv_descriptor_sm_get (tree desc, tree dim)
 			  gfc_conv_descriptor_span_get (desc));
 }
 
+
+tree
+gfc_conv_descriptor_extent_get (tree desc, tree dim)
+{
+  tree lbound = gfc_conv_descriptor_lbound_get (desc, dim);
+  tree ubound = gfc_conv_descriptor_ubound_get (desc, dim);
+
+  tree tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			      lbound, gfc_index_one_node);
+  return fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
+			  ubound, tmp);
+}
+
+
 /*******************************************************************************
  * Array descriptor higher level routines.                                     *
  ******************************************************************************/
@@ -1044,14 +1058,7 @@ gfc_conv_descriptor_size_1 (tree desc, int from_dim, int to_dim)
 
   for (dim = from_dim; dim < to_dim; ++dim)
     {
-      tree lbound;
-      tree ubound;
-      tree extent;
-
-      lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
-      ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
-
-      extent = gfc_conv_array_extent_dim (lbound, ubound, NULL);
+      tree extent = gfc_conv_descriptor_extent_get (desc, gfc_rank_cst[dim]);
       res = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			     res, extent);
     }
@@ -2844,15 +2851,8 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 		 start at zero, but when allocating it, the standard expects
 		 the array to start at one.  Therefore fix the upper bound to be
 		 (desc.ubound - desc.lbound) + 1.  */
-	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
-				     gfc_array_index_type,
-				     gfc_conv_descriptor_ubound_get (
-				       expr3_desc, gfc_rank_cst[n]),
-				     gfc_conv_descriptor_lbound_get (
-				       expr3_desc, gfc_rank_cst[n]));
-	      tmp = fold_build2_loc (input_location, PLUS_EXPR,
-				     gfc_array_index_type, tmp,
-				     gfc_index_one_node);
+	      tmp = gfc_conv_descriptor_extent_get (expr3_desc,
+						    gfc_rank_cst[n]);
 	      se.expr = gfc_evaluate_now (tmp, pblock);
 	    }
 	  else

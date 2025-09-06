@@ -7972,13 +7972,8 @@ gfc_tree_array_size (stmtblock_t *block, tree desc, gfc_expr *expr, tree dim)
     {
       if (!dim)
 	dim = gfc_index_zero_node;
-      tree ubound = gfc_conv_descriptor_ubound_get (desc, dim);
-      tree lbound = gfc_conv_descriptor_lbound_get (desc, dim);
 
-      size = fold_build2_loc (input_location, MINUS_EXPR,
-			      gfc_array_index_type, ubound, lbound);
-      size = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			      size, gfc_index_one_node);
+      size = gfc_conv_descriptor_extent_get (desc, dim);
       /* if (!allocatable && !pointer && assumed rank)
 	   size = (idx == rank && ubound[rank-1] == -1 ? -1 : size;
 	 else
@@ -8039,11 +8034,7 @@ gfc_tree_array_size (stmtblock_t *block, tree desc, gfc_expr *expr, tree dim)
       cond = fold_build2_loc (input_location, TRUTH_AND_EXPR, boolean_type_node,
 			      cond, tmp);
     }
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 gfc_conv_descriptor_ubound_get (desc, idx),
-			 gfc_conv_descriptor_lbound_get (desc, idx));
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			 tmp, gfc_index_one_node);
+  tmp = gfc_conv_descriptor_extent_get (desc, idx);
   gfc_add_modify (&cond_block, extent, tmp);
   tmp = fold_build2_loc (input_location, LT_EXPR, boolean_type_node,
 			 extent, gfc_index_zero_node);
@@ -8619,12 +8610,7 @@ gfc_full_array_size (stmtblock_t *block, tree decl, int rank)
     idx = gfc_conv_descriptor_rank_get (decl);
   else
     idx = gfc_rank_cst[rank - 1];
-  nelems = gfc_conv_descriptor_ubound_get (decl, idx);
-  tmp = gfc_conv_descriptor_lbound_get (decl, idx);
-  tmp = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
-			 nelems, tmp);
-  tmp = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			 tmp, gfc_index_one_node);
+  tmp = gfc_conv_descriptor_extent_get (decl, idx);
   tmp = gfc_evaluate_now (tmp, block);
 
   nelems = gfc_conv_descriptor_stride_get (decl, idx);
