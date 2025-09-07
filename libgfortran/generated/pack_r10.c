@@ -164,7 +164,7 @@ pack_r10 (gfc_array_r10 *ret, const gfc_array_r10 *array,
       if (ret->base_addr == NULL)
 	{
 	  /* Setup the array descriptor.  */
-	  GFC_DIMENSION_SET(ret->dim[0], 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
 
 	  ret->offset = 0;
 

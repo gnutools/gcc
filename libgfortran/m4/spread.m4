@@ -99,7 +99,7 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
 	      rs *= extent[dim];
 	      dim++;
 	    }
-	  GFC_DIMENSION_SET(ret->dim[n], 0, ub, stride);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, ub, stride);
 	}
       ret->offset = 0;
 
@@ -246,7 +246,7 @@ spread_scalar_'rtype_code` ('rtype` *ret, const 'rtype_name` *source,
     {
       ret->base_addr = xmallocarray (ncopies, sizeof ('rtype_name`));
       ret->offset = 0;
-      GFC_DIMENSION_SET(ret->dim[0], 0, ncopies - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, 1);
     }
   else
     {

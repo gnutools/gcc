@@ -2386,7 +2386,7 @@ list_formatted_read_scalar (st_parameter_dt *dtp, bt type, void *p,
 	  gfc_full_array_i4 vlist;
 
 	  GFC_DESCRIPTOR_DATA(&vlist) = NULL;
-	  GFC_DIMENSION_SET(vlist.dim[0],1, 0, 0);
+	  GFC_DESCRIPTOR_DIMENSION_SET(&vlist, 0, 1, 0, 0);
 
 	  /* Set iostat, intent(out).  */
 	  noiostat = 0;
@@ -3201,7 +3201,7 @@ nml_read_obj (st_parameter_dt *dtp, namelist_info *nl, index_type offset,
 		formatted_dtio dtio_ptr = (formatted_dtio)nl->dtio_sub;
 
 		GFC_DESCRIPTOR_DATA(&vlist) = NULL;
-		GFC_DIMENSION_SET(vlist.dim[0],1, 0, 0);
+		GFC_DESCRIPTOR_DIMENSION_SET(&vlist, 0, 1, 0, 0);
 
 		list_obj.vptr = nl->vtable;
 		list_obj.len = 0;

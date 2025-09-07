@@ -60,7 +60,7 @@ bessel_jn_r16 (gfc_array_r16 * const restrict ret, int n1, int n2, GFC_REAL_16 x
   if (ret->base_addr == NULL)
     {
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DIMENSION_SET(ret->dim[0], 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, 1);
       ret->base_addr = xmallocarray (size, sizeof (GFC_REAL_16));
       ret->offset = 0;
     }
@@ -127,7 +127,7 @@ bessel_yn_r16 (gfc_array_r16 * const restrict ret, int n1, int n2,
   if (ret->base_addr == NULL)
     {
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DIMENSION_SET(ret->dim[0], 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, 1);
       ret->base_addr = xmallocarray (size, sizeof (GFC_REAL_16));
       ret->offset = 0;
     }

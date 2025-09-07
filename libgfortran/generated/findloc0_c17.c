@@ -54,7 +54,7 @@ findloc0_c17 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -193,7 +193,7 @@ mfindloc0_c17 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));
@@ -355,7 +355,7 @@ sfindloc0_c17 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(retarray->dim[0], 0, rank-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (index_type));

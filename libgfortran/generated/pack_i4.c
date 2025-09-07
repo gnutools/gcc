@@ -164,7 +164,7 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
       if (ret->base_addr == NULL)
 	{
 	  /* Setup the array descriptor.  */
-	  GFC_DIMENSION_SET(ret->dim[0], 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
 
 	  ret->offset = 0;
 

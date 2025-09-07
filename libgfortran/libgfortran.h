@@ -467,13 +467,12 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DIMENSION_LBOUND(dim) ((dim).lower_bound)
 #define GFC_DIMENSION_UBOUND(dim) ((dim)._ubound)
 #define GFC_DIMENSION_STRIDE(dim) ((dim)._stride)
-#define GFC_DIMENSION_EXTENT(dim) ((dim)._ubound + 1 - (dim).lower_bound)
-#define GFC_DIMENSION_SET(dim,lb,ub,str) \
+#define GFC_DESCRIPTOR_DIMENSION_SET(desc,i,lb,ub,str) \
   do \
     { \
-      (dim).lower_bound = lb;			\
-      (dim)._ubound = ub;			\
-      (dim)._stride = str;			\
+      (desc)->dim[i].lower_bound = lb;			\
+      (desc)->dim[i]._ubound = ub;			\
+      (desc)->dim[i]._stride = str;			\
     } while (0)
 	    
 

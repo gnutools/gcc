@@ -90,8 +90,8 @@ unpack0_r17 (gfc_array_r17 *ret, const gfc_array_r17 *vector,
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
@@ -236,8 +236,8 @@ unpack1_r17 (gfc_array_r17 *ret, const gfc_array_r17 *vector,
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
-	  GFC_DIMENSION_SET(ret->dim[n], 0,
-			    GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0,
+				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
 	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);

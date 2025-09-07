@@ -95,8 +95,7 @@ iany_i8 (gfc_array_i8 * const restrict retarray,
 	  else
 	    str = GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
 
-	  GFC_DIMENSION_SET(retarray->dim[n], 0, extent[n] - 1, str);
-
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
 	}
 
       retarray->offset = 0;
@@ -287,8 +286,7 @@ miany_i8 (gfc_array_i8 * const restrict retarray,
 	  else
 	    str= GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
 
-	  GFC_DIMENSION_SET(retarray->dim[n], 0, extent[n] - 1, str);
-
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
 	}
 
       alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
@@ -446,8 +444,7 @@ siany_i8 (gfc_array_i8 * const restrict retarray,
 	  else
 	    str = GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
 
-	  GFC_DIMENSION_SET(retarray->dim[n], 0, extent[n] - 1, str);
-
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
 	}
 
       retarray->offset = 0;

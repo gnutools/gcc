@@ -94,7 +94,7 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
 	{
 	  rex = shape_data[n];
 
-	  GFC_DIMENSION_SET(ret->dim[n],0,rex - 1,rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, rex - 1, rs);
 
 	  rs *= rex;
 	}

@@ -311,7 +311,7 @@ secnds (GFC_REAL_4 *x)
   GFC_DESCRIPTOR_DTYPE (avalues).type = BT_REAL;
   GFC_DESCRIPTOR_DTYPE (avalues).elem_len = 4;
   GFC_DESCRIPTOR_DTYPE (avalues).rank = 1;
-  GFC_DIMENSION_SET(avalues->dim[0], 0, 7, 1);
+  GFC_DESCRIPTOR_DIMENSION_SET(avalues, 0, 0, 7, 1);
 
   date_and_time (NULL, NULL, NULL, avalues, 0, 0, 0);
 

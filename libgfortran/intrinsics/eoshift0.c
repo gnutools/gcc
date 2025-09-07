@@ -79,7 +79,7 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
             str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
 	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);
 
-	  GFC_DIMENSION_SET(ret->dim[i], 0, ub, str);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, str);
 
         }
 

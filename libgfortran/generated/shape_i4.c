@@ -43,7 +43,7 @@ shape_4 (gfc_array_i4 * const restrict ret,
 
   if (ret->base_addr == NULL)
     {
-      GFC_DIMENSION_SET(ret->dim[0], 0, rank - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, rank - 1, 1);
       ret->offset = 0;
       ret->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
     }

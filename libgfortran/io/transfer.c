@@ -4939,7 +4939,7 @@ st_set_nml_var_dim (st_parameter_dt *dtp, GFC_INTEGER_4 n_dim,
 
   for (nml = dtp->u.p.ionml; nml->next; nml = nml->next);
 
-  GFC_DIMENSION_SET(nml->dim[n],lbound,ubound,stride);
+  GFC_DESCRIPTOR_DIMENSION_SET(nml, n, lbound, ubound, stride);
 }
 
 

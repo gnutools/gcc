@@ -98,7 +98,7 @@ spread_i2 (gfc_array_i2 *ret, const gfc_array_i2 *source,
 	      rs *= extent[dim];
 	      dim++;
 	    }
-	  GFC_DIMENSION_SET(ret->dim[n], 0, ub, stride);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, ub, stride);
 	}
       ret->offset = 0;
 
@@ -245,7 +245,7 @@ spread_scalar_i2 (gfc_array_i2 *ret, const GFC_INTEGER_2 *source,
     {
       ret->base_addr = xmallocarray (ncopies, sizeof (GFC_INTEGER_2));
       ret->offset = 0;
-      GFC_DIMENSION_SET(ret->dim[0], 0, ncopies - 1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, 1);
     }
   else
     {

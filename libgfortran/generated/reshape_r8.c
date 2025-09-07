@@ -104,7 +104,7 @@ reshape_r8 (gfc_array_r8 * const restrict ret,
 	{
 	  rex = shape_data[n];
 
-	  GFC_DIMENSION_SET(ret->dim[n], 0, rex - 1, rs);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, rex - 1, rs);
 
 	  rs *= rex;
 	}

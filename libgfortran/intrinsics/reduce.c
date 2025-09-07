@@ -129,7 +129,7 @@ reduce (parray *ret,
       if (i != (int)dimen_m1)
 	{
 	  str = GFC_DESCRIPTOR_STRIDE (array, j);
-	  GFC_DIMENSION_SET (ret->dim[j], 0, ext - 1, str);
+	  GFC_DESCRIPTOR_DIMENSION_SET (ret, j, 0, ext - 1, str);
 	  j++;
 	}
     }
