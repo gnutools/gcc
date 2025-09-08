@@ -32,15 +32,15 @@ include(iforeach.m4)dnl
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 FOREACH_FUNCTION(
-`    atype_name minval;
+`    'atype_name` minval;
 #if defined('atype_nan`)
     int fast = 0;
 #endif
 
 #if defined('atype_inf`)
-    minval = atype_inf;
+    minval = 'atype_inf`;
 #else
-    minval = atype_max;
+    minval = 'atype_max`;
 #endif',
 `#if defined('atype_nan`)
       if (unlikely (!fast))

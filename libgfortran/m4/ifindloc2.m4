@@ -25,25 +25,25 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #include "libgfortran.h"
 
-#ifdef HAVE_'atype_name`'`
-'header1`'`
+#ifdef HAVE_'atype_name`
+'header1`
 {
   index_type i;
   index_type sstride;
   index_type extent;
-  const 'atype_name`'` * restrict src;
+  const 'atype_name` * restrict src;
 
   extent = GFC_DESCRIPTOR_EXTENT(array,0);
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`'`;
+  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`;
   if (back)
     {
       src = array->base_addr + (extent - 1) * sstride;
       for (i = extent; i > 0; i--)
 	{
-	  if ('comparison`'`)
+	  if ('comparison`)
 	    return i;
 	  src -= sstride;
 	}
@@ -53,7 +53,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       src = array->base_addr;
       for (i = 1; i <= extent; i++)
 	{
-	  if ('comparison`'`)
+	  if ('comparison`)
 	    return i;
 	  src += sstride;
 	}
@@ -61,12 +61,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   return 0;
 }
 
-'header2`'`
+'header2`
 {
   index_type i;
   index_type sstride;
   index_type extent;
-  const 'atype_name`'` * restrict src;
+  const 'atype_name` * restrict src;
   const GFC_LOGICAL_1 * restrict mbase;
   int mask_kind;
   index_type mstride;
@@ -87,7 +87,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`'`;
+  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`;
   mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
 
   if (back)
@@ -96,7 +96,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       mbase += (extent - 1) * mstride;
       for (i = extent; i > 0; i--)
 	{
-	  if (*mbase && ('comparison`'`))
+	  if (*mbase && ('comparison`))
 	    return i;
 	  src -= sstride;
 	  mbase -= mstride;
@@ -107,7 +107,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       src = array->base_addr;
       for (i = 1; i <= extent; i++)
 	{
-	  if (*mbase && ('comparison`'`))
+	  if (*mbase && ('comparison`))
 	    return i;
 	  src += sstride;
 	  mbase += mstride;
@@ -115,7 +115,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     }
   return 0;
 }
-'header3`'`
+'header3`
 {
   if (mask == NULL || *mask)
     {

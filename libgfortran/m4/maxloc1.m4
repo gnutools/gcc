@@ -63,26 +63,26 @@ ARRAY_FUNCTION(0,
 		  }', `')
 
 MASKED_ARRAY_FUNCTION(0,
-`	atype_name maxval;
+`	'atype_name` maxval;
 #if defined ('atype_inf`)
-	maxval = -atype_inf;
+	maxval = -'atype_inf`;
 #else
-	maxval = atype_min;
+	maxval = 'atype_min`;
 #endif
 #if defined ('atype_nan`)
-	rtype_name result2 = 0;
+	'rtype_name` result2 = 0;
 #endif
 	result = 0;',
 `		if (*msrc)
 		  {
 #if defined ('atype_nan`)
 		    if (!result2)
-		      result2 = (rtype_name)n + 1;
+		      result2 = ('rtype_name`)n + 1;
 		    if (*src >= maxval)
 #endif
 		      {
 			maxval = *src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
 		  }

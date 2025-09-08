@@ -4,7 +4,7 @@ dnl This file is part of the GNU Fortran Runtime Library (libgfortran)
 dnl Distributed under the GNU GPL with exception.  See COPYING for details.
 define(START_FOREACH_FUNCTION,
 `static inline int
-compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
+compare_fcn (const 'atype_name` *a, const 'atype_name` *b, gfc_charlen_type n)
 {
   if (sizeof ('atype_name`) == 1)
     return memcmp (a, b, n);
@@ -15,13 +15,13 @@ compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
 
 #define INITVAL 'initval`
 
-extern void 'name`'rtype_qual`_'atype_code (atype_name * restrict,
+extern void 'name`'rtype_qual`_'atype_code` ('atype_name` * restrict,
         gfc_charlen_type,
-	atype * const restrict array, gfc_charlen_type);
-export_proto(name`'rtype_qual`_'atype_code);
+	'atype` * const restrict array, gfc_charlen_type);
+export_proto('name`'rtype_qual`_'atype_code`);
 
 void
-name`'rtype_qual`_'atype_code` ('atype_name` * restrict ret,
+'name`'rtype_qual`_'atype_code` ('atype_name` * restrict ret,
         gfc_charlen_type xlen,
 	'atype` * const restrict array, gfc_charlen_type len)
 {
@@ -96,13 +96,13 @@ define(FINISH_FOREACH_FUNCTION,
 }')dnl
 define(START_MASKED_FOREACH_FUNCTION,
 `
-extern void `m'name`'rtype_qual`_'atype_code (atype_name * restrict,
+extern void m'name`'rtype_qual`_'atype_code` ('atype_name` * restrict,
        gfc_charlen_type, atype * const restrict array,
        gfc_array_l1 * const restrict mask, gfc_charlen_type len);
-export_proto(`m'name`'rtype_qual`_'atype_code);
+export_proto(m'name`'rtype_qual`_'atype_code`);
 
 void
-`m'name`'rtype_qual`_'atype_code (atype_name * const restrict ret,
+m'name`'rtype_qual`_'atype_code` ('atype_name` * const restrict ret,
 	gfc_charlen_type xlen, atype * const restrict array,
 	gfc_array_l1 * const restrict mask, gfc_charlen_type len)
 {
@@ -110,7 +110,7 @@ void
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  const atype_name *base;
+  const 'atype_name` *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
   index_type n;
@@ -118,7 +118,7 @@ void
 
   if (mask == NULL)
     {
-      name`'rtype_qual`_'atype_code (ret, xlen, array, len);
+      'name`'rtype_qual`_'atype_code` (ret, xlen, array, len);
       return;
     }
 
@@ -208,20 +208,20 @@ $2
 FINISH_MASKED_FOREACH_FUNCTION')dnl
 define(SCALAR_FOREACH_FUNCTION,
 `
-extern void `s'name`'rtype_qual`_'atype_code (atype_name * restrict,
+extern void s'name`'rtype_qual`_'atype_code` ('atype_name` * restrict,
         gfc_charlen_type,
-	atype * const restrict array, GFC_LOGICAL_4 *, gfc_charlen_type);
-export_proto(`s'name`'rtype_qual`_'atype_code);
+	'atype` * const restrict array, GFC_LOGICAL_4 *, gfc_charlen_type);
+export_proto(s'name`'rtype_qual`_'atype_code`);
 
 void
-`s'name`'rtype_qual`_'atype_code (atype_name * restrict ret,
-        gfc_charlen_type xlen, atype * const restrict array,
+s'name`'rtype_qual`_'atype_code` ('atype_name` * restrict ret,
+        gfc_charlen_type xlen, 'atype` * const restrict array,
 	GFC_LOGICAL_4 *mask, gfc_charlen_type len)
 	
 {
   if (mask == NULL || *mask)
     {
-      name`'rtype_qual`_'atype_code (ret, xlen, array, len);
+      'name`'rtype_qual`_'atype_code` (ret, xlen, array, len);
       return;
     }
   memset (ret, INITVAL, sizeof (*ret) * len);

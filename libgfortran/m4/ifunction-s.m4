@@ -22,7 +22,7 @@ define(START_ARRAY_FUNCTION,
 #include <assert.h>
 
 static inline int
-compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
+compare_fcn (const 'atype_name` *a, const 'atype_name` *b, gfc_charlen_type n)
 {
   if (sizeof ('atype_name`) == 1)
     return memcmp (a, b, n);
@@ -30,7 +30,7 @@ compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
     return memcmp_char4 (a, b, n);
 }
 
-extern void name`'rtype_qual`_'atype_code (rtype` * const restrict, 
+extern void 'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, const index_type * const restrict 'back_arg`,
 	gfc_charlen_type);
 export_proto('name`'rtype_qual`_'atype_code`);
@@ -45,8 +45,8 @@ void
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  const 'atype_name * restrict base;
-  rtype_name * restrict dest;
+  const 'atype_name` * restrict base;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
   index_type len;
@@ -137,8 +137,8 @@ void
   continue_loop = 1;
   while (continue_loop)
     {
-      const atype_name * restrict src;
-      rtype_name result;
+      const 'atype_name` * restrict src;
+      'rtype_name` result;
       src = base;
       {
 ')dnl
@@ -188,7 +188,7 @@ define(FINISH_ARRAY_FUNCTION,
 }')dnl
 define(START_MASKED_ARRAY_FUNCTION,
 `
-extern void `m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict, 
+extern void m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, const index_type * const restrict,
 	gfc_array_l1 * const restrict'back_arg`, gfc_charlen_type);
 export_proto(m'name`'rtype_qual`_'atype_code`);
@@ -205,8 +205,8 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  'rtype_name * restrict dest;
-  const atype_name * restrict base;
+  'rtype_name` * restrict dest;
+  const 'atype_name` * restrict base;
   const GFC_LOGICAL_1 * restrict mbase;
   index_type rank;
   index_type dim;
@@ -219,9 +219,9 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   if (mask == NULL)
     {
 #ifdef HAVE_BACK_ARG
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, back, string_len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, back, string_len);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, string_len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, string_len);
 #endif
       return;
     }
@@ -327,9 +327,9 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   while (base)
     {
-      const atype_name * restrict src;
+      const 'atype_name` * restrict src;
       const GFC_LOGICAL_1 * restrict msrc;
-      rtype_name result;
+      'rtype_name` result;
       src = base;
       msrc = mbase;
       {
@@ -377,7 +377,7 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 }')dnl
 define(SCALAR_ARRAY_FUNCTION,
 `
-extern void `s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict, 
+extern void s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, const index_type * const restrict,
 	GFC_LOGICAL_4 *'back_arg`, gfc_charlen_type);
 export_proto(s'name`'rtype_qual`_'atype_code`);
@@ -391,7 +391,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  'rtype_name * restrict dest;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
   index_type dim;
@@ -400,9 +400,9 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   if (mask == NULL || *mask)
     {
 #ifdef HAVE_BACK_ARG
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, back, string_len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, back, string_len);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, string_len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, string_len);
 #endif
       return;
     }

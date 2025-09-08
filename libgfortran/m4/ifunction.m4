@@ -19,12 +19,12 @@ dnl You should not return or break from the inner loop of the implementation.
 dnl Care should also be taken to avoid using the names defined in iparm.m4
 define(START_ARRAY_FUNCTION,
 `
-extern void name`'rtype_qual`_'atype_code (rtype * const restrict,
-	atype` * const restrict, const 'index_type` * const restrict'back_arg`);
-export_proto('name`'rtype_qual`_'atype_code);
+extern void 'name`'rtype_qual`_'atype_code` ('rtype`  * const restrict,
+	'atype` * const restrict, const index_type * const restrict'back_arg`);
+export_proto('name`'rtype_qual`_'atype_code`);
 
 void
-name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
+'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	'atype` * const restrict array,
 	const index_type * const restrict pdim'back_arg`)
 {
@@ -32,8 +32,8 @@ name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  const 'atype_name * restrict base;
-  rtype_name * restrict dest;
+  const 'atype_name` * restrict base;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
   index_type len;
@@ -124,8 +124,8 @@ name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   continue_loop = 1;
   while (continue_loop)
     {
-      const atype_name * restrict src;
-      rtype_name result;
+      const 'atype_name` * restrict src;
+      'rtype_name` result;
       src = base;
       {
 ')dnl
@@ -177,7 +177,7 @@ define(FINISH_ARRAY_FUNCTION,
 }')dnl
 define(START_MASKED_ARRAY_FUNCTION,
 `
-extern void `m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
+extern void m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, const 'index_type` * const restrict,
 	gfc_array_l1 * const restrict'back_arg`);
 export_proto(m'name`'rtype_qual`_'atype_code`);
@@ -193,8 +193,8 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  'rtype_name * restrict dest;
-  const atype_name * restrict base;
+  'rtype_name` * restrict dest;
+  const 'atype_name` * restrict base;
   const GFC_LOGICAL_1 * restrict mbase;
   index_type rank;
   index_type dim;
@@ -207,9 +207,9 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   if (mask == NULL)
     {
 #ifdef HAVE_BACK_ARG
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, back);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, back);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, pdim);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim);
 #endif
       return;
     }
@@ -365,13 +365,13 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 }')dnl
 define(SCALAR_ARRAY_FUNCTION,
 `
-extern void `s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
+extern void s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, const index_type * const restrict,
 	GFC_LOGICAL_4 *'back_arg`);
-export_proto(s'name`'rtype_qual`_'atype_code);
+export_proto(s'name`'rtype_qual`_'atype_code`);
 
 void
-`s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
+s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	'atype` * const restrict array,
 	const index_type * const restrict pdim,
 	GFC_LOGICAL_4 * mask'back_arg`)
@@ -379,7 +379,7 @@ void
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  'rtype_name * restrict dest;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
   index_type dim;
@@ -388,9 +388,9 @@ void
   if (mask == NULL || *mask)
     {
 #ifdef HAVE_BACK_ARG
-      name`'rtype_qual`_'atype_code (retarray, array, pdim, back);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim, back);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, pdim);
+      'name`'rtype_qual`_'atype_code` (retarray, array, pdim);
 #endif
       return;
     }

@@ -34,11 +34,11 @@ include(ifunction.m4)dnl
 #define HAVE_BACK_ARG 1
 
 ARRAY_FUNCTION(0,
-`	atype_name minval;
+`	'atype_name` minval;
 #if defined ('atype_inf`)
-	minval = atype_inf;
+	minval = 'atype_inf`;
 #else
-	minval = atype_max;
+	minval = 'atype_max`;
 #endif
 	result = 1;',
 `#if defined ('atype_nan`)
@@ -60,7 +60,7 @@ ARRAY_FUNCTION(0,
 		  if (unlikely (*src <= minval))
 		    {
 		      minval = *src;
-		      result = (rtype_name)n + 1;
+		      result = ('rtype_name`)n + 1;
 		    }
 		}
 	    else
@@ -73,26 +73,26 @@ ARRAY_FUNCTION(0,
 		    }')
 
 MASKED_ARRAY_FUNCTION(0,
-`	atype_name minval;
+`	'atype_name` minval;
 #if defined ('atype_inf`)
-	minval = atype_inf;
+	minval = 'atype_inf`;
 #else
-	minval = atype_max;
+	minval = 'atype_max`;
 #endif
 #if defined ('atype_nan`)
-	rtype_name result2 = 0;
+	'rtype_name` result2 = 0;
 #endif
 	result = 0;',
 `		if (*msrc)
 		  {
 #if defined ('atype_nan`)
 		    if (!result2)
-		      result2 = (rtype_name)n + 1;
+		      result2 = ('rtype_name`)n + 1;
 		    if (*src <= minval)
 #endif
 		      {
 			minval = *src;
-			result = (rtype_name)n + 1;
+			result = ('rtype_name`)n + 1;
 			break;
 		      }
 		  }

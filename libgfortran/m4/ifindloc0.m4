@@ -79,7 +79,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`'`;
+      base = array->base_addr + (sz - 1) * 'base_mult`;
 
       while (1)
         {
@@ -92,7 +92,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 		  return;
 		}
-	      base -= sstride[0] * 'base_mult`'`;
+	      base -= sstride[0] * 'base_mult`;
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -103,14 +103,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 'base_mult`'`;
+	      base += sstride[n] * extent[n] * 'base_mult`;
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 'base_mult`'`;
+		  base -= sstride[n] * 'base_mult`;
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -129,7 +129,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 		  return;
 		}
-	      base += sstride[0] * 'base_mult`'`;
+	      base += sstride[0] * 'base_mult`;
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -140,14 +140,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 'base_mult`'`;
+	      base -= sstride[n] * extent[n] * 'base_mult`;
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n] * 'base_mult`'`;
+		  base += sstride[n] * 'base_mult`;
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -228,7 +228,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`'`;
+      base = array->base_addr + (sz - 1) * 'base_mult`;
       mbase = mbase + (sz - 1) * mask_kind;
       while (1)
         {
@@ -241,7 +241,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 		  return;
 		}
-	      base -= sstride[0] * 'base_mult`'`;
+	      base -= sstride[0] * 'base_mult`;
 	      mbase -= mstride[0];
 	    } while(++count[0] != extent[0]);
 
@@ -253,7 +253,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 'base_mult`'`;
+	      base += sstride[n] * extent[n] * 'base_mult`;
 	      mbase -= mstride[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -261,7 +261,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 'base_mult`'`;
+		  base -= sstride[n] * 'base_mult`;
 		  mbase += mstride[n];
 		}
 	    } while (count[n] == extent[n]);      
@@ -281,7 +281,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 		  return;
 		}
-	      base += sstride[0] * 'base_mult`'`;
+	      base += sstride[0] * 'base_mult`;
 	      mbase += mstride[0];
 	    } while(++count[0] != extent[0]);
 
@@ -293,7 +293,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 'base_mult`'`;
+	      base -= sstride[n] * extent[n] * 'base_mult`;
 	      mbase -= mstride[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -301,7 +301,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n]* 'base_mult`'`;
+		  base += sstride[n]* 'base_mult`;
 		  mbase += mstride[n];
 		}
 	    } while (count[n] == extent[n]);

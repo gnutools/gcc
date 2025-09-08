@@ -32,15 +32,15 @@ include(iforeach.m4)dnl
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 FOREACH_FUNCTION(
-`    atype_name maxval;
+`    'atype_name` maxval;
 #if defined('atype_nan`)
     int fast = 0;
 #endif
 
 #if defined('atype_inf`)
-    maxval = -atype_inf;
+    maxval = -'atype_inf`;
 #else
-    maxval = atype_min;
+    maxval = 'atype_min`;
 #endif',
 `#if defined('atype_nan`)
       if (unlikely (!fast))
@@ -85,13 +85,13 @@ FOREACH_FUNCTION(
 		   dest[n * dstride] = count[n] + 1;
 	       }')
 MASKED_FOREACH_FUNCTION(
-`  atype_name maxval;
+`  'atype_name` maxval;
    int fast = 0;
 
 #if defined('atype_inf`)
-    maxval = -atype_inf;
+    maxval = -'atype_inf`;
 #else
-    maxval = atype_min;
+    maxval = 'atype_min`;
 #endif',
 `      if (unlikely (!fast))
 	{

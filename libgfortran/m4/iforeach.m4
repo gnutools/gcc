@@ -4,20 +4,20 @@ dnl This file is part of the GNU Fortran Runtime Library (libgfortran)
 dnl Distributed under the GNU GPL with exception.  See COPYING for details.
 define(START_FOREACH_FUNCTION,
 `
-extern void name`'rtype_qual`_'atype_code (rtype * const restrict retarray, 
+extern void 'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	atype * const restrict array, GFC_LOGICAL_4);
-export_proto(name`'rtype_qual`_'atype_code);
+export_proto('name`'rtype_qual`_'atype_code`);
 
 void
-name`'rtype_qual`_'atype_code (rtype * const restrict retarray, 
-	atype * const restrict array, GFC_LOGICAL_4 back)
+'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
+	'atype` * const restrict array, GFC_LOGICAL_4 back)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride;
-  const atype_name *base;
-  rtype_name * restrict dest;
+  const 'atype_name` *base;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
 
@@ -101,14 +101,14 @@ define(FINISH_FOREACH_FUNCTION,
 }')dnl
 define(START_MASKED_FOREACH_FUNCTION,
 `
-extern void `m'name`'rtype_qual`_'atype_code (rtype * const restrict, 
-	atype * const restrict, gfc_array_l1 * const restrict,
+extern void m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
+	'atype` * const restrict, gfc_array_l1 * const restrict,
 	GFC_LOGICAL_4);
-export_proto(`m'name`'rtype_qual`_'atype_code);
+export_proto(m'name`'rtype_qual`_'atype_code`);
 
 void
-`m'name`'rtype_qual`_'atype_code (rtype * const restrict retarray, 
-	atype * const restrict array,
+m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
+	'atype` * const restrict array,
 	gfc_array_l1 * const restrict mask, GFC_LOGICAL_4 back)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -116,8 +116,8 @@ void
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
   index_type dstride;
-  rtype_name *dest;
-  const atype_name *base;
+  'rtype_name` *dest;
+  const 'atype_name` *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
   index_type n;
@@ -126,7 +126,7 @@ void
 
   if (mask == NULL)
     {
-      name`'rtype_qual`_'atype_code (retarray, array, back);
+      'name`'rtype_qual`_'atype_code` (retarray, array, back);
       return;
     }
 
@@ -240,13 +240,13 @@ $2
 FINISH_MASKED_FOREACH_FUNCTION')dnl
 define(SCALAR_FOREACH_FUNCTION,
 `
-extern void `s'name`'rtype_qual`_'atype_code (rtype * const restrict, 
-	atype * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4);
-export_proto(`s'name`'rtype_qual`_'atype_code);
+extern void s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
+	'atype` * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4);
+export_proto(s'name`'rtype_qual`_'atype_code`);
 
 void
-`s'name`'rtype_qual`_'atype_code (rtype * const restrict retarray, 
-	atype * const restrict array,
+s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
+	'atype` * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
@@ -256,7 +256,7 @@ void
 
   if (mask == NULL || *mask)
     {
-      name`'rtype_qual`_'atype_code (retarray, array, back);
+      'name`'rtype_qual`_'atype_code` (retarray, array, back);
       return;
     }
 

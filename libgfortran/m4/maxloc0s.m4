@@ -37,7 +37,7 @@ include(iforeach-s.m4)dnl
 #define HAVE_BACK_ARG 1
 
 FOREACH_FUNCTION(
-`  const atype_name *maxval;
+`  const 'atype_name` *maxval;
    maxval = NULL;'
 ,
 `    if (maxval == NULL || (back ? compare_fcn (base, maxval, len) >= 0 :
@@ -49,7 +49,7 @@ FOREACH_FUNCTION(
     }')
 
 MASKED_FOREACH_FUNCTION(
-`  const atype_name *maxval;
+`  const 'atype_name` *maxval;
 
   maxval = NULL;'
 ,

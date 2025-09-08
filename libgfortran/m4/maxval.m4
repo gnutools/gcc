@@ -32,16 +32,16 @@ include(ifunction.m4)dnl
 
 ARRAY_FUNCTION(atype_min,
 `#if defined ('atype_inf`)
-	result = -atype_inf;
+	result = -'atype_inf`;
 #else
-	result = atype_min;
+	result = 'atype_min`;
 #endif',
 `#if defined ('atype_nan`)
 		if (*src >= result)
 		  break;
 	      }
 	    if (unlikely (n >= len))
-	      result = atype_nan;
+	      result = 'atype_nan`;
 	    else for (; n < len; n++, src += delta)
 	      {
 #endif
@@ -50,9 +50,9 @@ ARRAY_FUNCTION(atype_min,
 
 MASKED_ARRAY_FUNCTION(atype_min,
 `#if defined ('atype_inf`)
-	result = -atype_inf;
+	result = -'atype_inf`;
 #else
-	result = atype_min;
+	result = 'atype_min`;
 #endif
 #if defined ('atype_nan`)
 	int non_empty_p = 0;
@@ -70,9 +70,9 @@ MASKED_ARRAY_FUNCTION(atype_min,
 	    if (unlikely (n >= len))
 	      {
 #if defined ('atype_nan`)
-		result = non_empty_p ? atype_nan : atype_min;
+		result = non_empty_p ? 'atype_nan` : 'atype_min`;
 #else
-		result = atype_min;
+		result = 'atype_min`;
 #endif
 	      }
 	    else for (; n < len; n++, src += delta, msrc += mdelta)

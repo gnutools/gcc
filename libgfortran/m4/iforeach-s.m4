@@ -4,7 +4,7 @@ dnl This file is part of the GNU Fortran Runtime Library (libgfortran)
 dnl Distributed under the GNU GPL with exception.  See COPYING for details.
 define(START_FOREACH_FUNCTION,
 `static inline int
-compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
+compare_fcn (const 'atype_name` *a, const 'atype_name` *b, gfc_charlen_type n)
 {
   if (sizeof ('atype_name`) == 1)
     return memcmp (a, b, n);
@@ -13,20 +13,20 @@ compare_fcn (const atype_name *a, const atype_name *b, gfc_charlen_type n)
 
 }
 
-extern void name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray, 
+extern void 'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	'atype` * const restrict array'back_arg`, gfc_charlen_type len);
-export_proto('name`'rtype_qual`_'atype_code);
+export_proto('name`'rtype_qual`_'atype_code`);
 
 void
-name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray, 
+'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	'atype` * const restrict array'back_arg`, gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride;
-  const 'atype_name *base;
-  rtype_name * restrict dest;
+  const 'atype_name` *base;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
 
@@ -39,7 +39,7 @@ name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else
     {
@@ -112,7 +112,7 @@ define(FINISH_FOREACH_FUNCTION,
 }')dnl
 define(START_MASKED_FOREACH_FUNCTION,
 `
-extern void `m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict, 
+extern void m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, gfc_array_l1 * const restrict 'back_arg`,
 	gfc_charlen_type len);
 export_proto(m'name`'rtype_qual`_'atype_code`);
@@ -128,8 +128,8 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
   index_type dstride;
-  'rtype_name *dest;
-  const atype_name *base;
+  'rtype_name` *dest;
+  const 'atype_name` *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
   index_type n;
@@ -138,9 +138,9 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   if (mask == NULL)
     {
 #ifdef HAVE_BACK_ARG    
-      name`'rtype_qual`_'atype_code (retarray, array, back, len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, back, len);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, len);
 #endif
       return;
     }
@@ -154,7 +154,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else
     {
@@ -255,13 +255,13 @@ $2
 FINISH_MASKED_FOREACH_FUNCTION')dnl
 define(SCALAR_FOREACH_FUNCTION,
 `
-extern void `s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict, 
+extern void s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	'atype` * const restrict, GFC_LOGICAL_4 *'back_arg`,
 	gfc_charlen_type len);
-export_proto(s'name`'rtype_qual`_'atype_code);
+export_proto(s'name`'rtype_qual`_'atype_code`);
 
 void
-`s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray, 
+s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	'atype` * const restrict array,
 	GFC_LOGICAL_4 * mask'back_arg`,
 	gfc_charlen_type len)
@@ -269,14 +269,14 @@ void
   index_type rank;
   index_type dstride;
   index_type n;
-  'rtype_name *dest;
+  'rtype_name` *dest;
 
   if (mask == NULL || *mask)
     {
 #ifdef HAVE_BACK_ARG    
-      name`'rtype_qual`_'atype_code (retarray, array, back, len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, back, len);
 #else
-      name`'rtype_qual`_'atype_code (retarray, array, len);
+      'name`'rtype_qual`_'atype_code` (retarray, array, len);
 #endif
       return;
     }

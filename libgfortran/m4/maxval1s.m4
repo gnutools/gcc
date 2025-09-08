@@ -31,7 +31,7 @@ include(ifunction-s2.m4)dnl
 `#if defined (HAVE_'atype_name`) && defined (HAVE_'rtype_name`)'
 
 ARRAY_FUNCTION(0,
-`	const atype_name *retval;
+`	const 'atype_name` *retval;
 	retval = base;',
 `		if (compare_fcn (src, retval, string_len) > 0)
 		  {
@@ -39,7 +39,7 @@ ARRAY_FUNCTION(0,
 		  }', `')
 
 MASKED_ARRAY_FUNCTION(0,
-`	const atype_name *retval;
+`	const 'atype_name` *retval;
 	memset (dest, 0, sizeof (*dest) * string_len);
 	retval = dest;',
 `		if (*msrc)

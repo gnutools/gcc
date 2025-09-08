@@ -19,12 +19,12 @@ dnl You should not return or break from the inner loop of the implementation.
 dnl Care should also be taken to avoid using the names defined in iparm.m4
 define(START_ARRAY_FUNCTION,
 `
-extern void name`'rtype_qual`_'atype_code (rtype * const restrict, 
+extern void 'name`'rtype_qual`_'atype_code` ('rtype` * const restrict,
 	gfc_array_l1 * const restrict, const index_type * const restrict);
-export_proto(name`'rtype_qual`_'atype_code);
+export_proto('name`'rtype_qual`_'atype_code`);
 
 void
-name`'rtype_qual`_'atype_code (rtype * const restrict retarray, 
+'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	gfc_array_l1 * const restrict array, 
 	const index_type * const restrict pdim)
 {
@@ -33,7 +33,7 @@ name`'rtype_qual`_'atype_code (rtype * const restrict retarray,
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
   const GFC_LOGICAL_1 * restrict base;
-  rtype_name * restrict dest;
+  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
   index_type len;

@@ -33,7 +33,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  const 'atype_name`'` * restrict base;
+  const 'atype_name` * restrict base;
   index_type * restrict dest;
   index_type rank;
   index_type n;
@@ -125,7 +125,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   base = array->base_addr;
   while (continue_loop)
     {
-      const 'atype_name`'` * restrict src;
+      const 'atype_name` * restrict src;
       index_type result;
 
       result = 0;
@@ -134,7 +134,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  src = base + (len - 1) * delta * 'base_mult`;
 	  for (n = len; n > 0; n--, src -= delta * 'base_mult`)
 	    {
-	      if ('comparison`'`)
+	      if ('comparison`)
 		{
 		  result = n;
 		  break;
@@ -146,7 +146,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  src = base;
 	  for (n = 1; n <= len; n++, src += delta * 'base_mult`)
 	    {
-	      if ('comparison`'`)
+	      if ('comparison`)
 		{
 		  result = n;
 		  break;
@@ -179,14 +179,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	}
     }
 }
-'header2`'`
+'header2`
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
   index_type dstride[GFC_MAX_DIMENSIONS];
-  const 'atype_name`'` * restrict base;
+  const 'atype_name` * restrict base;
   const GFC_LOGICAL_1 * restrict mbase;
   index_type * restrict dest;
   index_type rank;
@@ -298,7 +298,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   base = array->base_addr;
   while (continue_loop)
     {
-      const 'atype_name`'` * restrict src;
+      const 'atype_name` * restrict src;
       const GFC_LOGICAL_1 * restrict msrc;
       index_type result;
 
@@ -309,7 +309,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  msrc = mbase + (len - 1) * mdelta; 
 	  for (n = len; n > 0; n--, src -= delta * 'base_mult`, msrc -= mdelta)
 	    {
-	      if (*msrc && 'comparison`'`)
+	      if (*msrc && 'comparison`)
 		{
 		  result = n;
 		  break;
@@ -322,7 +322,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  msrc = mbase;
 	  for (n = 1; n <= len; n++, src += delta * 'base_mult`, msrc += mdelta)
 	    {
-	      if (*msrc && 'comparison`'`)
+	      if (*msrc && 'comparison`)
 		{
 		  result = n;
 		  break;
@@ -357,7 +357,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	}
     }
 }
-'header3`'`
+'header3`
 {
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
@@ -371,7 +371,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (mask == NULL || *mask)
     {
-      findloc1_'atype_code`'` (retarray, array, value, pdim, back'len_arg`'`);
+      findloc1_'atype_code` (retarray, array, value, pdim, back'len_arg`);
       return;
     }
     /* Make dim zero based to avoid confusion.  */
