@@ -1,3 +1,63 @@
+==================== Branch work221, patch #1 ====================
+
+Add support for -mcpu=future
+
+This patch adds the support that can be used in developing GCC support for
+future PowerPC processors.
+
+This support is done by adding support for CPU ISA bits that are set directly
+via the -mcpu=<xxx> option, without having a -m<option> bit.
+
+2025-09-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add support for configuration option
+	--with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if -mcpu=future was used.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/driver-rs6000.cc (asm_names): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): If
+	-mcpu=future, define _ARCH_FUTURE.  Add CPU ISA flag bit argument.
+	(rs6000_cpu_cpp_builtins): Likewise.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(RS6000_CPU_ISA): New optional macro.
+	(future cpu): Set up for -mcpu=future.
+	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): Define as
+	PROCESSOR_POWER11 for now.
+	* config/rs6000/rs6000-protos.h (rs6000_target_modify_macros): Add
+	argument for CPU ISA bits.
+	(CPU_ISA_MASK_FUTURE): New macro.
+	(rs6000_target_modify_macros_ptr): Likewise.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (rs6000_target_modify_macros_ptr): Add
+	additional argument.
+	(rs6000_print_isa_options): Likewise.
+	(RS6000_CPU_ISA): New macro.
+	(DEBUG_FMT_WX): Update to print both isa flags and CPU isa flags.
+	(rs6000_debug_reg_global): Add support for CPU ISA options that are
+	set directly via -mcpu=<xxx>, rather than having separate -m<option>
+	arguments.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_coy_isa_masks): New list of CPU ISA options for debugging.
+	(rs6000_pragma_target_parse): Add support for CPU ISA options that are
+	set directly via -mcpu=<xxx>, rather than having separate -m<option>
+	arguments.
+	(rs6000_function_specific_print): Likewise.
+	(rs6000_print_options_internal): Likewise.
+	(rs6000_print_isa_options): Likewise.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Add support for -mcpu=future.
+	* config/rs6000/rs6000.opt (rs6000_cpu_isa_flags): New target global
+	variable.
+	(x_rs6000_cpu_isa_flags): Likewise.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
 ==================== Branch work221, baseline ====================
 
 2025-09-08   Michael Meissner  <meissner@linux.ibm.com>
