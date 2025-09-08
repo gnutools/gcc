@@ -1,3 +1,87 @@
+==================== Branch work221-float, patch #300 ====================
+
+Add initial _Float16 support.
+
+2025-09-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (VM): Add V8HF.
+	(VM2): Likewise.
+	(VI_char): Likewise.
+	(VI_scalar): Likewise.
+	(VI_unit): Likewise.
+	(VP_small): Likewise.
+	(VP_small_lc): Likewise.
+	(VU_char): Likewise.
+	* config/rs6000/predicate.md (easy_fp_constant): Power10 can load
+	_Float16 constants directly.
+	(ieee16_xxspltiw_constant): New predicate.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Add _Float16
+	support.
+	* config/rs6000/rs6000-call.cc (USE_FP_FOR_ARG_P): Likewise.
+	* config/rs6000/rs6000-modes.def (HFmode): Likewise.
+	* config/rs6000/rs6000-p8swap.cc (rs6000_gen_stvx): Drop V8HFmode
+	support since V8HFmode doesn't exist on power8 or earlier.
+	(rs6000_gen_lvx): Likewise.
+	(replace_swapped_load_constant): Likewise.
+	* config/rs6000/rs6000-protos.h (vec_const_128bit_type): Add mode field.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached): Add
+	_Float16 support.
+	(rs6000_modes_tieable_p): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_can_change_mode_class): Likewise.
+	(rs6000_function_value): Likewise.
+	(rs6000_scalar_mode_supported_p): Likewise.
+	(rs6000_floatn_mode): Likewise.
+	(constant_fp_to_128bit_vector): Likewise.
+	(vec_const_128bit_to_bytes): Likewise.
+	(constant_generates_xxspltiw): Likewise.
+	* config/rs6000/rs6000.h (TARGET_IEEE16): New macro.
+	* config/rs6000/rs6000.md (FMOVE128_GPR): Add support for V8HFmode.
+	(RELOAD): Likewise.
+	(movhf): Likewise.
+	(movhf_xxspltiw): Likewise.
+	(movhf_internal): Likewise.
+	* config/rs6000/rs6000.opt (-mieee16-gpr-args): New debug switch.
+	* config/rs6000/vector.md (VEC_L): Add V8HFmode.
+	(VEC_M): Likewise.
+	(VEC_E): Likewise.
+	(VEC_base): Likewise.
+	(VEC_base_l): Likewise.
+	(vec_pack_trunc_v4s): Likewise.
+	(vec_unpacks_hi_v8h): Likewise.
+	* config/rs600/vsx.md (V8HI_V8HF): New mode iterator.
+	(VSX_L): Add V8HFmode.
+	(VSX_XXBR): Likewise.
+	(VSm): Likewise.
+	(VSr): Likewise.
+	(VSisa): Likewise.
+	(??r): Likewise.
+	(VSc): Likewise.
+	(VM3): Likewise.
+	(VM3_char): Likewise.
+	(vsx_le_perm_load_<mode>): Likewise.
+	(vsx_le_perm_store_<mode>): Likewise.
+	(permute splits): Likewise.
+	(vsx_ld_elemrev_<mode): Likewise.
+	(vsx_st_elemrev_<mode>): Likewise.
+	(vsx_st_elemrev_<mode>_internal): Likewise.
+	(vsx_xvcvhpsp): Add comment.
+	(vsx_xvcvhpsp_v8hf): New insn.
+	(vsx_xvcvsphp): Add comment.
+	(vsx_xvcvsphp_v8hf): New insn.
+	(extendhf<mode>2): Likewise.
+	(trunc<mode>hf2): Likewise.
+	(xxswapd_<mode>): Add V8HFmode.
+	(vsx_lxvd2x8_le_<MODE): Likewise.
+	(vsx_stxvd2x8_le_<MODE): Likewise.
+	(vsx_extract_<mode>_store_p9): Likewise.
+
 ==================== Branch work221-float, baseline ====================
 
 2025-09-08   Michael Meissner  <meissner@linux.ibm.com>
