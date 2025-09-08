@@ -491,6 +491,8 @@ const char *rs6000_type_string (tree type_node)
     return "voidc*";
   else if (type_node == float128_type_node)
     return "_Float128";
+  else if (type_node == float16_type_node)
+    return "_Float16";
   else if (type_node == vector_pair_type_node)
     return "__vector_pair";
   else if (type_node == vector_quad_type_node)
