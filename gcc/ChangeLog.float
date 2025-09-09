@@ -1,3 +1,47 @@
+==================== Branch work221-float, patch #306 ====================
+
+Remove bfloat16 for now.
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (VM): Remove bfloat16 support.
+	(VM2): Likewise.
+	(VI_char): Likewise.
+	(VI_scalar): Likewise.
+	(VI_unit): Likewise.
+	(VU_char): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_init_builtins): Likewise.
+	* config/rs6000/rs6000-modes.def (BFmode): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	* config/rs6000/rs6000.h (FP16_SCALAR_P): Likewise.
+	* config/rs6000/rs6000.md (FMOVE128_GPR): Likewise.
+	(RELOAD): Likewise.
+	(extendbf<mode>2): Likewise.
+	(trunc<mode>bf2): Likewise.
+	* config/rs6000/vector.md (VEC_L): Likewise.
+	(VEC_M): Likewise.
+	(VEC_E): Likewise.
+	(VEC_base): Likewise.
+	(VEC_base_l): Likewise.
+	(V8HI_V8HF): Likewise.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+	(VSX_XXBR): Likewise.
+	(VSm): Likewise.
+	(VSr): Likewise.
+	(VSisa): Likewise.
+	(??r): Likewise.
+	(nW): Likewise.
+	(VSv): Likewise.
+	(VM3): Likewise.
+	(VM3_char): Likewise.
+	(vsx_extract_<mode>_store_p9): Likewise.
+	(vsx_extract_<mode>_p8): Likewise.
+
 ==================== Branch work221-float, patch #305 ====================
 
 Attempt to fix bfloat16 problems.
