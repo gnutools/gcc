@@ -571,11 +571,10 @@ extern int rs6000_vector_align[];
    convert vector and scalar _Float16 formats, Power10 has instructions to
    convert vector __bfloat16 formats.  */
 #define TARGET_IEEE16		TARGET_P9_VECTOR
-#define TARGET_BFLOAT16		TARGET_POWER10
 
 #define FP16_SCALAR_P(MODE)						\
   (((MODE) == HFmode && TARGET_IEEE16)					\
-   || ((MODE) == BFmode && TARGET_BFLOAT16))
+   || ((MODE) == BFmode && TARGET_BFLOAT16 && TARGET_POWER10))
 
 /* Whether the various reciprocal divide/square root estimate instructions
    exist, and whether we should automatically generate code for the instruction
