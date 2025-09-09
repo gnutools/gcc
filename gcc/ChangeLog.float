@@ -1,3 +1,20 @@
+==================== Branch work221-float, patch #305 ====================
+
+Attempt to fix bfloat16 problems.
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Require
+	-mbfloat16 to use -mcpu=power10.
+	* config/rs6000/rs6000.h (FP16_SCALAR_P): Drop TARGET_POWER10 check.
+	* config/rs6000/rs6000.md (FP16): Add TARGET_IEEE16 and TARGET_BFLOAT16
+	checks.
+	(mov<mode>, FP16 iterator): Drop FP16_SCALAR_P check.
+	(mov<mode>_xxspltiw): Likewise.
+	(mov<mode>_interna, FP16 iterator): Likewise.
+
 ==================== Branch work221-float, patch #304 ====================
 
 Add -mbfloat16 switch.
