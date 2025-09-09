@@ -1,3 +1,15 @@
+==================== Branch work221-float, patch #301 ====================
+
+Convert between _Float16 and 128-bit binary floating point.
+
+2025-09-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/vsx.md (extendhf<mode>2, FLOAT128 iterator): New insn.
+	(trunc<mode>hf2, FLOAT128 iterator): Likewise.
+
+
 ==================== Branch work221-float, patch #300 ====================
 
 Add initial _Float16 support.
