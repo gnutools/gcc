@@ -3952,6 +3952,14 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
+  /* -mbfloat16 needs -mcpu=power10.  */
+  if (TARGET_BFLOAT16 && !TARGET_POWER10)
+    {
+      rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
+      if ((rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16) != 0)
+	warning (0, "%qs needs at least %qs", "-mbfloat16", "-mcpu=power10");
+    }
+
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
      the -mcpu setting to enable options that conflict. */
   if ((!TARGET_HARD_FLOAT || !TARGET_ALTIVEC || !TARGET_VSX)
