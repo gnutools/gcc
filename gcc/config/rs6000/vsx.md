@@ -3156,7 +3156,7 @@
   [(set_attr "type" "vecdouble")])
 
 
-;; Convert IEEE 16-bit floating point to/from SF and DF modes.
+;; Convert IEEE 16-bit floating point to/from binary floating point modes.
 
 (define_insn "extendhf<mode>2"
   [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
@@ -3166,6 +3166,26 @@
   "xscvhpdp %x0,%x1"
   [(set_attr "type" "fpsimple")])
 
+(define_insn_and_split "extendhf<mode>2"
+  [(set (match_operand:FLOAT128 0 "vsx_register_operand" "=wa")
+	(float_extend:FLOAT128
+	 (match_operand:HF 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:DF 2 "=wa"))]
+  "TARGET_IEEE16
+   && (FLOAT128_IBM_P (<MODE>mode) || FLOAT128_IEEE_P (<MODE>mode))"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(float_extend:DF (match_dup 1)))
+   (set (match_dup 0)
+	(float_extend:FLOAT128 (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (DFmode);
+}
+  [(set_attr "type" "fpsimple")
+   (set_attr "length" "8")])
+
 (define_insn "trunc<mode>hf2"
   [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
 	(float_truncate:HF
@@ -3173,6 +3193,26 @@
   "TARGET_IEEE16"
   "xscvdphp %x0,%1"
   [(set_attr "type" "fpsimple")])
+
+(define_insn_and_split "trunc<mode>hf2"
+  [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
+	(float_truncate:HF
+	 (match_operand:FLOAT128 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:DF 2 "=wa"))]
+  "TARGET_IEEE16
+   && (FLOAT128_IBM_P (<MODE>mode) || FLOAT128_IEEE_P (<MODE>mode))"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(float_truncate:DF (match_dup 1)))
+   (set (match_dup 0)
+	(float_truncate:HF (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (DFmode);
+}
+  [(set_attr "type" "fpsimple")
+   (set_attr "length" "8")])
 
 
 ;; Permute operations
