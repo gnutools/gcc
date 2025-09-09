@@ -1,3 +1,16 @@
+==================== Branch work221-float, patch #304 ====================
+
+Add -mbfloat16 switch.
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (rs6000_opt_masks): Print out -mbfloat16.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16): Delete.
+	(FP16_SCALAR_P): For bfloat16, also check if power10.
+	* config/rs6000/rs6000.opt (-mbfloat16): New switch.
+
 ==================== Branch work221-float, patch #303 ====================
 
 Add initial bfloat16 support.
