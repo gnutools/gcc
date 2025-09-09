@@ -189,9 +189,9 @@
 (define_mode_iterator V [V4SI V8HI V16QI V4SF])
 ;; Vec modes for move/logical/permute ops, include vector types for move not
 ;; otherwise handled by altivec (v2df, v2di, ti)
-;; V8BF
 (define_mode_iterator VM [V4SI
 			  V8HI
+			  V8BF
 			  V8HF
 			  V16QI
 			  V4SF
@@ -203,9 +203,9 @@
 			  (TF "FLOAT128_VECTOR_P (TFmode)")])
 
 ;; Like VM, except don't do TImode
-;; V8BF
 (define_mode_iterator VM2 [V4SI
 			   V8HI
+			   V8BF
 			   V8HF
 			   V16QI
 			   V4SF
@@ -226,21 +226,21 @@
 			       V1TI
 			       TI])
 
-;; (V8BF "h")
 (define_mode_attr VI_char [(V2DI "d")
 			   (V4SI "w")
 			   (V8HI "h")
+			   (V8BF "h")
 			   (V8HF "h")
 			   (V16QI "b")])
-;; (V8BF "BF")
 (define_mode_attr VI_scalar [(V2DI "DI")
 			     (V4SI "SI")
 			     (V8HI "HI")
+			     (V8BF "BF")
 			     (V8HF "HF")
 			     (V16QI "QI")])
-;; (V8BF "VECTOR_UNIT_ALTIVEC_P (V8BFmode)")
 (define_mode_attr VI_unit [(V16QI "VECTOR_UNIT_ALTIVEC_P (V16QImode)")
 			   (V8HI "VECTOR_UNIT_ALTIVEC_P (V8HImode)")
+			   (V8BF "VECTOR_UNIT_ALTIVEC_P (V8BFmode)")
 			   (V8HF "VECTOR_UNIT_ALTIVEC_P (V8HFmode)")
 			   (V4SI "VECTOR_UNIT_ALTIVEC_P (V4SImode)")
 			   (V2DI "VECTOR_UNIT_P8_VECTOR_P (V2DImode)")])
@@ -253,10 +253,10 @@
 (define_mode_attr VP_small_lc [(V2DI "v4si")
 			       (V4SI "v8hi")
 			       (V8HI "v16qi")])
-;; (V8BF "b")
 (define_mode_attr VU_char [(V2DI "w")
 			   (V4SI "h")
 			   (V8HI "b")
+			   (V8BF "b")
 			   (V8HF "b")])
 
 ;; Vector negate

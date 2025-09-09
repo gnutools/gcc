@@ -572,14 +572,9 @@ extern int rs6000_vector_align[];
    convert vector __bfloat16 formats.  */
 #define TARGET_IEEE16		TARGET_P9_VECTOR
 
-#if 0
 #define FP16_SCALAR_P(MODE)						\
   (((MODE) == HFmode && TARGET_IEEE16)					\
-   || ((MODE) == BFmode && TARGET_BFLOAT16))
-
-#else
-#define FP16_SCALAR_P(MODE) ((MODE) == HFmode && TARGET_IEEE16)
-#endif
+   || ((MODE) == BFmode && TARGET_BFLOAT16 && TARGET_POWER10))
 
 /* Whether the various reciprocal divide/square root estimate instructions
    exist, and whether we should automatically generate code for the instruction
