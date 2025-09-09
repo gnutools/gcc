@@ -1,3 +1,19 @@
+==================== Branch work221-float, patch #302 ====================
+
+Update conversions between _Float16 and various floating point types.
+
+2025-09-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (HF_CONVERT): New mode iterator.
+	(extendhf<mode>2): Move from vsx.md, add conversion to/from decimal
+	types.
+	(trunc<mode>2): Likewise.
+	* config/rs6000/vsx.md (extendhf<mode>2): Move to vsx.md.
+	(trunc<mode>hf2): Likewise.
+
+
 ==================== Branch work221-float, patch #301 ====================
 
 Convert between _Float16 and 128-bit binary floating point.
