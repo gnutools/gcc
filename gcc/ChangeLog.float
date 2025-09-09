@@ -1,3 +1,69 @@
+==================== Branch work221-float, patch #303 ====================
+
+Add initial bfloat16 support.
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (VM): Add initial bfloat16 support.
+	(VM2): Likewise.
+	(VI_char): Likewise.
+	(VI_scalar): Likewise.
+	(VI_unit): Likewise.
+	(VU_char): Likewise.
+	* config/rs6000/predicates.md (easy_fp_constant): Likewise.
+	(fp16_xxspltiw_constant): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Likewise.
+	(rs6000_init_builtins): Likewise.
+	* config/rs6000/rs6000-call.cc (USE_FP_FOR_ARG_P): Likewise.
+	* config/rs6000/rs6000-modes.def (BFmode): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached):
+	Likewise.
+	(rs6000_modes_tieable_p): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_can_change_mode_class): Likewise.
+	(rs6000_function_value): Likewise.
+	(rs6000_scalar_mode_supported_p): Likewise.
+	(constant_fp_to_128bit_vector): Likewise.
+	(constant_generates_xxspltiw): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16): Likewise.
+	(FP16_SCALAR_P): Likewise.
+	* config/rs6000/rs6000.md (FMOVE128_GPR): Likewise.
+	(RELOAD): Likewise.
+	(FP16): Likewise.
+	(CONVERT_FP16): Likewise.
+	(extendhf<mode>2): Likewise.
+	(trunc<mode>hf2): Likewise.
+	(mov<mode>, FP16 iterator): Likewise.
+	(mov<mode>_xxspltiw): Likewise.
+	(mov<mode>_internal): Fix load/store instructions.  Add bfloat16
+	support.
+	* config/rs6000/rs6000.opt (-mfloat16_gpr_args): Rename from
+	-mieee16-gpr-args.
+	* config/rs6000/vector.md (VEC_L): Add initial bfloat16 support.
+	(VEC_M): Likewise.
+	(VEC_E): Likewise.
+	(VEC_base): Likewise.
+	(VEC_base_l): Likewise.
+	* config/rs6000/vsx.md (V8HI_V8HF): Likewise.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+	(VSX_XXBR): Likewise.
+	(VSm): Likewise.
+	(VSr): Likewise.
+	(VSisa): Likewise.
+	(??r): Likewise.
+	(VSc): Likewise.
+	(VM3): Likewise.
+	(VM3_char): Likewise.
+	(vsx_extract_<mode>_store_p9): Likewise.
+	(*vsx_extract_<mode>_p8): Likewise.
+
 ==================== Branch work221-float, patch #302 ====================
 
 Update conversions between _Float16 and various floating point types.
