@@ -2258,7 +2258,7 @@ rs6000_debug_reg_global (void)
     DImode,
     TImode,
     PTImode,
-    BFmode,
+    // BFmode,
     HFmode,
     SFmode,
     DFmode,
@@ -2280,7 +2280,7 @@ rs6000_debug_reg_global (void)
     V8SImode,
     V4DImode,
     V2TImode,
-    V8BFmode,
+    // V8BFmode,
     V8HFmode,
     V4SFmode,
     V2DFmode,
@@ -2697,7 +2697,7 @@ rs6000_setup_reg_addr_masks (void)
 		  && (m != E_DFmode || !TARGET_VSX)
 		  && (m != E_SFmode || !TARGET_P8_VECTOR)
 		  && m != E_HFmode
-		  && m != E_BFmode
+		  // && m != E_BFmode
 		  && !small_int_vsx_p)
 		{
 		  addr_mask |= RELOAD_REG_PRE_INCDEC;
@@ -2953,12 +2953,14 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_align[V8HFmode] = align64;
     }
 
+#if 0
   if (TARGET_BFLOAT16)
     {
       rs6000_vector_unit[V8BFmode] = VECTOR_VSX;
       rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
       rs6000_vector_align[V8BFmode] = align64;
     }
+#endif
 
   /* DFmode, see if we want to use the VSX unit.  Memory is handled
      differently, so don't set rs6000_vector_mem.  */
@@ -2989,11 +2991,13 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_align[HFmode] = 16;
     }
 
+#if 0
   if (TARGET_BFLOAT16)
     {
       rs6000_vector_mem[BFmode] = VECTOR_VSX;
       rs6000_vector_align[BFmode] = 16;
     }
+#endif
 
   /* Add support for vector pairs and vector quad registers.  */
   if (TARGET_MMA)
@@ -3054,8 +3058,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V16QImode].reload_load  = CODE_FOR_reload_v16qi_di_load;
 	  reg_addr[V8HImode].reload_store  = CODE_FOR_reload_v8hi_di_store;
 	  reg_addr[V8HImode].reload_load   = CODE_FOR_reload_v8hi_di_load;
+#if 0
 	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_di_store;
 	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_di_load;
+#endif
 	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_di_store;
 	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_di_load;
 	  reg_addr[V4SImode].reload_store  = CODE_FOR_reload_v4si_di_store;
@@ -3093,11 +3099,13 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
 	    }
 
+#if 0
 	  if (TARGET_BFLOAT16)
 	    {
 	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_di_store;
 	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_di_load;
 	    }
+#endif
 
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
 	     available.  */
@@ -3121,8 +3129,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv2di;
 	      reg_addr[V4SFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4sf;
 	      reg_addr[V4SImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4si;
+#if 0
 	      reg_addr[V8BFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8bf;
 	      reg_addr[V8HFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hf;
+#endif
 	      reg_addr[V8HImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hi;
 	      reg_addr[V16QImode].reload_gpr_vsx = CODE_FOR_reload_gpr_from_vsxv16qi;
 	      reg_addr[SFmode].reload_gpr_vsx    = CODE_FOR_reload_gpr_from_vsxsf;
@@ -3133,8 +3143,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv2di;
 	      reg_addr[V4SFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4sf;
 	      reg_addr[V4SImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4si;
+#if 0
 	      reg_addr[V8BFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8bf;
 	      reg_addr[V8HFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hf;
+#endif
 	      reg_addr[V8HImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hi;
 	      reg_addr[V16QImode].reload_vsx_gpr = CODE_FOR_reload_vsx_from_gprv16qi;
 	      reg_addr[SFmode].reload_vsx_gpr    = CODE_FOR_reload_vsx_from_gprsf;
@@ -3172,8 +3184,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V2DImode].reload_load   = CODE_FOR_reload_v2di_si_load;
 	  reg_addr[V1TImode].reload_store  = CODE_FOR_reload_v1ti_si_store;
 	  reg_addr[V1TImode].reload_load   = CODE_FOR_reload_v1ti_si_load;
+#if 0
 	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_si_store;
 	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_si_load;
+#endif
 	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_si_store;
 	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_si_load;
 	  reg_addr[V4SFmode].reload_store  = CODE_FOR_reload_v4sf_si_store;
@@ -3205,11 +3219,13 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
 	    }
 
+#if 0
 	  if (TARGET_BFLOAT16)
 	    {
 	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_si_store;
 	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_si_load;
 	    }
+#endif
 
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
 	     available.  */

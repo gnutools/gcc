@@ -47,14 +47,14 @@
 (define_mode_iterator VSX_F [V4SF V2DF])
 
 ;; Iterator for 8 element vectors
+;; (V8BF "TARGET_BFLOAT16")
 (define_mode_iterator V8HI_V8HF [V8HI
-				 (V8BF "TARGET_BFLOAT16")
 				 (V8HF "TARGET_IEEE16")])
 
 ;; Iterator for logical types supported by VSX
+;; (V8BF	"TARGET_BFLOAT16")
 (define_mode_iterator VSX_L [V16QI
 			     V8HI
-			     (V8BF	"TARGET_BFLOAT16")
 			     (V8HF	"TARGET_IEEE16")
 			     V4SI
 			     V2DI
@@ -66,9 +66,9 @@
 			     (TF	"FLOAT128_VECTOR_P (TFmode)")])
 
 ;; Iterator for memory moves.
+;; (V8BF	"TARGET_BFLOAT16<")
 (define_mode_iterator VSX_M [V16QI
 			     V8HI
-			     (V8BF	"TARGET_BFLOAT16")
 			     (V8HF	"TARGET_IEEE16")
 			     V4SI
 			     V2DI
@@ -79,8 +79,8 @@
 			     (TF	"FLOAT128_VECTOR_P (TFmode)")
 			     TI])
 
+;; (V8BF  "h")
 (define_mode_attr VSX_XXBR  [(V8HI  "h")
-			     (V8BF  "h")
 			     (V8HF  "h")
 			     (V4SI  "w")
 			     (V4SF  "w")
@@ -89,9 +89,9 @@
 			     (V1TI  "q")])
 
 ;; Map into the appropriate load/store name based on the type
+;; (V8BF  "vw4")
 (define_mode_attr VSm  [(V16QI "vw4")
 			(V8HI  "vw4")
-			(V8BF  "vw4")
 			(V8HF  "vw4")
 			(V4SI  "vw4")
 			(V4SF  "vw4")
@@ -104,9 +104,9 @@
 			(TI    "vd2")])
 
 ;; Map the register class used
+;; (V8BF  "v")
 (define_mode_attr VSr	[(V16QI "v")
 			 (V8HI  "v")
-			 (V8BF  "v")
 			 (V8HF  "v")
 			 (V4SI  "v")
 			 (V4SF  "wa")
@@ -121,9 +121,9 @@
 			 (TI    "wa")])
 
 ;; What value we need in the "isa" field, to make the IEEE QP float work.
+;; (V8BF  "p10")
 (define_mode_attr VSisa	[(V16QI "*")
 			 (V8HI  "*")
-			 (V8BF  "p10")
 			 (V8HF  "p9v")
 			 (V4SI  "*")
 			 (V4SF  "*")
@@ -139,9 +139,9 @@
 
 ;; A mode attribute to disparage use of GPR registers, except for scalar
 ;; integer modes.
+;; (V8BF	"??r")
 (define_mode_attr ??r	[(V16QI	"??r")
 			 (V8HI	"??r")
-			 (V8BF	"??r")
 			 (V8HF	"??r")
 			 (V4SI	"??r")
 			 (V4SF	"??r")
@@ -153,9 +153,9 @@
 			 (TI	"r")])
 
 ;; A mode attribute used for 128-bit constant values.
+;; (V8BF	"W")
 (define_mode_attr nW	[(V16QI	"W")
 			 (V8HI	"W")
-			 (V8BF	"W")
 			 (V8HF	"W")
 			 (V4SI	"W")
 			 (V4SF	"W")
@@ -182,9 +182,9 @@
 
 ;; Map into either s or v, depending on whether this is a scalar or vector
 ;; operation
+;; (V8BF  "v")
 (define_mode_attr VSv	[(V16QI "v")
 			 (V8HI  "v")
-			 (V8BF  "v")
 			 (V8HF  "v")
 			 (V4SI  "v")
 			 (V4SF  "v")
@@ -417,9 +417,9 @@
 				   (V2DI  "8") (V2DF "8")])
 
 ;; Like VM2 in altivec.md, just do char, short, int, long, float and double
+;; V8BF
 (define_mode_iterator VM3 [V4SI
 			   V8HI
-			   V8BF
 			   V8HF
 			   V16QI
 			   V4SF
@@ -429,10 +429,10 @@
 (define_mode_attr DI_to_TI [(V2DI "V1TI")
 			    (DI   "TI")])
 
+;; (V8BF "h")
 (define_mode_attr VM3_char [(V2DI "d")
 			   (V4SI "w")
 			   (V8HI "h")
-			   (V8BF "h")
 			   (V8HF "h")
 			   (V16QI "b")
 			   (V2DF  "d")
@@ -4108,7 +4108,7 @@
       && ((<MODE>mode == V16QImode
 	   && INTVAL (operands[2]) == (BYTES_BIG_ENDIAN ? 7 : 8))
 	  || ((<MODE>mode == V8HImode || <MODE>mode == V8HFmode
-	       || <MODE>mode == V8BFmode)
+	       /* || <MODE>mode == V8BFmode */)
 	      && INTVAL (operands[2]) == (BYTES_BIG_ENDIAN ? 3 : 4))))
     {
       enum machine_mode dest_mode = GET_MODE (operands[0]);
@@ -4188,7 +4188,7 @@
 	vec_tmp = src;
     }
   else if (<MODE>mode == V8HImode || <MODE>mode == V8HFmode
-	   || <MODE>mode == V8BFmode)
+	   /* || <MODE>mode == V8BFmode */)
     {
       if (value != 3)
 	emit_insn (gen_altivec_vsplth_direct (vec_tmp, src, element));

@@ -761,6 +761,7 @@ rs6000_init_builtins (void)
     ieee128_float_type_node = NULL_TREE;
 
   /* __bfloat16 support.  */
+#if 0
   if (TARGET_BFLOAT16)
     {
       bfloat16_type_node = make_node (REAL_TYPE);
@@ -771,6 +772,7 @@ rs6000_init_builtins (void)
       lang_hooks.types.register_builtin_type (bfloat16_type_node,
 					      "__bfloat16");
     }
+#endif
 
   /* Vector pair and vector quad support.  */
   vector_pair_type_node = make_node (OPAQUE_TYPE);
