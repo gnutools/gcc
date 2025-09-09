@@ -86,7 +86,7 @@
   (SCALAR_FLOAT_MODE_NOT_VECTOR_P (MODE)			\
    && (CUM)->fregno <= FP_ARG_MAX_REG				\
    && TARGET_HARD_FLOAT						\
-   && ((MODE) != HFmode || !TARGET_IEEE16_GPR_ARGS))
+   && (FP16_SCALAR_P (MODE) && !TARGET_FLOAT16_GPR_ARGS))
 
 
 /* Nonzero if we can use an AltiVec register to pass this arg.  */

@@ -602,8 +602,8 @@
     return 1;
 
   /* Power9 needs to load HFmode constants from memory, Power10 can use
-     XXSPLTIW.  */
-  if (mode == HFmode && !TARGET_POWER10)
+     XXSPLTIW for HFmode or BFmode constants.  */
+  if (FP16_SCALAR_P (mode) && !TARGET_POWER10)
     return 0;
 
   /* Constants that can be generated with ISA 3.1 instructions are easy.  */
@@ -2172,11 +2172,11 @@
        (match_test "subreg_lowpart_offset (mode, GET_MODE (SUBREG_REG (op)))
 		    == SUBREG_BYTE (op)")))
 
-;; Return 1 if this is a HFmode constant that can be loaded with XXSPLTIW.
-(define_predicate "ieee16_xxspltiw_constant"
+;; Return 1 if this is a HFmode/BFmode constant that can be loaded with XXSPLTIW.
+(define_predicate "fp16_xxspltiw_constant"
   (match_code "const_double")
 {
-  if (!TARGET_POWER10 || mode != HFmode)
+  if (!TARGET_POWER10 || !FP16_SCALAR_P (mode))
     return false;
 
   vec_const_128bit_type vsx_const;
