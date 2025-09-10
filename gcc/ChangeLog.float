@@ -1,3 +1,16 @@
+==================== Branch work221-float, patch #309 ====================
+
+Add converts between 16-bit fp and integers
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (float<GPR:mode>hf2): New insns.
+	(floatuns<GPR:mode>hf2): Likewise.
+	(fix_trunchf<mode>2): Likewise.
+	(fixuns_trunchf<mode>): Likewise.
+
 ==================== Branch work221-float, patch #308 ====================
 
 Add converts between 16-bit fp and integers
