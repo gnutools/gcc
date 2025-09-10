@@ -2982,6 +2982,9 @@ gfc_create_unallocated_library_result_descriptor (stmtblock_t *block, tree sourc
     dtype = gfc_get_dtype (TREE_TYPE (source_descr));
 
   gfc_conv_descriptor_dtype_set (block, source_descr, dtype);
+  gfc_conv_descriptor_span_set (block, source_descr,
+				gfc_conv_descriptor_elem_len_get (source_descr));
+
   tree res_desc = gfc_evaluate_now (source_descr, block);
   gfc_conv_descriptor_data_set (block, res_desc, null_pointer_node);
 

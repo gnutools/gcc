@@ -67,6 +67,7 @@ void gfc_conv_descriptor_version_set (stmtblock_t *block, tree desc, tree value)
 void gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, tree value);
 void gfc_conv_descriptor_rank_set (stmtblock_t *block, tree desc, int value);
 void gfc_conv_descriptor_token_set (stmtblock_t *block, tree desc, tree value);
+void gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value);
 
 tree gfc_build_null_descriptor (tree type);
 tree gfc_conv_descriptor_size (tree, int);
