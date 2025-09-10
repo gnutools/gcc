@@ -144,5 +144,7 @@ gfc_descriptor_init_count (tree, int, int, gfc_expr **, gfc_expr **,
 			   tree, gfc_expr *, tree, bool, gfc_expr *, tree,
 			   bool, tree *);
 void gfc_set_empty_descriptor_bounds (stmtblock_t *, tree, int);
+tree gfc_create_unallocated_library_result_descriptor (stmtblock_t *, tree,
+						       tree);
 
 #endif /* GFC_TRANS_DESCRIPTOR_H */
