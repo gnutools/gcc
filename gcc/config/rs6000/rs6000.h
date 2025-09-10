@@ -567,14 +567,8 @@ extern int rs6000_vector_align[];
    below.  */
 #define RS6000_FN_TARGET_INFO_HTM 1
 
-/* Support for 16-bit floating point formats.  Power9 has instructions to
-   convert vector and scalar _Float16 formats, Power10 has instructions to
-   convert vector __bfloat16 formats.  */
+/* Support for IEEE 16-bit floating point.  */
 #define TARGET_IEEE16		TARGET_P9_VECTOR
-
-#define FP16_SCALAR_P(MODE)						\
-  (((MODE) == HFmode && TARGET_IEEE16)					\
-   || ((MODE) == BFmode && TARGET_BFLOAT16 && TARGET_POWER10))
 
 /* Whether the various reciprocal divide/square root estimate instructions
    exist, and whether we should automatically generate code for the instruction

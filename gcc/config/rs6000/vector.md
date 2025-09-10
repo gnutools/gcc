@@ -52,7 +52,6 @@
 ;; Vector logical modes
 (define_mode_iterator VEC_L [V16QI
 			     V8HI
-			     V8BF
 			     V8HF
 			     V4SI
 			     V2DI
@@ -69,7 +68,6 @@
 			     V8HI
 			     V4SI
 			     V2DI
-			     V8BF
 			     V8HF
 			     V4SF
 			     V2DF
@@ -87,7 +85,6 @@
 			     V8HI
 			     V4SI
 			     V2DI
-			     V8BF
 			     V8HF
 			     V4SF
 			     V2DF])
@@ -103,7 +100,6 @@
 			    (V8HI  "HI")
 			    (V4SI  "SI")
 			    (V2DI  "DI")
-			    (V8BF  "BF")
 			    (V8HF  "HF")
 			    (V4SF  "SF")
 			    (V2DF  "DF")
@@ -115,7 +111,6 @@
 			      (V8HI  "hi")
 			      (V4SI  "si")
 			      (V2DI  "di")
-			      (V8BF  "bf")
 			      (V8HF  "hf")
 			      (V4SF  "sf")
 			      (V2DF  "df")
