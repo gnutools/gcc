@@ -1,3 +1,22 @@
+==================== Branch work221-float, patch #307 ====================
+
+Add converts between 16-bit fp and integers
+
+2025-09-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (extendbf<mode>2): Add dummy define_expand.
+	(trunc<mode>bf2): Likewise.
+	(extend<CONVERT_FP16:mode><FP16:mode>2): Convert from just HFmode to
+	both HFmode and BFmode.
+	(trunc<CONVERT_FP16:mode><FP16:mode>2): Likewise.
+	(float<FP16:mode><GPR:mode>2): New insns.
+	(floatuns<GPR:mode><FP16:mode>2): Likewise.
+	(fix_trunc<FP16:mode><GPR:mode>2): Likewise.
+	(fixuns_trunc<FP16:mode><GPR:mode>2"): Likewise.
+
+
 ==================== Branch work221-float, patch #306 was reverted ====================
 ==================== Branch work221-float, patch #305 was reverted ====================
 
