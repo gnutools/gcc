@@ -1,3 +1,19 @@
+==================== Branch work221-float, patch #310 ====================
+
+Add -mieee16 switch.
+
+2025-09-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (ISA_3_0_MASKS_SERVER): Add -mieee16
+	support.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Likewise.
+	(rs6000_opt_masks): Likewise.
+	* config/rs6000/rs6000.h (TARGET_IEEE16): Delete.
+	* config/rs6000/rs6000.opt (-mieee16): New switch.
+
 ==================== Branch work221-float, patch #309 ====================
 
 Add converts between 16-bit fp and integers
