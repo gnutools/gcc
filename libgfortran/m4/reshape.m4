@@ -91,7 +91,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
   for (index_type n = 0; n < rdim; n++)
     {
-      shape_data[n] = shape->base_addr[n * GFC_DESCRIPTOR_STRIDE(shape,0)];
+      shape_data[n] = GFC_DESCRIPTOR1_ELEM (shape, n);
       if (shape_data[n] <= 0)
       {
         shape_data[n] = 0;
@@ -197,7 +197,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
 
 	  for (index_type n = 0; n < rdim; n++)
 	    {
-	      v = order->base_addr[n * GFC_DESCRIPTOR_STRIDE(order,0)] - 1;
+	      v = GFC_DESCRIPTOR1_ELEM (order, n) - 1;
 
 	      if (v < 0 || v >= rdim)
 		runtime_error("Value %ld out of range in ORDER argument"
@@ -217,7 +217,7 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type dim;
       if (order)
-        dim = order->base_addr[n * GFC_DESCRIPTOR_STRIDE(order,0)] - 1;
+        dim = GFC_DESCRIPTOR1_ELEM (order, n) - 1;
       else
         dim = n;
 

@@ -40,7 +40,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`;
   if (back)
     {
-      src = array->base_addr + (extent - 1) * sstride;
+      src = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, extent - 1);
       for (i = extent; i > 0; i--)
 	{
 	  if ('comparison`)
@@ -92,7 +92,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      src = array->base_addr + (extent - 1) * sstride;
+      src = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, extent - 1);
       mbase += (extent - 1) * mstride;
       for (i = extent; i > 0; i--)
 	{

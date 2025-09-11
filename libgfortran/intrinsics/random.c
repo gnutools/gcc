@@ -1347,8 +1347,7 @@ random_seed_i4 (GFC_INTEGER_4 *size, gfc_array_i4 *put, gfc_array_i4 *get)
 
       /*  Then copy it back to the user variable.  */
       for (size_t i = 0; i < SZ_IN_INT_4 ; i++)
-	memcpy (&(get->base_addr[(SZ_IN_INT_4 - 1 - i) *
-				 GFC_DESCRIPTOR_STRIDE(get,0)]),
+	memcpy (GFC_DESCRIPTOR1_ELEM_ADDRESS (get, SZ_IN_INT_4 - 1 - i),
 		(unsigned char*) seed + i * sizeof(GFC_UINTEGER_4),
                sizeof(GFC_UINTEGER_4));
     }
@@ -1378,8 +1377,7 @@ random_seed_i4 (GFC_INTEGER_4 *size, gfc_array_i4 *put, gfc_array_i4 *get)
       /*  We copy the seed given by the user.  */
       for (size_t i = 0; i < SZ_IN_INT_4; i++)
 	memcpy ((unsigned char*) seed + i * sizeof(GFC_UINTEGER_4),
-		&(put->base_addr[(SZ_IN_INT_4 - 1 - i) *
-				 GFC_DESCRIPTOR_STRIDE(put,0)]),
+		GFC_DESCRIPTOR1_ELEM_ADDRESS (put, SZ_IN_INT_4 - 1 - i),
 		sizeof(GFC_UINTEGER_4));
 
       /* We put it after scrambling the bytes, to paper around users who
@@ -1428,7 +1426,7 @@ random_seed_i8 (GFC_INTEGER_8 *size, gfc_array_i8 *put, gfc_array_i8 *get)
 
       /*  This code now should do correct strides.  */
       for (size_t i = 0; i < SZ_IN_INT_8; i++)
-	memcpy (&(get->base_addr[i * GFC_DESCRIPTOR_STRIDE(get,0)]), &seed[i],
+	memcpy (GFC_DESCRIPTOR1_ELEM_ADDRESS (get, i), &seed[i],
 		sizeof (GFC_UINTEGER_8));
     }
 
@@ -1456,7 +1454,7 @@ random_seed_i8 (GFC_INTEGER_8 *size, gfc_array_i8 *put, gfc_array_i8 *get)
 
       /*  This code now should do correct strides.  */
       for (size_t i = 0; i < SZ_IN_INT_8; i++)
-	memcpy (&seed[i], &(put->base_addr[i * GFC_DESCRIPTOR_STRIDE(put,0)]),
+	memcpy (&seed[i], GFC_DESCRIPTOR1_ELEM_ADDRESS (put, i),
 		sizeof (GFC_UINTEGER_8));
 
       scramble_seed (master_state.s, seed);

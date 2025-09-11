@@ -585,6 +585,24 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_UNALIGNED_C8(x) (((uintptr_t)(x)) & \
 			     (__alignof__(GFC_COMPLEX_8) - 1))
 
+
+#define PTR_ADD_OFFSET(ptr,bytes) ((typeof (ptr)) (((char*) ptr) + (bytes)))
+#define GFC_DESCRIPTOR_DIM_INDEX_OFFSET(descr, dim, idx) \
+    ((idx) * GFC_DESCRIPTOR_STRIDE ((descr), (dim)))
+#define GFC_DESCRIPTOR1_INDEX(descr, idx) \
+    (GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 0, (idx)))
+#define GFC_DESCRIPTOR1_ELEM(descr, idx) \
+    (descr)->base_addr[GFC_DESCRIPTOR1_INDEX((descr), (idx))]
+#define GFC_DESCRIPTOR1_ELEM_ADDRESS(descr, idx) \
+    (&GFC_DESCRIPTOR1_ELEM((descr), (idx)))
+#define GFC_DESCRIPTOR2_INDEX(descr, idx1, idx2) \
+    (GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 0, (idx1)) \
+     + GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 1, (idx2)))
+#define GFC_DESCRIPTOR2_ELEM(descr, idx1, idx2) \
+    (descr)->base_addr[GFC_DESCRIPTOR2_INDEX((descr),(idx1),(idx2))]
+#define GFC_DESCRIPTOR2_ELEM_ADDRESS(descr, idx1, idx2) \
+    (&GFC_DESCRIPTOR2_ELEM((descr),(idx1),(idx2))
+
 /* Generic vtab structure.  */
 typedef struct
 {

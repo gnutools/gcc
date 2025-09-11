@@ -32,9 +32,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const 'atype_name` *base;
-  index_type * restrict dest;
   index_type rank;
   index_type n;
   index_type sz;
@@ -57,12 +55,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 				"FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
@@ -79,7 +74,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`;
+      base = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, sz - 1);
 
       while (1)
         {
@@ -88,7 +83,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely('comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
@@ -125,7 +120,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely('comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 
 		  return;
 		}
@@ -161,9 +156,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const 'atype_name` *base;
-  index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
   index_type rank;
   index_type n;
@@ -205,12 +198,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   else
     internal_error (NULL, "Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
@@ -228,7 +218,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 'base_mult`;
+      base = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, sz - 1);
       mbase = mbase + (sz - 1) * mask_kind;
       while (1)
         {
@@ -237,7 +227,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely(*mbase && 'comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
@@ -277,7 +267,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	      if (unlikely(*mbase && 'comparison`))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 
 		  return;
 		}
@@ -313,8 +303,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 'header3`
 {
   index_type rank;
-  index_type dstride;
-  index_type * restrict dest;
   index_type n;
 
   if (mask == NULL || *mask)
@@ -341,10 +329,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 			       "FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0 ;
 }
 
 #endif'

@@ -45,7 +45,7 @@ FOREACH_FUNCTION(
     {
       minval = base;
       for (n = 0; n < rank; n++)
-        dest[n * dstride] = count[n] + 1;
+        GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
     }')
 
 MASKED_FOREACH_FUNCTION(
@@ -59,7 +59,7 @@ MASKED_FOREACH_FUNCTION(
     {
       minval = base;
       for (n = 0; n < rank; n++)
-        dest[n * dstride] = count[n] + 1;
+        GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
     }')
 
 SCALAR_FOREACH_FUNCTION(`0')

@@ -80,70 +80,68 @@ stat_i4_sub_0 (char *name, gfc_array_i4 *values, GFC_INTEGER_4 *status,
 
   if (val == 0)
     {
-      index_type stride = GFC_DESCRIPTOR_STRIDE(values,0);
-
       /* Return -1 for any value overflowing INT32_MAX.  */
       for (int i = 0; i < 13; i++)
-	values->base_addr[i * stride] = -1;
+	GFC_DESCRIPTOR1_ELEM (values, i) = -1;
 
       /* Device ID  */
       if (sb.st_dev <= INT32_MAX)
-	values->base_addr[0 * stride] = sb.st_dev;
+	GFC_DESCRIPTOR1_ELEM (values, 0) = sb.st_dev;
 
       /* Inode number  */
       if (sb.st_ino <= INT32_MAX)
-	values->base_addr[1 * stride] = sb.st_ino;
+	GFC_DESCRIPTOR1_ELEM (values, 1) = sb.st_ino;
 
       /* File mode  */
       if (sb.st_mode <= INT32_MAX)
-	values->base_addr[2 * stride] = sb.st_mode;
+	GFC_DESCRIPTOR1_ELEM (values, 2) = sb.st_mode;
 
       /* Number of (hard) links  */
       if (sb.st_nlink <= INT32_MAX)
-	values->base_addr[3 * stride] = sb.st_nlink;
+	GFC_DESCRIPTOR1_ELEM (values, 3) = sb.st_nlink;
 
       /* Owner's uid  */
       if (sb.st_uid <= INT32_MAX)
-	values->base_addr[4 * stride] = sb.st_uid;
+	GFC_DESCRIPTOR1_ELEM (values, 4) = sb.st_uid;
 
       /* Owner's gid  */
       if (sb.st_gid <= INT32_MAX)
-	values->base_addr[5 * stride] = sb.st_gid;
+	GFC_DESCRIPTOR1_ELEM (values, 5) = sb.st_gid;
 
       /* ID of device containing directory entry for file (0 if not available) */
 #if HAVE_STRUCT_STAT_ST_RDEV
       if (sb.st_rdev <= INT32_MAX)
-	values->base_addr[6 * stride] = sb.st_rdev;
+	GFC_DESCRIPTOR1_ELEM (values, 6) = sb.st_rdev;
 #else
-      values->base_addr[6 * stride] = 0;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = 0;
 #endif
 
       /* File size (bytes)  */
       if (sb.st_size <= INT32_MAX)
-	values->base_addr[7 * stride] = sb.st_size;
+	GFC_DESCRIPTOR1_ELEM (values, 7) = sb.st_size;
 
       /* Last access time  */
       if (sb.st_atime <= INT32_MAX)
-	values->base_addr[8 * stride] = sb.st_atime;
+	GFC_DESCRIPTOR1_ELEM (values, 8) = sb.st_atime;
 
       /* Last modification time  */
       if (sb.st_mtime <= INT32_MAX)
-	values->base_addr[9 * stride] = sb.st_mtime;
+	GFC_DESCRIPTOR1_ELEM (values, 9) = sb.st_mtime;
 
       /* Last file status change time  */
       if (sb.st_ctime <= INT32_MAX)
-	values->base_addr[10 * stride] = sb.st_ctime;
+	GFC_DESCRIPTOR1_ELEM (values, 10) = sb.st_ctime;
 
       /* Preferred I/O block size (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLKSIZE
       if (sb.st_blksize <= INT32_MAX)
-	values->base_addr[11 * stride] = sb.st_blksize;
+	GFC_DESCRIPTOR1_ELEM (values, 11) = sb.st_blksize;
 #endif
 
       /* Number of blocks allocated (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLOCKS
       if (sb.st_blocks <= INT32_MAX)
-	values->base_addr[12 * stride] = sb.st_blocks;
+	GFC_DESCRIPTOR1_ELEM (values, 12) = sb.st_blocks;
 #endif
     }
 
@@ -210,57 +208,55 @@ stat_i8_sub_0 (char *name, gfc_array_i8 *values, GFC_INTEGER_8 *status,
 
   if (val == 0)
     {
-      index_type stride = GFC_DESCRIPTOR_STRIDE(values,0);
-
       /* Device ID  */
-      values->base_addr[0] = sb.st_dev;
+      GFC_DESCRIPTOR1_ELEM (values, 0) = sb.st_dev;
 
       /* Inode number  */
-      values->base_addr[stride] = sb.st_ino;
+      GFC_DESCRIPTOR1_ELEM (values, 1) = sb.st_ino;
 
       /* File mode  */
-      values->base_addr[2 * stride] = sb.st_mode;
+      GFC_DESCRIPTOR1_ELEM (values, 2) = sb.st_mode;
 
       /* Number of (hard) links  */
-      values->base_addr[3 * stride] = sb.st_nlink;
+      GFC_DESCRIPTOR1_ELEM (values, 3) = sb.st_nlink;
 
       /* Owner's uid  */
-      values->base_addr[4 * stride] = sb.st_uid;
+      GFC_DESCRIPTOR1_ELEM (values, 4) = sb.st_uid;
 
       /* Owner's gid  */
-      values->base_addr[5 * stride] = sb.st_gid;
+      GFC_DESCRIPTOR1_ELEM (values, 5) = sb.st_gid;
 
       /* ID of device containing directory entry for file (0 if not available) */
 #if HAVE_STRUCT_STAT_ST_RDEV
-      values->base_addr[6 * stride] = sb.st_rdev;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = sb.st_rdev;
 #else
-      values->base_addr[6 * stride] = 0;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = 0;
 #endif
 
       /* File size (bytes)  */
-      values->base_addr[7 * stride] = sb.st_size;
+      GFC_DESCRIPTOR1_ELEM (values, 7) = sb.st_size;
 
       /* Last access time  */
-      values->base_addr[8 * stride] = sb.st_atime;
+      GFC_DESCRIPTOR1_ELEM (values, 8) = sb.st_atime;
 
       /* Last modification time  */
-      values->base_addr[9 * stride] = sb.st_mtime;
+      GFC_DESCRIPTOR1_ELEM (values, 9) = sb.st_mtime;
 
       /* Last file status change time  */
-      values->base_addr[10 * stride] = sb.st_ctime;
+      GFC_DESCRIPTOR1_ELEM (values, 10) = sb.st_ctime;
 
       /* Preferred I/O block size (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLKSIZE
-      values->base_addr[11 * stride] = sb.st_blksize;
+      GFC_DESCRIPTOR1_ELEM (values, 11) = sb.st_blksize;
 #else
-      values->base_addr[11 * stride] = -1;
+      GFC_DESCRIPTOR1_ELEM (values, 11) = -1;
 #endif
 
       /* Number of blocks allocated (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLOCKS
-      values->base_addr[12 * stride] = sb.st_blocks;
+      GFC_DESCRIPTOR1_ELEM (values, 12) = sb.st_blocks;
 #else
-      values->base_addr[12 * stride] = -1;
+      GFC_DESCRIPTOR1_ELEM (values, 12) = -1;
 #endif
     }
 
@@ -391,70 +387,68 @@ fstat_i4_sub (GFC_INTEGER_4 *unit, gfc_array_i4 *values, GFC_INTEGER_4 *status)
 
   if (val == 0)
     {
-      index_type stride = GFC_DESCRIPTOR_STRIDE(values,0);
-
       /* Return -1 for any value overflowing INT32_MAX.  */
       for (int i = 0; i < 13; i++)
-	values->base_addr[i * stride] = -1;
+	GFC_DESCRIPTOR1_ELEM (values, i) = -1;
 
       /* Device ID  */
       if (sb.st_dev <= INT32_MAX)
-	values->base_addr[0 * stride] = sb.st_dev;
+	GFC_DESCRIPTOR1_ELEM (values, 0) = sb.st_dev;
 
       /* Inode number  */
       if (sb.st_ino <= INT32_MAX)
-	values->base_addr[1 * stride] = sb.st_ino;
+	GFC_DESCRIPTOR1_ELEM (values, 1) = sb.st_ino;
 
       /* File mode  */
       if (sb.st_mode <= INT32_MAX)
-	values->base_addr[2 * stride] = sb.st_mode;
+	GFC_DESCRIPTOR1_ELEM (values, 2) = sb.st_mode;
 
       /* Number of (hard) links  */
       if (sb.st_nlink <= INT32_MAX)
-	values->base_addr[3 * stride] = sb.st_nlink;
+	GFC_DESCRIPTOR1_ELEM (values, 3) = sb.st_nlink;
 
       /* Owner's uid  */
       if (sb.st_uid <= INT32_MAX)
-	values->base_addr[4 * stride] = sb.st_uid;
+	GFC_DESCRIPTOR1_ELEM (values, 4) = sb.st_uid;
 
       /* Owner's gid  */
       if (sb.st_gid <= INT32_MAX)
-	values->base_addr[5 * stride] = sb.st_gid;
+	GFC_DESCRIPTOR1_ELEM (values, 5) = sb.st_gid;
 
       /* ID of device containing directory entry for file (0 if not available) */
 #if HAVE_STRUCT_STAT_ST_RDEV
       if (sb.st_rdev <= INT32_MAX)
-	values->base_addr[6 * stride] = sb.st_rdev;
+	GFC_DESCRIPTOR1_ELEM (values, 6) = sb.st_rdev;
 #else
-      values->base_addr[6 * stride] = 0;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = 0;
 #endif
 
       /* File size (bytes)  */
       if (sb.st_size <= INT32_MAX)
-	values->base_addr[7 * stride] = sb.st_size;
+	GFC_DESCRIPTOR1_ELEM (values, 7) = sb.st_size;
 
       /* Last access time  */
       if (sb.st_atime <= INT32_MAX)
-	values->base_addr[8 * stride] = sb.st_atime;
+	GFC_DESCRIPTOR1_ELEM (values, 8) = sb.st_atime;
 
       /* Last modification time  */
       if (sb.st_mtime <= INT32_MAX)
-	values->base_addr[9 * stride] = sb.st_mtime;
+	GFC_DESCRIPTOR1_ELEM (values, 9) = sb.st_mtime;
 
       /* Last file status change time  */
       if (sb.st_ctime <= INT32_MAX)
-	values->base_addr[10 * stride] = sb.st_ctime;
+	GFC_DESCRIPTOR1_ELEM (values, 10) = sb.st_ctime;
 
       /* Preferred I/O block size (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLKSIZE
       if (sb.st_blksize <= INT32_MAX)
-	values->base_addr[11 * stride] = sb.st_blksize;
+	GFC_DESCRIPTOR1_ELEM (values, 11) = sb.st_blksize;
 #endif
 
       /* Number of blocks allocated (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLOCKS
       if (sb.st_blocks <= INT32_MAX)
-	values->base_addr[12 * stride] = sb.st_blocks;
+	GFC_DESCRIPTOR1_ELEM (values, 12) = sb.st_blocks;
 #endif
     }
 
@@ -487,57 +481,55 @@ fstat_i8_sub (GFC_INTEGER_8 *unit, gfc_array_i8 *values, GFC_INTEGER_8 *status)
 
   if (val == 0)
     {
-      index_type stride = GFC_DESCRIPTOR_STRIDE(values,0);
-
       /* Device ID  */
-      values->base_addr[0] = sb.st_dev;
+      GFC_DESCRIPTOR1_ELEM (values, 0) = sb.st_dev;
 
       /* Inode number  */
-      values->base_addr[stride] = sb.st_ino;
+      GFC_DESCRIPTOR1_ELEM (values, 1) = sb.st_ino;
 
       /* File mode  */
-      values->base_addr[2 * stride] = sb.st_mode;
+      GFC_DESCRIPTOR1_ELEM (values, 2) = sb.st_mode;
 
       /* Number of (hard) links  */
-      values->base_addr[3 * stride] = sb.st_nlink;
+      GFC_DESCRIPTOR1_ELEM (values, 3) = sb.st_nlink;
 
       /* Owner's uid  */
-      values->base_addr[4 * stride] = sb.st_uid;
+      GFC_DESCRIPTOR1_ELEM (values, 4) = sb.st_uid;
 
       /* Owner's gid  */
-      values->base_addr[5 * stride] = sb.st_gid;
+      GFC_DESCRIPTOR1_ELEM (values, 5) = sb.st_gid;
 
       /* ID of device containing directory entry for file (0 if not available) */
 #if HAVE_STRUCT_STAT_ST_RDEV
-      values->base_addr[6 * stride] = sb.st_rdev;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = sb.st_rdev;
 #else
-      values->base_addr[6 * stride] = 0;
+      GFC_DESCRIPTOR1_ELEM (values, 6) = 0;
 #endif
 
       /* File size (bytes)  */
-      values->base_addr[7 * stride] = sb.st_size;
+      GFC_DESCRIPTOR1_ELEM (values, 7) = sb.st_size;
 
       /* Last access time  */
-      values->base_addr[8 * stride] = sb.st_atime;
+      GFC_DESCRIPTOR1_ELEM (values, 8) = sb.st_atime;
 
       /* Last modification time  */
-      values->base_addr[9 * stride] = sb.st_mtime;
+      GFC_DESCRIPTOR1_ELEM (values, 9) = sb.st_mtime;
 
       /* Last file status change time  */
-      values->base_addr[10 * stride] = sb.st_ctime;
+      GFC_DESCRIPTOR1_ELEM (values, 10) = sb.st_ctime;
 
       /* Preferred I/O block size (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLKSIZE
-      values->base_addr[11 * stride] = sb.st_blksize;
+      GFC_DESCRIPTOR1_ELEM (values, 11) = sb.st_blksize;
 #else
-      values->base_addr[11 * stride] = -1;
+      GFC_DESCRIPTOR1_ELEM (values, 11) = -1;
 #endif
 
       /* Number of blocks allocated (-1 if not available)  */
 #if HAVE_STRUCT_STAT_ST_BLOCKS
-      values->base_addr[12 * stride] = sb.st_blocks;
+      GFC_DESCRIPTOR1_ELEM (values, 12) = sb.st_blocks;
 #else
-      values->base_addr[12 * stride] = -1;
+      GFC_DESCRIPTOR1_ELEM (values, 12) = -1;
 #endif
     }
 

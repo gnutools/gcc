@@ -245,7 +245,7 @@ pack_'rtype_code` ('rtype` *ret, const 'rtype` *array,
           if (sstride0 == 0)
             sstride0 = 1;
 
-          sptr = vector->base_addr + sstride0 * nelem;
+          sptr = (const 'rtype_name` *) GFC_DESCRIPTOR1_ELEM_ADDRESS (vector, nelem);
           n -= nelem;
           while (n--)
             {

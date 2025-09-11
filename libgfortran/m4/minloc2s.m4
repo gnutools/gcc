@@ -129,7 +129,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
     return 0;
 
   ret = j + 1;
-  src = array->base_addr + j * sstride;
+  src = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, j);
   maxval = src;
 
   for (i=j+1; i<=extent; i++)

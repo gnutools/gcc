@@ -52,7 +52,7 @@ FOREACH_FUNCTION(
 		  fast = 1;
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  break;
 		}
 	      base += sstride[0];
@@ -70,7 +70,7 @@ FOREACH_FUNCTION(
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	      }
 	    base += sstride[0];
 	  }
@@ -82,7 +82,7 @@ FOREACH_FUNCTION(
 	      {
 		minval = *base;
 		for (n = 0; n < rank; n++)
-		  dest[n * dstride] = count[n] + 1;
+		  GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	      }')
 MASKED_FOREACH_FUNCTION(
 `  atype_name minval;
@@ -100,16 +100,16 @@ MASKED_FOREACH_FUNCTION(
 	      if (*mbase)
 		{
 #if defined('atype_nan`)
-		  if (unlikely (dest[0] == 0))
+		  if (unlikely (GFC_DESCRIPTOR1_ELEM (retarray, 0) == 0))
 		    for (n = 0; n < rank; n++)
-		      dest[n * dstride] = count[n] + 1;
+		      GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  if (*base <= minval)
 #endif
 		    {
 		      fast = 1;
 		      minval = *base;
 		      for (n = 0; n < rank; n++)
-			dest[n * dstride] = count[n] + 1;
+			GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		      break;
 		    }
 		}
@@ -128,7 +128,7 @@ MASKED_FOREACH_FUNCTION(
 	        {
 	      	  minval = *base;
 	      	  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	    	}
 		base += sstride[0];
 	    }
@@ -140,7 +140,7 @@ MASKED_FOREACH_FUNCTION(
 		{
 		  minval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		}')
 SCALAR_FOREACH_FUNCTION(`0')
 #endif

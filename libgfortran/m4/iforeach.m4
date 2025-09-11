@@ -15,9 +15,7 @@ void
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const 'atype_name` *base;
-  'rtype_name` * restrict dest;
   index_type rank;
   index_type n;
 
@@ -39,8 +37,6 @@ void
 				"u_name");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
@@ -50,7 +46,7 @@ void
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 	  return;
 	}
     }
@@ -59,7 +55,7 @@ void
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 1;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 1;
   {
 ')dnl
 define(START_FOREACH_BLOCK,
@@ -115,8 +111,6 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
-  'rtype_name` *dest;
   const 'atype_name` *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
@@ -166,8 +160,6 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
@@ -178,7 +170,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 	  return;
 	}
     }
@@ -187,7 +179,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
   {
 ')dnl
 define(START_MASKED_FOREACH_BLOCK, `START_FOREACH_BLOCK')dnl
@@ -250,9 +242,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  index_type dstride;
   index_type n;
-  rtype_name *dest;
 
   if (mask == NULL || *mask)
     {
@@ -278,8 +268,6 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 			       "u_name");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = $1 ;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = $1 ;
 }')dnl
