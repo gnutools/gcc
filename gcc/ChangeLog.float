@@ -1,3 +1,52 @@
+==================== Branch work221-float, patch #311 ====================
+
+Add -mbfloat16 switch.
+
+2025-09-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (VM): Add initial bfloat16 support.
+	(VM2): Likewise.
+	(VI_char): Likewise.
+	(VI_scalar): Likewise.
+	(VI_unit): Likewise.
+	(VU_char): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Likewise.
+	(rs6000_init_builtins): Likewise.
+	* config/rs6000/rs6000-cpus.def (POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000-modes.def (BFmode): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Likewise.
+	(rs6000_opt_masks): Likewise.
+	* config/rs6000/rs6000.md (FMOVE128_GPR): Likewise.
+	(RELOAD): Likewise.
+	(FP16): New mode iterator.
+	(mov<mode>, FP16 iterator): Rename insns, to support both HFmode and
+	BFmode moves.
+	(mov<mode>_xxsplti): Likewise.
+	(mov<mode>_internal, FP16 iterator): Likewise.
+	* config/rs6000/rs6000.opt (-mbfloat16): New switch.
+	* config/rs6000/vector.md (VEC_L): Add initial __bfloat16 support.
+	(VEC_M): Likewise.
+	(VEC_E): Likewise.
+	(VEC_base): Likewise.
+	(VEC_base_l): Likewise.
+	* config/rs6000/vsx.md (VECTOR_16BIT): Rename from V8HI_V8HF and add
+	bfloat16 support.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+	(VSX_XXBR): Likewise.
+	(VSm): Likewise.
+	(VSr): Likewise.
+	(VSisa): Likewise.
+	(??r): Likewise.
+	(nW): Likewise.
+	(VSv): Likewise.
+	(VM3): Likewise.
+	(VM3_char): Likewise.
+	(vsx_extract_<mode>_store_p9): Likewise.
+	(vsx_extract_<mode>_p8): Likewise.
+
 ==================== Branch work221-float, patch #310 ====================
 
 Add -mieee16 switch.
