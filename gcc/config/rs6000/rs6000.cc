@@ -3917,6 +3917,14 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
+  /* -mieee16 needs power9 at a minimum.  */
+  if (TARGET_IEEE16 && !TARGET_P9_VECTOR)
+    {
+      rs6000_isa_flags &= ~OPTION_MASK_IEEE16;
+      if (rs6000_isa_flags_explicit & OPTION_MASK_IEEE16)
+	error ("%qs requires at least %qs", "-mieee16", "-mcpu=power9");
+    }
+
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
      the -mcpu setting to enable options that conflict. */
   if ((!TARGET_HARD_FLOAT || !TARGET_ALTIVEC || !TARGET_VSX)
@@ -24550,6 +24558,7 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "power11",			OPTION_MASK_POWER11,		false, false },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
+  { "ieee16",			OPTION_MASK_IEEE16,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
   { "mfcrf",			OPTION_MASK_MFCRF,		false, true  },
   { "mfpgpr",			0,				false, true  },
