@@ -2172,11 +2172,12 @@
        (match_test "subreg_lowpart_offset (mode, GET_MODE (SUBREG_REG (op)))
 		    == SUBREG_BYTE (op)")))
 
-;; Return 1 if this is a HFmode constant that can be loaded with XXSPLTIW.
-(define_predicate "ieee16_xxspltiw_constant"
+;; Return 1 if this is a 16-bit floating point constant that can be
+;; loaded with XXSPLTIW.
+(define_predicate "fp16_xxspltiw_constant"
   (match_code "const_double")
 {
-  if (!TARGET_POWER10 || mode != HFmode)
+  if (!TARGET_POWER10 || !FP16_SCALAR_MODE_P (mode))
     return false;
 
   vec_const_128bit_type vsx_const;

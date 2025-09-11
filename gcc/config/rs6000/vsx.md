@@ -2511,6 +2511,14 @@
   "xscvspdpn %x0,%x1"
   [(set_attr "type" "fp")])
 
+(define_insn "vsx_xscvspdpn_sf"
+  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
+	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		   UNSPEC_VSX_CVSPDPN))]
+  "TARGET_XSCVSPDPN"
+  "xscvspdpn %x0,%x1"
+  [(set_attr "type" "fp")])
+
 (define_insn "vsx_xscvdpspn_scalar"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
@@ -6495,6 +6503,14 @@
 		      XVCVBF16))]
   "TARGET_POWER10"
   "<xvcvbf16> %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+(define_insn "xvcvbf16spn_v8bf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:V8BF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_XVCVBF16SPN))]
+  "TARGET_BFLOAT16"
+  "xvcvbf16spn %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
 (define_insn "vec_mtvsrbmi"

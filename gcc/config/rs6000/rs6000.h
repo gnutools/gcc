@@ -343,6 +343,11 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
    || ((MODE) == TDmode)						\
    || (!TARGET_FLOAT128_TYPE && FLOAT128_IEEE_P (MODE)))
 
+/* Is this a valid 16-bit scalar floating point mode?  */
+#define FP16_SCALAR_MODE_P(MODE)					\
+  (((MODE) == HFmode && TARGET_IEEE16)					\
+   || ((MODE) == BFmode && TARGET_BFLOAT16))
+
 /* Return true for floating point that does not use a vector register.  */
 #define SCALAR_FLOAT_MODE_NOT_VECTOR_P(MODE)				\
   (SCALAR_FLOAT_MODE_P (MODE) && !FLOAT128_VECTOR_P (MODE))
