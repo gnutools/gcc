@@ -3925,6 +3925,14 @@ rs6000_option_override_internal (bool global_init_p)
 	error ("%qs requires at least %qs", "-mieee16", "-mcpu=power9");
     }
 
+  /* -mbfloat16 needs power10 at a minimum.  */
+  if (TARGET_BFLOAT16 && !TARGET_POWER10)
+    {
+      rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
+      if (rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16)
+	error ("%qs requires at least %qs", "-mbfloat16", "-mcpu=power10");
+    }
+
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
      the -mcpu setting to enable options that conflict. */
   if ((!TARGET_HARD_FLOAT || !TARGET_ALTIVEC || !TARGET_VSX)
@@ -24541,6 +24549,7 @@ struct rs6000_opt_mask {
 static struct rs6000_opt_mask const rs6000_opt_masks[] =
 {
   { "altivec",			OPTION_MASK_ALTIVEC,		false, true  },
+  { "bfloat16",			OPTION_MASK_BFLOAT16,		false, true  },
   { "block-ops-unaligned-vsx",	OPTION_MASK_BLOCK_OPS_UNALIGNED_VSX,
 								false, true  },
   { "block-ops-vector-pair",	OPTION_MASK_BLOCK_OPS_VECTOR_PAIR,

@@ -650,6 +650,10 @@ mieee16-gpr-args
 Target Undocumented Var(TARGET_IEEE16_GPR_ARGS) Init(1) Save
 Pass _Float16 in GPR registers.
 
+mbfloat16
+Target Undocumented Mask(BFLOAT16) Var(rs6000_isa_flags)
+Enable or disable __bfloat16 support.
+
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=
