@@ -1,3 +1,16 @@
+==================== Branch work221-float, patch #315 ====================
+
+Use xvcvdpsp instead of xscvdpspn.
+
+2025-09-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (trunc<mode>bf2): Use xvcvdpsp instead of
+	xscvdpspn.
+	* config/rs6000/vsx.md (vsx_xvcvdpsp_<mode>): New insn.
+	(vsx_xscvdpspn_sf): Delete.
+
 ==================== Branch work221-float, patch #314 ====================
 
 Add -mbfloat16 converts.
