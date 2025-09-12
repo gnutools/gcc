@@ -1,3 +1,14 @@
+==================== Branch work221-float, patch #317 ====================
+
+Make -mbfloat16 default on power10.
+
+2025-09-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (OTHER_POWER10_MASKS): Make -mbfloat16
+	default on power10.
+
 ==================== Branch work221-float, patch #316 was reverted ====================
 ==================== Branch work221-float, patch #315 was reverted ====================
 
