@@ -2436,6 +2436,16 @@
   "xvcvdpsp %x0,%x1"
   [(set_attr "type" "vecdouble")])
 
+;; Needed for converting SF/DFmode to BFmode
+(define_insn "vsx_xvcvdpsp_<mode>"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:SFDF 1 "vsx_register_operand" "wa")
+		      (const_int 0)]
+		     UNSPEC_VSX_CVSPDP))]
+  "VECTOR_UNIT_VSX_P (V2DFmode)"
+  "xvcvdpsp %x0,%x1"
+  [(set_attr "type" "fp")])
+
 ;; xscvspdp, represent the scalar SF type as V4SF
 (define_insn "vsx_xscvspdp"
   [(set (match_operand:DF 0 "vsx_register_operand" "=wa")
@@ -2506,14 +2516,6 @@
 (define_insn "vsx_xscvdpspn"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:DF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_VSX_CVDPSPN))]
-  "TARGET_XSCVDPSPN"
-  "xscvdpspn %x0,%x1"
-  [(set_attr "type" "fp")])
-
-(define_insn "vsx_xscvdpspn_sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_CVDPSPN))]
   "TARGET_XSCVDPSPN"
   "xscvdpspn %x0,%x1"
