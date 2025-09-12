@@ -1,3 +1,13 @@
+==================== Branch work221-float, patch #316 ====================
+
+Add xxpermdi for bfloat16 converts.
+
+2025-09-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/vsx.md (vsx_xvcvdpsp_<mode>): As a hack, add xxpermdi
+
 ==================== Branch work221-float, patch #315 ====================
 
 Use xvcvdpsp instead of xscvdpspn.
