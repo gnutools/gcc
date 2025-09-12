@@ -2390,6 +2390,14 @@
   "xscvdpsp %x0,%x1"
   [(set_attr "type" "fp")])
 
+(define_insn "vsx_xscvdpsp_sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=f,?wa")
+	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "f,wa")]
+			      UNSPEC_VSX_CVSPDP))]
+  "VECTOR_UNIT_VSX_P (DFmode)"
+  "xscvdpsp %x0,%x1"
+  [(set_attr "type" "fp")])
+
 (define_insn "vsx_xvcvspdp_be"
   [(set (match_operand:V2DF 0 "vsx_register_operand" "=v,?wa")
      (float_extend:V2DF
@@ -2498,6 +2506,14 @@
 (define_insn "vsx_xscvdpspn"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:DF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_CVDPSPN))]
+  "TARGET_XSCVDPSPN"
+  "xscvdpspn %x0,%x1"
+  [(set_attr "type" "fp")])
+
+(define_insn "vsx_xscvdpspn_sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_CVDPSPN))]
   "TARGET_XSCVDPSPN"
   "xscvdpspn %x0,%x1"
@@ -6505,12 +6521,20 @@
   "<xvcvbf16> %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
-(define_insn "xvcvbf16spn_v8bf"
+(define_insn "vsx_xvcvbf16spn_v8bf"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:V8BF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_XVCVBF16SPN))]
   "TARGET_BFLOAT16"
   "xvcvbf16spn %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+(define_insn "vsx_xvcvspbf16_bf"
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
+	(unspec:BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		   UNSPEC_VSX_XVCVSPBF16))]
+  "TARGET_BFLOAT16"
+  "xvcvspbf16 %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
 (define_insn "vec_mtvsrbmi"

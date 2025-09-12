@@ -2411,15 +2411,6 @@
   "vsplth %0,%1,%2"
   [(set_attr "type" "vecperm")])
 
-(define_insn "altivec_vsplth_v8bf"
-  [(set (match_operand:V8BF 0 "register_operand" "=v")
-        (unspec:V8BF [(match_operand:BF 1 "register_operand" "v")
-                      (match_operand:QI 2 "const_0_to_7_operand" "i")]
-                     UNSPEC_VSPLT_DIRECT))]
-  "TARGET_BFLOAT16"
-  "vsplth %0,%1,%2"
-  [(set_attr "type" "vecperm")])
-
 (define_expand "altivec_vspltw"
   [(use (match_operand:V4SI 0 "register_operand"))
    (use (match_operand:V4SI 1 "register_operand"))
@@ -2485,6 +2476,17 @@
 
   return "vspltw %0,%1,%2";
 }
+  [(set_attr "type" "vecperm")])
+
+;; Splat instruction needed to allow conversion of __bfloat16
+;; (i.e. BFmode) to SFmode/DFmode.
+(define_insn "altivec_vsplth_v8bf"
+  [(set (match_operand:V8BF 0 "register_operand" "=v")
+        (unspec:V8BF [(match_operand:BF 1 "register_operand" "v")
+                      (match_operand:QI 2 "const_0_to_7_operand" "i")]
+                     UNSPEC_VSPLT_DIRECT))]
+  "TARGET_BFLOAT16"
+  "vsplth %0,%1,%2"
   [(set_attr "type" "vecperm")])
 
 (define_insn "altivec_vspltis<VI_char>"
