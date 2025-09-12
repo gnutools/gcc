@@ -2443,8 +2443,9 @@
 		      (const_int 0)]
 		     UNSPEC_VSX_CVSPDP))]
   "VECTOR_UNIT_VSX_P (V2DFmode)"
-  "xvcvdpsp %x0,%x1"
-  [(set_attr "type" "fp")])
+  "xxpermdi %x0,%x1,%x1,0\;xvcvdpsp %x0,%x0"
+  [(set_attr "type" "fp")
+   (set_attr "length" "8")])
 
 ;; xscvspdp, represent the scalar SF type as V4SF
 (define_insn "vsx_xscvspdp"
