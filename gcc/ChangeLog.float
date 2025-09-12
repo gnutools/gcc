@@ -1,3 +1,19 @@
+==================== Branch work221-float, patch #313 ====================
+
+Add convert from fp scalar to __bfloat16.
+
+2025-09-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (altivec_vsplth_v8bf): Move location.
+	* config/rs6000/rs6000.md (extendbf<mode>2): Rename xvcvbf16spn_v8bf.
+	(trunc<mode>bf2): New insn.
+	* config/rs6000/vsx.md (vsx_xscvdpsp_sf): Likewise.
+	(vsx_xscvdpspn_sf): Likewise.
+	(vsx_xvcvbf16spn_v8bf): Rename from xvcvbf16spn_v8bf.
+	(xvcvspbf16_bf): New insn.
+
 ==================== Branch work221-float, patch #312 ====================
 
 Update -mbfloat16 and -mieee16 support.
