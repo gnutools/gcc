@@ -1,3 +1,20 @@
+==================== Branch work221-float, patch #314 ====================
+
+Add -mbfloat16 converts.
+
+2025-09-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (FP16_CONVERT): Rename from HF_CONVERT.
+	(extend<FP16:mode><FP16_CONVERT:mode>2): Extend to allow both 16-bit
+	floating point types.
+	(trunc<FP16_CONVERT:mode><FP16:mode>2): Likewise.
+	(float<GPR:mode><FP16:mode>2): Likewise.
+	(floatuns<GPR:mode><FP16:mode>2): Likewise.
+	(fix_trunc<FP16:mode><GPR:mode>2): Likewise.
+	(fixuns_trunc<FP16:mode><GPR:mode>2): Likewise.
+
 ==================== Branch work221-float, patch #313 ====================
 
 Add convert from fp scalar to __bfloat16.
