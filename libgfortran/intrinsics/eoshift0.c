@@ -147,9 +147,9 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	 bn = eoshift(a,sh*n1*n2,1)
 
 	 so a block move can be used for dim>1.  */
-      len = GFC_DESCRIPTOR_STRIDE(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);
-      shift *= GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
+      shift *= count_low;
       roffset = size;
       soffset = size;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)

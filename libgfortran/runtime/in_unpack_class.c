@@ -66,12 +66,12 @@ internal_unpack_class (gfc_class_array_t *dest_class,
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE (dest_arr, n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES (dest_arr, n);
       extent[n] = GFC_DESCRIPTOR_EXTENT (dest_arr, n);
       if (extent[n] <= 0)
 	return;
 
-      if (dsize == stride[n])
+      if (dsize * size == stride[n])
 	dsize *= extent[n];
       else
 	dsize = 0;
@@ -97,7 +97,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
       return;
     }
 
-  stride0 = stride[0] * size;
+  stride0 = stride[0];
 
   while (dest)
     {
@@ -116,7 +116,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n] * size;
+	  dest -= stride[n] * extent[n];
 	  n++;
 	  if (n == dim)
 	    {
@@ -126,7 +126,7 @@ internal_unpack_class (gfc_class_array_t *dest_class,
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n] * size;
+	      dest += stride[n];
 	    }
 	}
     }

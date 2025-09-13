@@ -188,11 +188,11 @@ internal_unpack (gfc_array_char * d, const void * s)
   size = GFC_DESCRIPTOR_SIZE (d);
 
   dim = GFC_DESCRIPTOR_RANK (d);
-  dsize = 1;
+  dsize = size;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(d,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(d,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(d,n);
       if (extent[n] <= 0)
 	return;
@@ -207,11 +207,11 @@ internal_unpack (gfc_array_char * d, const void * s)
 
   if (dsize != 0)
     {
-      memcpy (dest, src, dsize * size);
+      memcpy (dest, src, dsize);
       return;
     }
 
-  stride0 = stride[0] * size;
+  stride0 = stride[0];
 
   while (dest)
     {
@@ -230,7 +230,7 @@ internal_unpack (gfc_array_char * d, const void * s)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n] * size;
+	  dest -= stride[n] * extent[n];
           n++;
           if (n == dim)
             {
@@ -240,7 +240,7 @@ internal_unpack (gfc_array_char * d, const void * s)
           else
             {
               count[n]++;
-              dest += stride[n] * size;
+	      dest += stride[n];
             }
         }
     }

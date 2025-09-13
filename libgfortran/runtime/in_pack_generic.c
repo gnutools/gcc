@@ -160,12 +160,12 @@ internal_pack (gfc_array_char * source)
     }
   
   dim = GFC_DESCRIPTOR_RANK (source);
-  ssize = 1;
+  ssize = GFC_DESCRIPTOR_SIZE (source);
   packed = 1;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(source,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (extent[n] <= 0)
         {
@@ -184,10 +184,10 @@ internal_pack (gfc_array_char * source)
     return source->base_addr;
 
    /* Allocate storage for the destination.  */
-  destptr = xmallocarray (ssize, size);
+  destptr = xmalloc (ssize);
   dest = (char *)destptr;
   src = source->base_addr;
-  stride0 = stride[0] * size;
+  stride0 = stride[0];
 
   while (src)
     {
@@ -206,7 +206,7 @@ internal_pack (gfc_array_char * source)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= stride[n] * extent[n] * size;
+	  src -= stride[n] * extent[n];
           n++;
           if (n == dim)
             {
@@ -216,7 +216,7 @@ internal_pack (gfc_array_char * source)
           else
             {
               count[n]++;
-              src += stride[n] * size;
+	      src += stride[n];
             }
         }
     }

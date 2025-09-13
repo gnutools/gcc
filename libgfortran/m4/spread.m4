@@ -250,8 +250,7 @@ spread_scalar_'rtype_code` ('rtype` *ret, const 'rtype_name` *source,
     }
   else
     {
-      if (ncopies - 1 > (GFC_DESCRIPTOR_EXTENT(ret,0) - 1)
-			   / GFC_DESCRIPTOR_STRIDE(ret,0))
+      if (ncopies > GFC_DESCRIPTOR_EXTENT(ret,0))
 	runtime_error ("dim too large in spread()");
     }
 

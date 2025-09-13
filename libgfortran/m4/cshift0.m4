@@ -67,8 +67,8 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
   soffset = 1;
   len = 0;
 
-  r_ex = 1;
-  a_ex = 1;
+  r_ex = sizeof ('rtype_name`);
+  a_ex = sizeof ('rtype_name`);
 
   if (which > 0)
     {
@@ -78,13 +78,13 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_STRIDE_BYTES (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_STRIDE_BYTES (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -116,9 +116,9 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
       rstride[0] = sizeof ('rtype_name`);
       roffset = sizeof ('rtype_name`);
       soffset = sizeof ('rtype_name`);
-      len = GFC_DESCRIPTOR_STRIDE(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
+      shift *= count_low;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;

@@ -146,7 +146,7 @@ gfc_desc_to_cfi_desc (CFI_cdesc_t **d_ptr, const gfc_array_void *s)
 	else
 	  d->dim[n].extent = (CFI_index_t)GFC_DESCRIPTOR_UBOUND(s, n)
 			     - (CFI_index_t)GFC_DESCRIPTOR_LBOUND(s, n) + 1;
-	d->dim[n].sm = (CFI_index_t)(GFC_DESCRIPTOR_STRIDE(s, n) * s->span);
+	d->dim[n].sm = (CFI_index_t)(GFC_DESCRIPTOR_STRIDE_BYTES(s, n));
       }
 
   if (*d_ptr == NULL)

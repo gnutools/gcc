@@ -975,7 +975,7 @@ arandom_m1 (gfc_array_m1 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
 	return;
