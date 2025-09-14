@@ -78,22 +78,20 @@ cshift1 (gfc_array_char * const restrict ret,
 
   if (ret->base_addr == NULL)
     {
+      index_type cnt;
       ret->base_addr = xmallocarray (arraysize, size);
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
+      cnt = 1;
       for (index_type i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
-	  index_type ub, str;
+	  index_type ub;
 
           ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
-          if (i == 0)
-            str = 1;
-          else
-	    str = GFC_DESCRIPTOR_EXTENT(ret,i-1) *
-	      GFC_DESCRIPTOR_STRIDE(ret,i-1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, cnt);
 
-	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, str);
+	  cnt = cnt * GFC_DESCRIPTOR_EXTENT(ret,i);
         }
     }
   else if (unlikely (compile_options.bounds_check))
