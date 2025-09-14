@@ -485,7 +485,7 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 
 #define GFC_DESCRIPTOR_STRIDE(desc,i) ((desc)->dim[i]._stride)
 #define GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_STRIDE(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
+  (GFC_DESCRIPTOR_STRIDE(desc,i) * GFC_DESCRIPTOR_SPAN(desc))
 
 /* Macros to get both the size and the type with a single masking operation  */
 

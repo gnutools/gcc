@@ -1606,6 +1606,9 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, bool lhs_type)
   gfc_conv_descriptor_dtype_set (block, dest,
 				 gfc_conv_descriptor_dtype_get (src));
 
+  gfc_conv_descriptor_span_set (block, dest,
+				gfc_conv_descriptor_span_get (src));
+
   /* Assign the dimension as range-ref.  */
   tree tmp = gfc_get_descriptor_dimension (dest);
   tree tmp2 = gfc_get_descriptor_dimension (src);
@@ -1802,7 +1805,25 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
   /* Set the dtype.  */
   tree dtype;
   if (unlimited_polymorphic)
-    dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
+    {
+      if (UNLIMITED_POLY (src_expr))
+	{
+	  tree tmp2 = src;
+	  if (TREE_CODE (tmp2) == INDIRECT_REF
+	      && DECL_P (TREE_OPERAND (tmp2, 0)))
+	    tmp2 = TREE_OPERAND (tmp2, 0);
+	  if (DECL_P (tmp2)
+	      && DECL_LANG_SPECIFIC (tmp2)
+	      && GFC_DECL_SAVED_DESCRIPTOR (tmp2))
+	    tmp2 = GFC_DECL_SAVED_DESCRIPTOR (tmp2);
+	  tmp2 = gfc_class_data_get (tmp2);
+	  if (POINTER_TYPE_P (TREE_TYPE (tmp2)))
+	    tmp2 = build_fold_indirect_ref_loc (input_location, tmp2);
+	  dtype = gfc_conv_descriptor_dtype_get (tmp2);
+	}
+      else
+	dtype = gfc_get_dtype (TREE_TYPE (src), &rank);
+    }
   else if (src_expr->ts.type == BT_ASSUMED)
     {
       tree tmp2 = src;
@@ -2648,6 +2669,8 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
   gfc_conv_descriptor_offset_set (block, descr, offset);
   gfc_conv_descriptor_dtype_set (block, descr,
 				 gfc_get_dtype (TREE_TYPE (descr)));
+
+  gfc_conv_descriptor_span_set (block, descr, elt_size);
 
   size = fold_build2_loc (input_location, MULT_EXPR,
 			  gfc_array_index_type, size, elt_size);
