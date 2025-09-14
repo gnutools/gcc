@@ -133,7 +133,7 @@ cshift1_8_i16 (gfc_array_i16 * const restrict ret,
 	  if (sh < 0)
             sh += len;
 	}
-      src = (const GFC_INTEGER_16 *) (((char*)sptr) + sh * soffset);
+      src = PTR_ADD_OFFSET (sptr, sh * soffset);
       dest = rptr;
       if (soffset == sizeof (GFC_INTEGER_16) && roffset == sizeof (GFC_INTEGER_16))
 	{

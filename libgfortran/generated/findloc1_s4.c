@@ -141,7 +141,7 @@ findloc1_s4 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = (const GFC_UINTEGER_4 * restrict) (((char*) base) + (len - 1) * delta);
+	  src = PTR_ADD_OFFSET (base, (len - 1) * delta);
 	  for (n = len; n > 0; n--)
 	    {
 	      if (compare_string_char4 (len_array, src, len_value, value) == 0)
@@ -327,7 +327,7 @@ mfindloc1_s4 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = (const GFC_UINTEGER_4 * restrict) (((char*)base) + (len - 1) * delta);
+	  src = PTR_ADD_OFFSET (base, (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
 	  for (n = len; n > 0; n--)
 	    {

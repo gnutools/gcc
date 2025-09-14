@@ -190,7 +190,7 @@ cshift0_c8 (gfc_array_c8 *ret, const gfc_array_c8 *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  GFC_COMPLEX_8 *dest = rptr;
-	  const GFC_COMPLEX_8 *src = (const GFC_COMPLEX_8 *) (((char*)sptr) + shift * soffset);
+	  const GFC_COMPLEX_8 *src = PTR_ADD_OFFSET (sptr, shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {

@@ -190,7 +190,7 @@ cshift0_c16 (gfc_array_c16 *ret, const gfc_array_c16 *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  GFC_COMPLEX_16 *dest = rptr;
-	  const GFC_COMPLEX_16 *src = (const GFC_COMPLEX_16 *) (((char*)sptr) + shift * soffset);
+	  const GFC_COMPLEX_16 *src = PTR_ADD_OFFSET (sptr, shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {

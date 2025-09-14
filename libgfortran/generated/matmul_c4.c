@@ -94,7 +94,8 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
   index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
-  index_type aystride_bytes, bystride_bytes, rystride_bytes;
+  index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
+	     rxstride_bytes, rystride_bytes;
 
   assert (GFC_DESCRIPTOR_RANK (a) == 2
           || GFC_DESCRIPTOR_RANK (b) == 2);
@@ -183,12 +184,13 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 	 either as a row or a column matrix. We want both cases to
 	 work. */
       rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
       rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
@@ -197,6 +199,7 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
       /* Treat it as a a row matrix A[1,count]. */
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = 1;
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
 
       xcount = 1;
@@ -206,6 +209,7 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
     {
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
       count = GFC_DESCRIPTOR_EXTENT(a,1);
@@ -224,17 +228,20 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
     {
       /* Treat it as a column matrix B[count,1] */
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
       bystride = 256;
+      bystride_bytes = 99999999;
       ycount = 1;
     }
   else
     {
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
       bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
@@ -294,12 +301,11 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
 	 from netlib.org, translated to C, and modified for matmul.m4.  */
 
-      const GFC_COMPLEX_4 *a, *b;
       GFC_COMPLEX_4 *c;
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, b_dim1, c_dim1,
+      index_type a_dim1, b_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -309,25 +315,22 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
       index_type isec, jsec, lsec, uisec, ujsec, ulsec;
       GFC_COMPLEX_4 *t1;
 
-      a = abase;
-      b = bbase;
       c = retarray->base_addr;
 
       /* Parameter adjustments */
-      c_dim1 = rystride;
       a_dim1 = aystride;
       b_dim1 = bystride;
 
 #define A_ARRAY_ELEM(i,j) \
-    a[(i) + (j) * a_dim1]
+    (ARRAY_ELEM_AT_OFFSET (abase, (i) * sizeof (GFC_COMPLEX_4) + (j) * aystride_bytes))
 
 #define B_ARRAY_ELEM(i,j) \
-    b[(i) + (j) * b_dim1]
+    (ARRAY_ELEM_AT_OFFSET (bbase, (i) * sizeof (GFC_COMPLEX_4) + (j) * bystride_bytes))
 
 #define C_ARRAY_ELEM(i,j) \
-    c[(i) + (j) * c_dim1]
+    (ARRAY_ELEM_AT_OFFSET (c, (i) * sizeof (GFC_COMPLEX_4) + (j) * rystride_bytes))
 
-      /* Empty c first.  */
+      /* Empty result first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
 	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_4)0;
@@ -575,11 +578,11 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
-	      dest_y = &dest[y*rystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	      dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axstride];
+		  abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 		  s = (GFC_COMPLEX_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -594,11 +597,11 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
-	      dest[y*rystride] = s;
+	      ARRAY_ELEM_AT_OFFSET (dest, y * rystride_bytes) = s;
 	    }
 	}
     }
@@ -609,10 +612,11 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	  s = (GFC_COMPLEX_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	    s += GFC_DESCRIPTOR1_ELEM (a, n)
+	         * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
@@ -639,15 +643,16 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
-	  dest_y = &dest[y*rystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	  dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axstride];
+	      abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*aystride] * bbase_y[n*bxstride];
-	      dest_y[x*rxstride] = s;
+		s += ARRAY_ELEM_AT_OFFSET (abase_x, n * aystride_bytes)
+		     * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
+	      ARRAY_ELEM_AT_OFFSET (dest_y, x * rxstride_bytes) = s;
 	    }
 	}
     }
@@ -674,7 +679,8 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
   index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
-  index_type aystride_bytes, bystride_bytes, rystride_bytes;
+  index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
+	     rxstride_bytes, rystride_bytes;
 
   assert (GFC_DESCRIPTOR_RANK (a) == 2
           || GFC_DESCRIPTOR_RANK (b) == 2);
@@ -763,12 +769,13 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 	 either as a row or a column matrix. We want both cases to
 	 work. */
       rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
       rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
@@ -777,6 +784,7 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
       /* Treat it as a a row matrix A[1,count]. */
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = 1;
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
 
       xcount = 1;
@@ -786,6 +794,7 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
     {
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
       count = GFC_DESCRIPTOR_EXTENT(a,1);
@@ -804,17 +813,20 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
     {
       /* Treat it as a column matrix B[count,1] */
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
       bystride = 256;
+      bystride_bytes = 99999999;
       ycount = 1;
     }
   else
     {
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
       bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
@@ -874,12 +886,11 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
 	 from netlib.org, translated to C, and modified for matmul.m4.  */
 
-      const GFC_COMPLEX_4 *a, *b;
       GFC_COMPLEX_4 *c;
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, b_dim1, c_dim1,
+      index_type a_dim1, b_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -889,25 +900,22 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
       index_type isec, jsec, lsec, uisec, ujsec, ulsec;
       GFC_COMPLEX_4 *t1;
 
-      a = abase;
-      b = bbase;
       c = retarray->base_addr;
 
       /* Parameter adjustments */
-      c_dim1 = rystride;
       a_dim1 = aystride;
       b_dim1 = bystride;
 
 #define A_ARRAY_ELEM(i,j) \
-    a[(i) + (j) * a_dim1]
+    (ARRAY_ELEM_AT_OFFSET (abase, (i) * sizeof (GFC_COMPLEX_4) + (j) * aystride_bytes))
 
 #define B_ARRAY_ELEM(i,j) \
-    b[(i) + (j) * b_dim1]
+    (ARRAY_ELEM_AT_OFFSET (bbase, (i) * sizeof (GFC_COMPLEX_4) + (j) * bystride_bytes))
 
 #define C_ARRAY_ELEM(i,j) \
-    c[(i) + (j) * c_dim1]
+    (ARRAY_ELEM_AT_OFFSET (c, (i) * sizeof (GFC_COMPLEX_4) + (j) * rystride_bytes))
 
-      /* Empty c first.  */
+      /* Empty result first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
 	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_4)0;
@@ -1155,11 +1163,11 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
-	      dest_y = &dest[y*rystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	      dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axstride];
+		  abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 		  s = (GFC_COMPLEX_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1174,11 +1182,11 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
-	      dest[y*rystride] = s;
+	      ARRAY_ELEM_AT_OFFSET (dest, y * rystride_bytes) = s;
 	    }
 	}
     }
@@ -1189,10 +1197,11 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	  s = (GFC_COMPLEX_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	    s += GFC_DESCRIPTOR1_ELEM (a, n)
+	         * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
@@ -1219,15 +1228,16 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
-	  dest_y = &dest[y*rystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	  dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axstride];
+	      abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*aystride] * bbase_y[n*bxstride];
-	      dest_y[x*rxstride] = s;
+		s += ARRAY_ELEM_AT_OFFSET (abase_x, n * aystride_bytes)
+		     * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
+	      ARRAY_ELEM_AT_OFFSET (dest_y, x * rxstride_bytes) = s;
 	    }
 	}
     }
@@ -1254,7 +1264,8 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
   index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
-  index_type aystride_bytes, bystride_bytes, rystride_bytes;
+  index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
+	     rxstride_bytes, rystride_bytes;
 
   assert (GFC_DESCRIPTOR_RANK (a) == 2
           || GFC_DESCRIPTOR_RANK (b) == 2);
@@ -1343,12 +1354,13 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 	 either as a row or a column matrix. We want both cases to
 	 work. */
       rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
       rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
@@ -1357,6 +1369,7 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
       /* Treat it as a a row matrix A[1,count]. */
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = 1;
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
 
       xcount = 1;
@@ -1366,6 +1379,7 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
     {
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
       count = GFC_DESCRIPTOR_EXTENT(a,1);
@@ -1384,17 +1398,20 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
     {
       /* Treat it as a column matrix B[count,1] */
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
       bystride = 256;
+      bystride_bytes = 99999999;
       ycount = 1;
     }
   else
     {
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
       bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
@@ -1454,12 +1471,11 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
 	 from netlib.org, translated to C, and modified for matmul.m4.  */
 
-      const GFC_COMPLEX_4 *a, *b;
       GFC_COMPLEX_4 *c;
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, b_dim1, c_dim1,
+      index_type a_dim1, b_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -1469,25 +1485,22 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
       index_type isec, jsec, lsec, uisec, ujsec, ulsec;
       GFC_COMPLEX_4 *t1;
 
-      a = abase;
-      b = bbase;
       c = retarray->base_addr;
 
       /* Parameter adjustments */
-      c_dim1 = rystride;
       a_dim1 = aystride;
       b_dim1 = bystride;
 
 #define A_ARRAY_ELEM(i,j) \
-    a[(i) + (j) * a_dim1]
+    (ARRAY_ELEM_AT_OFFSET (abase, (i) * sizeof (GFC_COMPLEX_4) + (j) * aystride_bytes))
 
 #define B_ARRAY_ELEM(i,j) \
-    b[(i) + (j) * b_dim1]
+    (ARRAY_ELEM_AT_OFFSET (bbase, (i) * sizeof (GFC_COMPLEX_4) + (j) * bystride_bytes))
 
 #define C_ARRAY_ELEM(i,j) \
-    c[(i) + (j) * c_dim1]
+    (ARRAY_ELEM_AT_OFFSET (c, (i) * sizeof (GFC_COMPLEX_4) + (j) * rystride_bytes))
 
-      /* Empty c first.  */
+      /* Empty result first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
 	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_4)0;
@@ -1735,11 +1748,11 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
-	      dest_y = &dest[y*rystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	      dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axstride];
+		  abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 		  s = (GFC_COMPLEX_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -1754,11 +1767,11 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
-	      dest[y*rystride] = s;
+	      ARRAY_ELEM_AT_OFFSET (dest, y * rystride_bytes) = s;
 	    }
 	}
     }
@@ -1769,10 +1782,11 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	  s = (GFC_COMPLEX_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	    s += GFC_DESCRIPTOR1_ELEM (a, n)
+	         * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
@@ -1799,15 +1813,16 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
-	  dest_y = &dest[y*rystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	  dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axstride];
+	      abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*aystride] * bbase_y[n*bxstride];
-	      dest_y[x*rxstride] = s;
+		s += ARRAY_ELEM_AT_OFFSET (abase_x, n * aystride_bytes)
+		     * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
+	      ARRAY_ELEM_AT_OFFSET (dest_y, x * rxstride_bytes) = s;
 	    }
 	}
     }
@@ -1848,7 +1863,8 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
   index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
-  index_type aystride_bytes, bystride_bytes, rystride_bytes;
+  index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
+	     rxstride_bytes, rystride_bytes;
 
   assert (GFC_DESCRIPTOR_RANK (a) == 2
           || GFC_DESCRIPTOR_RANK (b) == 2);
@@ -1937,12 +1953,13 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 	 either as a row or a column matrix. We want both cases to
 	 work. */
       rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
       rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
@@ -1951,6 +1968,7 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
       /* Treat it as a a row matrix A[1,count]. */
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = 1;
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
 
       xcount = 1;
@@ -1960,6 +1978,7 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
     {
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
       count = GFC_DESCRIPTOR_EXTENT(a,1);
@@ -1978,17 +1997,20 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
     {
       /* Treat it as a column matrix B[count,1] */
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
       bystride = 256;
+      bystride_bytes = 99999999;
       ycount = 1;
     }
   else
     {
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
       bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
@@ -2048,12 +2070,11 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
 	 from netlib.org, translated to C, and modified for matmul.m4.  */
 
-      const GFC_COMPLEX_4 *a, *b;
       GFC_COMPLEX_4 *c;
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, b_dim1, c_dim1,
+      index_type a_dim1, b_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -2063,25 +2084,22 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
       index_type isec, jsec, lsec, uisec, ujsec, ulsec;
       GFC_COMPLEX_4 *t1;
 
-      a = abase;
-      b = bbase;
       c = retarray->base_addr;
 
       /* Parameter adjustments */
-      c_dim1 = rystride;
       a_dim1 = aystride;
       b_dim1 = bystride;
 
 #define A_ARRAY_ELEM(i,j) \
-    a[(i) + (j) * a_dim1]
+    (ARRAY_ELEM_AT_OFFSET (abase, (i) * sizeof (GFC_COMPLEX_4) + (j) * aystride_bytes))
 
 #define B_ARRAY_ELEM(i,j) \
-    b[(i) + (j) * b_dim1]
+    (ARRAY_ELEM_AT_OFFSET (bbase, (i) * sizeof (GFC_COMPLEX_4) + (j) * bystride_bytes))
 
 #define C_ARRAY_ELEM(i,j) \
-    c[(i) + (j) * c_dim1]
+    (ARRAY_ELEM_AT_OFFSET (c, (i) * sizeof (GFC_COMPLEX_4) + (j) * rystride_bytes))
 
-      /* Empty c first.  */
+      /* Empty result first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
 	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_4)0;
@@ -2329,11 +2347,11 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
-	      dest_y = &dest[y*rystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	      dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axstride];
+		  abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 		  s = (GFC_COMPLEX_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -2348,11 +2366,11 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
-	      dest[y*rystride] = s;
+	      ARRAY_ELEM_AT_OFFSET (dest, y * rystride_bytes) = s;
 	    }
 	}
     }
@@ -2363,10 +2381,11 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	  s = (GFC_COMPLEX_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	    s += GFC_DESCRIPTOR1_ELEM (a, n)
+	         * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
@@ -2393,15 +2412,16 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
-	  dest_y = &dest[y*rystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	  dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axstride];
+	      abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*aystride] * bbase_y[n*bxstride];
-	      dest_y[x*rxstride] = s;
+		s += ARRAY_ELEM_AT_OFFSET (abase_x, n * aystride_bytes)
+		     * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
+	      ARRAY_ELEM_AT_OFFSET (dest_y, x * rxstride_bytes) = s;
 	    }
 	}
     }
@@ -2501,7 +2521,8 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
   index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
-  index_type aystride_bytes, bystride_bytes, rystride_bytes;
+  index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
+	     rxstride_bytes, rystride_bytes;
 
   assert (GFC_DESCRIPTOR_RANK (a) == 2
           || GFC_DESCRIPTOR_RANK (b) == 2);
@@ -2590,12 +2611,13 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 	 either as a row or a column matrix. We want both cases to
 	 work. */
       rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
       rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
@@ -2604,6 +2626,7 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
       /* Treat it as a a row matrix A[1,count]. */
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = 1;
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
 
       xcount = 1;
@@ -2613,6 +2636,7 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
     {
       axstride = GFC_DESCRIPTOR_STRIDE(a,0);
       aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
       count = GFC_DESCRIPTOR_EXTENT(a,1);
@@ -2631,17 +2655,20 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
     {
       /* Treat it as a column matrix B[count,1] */
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
          The value is only used for calculation of the
          memory by the buffer.  */
       bystride = 256;
+      bystride_bytes = 99999999;
       ycount = 1;
     }
   else
     {
       bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
       bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
     }
@@ -2701,12 +2728,11 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
 	 from netlib.org, translated to C, and modified for matmul.m4.  */
 
-      const GFC_COMPLEX_4 *a, *b;
       GFC_COMPLEX_4 *c;
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, b_dim1, c_dim1,
+      index_type a_dim1, b_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -2716,25 +2742,22 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
       index_type isec, jsec, lsec, uisec, ujsec, ulsec;
       GFC_COMPLEX_4 *t1;
 
-      a = abase;
-      b = bbase;
       c = retarray->base_addr;
 
       /* Parameter adjustments */
-      c_dim1 = rystride;
       a_dim1 = aystride;
       b_dim1 = bystride;
 
 #define A_ARRAY_ELEM(i,j) \
-    a[(i) + (j) * a_dim1]
+    (ARRAY_ELEM_AT_OFFSET (abase, (i) * sizeof (GFC_COMPLEX_4) + (j) * aystride_bytes))
 
 #define B_ARRAY_ELEM(i,j) \
-    b[(i) + (j) * b_dim1]
+    (ARRAY_ELEM_AT_OFFSET (bbase, (i) * sizeof (GFC_COMPLEX_4) + (j) * bystride_bytes))
 
 #define C_ARRAY_ELEM(i,j) \
-    c[(i) + (j) * c_dim1]
+    (ARRAY_ELEM_AT_OFFSET (c, (i) * sizeof (GFC_COMPLEX_4) + (j) * rystride_bytes))
 
-      /* Empty c first.  */
+      /* Empty result first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
 	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_4)0;
@@ -2982,11 +3005,11 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
-	      dest_y = &dest[y*rystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	      dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	      for (x = 0; x < xcount; x++)
 		{
-		  abase_x = &abase[x*axstride];
+		  abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 		  s = (GFC_COMPLEX_4) 0;
 		  for (n = 0; n < count; n++)
 		    s += abase_x[n] * bbase_y[n];
@@ -3001,11 +3024,11 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
 	  for (y = 0; y < ycount; y++)
 	    {
-	      bbase_y = &bbase[y*bystride];
+	      bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
 		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
-	      dest[y*rystride] = s;
+	      ARRAY_ELEM_AT_OFFSET (dest, y * rystride_bytes) = s;
 	    }
 	}
     }
@@ -3016,10 +3039,11 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
 	  s = (GFC_COMPLEX_4) 0;
 	  for (n = 0; n < count; n++)
-	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	    s += GFC_DESCRIPTOR1_ELEM (a, n)
+	         * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
@@ -3046,15 +3070,16 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
 
       for (y = 0; y < ycount; y++)
 	{
-	  bbase_y = &bbase[y*bystride];
-	  dest_y = &dest[y*rystride];
+	  bbase_y = PTR_ADD_OFFSET (bbase, y * bystride_bytes);
+	  dest_y = PTR_ADD_OFFSET (dest, y * rystride_bytes);
 	  for (x = 0; x < xcount; x++)
 	    {
-	      abase_x = &abase[x*axstride];
+	      abase_x = PTR_ADD_OFFSET (abase, x * axstride_bytes);
 	      s = (GFC_COMPLEX_4) 0;
 	      for (n = 0; n < count; n++)
-		s += abase_x[n*aystride] * bbase_y[n*bxstride];
-	      dest_y[x*rxstride] = s;
+		s += ARRAY_ELEM_AT_OFFSET (abase_x, n * aystride_bytes)
+		     * ARRAY_ELEM_AT_OFFSET (bbase_y, n * bxstride_bytes);
+	      ARRAY_ELEM_AT_OFFSET (dest_y, x * rxstride_bytes) = s;
 	    }
 	}
     }
