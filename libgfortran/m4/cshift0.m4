@@ -191,7 +191,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  'rtype_name` *dest = rptr;
-	  const 'rtype_name` *src = (const 'rtype_name` *) (((char*)sptr) + shift * soffset);
+	  const 'rtype_name` *src = PTR_ADD_OFFSET (sptr, shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {

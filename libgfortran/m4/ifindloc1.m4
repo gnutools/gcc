@@ -131,7 +131,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = (const 'atype_name` * restrict) (((char*) base) + (len - 1) * delta);
+	  src = PTR_ADD_OFFSET (base, (len - 1) * delta);
 	  for (n = len; n > 0; n--)
 	    {
 	      if ('comparison`)
@@ -307,7 +307,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = (const 'atype_name` * restrict) (((char*)base) + (len - 1) * delta);
+	  src = PTR_ADD_OFFSET (base, (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
 	  for (n = len; n > 0; n--)
 	    {

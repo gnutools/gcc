@@ -134,7 +134,7 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 	  if (sh < 0)
             sh += len;
 	}
-      src = (const 'atype_name` *) (((char*)sptr) + sh * soffset);
+      src = PTR_ADD_OFFSET (sptr, sh * soffset);
       dest = rptr;
       if (soffset == sizeof ('atype_name`) && roffset == sizeof ('atype_name`))
 	{

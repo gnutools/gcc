@@ -51,8 +51,9 @@ reduce (parray *ret,
   void *res;
   index_type ext0, ext1, ext2;
   index_type str0, str1, str2;
+  index_type mstr0, mstr1, mstr2;
   index_type idx0, idx1, idx2;
-  index_type dimen, dimen_m1, ldx, ext, str;
+  index_type dimen, dimen_m1, ext, str;
   bool started;
   bool masked = false;
   bool dim_present = dim != NULL;
@@ -95,7 +96,8 @@ reduce (parray *ret,
      painless by the use of pointer arithmetic throughout (except for MASK,
      whose type is known.  */
   ext0 = ext1 = ext2 = 1;
-  str0 = str1 = str2 = 1;
+  str0 = str1 = str2 = GFC_DESCRIPTOR_SIZE (array);
+  mstr0 = mstr1 = mstr2 = sizeof (GFC_LOGICAL_4);
 
   scalar_result = (!dim_present && array_rank > 1) || array_rank == 1;
 
@@ -104,7 +106,6 @@ reduce (parray *ret,
     {
       /* Obtain the shape of the reshaped ARRAY.  */
       ext = GFC_DESCRIPTOR_EXTENT (array,i);
-      str = GFC_DESCRIPTOR_STRIDE (array,i);
 
       if (masked && (ext != GFC_DESCRIPTOR_EXTENT (mask, i)))
 	{
@@ -136,11 +137,15 @@ reduce (parray *ret,
 
   if (!scalar_result)
     {
-      str1 = GFC_DESCRIPTOR_STRIDE (array, dimen_m1);
+      str1 = GFC_DESCRIPTOR_STRIDE_BYTES (array, dimen_m1);
+      if (mask_present)
+	mstr1 = GFC_DESCRIPTOR_STRIDE_BYTES (mask, dimen_m1);
       if (dimen < array_rank)
-	str2 = GFC_DESCRIPTOR_STRIDE (array, dimen);
-      else
-	str2 = 1;
+	{
+	  str2 = GFC_DESCRIPTOR_STRIDE_BYTES (array, dimen);
+	  if (mask_present)
+	    mstr2 = GFC_DESCRIPTOR_STRIDE_BYTES (mask, dimen);
+	}
     }
 
   /* Allocate the result data, the result buffer and zero.  */
@@ -154,14 +159,14 @@ reduce (parray *ret,
     {
       for (idx2 = 0; idx2 < ext2; idx2++)
 	{
-	  ldx = idx0 * str0  + idx2 * str2;
 	  if (mask_present)
-	    maskR = mask->base_addr[ldx];
+	    maskR = ARRAY_ELEM_AT_OFFSET (mask->base_addr,
+					  idx0 * mstr0 + idx2 * mstr2);
 
 	  started = (mask_present && maskR) || !mask_present;
 
-	  buffer_ptr = array->base_addr
-			+ (size_t)((idx0 * str0 + idx2 * str2) * elem_len);
+	  buffer_ptr = PTR_ADD_OFFSET (array->base_addr,
+				       idx0 * str0 + idx2 * str2);
 
 	  /* Start the iteration over the second dimension of ARRAY.  */
 	  for (idx1 = 1; idx1 < ext1; idx1++)
@@ -169,13 +174,16 @@ reduce (parray *ret,
 	      /* If masked, cycle until after first element that is not masked
 		 out. Then set 'started' and cycle so that this becomes the
 		 first element in the reduction.  */
-	      ldx = idx0 * str0 + idx1 * str1 + idx2 * str2;
 	      if (mask_present)
-		maskR = mask->base_addr[ldx];
+		maskR = ARRAY_ELEM_AT_OFFSET (mask->base_addr,
+					      idx0 * mstr0
+					      + idx1 * mstr1
+					      + idx2 * mstr2);
 
-	      array_ptr = array->base_addr
-			  + (size_t)((idx0 * str0 + idx1 * str1
-				      + idx2 * str2) * elem_len);
+	      array_ptr = PTR_ADD_OFFSET (array->base_addr,
+					  idx0 * str0
+					  + idx1 * str1
+					  + idx2 * str2);
 	      if (!started)
 		{
 		  if (mask_present && maskR)
@@ -199,7 +207,7 @@ reduce (parray *ret,
 	     result. If this result element is empty emit an error or, if
 	     available, set to identity. Note that str1 is paired with idx2
 	     here because the result skips a dimension.  */
-	  res = ret->base_addr + (size_t)((idx0 * str0 + idx2 * str1) * elem_len);
+	  res = PTR_ADD_OFFSET (ret->base_addr, idx0 * str0 + idx2 * str1);
 	  if (started)
 	    {
 	      operation (buffer_ptr, NULL, res);

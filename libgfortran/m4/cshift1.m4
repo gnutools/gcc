@@ -264,7 +264,7 @@ cshift1 (gfc_array_char * const restrict ret,
 	    sh += len;
 	}
 
-      src = &sptr[sh * soffset];
+      src = PTR_ADD_OFFSET (sptr, sh * soffset);
       dest = rptr;
       if (soffset == size && roffset == size)
       {

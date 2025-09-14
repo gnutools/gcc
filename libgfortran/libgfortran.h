@@ -587,25 +587,24 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 
 
 #define PTR_ADD_OFFSET(ptr,bytes) ((typeof (ptr)) (((char*) ptr) + (bytes)))
-#define GFC_DESCRIPTOR_DIM_INDEX_OFFSET(descr, dim, idx) \
-    ((idx) * GFC_DESCRIPTOR_STRIDE ((descr), (dim)))
-#define GFC_DESCRIPTOR1_INDEX(descr, idx) \
-    (GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 0, (idx)))
-#define GFC_DESCRIPTOR1_ELEM(descr, idx) \
-    (descr)->base_addr[GFC_DESCRIPTOR1_INDEX((descr), (idx))]
+#define ARRAY_ELEM_AT_OFFSET(array_ptr,offset) (*PTR_ADD_OFFSET ((array_ptr), (offset)))
+#define GFC_DESCRIPTOR_DIM_OFFSET(descr, dim, idx) \
+    ((idx) * GFC_DESCRIPTOR_STRIDE_BYTES ((descr), (dim)))
 #define GFC_DESCRIPTOR1_ELEM_ADDRESS(descr, idx) \
-    (&GFC_DESCRIPTOR1_ELEM((descr), (idx)))
-#define GFC_DESCRIPTOR2_INDEX(descr, idx1, idx2) \
-    (GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 0, (idx1)) \
-     + GFC_DESCRIPTOR_DIM_INDEX_OFFSET((descr), 1, (idx2)))
-#define GFC_DESCRIPTOR2_ELEM(descr, idx1, idx2) \
-    (descr)->base_addr[GFC_DESCRIPTOR2_INDEX((descr),(idx1),(idx2))]
+    PTR_ADD_OFFSET ((descr)->base_addr, GFC_DESCRIPTOR_DIM_OFFSET((descr), 0, (idx)))
+#define GFC_DESCRIPTOR1_ELEM(descr, idx) \
+    (*GFC_DESCRIPTOR1_ELEM_ADDRESS((descr), (idx)))
 #define GFC_DESCRIPTOR2_ELEM_ADDRESS(descr, idx1, idx2) \
-    (&GFC_DESCRIPTOR2_ELEM((descr),(idx1),(idx2))
+    PTR_ADD_OFFSET ((descr)->base_addr, \
+		   GFC_DESCRIPTOR_DIM_OFFSET((descr), 0, (idx1)) \
+		   + GFC_DESCRIPTOR_DIM_OFFSET((descr), 1, (idx2)))
+#define GFC_DESCRIPTOR2_ELEM(descr, idx1, idx2) \
+    (*GFC_DESCRIPTOR2_ELEM_ADDRESS((descr), (idx1), (idx2)))
 
 
 #define PTR_INCREMENT_BYTES(ptr,bytes) ptr = (typeof (ptr)) (((char*) ptr) + (bytes))
 #define PTR_DECREMENT_BYTES(ptr,bytes) ptr = (typeof (ptr)) (((char*) ptr) - (bytes))
+
 
 
 /* Generic vtab structure.  */
