@@ -66,8 +66,8 @@ cshift0_i2 (gfc_array_i2 *ret, const gfc_array_i2 *array, ptrdiff_t shift,
   soffset = 1;
   len = 0;
 
-  r_ex = 1;
-  a_ex = 1;
+  r_ex = sizeof (GFC_INTEGER_2);
+  a_ex = sizeof (GFC_INTEGER_2);
 
   if (which > 0)
     {
@@ -77,13 +77,13 @@ cshift0_i2 (gfc_array_i2 *ret, const gfc_array_i2 *array, ptrdiff_t shift,
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_STRIDE_BYTES (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_STRIDE_BYTES (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -115,9 +115,9 @@ cshift0_i2 (gfc_array_i2 *ret, const gfc_array_i2 *array, ptrdiff_t shift,
       rstride[0] = sizeof (GFC_INTEGER_2);
       roffset = sizeof (GFC_INTEGER_2);
       soffset = sizeof (GFC_INTEGER_2);
-      len = GFC_DESCRIPTOR_STRIDE(array, which)
-	* GFC_DESCRIPTOR_EXTENT(array, which);      
-      shift *= GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
+      shift *= count_low;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)
 	{
 	  count[n] = 0;

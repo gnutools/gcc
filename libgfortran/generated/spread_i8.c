@@ -249,8 +249,7 @@ spread_scalar_i8 (gfc_array_i8 *ret, const GFC_INTEGER_8 *source,
     }
   else
     {
-      if (ncopies - 1 > (GFC_DESCRIPTOR_EXTENT(ret,0) - 1)
-			   / GFC_DESCRIPTOR_STRIDE(ret,0))
+      if (ncopies > GFC_DESCRIPTOR_EXTENT(ret,0))
 	runtime_error ("dim too large in spread()");
     }
 

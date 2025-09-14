@@ -57,7 +57,7 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
   const GFC_COMPLEX_16 * restrict bbase;
   GFC_COMPLEX_16 * restrict dest;
 
-  index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
+  index_type rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
   index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
 	     rxstride_bytes, rystride_bytes;
@@ -148,12 +148,11 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
@@ -222,15 +221,19 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxstride == 1 && (axstride == 1 || aystride == 1)
-      && (bxstride == 1 || bystride == 1)
+  if (try_blas
+      && rxstride_bytes == sizeof (GFC_COMPLEX_16)
+      && (axstride_bytes == sizeof (GFC_COMPLEX_16)
+	  || aystride_bytes == sizeof (GFC_COMPLEX_16))
+      && (bxstride_bytes == sizeof (GFC_COMPLEX_16)
+	  || bystride_bytes == sizeof (GFC_COMPLEX_16))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = rystride;
       const GFC_COMPLEX_16 one = 1, zero = 0;
-      const int lda = (axstride == 1) ? aystride : axstride,
-		ldb = (bxstride == 1) ? bystride : bxstride;
+      const int lda = (axstride_bytes == sizeof (GFC_COMPLEX_16)) ? aystride : axstride,
+		ldb = (bxstride_bytes == sizeof (GFC_COMPLEX_16)) ? bystride : bxstride;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -239,12 +242,12 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axstride == 1 ? "N" : "T";
+	    transa = axstride_bytes == sizeof (GFC_COMPLEX_16) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxstride == 1 ? "N" : "T";
+	    transb = bxstride_bytes == sizeof (GFC_COMPLEX_16) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -253,7 +256,9 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 	}
     }
 
-  if (rxstride == 1 && axstride == 1 && bxstride == 1
+  if (rxstride_bytes == sizeof (GFC_COMPLEX_16)
+      && axstride_bytes == sizeof (GFC_COMPLEX_16)
+      && bxstride_bytes == sizeof (GFC_COMPLEX_16)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -306,7 +311,7 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (aystride == 1)
+      if (aystride_bytes == sizeof (GFC_COMPLEX_16))
         a_sz = rystride;
       else
         a_sz = a_dim1;
@@ -532,7 +537,9 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 #undef B_ARRAY_ELEM
 #undef C_ARRAY_ELEM
     }
-  else if (rxstride == 1 && aystride == 1 && bxstride == 1)
+  else if (rxstride_bytes == sizeof (GFC_COMPLEX_16)
+	   && aystride_bytes == sizeof (GFC_COMPLEX_16)
+	   && bxstride_bytes == sizeof (GFC_COMPLEX_16))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -585,7 +592,7 @@ matmul_c16_avx128_fma3 (gfc_array_c16 * const restrict retarray,
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
-  else if (axstride < aystride)
+  else if (axstride_bytes < aystride_bytes)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
@@ -643,7 +650,7 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
   const GFC_COMPLEX_16 * restrict bbase;
   GFC_COMPLEX_16 * restrict dest;
 
-  index_type rxstride, rystride, axstride, aystride, bxstride, bystride;
+  index_type rystride, axstride, aystride, bxstride, bystride;
   index_type x, y, n, count, xcount, ycount;
   index_type axstride_bytes, aystride_bytes, bxstride_bytes, bystride_bytes,
 	     rxstride_bytes, rystride_bytes;
@@ -734,12 +741,11 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rxstride = rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
       rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
@@ -808,15 +814,19 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 
-  if (try_blas && rxstride == 1 && (axstride == 1 || aystride == 1)
-      && (bxstride == 1 || bystride == 1)
+  if (try_blas
+      && rxstride_bytes == sizeof (GFC_COMPLEX_16)
+      && (axstride_bytes == sizeof (GFC_COMPLEX_16)
+	  || aystride_bytes == sizeof (GFC_COMPLEX_16))
+      && (bxstride_bytes == sizeof (GFC_COMPLEX_16)
+	  || bystride_bytes == sizeof (GFC_COMPLEX_16))
       && (((float) xcount) * ((float) ycount) * ((float) count)
           > POW3(blas_limit)))
     {
       const int m = xcount, n = ycount, k = count, ldc = rystride;
       const GFC_COMPLEX_16 one = 1, zero = 0;
-      const int lda = (axstride == 1) ? aystride : axstride,
-		ldb = (bxstride == 1) ? bystride : bxstride;
+      const int lda = (axstride_bytes == sizeof (GFC_COMPLEX_16)) ? aystride : axstride,
+		ldb = (bxstride_bytes == sizeof (GFC_COMPLEX_16)) ? bystride : bxstride;
 
       if (lda > 0 && ldb > 0 && ldc > 0 && m > 1 && n > 1 && k > 1)
 	{
@@ -825,12 +835,12 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 	  if (try_blas & 2)
 	    transa = "C";
 	  else
-	    transa = axstride == 1 ? "N" : "T";
+	    transa = axstride_bytes == sizeof (GFC_COMPLEX_16) ? "N" : "T";
 
 	  if (try_blas & 4)
 	    transb = "C";
 	  else
-	    transb = bxstride == 1 ? "N" : "T";
+	    transb = bxstride_bytes == sizeof (GFC_COMPLEX_16) ? "N" : "T";
 
 	  gemm (transa, transb , &m,
 		&n, &k,	&one, abase, &lda, bbase, &ldb, &zero, dest,
@@ -839,7 +849,9 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 	}
     }
 
-  if (rxstride == 1 && axstride == 1 && bxstride == 1
+  if (rxstride_bytes == sizeof (GFC_COMPLEX_16)
+      && axstride_bytes == sizeof (GFC_COMPLEX_16)
+      && bxstride_bytes == sizeof (GFC_COMPLEX_16)
       && GFC_DESCRIPTOR_RANK (b) != 1)
     {
       /* This block of code implements a tuned matmul, derived from
@@ -892,7 +904,7 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 
       /* Adjust size of t1 to what is needed.  */
       index_type t1_dim, a_sz;
-      if (aystride == 1)
+      if (aystride_bytes == sizeof (GFC_COMPLEX_16))
         a_sz = rystride;
       else
         a_sz = a_dim1;
@@ -1118,7 +1130,9 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 #undef B_ARRAY_ELEM
 #undef C_ARRAY_ELEM
     }
-  else if (rxstride == 1 && aystride == 1 && bxstride == 1)
+  else if (rxstride_bytes == sizeof (GFC_COMPLEX_16)
+	   && aystride_bytes == sizeof (GFC_COMPLEX_16)
+	   && bxstride_bytes == sizeof (GFC_COMPLEX_16))
     {
       if (GFC_DESCRIPTOR_RANK (a) != 1)
 	{
@@ -1171,7 +1185,7 @@ matmul_c16_avx128_fma4 (gfc_array_c16 * const restrict retarray,
 	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
-  else if (axstride < aystride)
+  else if (axstride_bytes < aystride_bytes)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
