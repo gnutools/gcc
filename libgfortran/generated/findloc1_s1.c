@@ -87,25 +87,21 @@ findloc1_s1 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      size_t alloc_size, str;
+      size_t cnt;
 
+      cnt = 1;
       for (n = 0; n < rank; n++)
 	{
-	  if (n == 0)
-	    str = 1;
-	  else
-	    str = GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
 
-	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
+	  cnt = cnt * extent[n];
 	}
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
-
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (index_type));
-      if (alloc_size == 0)
+      retarray->base_addr = xmallocarray (cnt, sizeof (index_type));
+      if (cnt == 0)
 	return;
     }
   else
@@ -272,25 +268,21 @@ mfindloc1_s1 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      size_t alloc_size, str;
+      size_t cnt;
 
+      cnt = 1;
       for (n = 0; n < rank; n++)
 	{
-	  if (n == 0)
-	    str = 1;
-	  else
-	    str = GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
 
-	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
+	  cnt = cnt * extent[n];
 	}
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
-
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (index_type));
-      if (alloc_size == 0)
+      retarray->base_addr = xmallocarray (cnt, sizeof (index_type));
+      if (cnt == 0)
 	return;
     }
   else
@@ -445,25 +437,21 @@ sfindloc1_s1 (gfc_array_index_type * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      size_t alloc_size, str;
+      size_t cnt;
 
+      cnt = 1;
       for (n = 0; n < rank; n++)
 	{
-	  if (n == 0)
-	    str = 1;
-	  else
-	    str = GFC_DESCRIPTOR_STRIDE(retarray,n-1) * extent[n-1];
+	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
 
-	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, str);
+	  cnt = cnt * extent[n];
 	}
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
-
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (index_type));
-      if (alloc_size == 0)
+      retarray->base_addr = xmallocarray (cnt, sizeof (index_type));
+      if (cnt == 0)
 	return;
     }
   else
