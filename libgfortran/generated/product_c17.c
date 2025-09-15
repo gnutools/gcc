@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_COMPLEX_17) && defined (HAVE_GFC_COMPLEX_17)
 
 
-extern void product_c17 (gfc_array_c17 * const restrict,
+extern void product_c17 (gfc_array_c17  * const restrict,
 	gfc_array_c17 * const restrict, const index_type * const restrict);
 export_proto(product_c17);
 

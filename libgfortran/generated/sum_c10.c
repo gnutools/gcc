@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_COMPLEX_10) && defined (HAVE_GFC_COMPLEX_10)
 
 
-extern void sum_c10 (gfc_array_c10 * const restrict,
+extern void sum_c10 (gfc_array_c10  * const restrict,
 	gfc_array_c10 * const restrict, const index_type * const restrict);
 export_proto(sum_c10);
 

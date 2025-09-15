@@ -46,8 +46,8 @@ extern void minval1_s1 (gfc_array_s1 * const restrict,
 export_proto(minval1_s1);
 
 void
-minval1_s1 (gfc_array_s1 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s1 * const restrict array, 
+minval1_s1 (gfc_array_s1 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s1 * const restrict array,
 	const index_type * const restrict pdim, gfc_charlen_type string_len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -210,8 +210,8 @@ extern void mminval1_s1 (gfc_array_s1 * const restrict,
 export_proto(mminval1_s1);
 
 void
-mminval1_s1 (gfc_array_s1 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s1 * const restrict array, 
+mminval1_s1 (gfc_array_s1 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s1 * const restrict array,
 	const index_type * const restrict pdim,
 	gfc_array_l1 * const restrict mask,
 	gfc_charlen_type string_len)
@@ -414,8 +414,8 @@ void sminval1_s1 (gfc_array_s1 * const restrict,
 export_proto(sminval1_s1);
 
 void
-sminval1_s1 (gfc_array_s1 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s1 * const restrict array, 
+sminval1_s1 (gfc_array_s1 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s1 * const restrict array,
 	const index_type * const restrict pdim,
 	GFC_LOGICAL_4 *mask, gfc_charlen_type string_len)
 

@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_LOGICAL_16) && defined (HAVE_GFC_LOGICAL_16)
 
 
-extern void parity_l16 (gfc_array_l16 * const restrict,
+extern void parity_l16 (gfc_array_l16  * const restrict,
 	gfc_array_l16 * const restrict, const index_type * const restrict);
 export_proto(parity_l16);
 

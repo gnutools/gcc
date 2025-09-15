@@ -29,12 +29,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_LOGICAL_1)
 
 
-extern void all_l1 (gfc_array_l1 * const restrict, 
+extern void all_l1 (gfc_array_l1 * const restrict,
 	gfc_array_l1 * const restrict, const index_type * const restrict);
 export_proto(all_l1);
 
 void
-all_l1 (gfc_array_l1 * const restrict retarray, 
+all_l1 (gfc_array_l1 * const restrict retarray,
 	gfc_array_l1 * const restrict array, 
 	const index_type * const restrict pdim)
 {

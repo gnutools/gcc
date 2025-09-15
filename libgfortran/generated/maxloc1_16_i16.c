@@ -32,7 +32,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define HAVE_BACK_ARG 1
 
 
-extern void maxloc1_16_i16 (gfc_array_i16 * const restrict,
+extern void maxloc1_16_i16 (gfc_array_i16  * const restrict,
 	gfc_array_i16 * const restrict, const index_type * const restrict, GFC_LOGICAL_4 back);
 export_proto(maxloc1_16_i16);
 

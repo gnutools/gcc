@@ -32,7 +32,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define MATHFUNC(funcname) funcname ## f
 
 
-extern void norm2_r4 (gfc_array_r4 * const restrict,
+extern void norm2_r4 (gfc_array_r4  * const restrict,
 	gfc_array_r4 * const restrict, const index_type * const restrict);
 export_proto(norm2_r4);
 

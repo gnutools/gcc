@@ -30,12 +30,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_INTEGER_16) && defined (HAVE_GFC_INTEGER_4)
 
 
-extern void maxloc0_4_i16 (gfc_array_i4 * const restrict retarray, 
+extern void maxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
 	gfc_array_i16 * const restrict array, GFC_LOGICAL_4);
 export_proto(maxloc0_4_i16);
 
 void
-maxloc0_4_i16 (gfc_array_i4 * const restrict retarray, 
+maxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
 	gfc_array_i16 * const restrict array, GFC_LOGICAL_4 back)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -176,13 +176,13 @@ maxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
   }
 }
 
-extern void mmaxloc0_4_i16 (gfc_array_i4 * const restrict, 
+extern void mmaxloc0_4_i16 (gfc_array_i4 * const restrict,
 	gfc_array_i16 * const restrict, gfc_array_l1 * const restrict,
 	GFC_LOGICAL_4);
 export_proto(mmaxloc0_4_i16);
 
 void
-mmaxloc0_4_i16 (gfc_array_i4 * const restrict retarray, 
+mmaxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
 	gfc_array_i16 * const restrict array,
 	gfc_array_l1 * const restrict mask, GFC_LOGICAL_4 back)
 {
@@ -362,12 +362,12 @@ mmaxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
 }
 
 
-extern void smaxloc0_4_i16 (gfc_array_i4 * const restrict, 
+extern void smaxloc0_4_i16 (gfc_array_i4 * const restrict,
 	gfc_array_i16 * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4);
 export_proto(smaxloc0_4_i16);
 
 void
-smaxloc0_4_i16 (gfc_array_i4 * const restrict retarray, 
+smaxloc0_4_i16 (gfc_array_i4 * const restrict retarray,
 	gfc_array_i16 * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {

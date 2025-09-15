@@ -46,8 +46,8 @@ extern void maxval1_s4 (gfc_array_s4 * const restrict,
 export_proto(maxval1_s4);
 
 void
-maxval1_s4 (gfc_array_s4 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s4 * const restrict array, 
+maxval1_s4 (gfc_array_s4 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s4 * const restrict array,
 	const index_type * const restrict pdim, gfc_charlen_type string_len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -210,8 +210,8 @@ extern void mmaxval1_s4 (gfc_array_s4 * const restrict,
 export_proto(mmaxval1_s4);
 
 void
-mmaxval1_s4 (gfc_array_s4 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s4 * const restrict array, 
+mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s4 * const restrict array,
 	const index_type * const restrict pdim,
 	gfc_array_l1 * const restrict mask,
 	gfc_charlen_type string_len)
@@ -414,8 +414,8 @@ void smaxval1_s4 (gfc_array_s4 * const restrict,
 export_proto(smaxval1_s4);
 
 void
-smaxval1_s4 (gfc_array_s4 * const restrict retarray, 
-	gfc_charlen_type xlen, gfc_array_s4 * const restrict array, 
+smaxval1_s4 (gfc_array_s4 * const restrict retarray,
+	gfc_charlen_type xlen, gfc_array_s4 * const restrict array,
 	const index_type * const restrict pdim,
 	GFC_LOGICAL_4 *mask, gfc_charlen_type string_len)
 

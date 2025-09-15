@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_INTEGER_8) && defined (HAVE_GFC_INTEGER_8)
 
 
-extern void iparity_i8 (gfc_array_i8 * const restrict,
+extern void iparity_i8 (gfc_array_i8  * const restrict,
 	gfc_array_i8 * const restrict, const index_type * const restrict);
 export_proto(iparity_i8);
 

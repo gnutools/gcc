@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_UINTEGER_8) && defined (HAVE_GFC_UINTEGER_8)
 
 
-extern void product_i8 (gfc_array_m8 * const restrict,
+extern void product_i8 (gfc_array_m8  * const restrict,
 	gfc_array_m8 * const restrict, const index_type * const restrict);
 export_proto(product_i8);
 

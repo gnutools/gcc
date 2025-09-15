@@ -29,12 +29,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_INTEGER_4)
 
 
-extern void count_4_l (gfc_array_i4 * const restrict, 
+extern void count_4_l (gfc_array_i4 * const restrict,
 	gfc_array_l1 * const restrict, const index_type * const restrict);
 export_proto(count_4_l);
 
 void
-count_4_l (gfc_array_i4 * const restrict retarray, 
+count_4_l (gfc_array_i4 * const restrict retarray,
 	gfc_array_l1 * const restrict array, 
 	const index_type * const restrict pdim)
 {

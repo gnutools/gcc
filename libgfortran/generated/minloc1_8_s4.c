@@ -42,7 +42,7 @@ compare_fcn (const GFC_UINTEGER_4 *a, const GFC_UINTEGER_4 *b, gfc_charlen_type 
     return memcmp_char4 (a, b, n);
 }
 
-extern void minloc1_8_s4 (gfc_array_i8 * const restrict, 
+extern void minloc1_8_s4 (gfc_array_i8 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type);
 export_proto(minloc1_8_s4);
@@ -207,7 +207,7 @@ minloc1_8_s4 (gfc_array_i8 * const restrict retarray,
 }
 
 
-extern void mminloc1_8_s4 (gfc_array_i8 * const restrict, 
+extern void mminloc1_8_s4 (gfc_array_i8 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict,
 	gfc_array_l1 * const restrict, GFC_LOGICAL_4 back, gfc_charlen_type);
 export_proto(mminloc1_8_s4);
@@ -413,7 +413,7 @@ mminloc1_8_s4 (gfc_array_i8 * const restrict retarray,
 }
 
 
-extern void sminloc1_8_s4 (gfc_array_i8 * const restrict, 
+extern void sminloc1_8_s4 (gfc_array_i8 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict,
 	GFC_LOGICAL_4 *, GFC_LOGICAL_4 back, gfc_charlen_type);
 export_proto(sminloc1_8_s4);

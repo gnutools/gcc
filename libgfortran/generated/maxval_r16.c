@@ -29,7 +29,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #if defined (HAVE_GFC_REAL_16) && defined (HAVE_GFC_REAL_16)
 
 
-extern void maxval_r16 (gfc_array_r16 * const restrict,
+extern void maxval_r16 (gfc_array_r16  * const restrict,
 	gfc_array_r16 * const restrict, const index_type * const restrict);
 export_proto(maxval_r16);
 

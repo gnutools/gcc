@@ -32,7 +32,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define HAVE_BACK_ARG 1
 
 
-extern void minloc1_8_r10 (gfc_array_i8 * const restrict,
+extern void minloc1_8_r10 (gfc_array_i8  * const restrict,
 	gfc_array_r10 * const restrict, const index_type * const restrict, GFC_LOGICAL_4 back);
 export_proto(minloc1_8_r10);
 

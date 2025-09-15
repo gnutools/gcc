@@ -42,7 +42,7 @@ compare_fcn (const GFC_UINTEGER_4 *a, const GFC_UINTEGER_4 *b, gfc_charlen_type 
     return memcmp_char4 (a, b, n);
 }
 
-extern void maxloc1_16_s4 (gfc_array_i16 * const restrict, 
+extern void maxloc1_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type);
 export_proto(maxloc1_16_s4);
@@ -207,7 +207,7 @@ maxloc1_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void mmaxloc1_16_s4 (gfc_array_i16 * const restrict, 
+extern void mmaxloc1_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict,
 	gfc_array_l1 * const restrict, GFC_LOGICAL_4 back, gfc_charlen_type);
 export_proto(mmaxloc1_16_s4);
@@ -413,7 +413,7 @@ mmaxloc1_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void smaxloc1_16_s4 (gfc_array_i16 * const restrict, 
+extern void smaxloc1_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, const index_type * const restrict,
 	GFC_LOGICAL_4 *, GFC_LOGICAL_4 back, gfc_charlen_type);
 export_proto(smaxloc1_16_s4);

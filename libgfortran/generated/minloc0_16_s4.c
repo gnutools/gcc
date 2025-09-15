@@ -44,12 +44,12 @@ compare_fcn (const GFC_UINTEGER_4 *a, const GFC_UINTEGER_4 *b, gfc_charlen_type 
 
 }
 
-extern void minloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+extern void minloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len);
 export_proto(minloc0_16_s4);
 
 void
-minloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+minloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charlen_type len)
 {
   index_type count[GFC_MAX_DIMENSIONS];
@@ -151,7 +151,7 @@ minloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void mminloc0_16_s4 (gfc_array_i16 * const restrict, 
+extern void mminloc0_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, gfc_array_l1 * const restrict , GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(mminloc0_16_s4);
@@ -298,13 +298,13 @@ mminloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 }
 
 
-extern void sminloc0_16_s4 (gfc_array_i16 * const restrict, 
+extern void sminloc0_16_s4 (gfc_array_i16 * const restrict,
 	gfc_array_s4 * const restrict, GFC_LOGICAL_4 *, GFC_LOGICAL_4 back,
 	gfc_charlen_type len);
 export_proto(sminloc0_16_s4);
 
 void
-sminloc0_16_s4 (gfc_array_i16 * const restrict retarray, 
+sminloc0_16_s4 (gfc_array_i16 * const restrict retarray,
 	gfc_array_s4 * const restrict array,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back,
 	gfc_charlen_type len)
