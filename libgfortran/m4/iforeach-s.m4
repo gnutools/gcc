@@ -48,7 +48,7 @@ void
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -77,7 +77,7 @@ define(START_FOREACH_BLOCK,
 define(FINISH_FOREACH_FUNCTION,
 `	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -88,7 +88,7 @@ define(FINISH_FOREACH_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -99,7 +99,7 @@ define(FINISH_FOREACH_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -177,7 +177,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
@@ -201,7 +201,7 @@ define(START_MASKED_FOREACH_BLOCK, `START_FOREACH_BLOCK')dnl
 define(FINISH_MASKED_FOREACH_FUNCTION,
 `	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	  mbase += mstride[0];
 	}
       while (++count[0] != extent[0]);
@@ -213,7 +213,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -225,7 +225,7 @@ define(FINISH_MASKED_FOREACH_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	      mbase += mstride[n];
 	    }
 	}
@@ -281,7 +281,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else if (unlikely (compile_options.bounds_check))
     {

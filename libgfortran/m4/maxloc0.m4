@@ -55,7 +55,7 @@ FOREACH_FUNCTION(
 		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  break;
 		}
-	      base += sstride[0];
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -72,7 +72,7 @@ FOREACH_FUNCTION(
 	      	 for (n = 0; n < rank; n++)
 		   GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	       }
-	     base += sstride[0];
+	     PTR_INCREMENT_BYTES (base, sstride[0]);
 	   }
          while (++count[0] != extent[0]);
        else
@@ -113,7 +113,7 @@ MASKED_FOREACH_FUNCTION(
 		      break;
 		    }
 		}
-	      base += sstride[0];
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	      mbase += mstride[0];
 	    }
 	  while (++count[0] != extent[0]);
@@ -130,7 +130,7 @@ MASKED_FOREACH_FUNCTION(
 	          for (n = 0; n < rank; n++)
 		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		}
-	      base += sstride[0];
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	else

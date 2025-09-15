@@ -53,8 +53,10 @@ MASKED_ARRAY_FUNCTION(0,
 			result = (rtype_name)n + 1;
 			break;
 		      }
+	      PTR_INCREMENT_BYTES (src, delta);
+	      msrc += mdelta;
             }
-	    for (; n < len; n++, src += delta, msrc += mdelta)
+	    for (; n < len; n++)
 	      {
 		if (*msrc && (back ? compare_fcn (src, minval, string_len) <= 0 :
 		   	     	     compare_fcn (src, minval, string_len) < 0))

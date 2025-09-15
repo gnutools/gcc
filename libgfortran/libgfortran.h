@@ -603,6 +603,11 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR2_ELEM_ADDRESS(descr, idx1, idx2) \
     (&GFC_DESCRIPTOR2_ELEM((descr),(idx1),(idx2))
 
+
+#define PTR_INCREMENT_BYTES(ptr,bytes) ptr = (typeof (ptr)) (((char*) ptr) + (bytes))
+#define PTR_DECREMENT_BYTES(ptr,bytes) ptr = (typeof (ptr)) (((char*) ptr) - (bytes))
+
+
 /* Generic vtab structure.  */
 typedef struct
 {

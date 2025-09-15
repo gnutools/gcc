@@ -144,7 +144,7 @@ eoshift3 (gfc_array_char * const restrict ret,
           rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
           sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
-          hstride[n] = GFC_DESCRIPTOR_STRIDE(h,n);
+          hstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(h,n);
           if (bound)
             bstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(bound,n);
           else
@@ -157,7 +157,7 @@ eoshift3 (gfc_array_char * const restrict ret,
   if (rstride[0] == 0)
     rstride[0] = size;
   if (hstride[0] == 0)
-    hstride[0] = 1;
+    hstride[0] = GFC_DESCRIPTOR_SIZE(h);
   if (bound && bstride[0] == 0)
     bstride[0] = size;
 
@@ -239,9 +239,9 @@ eoshift3 (gfc_array_char * const restrict ret,
 	  }
 
       /* Advance to the next section.  */
+      PTR_INCREMENT_BYTES (hptr, hstride0);
       rptr += rstride0;
       sptr += sstride0;
-      hptr += hstride0;
       bptr += bstride0;
       count[0]++;
       n = 0;
@@ -252,9 +252,9 @@ eoshift3 (gfc_array_char * const restrict ret,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
+	  PTR_DECREMENT_BYTES (hptr, hstride[n] * extent[n]);
           rptr -= rstride[n] * extent[n];
           sptr -= sstride[n] * extent[n];
-	  hptr -= hstride[n] * extent[n];
           bptr -= bstride[n] * extent[n];
           n++;
           if (n >= dim - 1)
@@ -266,9 +266,9 @@ eoshift3 (gfc_array_char * const restrict ret,
           else
             {
               count[n]++;
+	      PTR_INCREMENT_BYTES (hptr, hstride[n]);
               rptr += rstride[n];
               sptr += sstride[n];
-	      hptr += hstride[n];
               bptr += bstride[n];
             }
         }

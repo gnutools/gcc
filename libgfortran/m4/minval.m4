@@ -39,10 +39,11 @@ ARRAY_FUNCTION(atype_max,
 `#if defined ('atype_nan`)
 		if (*src <= result)
 		  break;
+		PTR_INCREMENT_BYTES (src, delta);
 	      }
 	    if (unlikely (n >= len))
 	      result = 'atype_nan`;
-	    else for (; n < len; n++, src += delta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*src < result)
@@ -66,6 +67,8 @@ MASKED_ARRAY_FUNCTION(atype_max,
 #endif
 		      break;
 		  }
+		PTR_INCREMENT_BYTES (src, delta);
+		msrc += mdelta;
 	      }
 	    if (unlikely (n >= len))
 	      {
@@ -75,7 +78,7 @@ MASKED_ARRAY_FUNCTION(atype_max,
 		result = 'atype_max`;
 #endif
 	      }
-	    else for (; n < len; n++, src += delta, msrc += mdelta)
+	    else for (; n < len; n++)
 	      {
 #endif
 		if (*msrc && *src < result)

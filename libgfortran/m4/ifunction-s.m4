@@ -68,11 +68,11 @@ void
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
   if (len < 0)
     len = 0;
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -80,7 +80,7 @@ void
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -106,7 +106,7 @@ void
 
       alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
       if (alloc_size == 0)
 	return;
     }
@@ -126,7 +126,7 @@ void
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -147,10 +147,11 @@ define(START_ARRAY_BLOCK,
 	  *dest = '$1`;
 	else
 	  {
-	    for (n = 0; n < len; n++, src += delta)
+	    for (n = 0; n < len; n++)
 	      {
 ')dnl
 define(FINISH_ARRAY_FUNCTION,
+		PTR_INCREMENT_BYTES (src, delta);
 `	      }
 	    '$1`
 	    *dest = result;
@@ -158,8 +159,8 @@ define(FINISH_ARRAY_FUNCTION,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -168,8 +169,8 @@ define(FINISH_ARRAY_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -180,8 +181,8 @@ define(FINISH_ARRAY_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -254,12 +255,12 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -269,7 +270,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -296,7 +297,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
       if (alloc_size == 0)
 	return;
     }
@@ -317,7 +318,7 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -335,18 +336,20 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       {
 ')dnl
 define(START_MASKED_ARRAY_BLOCK,
-`	for (n = 0; n < len; n++, src += delta, msrc += mdelta)
+`	for (n = 0; n < len; n++)
 	  {
 ')dnl
 define(FINISH_MASKED_ARRAY_FUNCTION,
-`	  }
+`	    PTR_INCREMENT_BYTES (src, delta);
+	    msrc += mdelta;
+	  }
 	*dest = result;
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -355,9 +358,9 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -368,9 +371,9 @@ define(FINISH_MASKED_ARRAY_FUNCTION,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	      mbase += mstride[n];
-	      dest += dstride[n];
 	    }
 	}
     }
@@ -452,7 +455,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
       alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
       if (alloc_size == 0)
 	return;
     }
@@ -483,7 +486,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
     }
 
   dest = retarray->base_addr;
@@ -492,7 +495,7 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     {
       *dest = '$1`;
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -501,14 +504,14 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    return;
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
       	}
     }

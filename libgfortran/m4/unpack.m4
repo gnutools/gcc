@@ -95,7 +95,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
+	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	  rs *= extent[n];
 	}
@@ -110,7 +110,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
+	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	}
       if (rstride[0] == 0)
@@ -123,9 +123,9 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
   if (mstride[0] == 0)
     mstride[0] = 1;
 
-  vstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
+  vstride0 = GFC_DESCRIPTOR_STRIDE_BYTES(vector,0);
   if (vstride0 == 0)
-    vstride0 = 1;
+    vstride0 = GFC_DESCRIPTOR_SIZE(vector);
   rstride0 = rstride[0];
   mstride0 = mstride[0];
   rptr = ret->base_addr;
@@ -137,7 +137,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
         {
 	  /* From vector.  */
 	  *rptr = *vptr;
-	  vptr += vstride0;
+	  PTR_INCREMENT_BYTES (vptr, vstride0);
         }
       else
         {
@@ -145,7 +145,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  *rptr = fval;
         }
       /* Advance to the next element.  */
-      rptr += rstride0;
+      PTR_INCREMENT_BYTES (rptr, rstride0);
       mptr += mstride0;
       count[0]++;
       n = 0;
@@ -156,7 +156,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
+          PTR_DECREMENT_BYTES (rptr, rstride[n] * extent[n]);
           mptr -= mstride[n] * extent[n];
           n++;
           if (n >= dim)
@@ -168,7 +168,7 @@ unpack0_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           else
             {
               count[n]++;
-              rptr += rstride[n];
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
               mptr += mstride[n];
             }
         }
@@ -241,8 +241,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 				       GFC_DESCRIPTOR_EXTENT(mask,n) - 1, rs);
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
+	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
+	  fstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(field,n);
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	  rs *= extent[n];
 	}
@@ -257,8 +257,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(ret,n);
 	  empty = empty || extent[n] <= 0;
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,n);
-	  fstride[n] = GFC_DESCRIPTOR_STRIDE(field,n);
+	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
+	  fstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(field,n);
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	}
       if (rstride[0] == 0)
@@ -269,13 +269,13 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
     return;
 
   if (fstride[0] == 0)
-    fstride[0] = 1;
+    fstride[0] = GFC_DESCRIPTOR_SIZE(field);
   if (mstride[0] == 0)
     mstride[0] = 1;
 
-  vstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
+  vstride0 = GFC_DESCRIPTOR_STRIDE_BYTES(vector,0);
   if (vstride0 == 0)
-    vstride0 = 1;
+    vstride0 = GFC_DESCRIPTOR_SIZE(vector);
   rstride0 = rstride[0];
   fstride0 = fstride[0];
   mstride0 = mstride[0];
@@ -289,7 +289,7 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
         {
           /* From vector.  */
 	  *rptr = *vptr;
-          vptr += vstride0;
+          PTR_INCREMENT_BYTES (vptr, vstride0);
         }
       else
         {
@@ -297,8 +297,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
 	  *rptr = *fptr;
         }
       /* Advance to the next element.  */
-      rptr += rstride0;
-      fptr += fstride0;
+      PTR_INCREMENT_BYTES (rptr, rstride0);
+      PTR_INCREMENT_BYTES (fptr, fstride0);
       mptr += mstride0;
       count[0]++;
       n = 0;
@@ -309,8 +309,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          fptr -= fstride[n] * extent[n];
+          PTR_DECREMENT_BYTES (rptr, rstride[n] * extent[n]);
+          PTR_DECREMENT_BYTES (fptr, fstride[n] * extent[n]);
           mptr -= mstride[n] * extent[n];
           n++;
           if (n >= dim)
@@ -322,8 +322,8 @@ unpack1_'rtype_code` ('rtype` *ret, const 'rtype` *vector,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              fptr += fstride[n];
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
+              PTR_INCREMENT_BYTES (fptr, fstride[n]);
               mptr += mstride[n];
             }
         }

@@ -121,7 +121,7 @@ void
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -155,18 +155,19 @@ define(START_ARRAY_BLOCK,
 	  *dest = '$1`;
 	else
 	  {
-	    for (n = 0; n < len; n++, src += delta)
+	    for (n = 0; n < len; n++)
 	      {
 ')dnl
 define(FINISH_ARRAY_FUNCTION,
-    `          }
+`		PTR_INCREMENT_BYTES (src, delta);
+	      }
 	    *dest = result;
 	  }
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
         {
@@ -175,8 +176,8 @@ define(FINISH_ARRAY_FUNCTION,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
+          PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
           base -= sstride[n] * extent[n];
-          dest -= dstride[n] * extent[n];
           n++;
           if (n >= rank)
             {
@@ -187,8 +188,8 @@ define(FINISH_ARRAY_FUNCTION,
           else
             {
               count[n]++;
-              base += sstride[n];
-              dest += dstride[n];
+              PTR_INCREMENT_BYTES (base, sstride[n]);
+              PTR_INCREMENT_BYTES (dest, dstride[n]);
             }
         }
     }

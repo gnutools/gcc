@@ -37,7 +37,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
   if (back)
     {
       src = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, extent - 1);
@@ -45,7 +45,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if ('comparison`)
 	    return i;
-	  src -= sstride;
+	  PTR_DECREMENT_BYTES (src, sstride);
 	}
     }
   else
@@ -55,7 +55,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if ('comparison`)
 	    return i;
-	  src += sstride;
+	  PTR_INCREMENT_BYTES (src, sstride);
 	}
     }
   return 0;
@@ -87,7 +87,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * 'base_mult`;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
   mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
 
   if (back)
@@ -98,7 +98,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if (*mbase && ('comparison`))
 	    return i;
-	  src -= sstride;
+	  PTR_DECREMENT_BYTES (src, sstride);
 	  mbase -= mstride;
 	}
     }
@@ -109,7 +109,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	{
 	  if (*mbase && ('comparison`))
 	    return i;
-	  src += sstride;
+	  PTR_INCREMENT_BYTES (src, sstride);
 	  mbase += mstride;
 	}
     }

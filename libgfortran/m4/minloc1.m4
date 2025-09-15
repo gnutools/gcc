@@ -42,7 +42,7 @@ ARRAY_FUNCTION(0,
 #endif
 	result = 1;',
 `#if defined ('atype_nan`)
-     	   for (n = 0; n < len; n++, src += delta)
+     	   for (n = 0; n < len; n++)
 	     {
 		if (*src <= minval)
 		  {
@@ -50,21 +50,25 @@ ARRAY_FUNCTION(0,
 		    result = (rtype_name)n + 1;
 		    break;
 		  }
-	      }
+	       PTR_INCREMENT_BYTES (src, delta);
+	     }
 #else
 	    n = 0;
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta)
-	        {
-		  if (unlikely (*src <= minval))
-		    {
-		      minval = *src;
-		      result = ('rtype_name`)n + 1;
-		    }
-		}
+	      {
+		for (; n < len; n++)
+		  {
+		    if (unlikely (*src <= minval))
+		      {
+			minval = *src;
+			result = ('rtype_name`)n + 1;
+		      }
+		    PTR_INCREMENT_BYTES (src, delta);
+		  }
+	      }
 	    else
-	      for (; n < len; n++, src += delta)
+	      for (; n < len; n++)
 	        {
 		  if (unlikely (*src < minval))
 		    {
@@ -96,6 +100,8 @@ MASKED_ARRAY_FUNCTION(0,
 			break;
 		      }
 		  }
+		PTR_INCREMENT_BYTES (src, delta);
+		msrc += mdelta;
 	      }
 #if defined ('atype_nan`)
 	    if (unlikely (n >= len))
@@ -103,16 +109,18 @@ MASKED_ARRAY_FUNCTION(0,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++)
 	      	{
 		  if (*msrc && unlikely (*src <= minval))
 		    {
 		      minval = *src;
 		      result = (rtype_name)n + 1;
 		    }
+		  PTR_INCREMENT_BYTES (src, delta);
+		  msrc += mdelta;
 		}
 	      else
-	        for (; n < len; n++, src += delta, msrc += mdelta)
+	        for (; n < len; n++)
 		  {
 		    if (*msrc && unlikely (*src < minval))
 		      {

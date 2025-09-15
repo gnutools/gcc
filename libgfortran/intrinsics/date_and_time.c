@@ -202,11 +202,11 @@ date_and_time (char *__date, char *__time, char *__zone,
     {
       index_type len, delta, elt_size;
 
-      elt_size = GFC_DESCRIPTOR_SIZE (__values);
+      elt_size = GFC_DESCRIPTOR_SIZE(__values);
       len = GFC_DESCRIPTOR_EXTENT(__values,0);
-      delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+      delta = GFC_DESCRIPTOR_STRIDE_BYTES(__values,0);
       if (delta == 0)
-	delta = 1;
+	delta = GFC_DESCRIPTOR_SIZE (__values);
       
       if (unlikely (len < VALUES_SIZE))
 	  runtime_error ("Incorrect extent in VALUES argument to"
@@ -218,31 +218,36 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_4 *vptr4 = __values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr4 += delta)
-	    *vptr4 = values[i];
+	  for (i = 0; i < VALUES_SIZE; i++)
+	    {
+	      *vptr4 = values[i];
+	      PTR_INCREMENT_BYTES (vptr4, delta);
+	    }
 	}
       else if (elt_size == 8)
 	{
 	  GFC_INTEGER_8 *vptr8 = (GFC_INTEGER_8 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr8 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr8 = - GFC_INTEGER_8_HUGE;
 	      else
 		*vptr8 = values[i];
+	      PTR_INCREMENT_BYTES (vptr8, delta);
 	    }
 	}
       else if (elt_size == 2)
 	{
 	  GFC_INTEGER_2 *vptr2 = (GFC_INTEGER_2 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr2 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr2 = - GFC_INTEGER_2_HUGE;
 	      else
 		*vptr2 = (GFC_INTEGER_2) values[i];
+	      PTR_INCREMENT_BYTES (vptr2, delta);
 	    }
 	}
 #if defined (HAVE_GFC_INTEGER_16)
@@ -250,12 +255,13 @@ date_and_time (char *__date, char *__time, char *__zone,
 	{
 	  GFC_INTEGER_16 *vptr16 = (GFC_INTEGER_16 *)__values->base_addr;
 
-	  for (i = 0; i < VALUES_SIZE; i++, vptr16 += delta)
+	  for (i = 0; i < VALUES_SIZE; i++)
 	    {
 	      if (values[i] == - GFC_INTEGER_4_HUGE)
 		*vptr16 = - GFC_INTEGER_16_HUGE;
 	      else
 		*vptr16 = values[i];
+	      PTR_INCREMENT_BYTES (vptr16, delta);
 	    }
 	}
 #endif
@@ -367,13 +373,16 @@ itime_i4 (gfc_array_i4 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(__values);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 
@@ -393,13 +402,16 @@ itime_i8 (gfc_array_i8 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(__values);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 
@@ -445,13 +457,16 @@ idate_i4 (gfc_array_i4 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(__values);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 
@@ -471,13 +486,16 @@ idate_i8 (gfc_array_i8 *__values)
   /* Copy the value into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(__values,0);
   assert (len >= 3);
-  delta = GFC_DESCRIPTOR_STRIDE(__values,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(__values,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(__values);
 
   vptr = __values->base_addr;
-  for (i = 0; i < 3; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 3; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 
@@ -535,13 +553,16 @@ gmtime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(tarray,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(tarray);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 extern void gmtime_i8 (GFC_INTEGER_8 *, gfc_array_i8 *);
@@ -562,13 +583,16 @@ gmtime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(tarray,0);
   if (delta == 0)
     delta = 1;
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 
@@ -627,13 +651,16 @@ ltime_i4 (GFC_INTEGER_4 * t, gfc_array_i4 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(tarray,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(tarray);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 extern void ltime_i8 (GFC_INTEGER_8 *, gfc_array_i8 *);
@@ -654,13 +681,16 @@ ltime_i8 (GFC_INTEGER_8 * t, gfc_array_i8 * tarray)
   /* Copy the values into the array.  */
   len = GFC_DESCRIPTOR_EXTENT(tarray,0);
   assert (len >= 9);
-  delta = GFC_DESCRIPTOR_STRIDE(tarray,0);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(tarray,0);
   if (delta == 0)
-    delta = 1;
+    delta = GFC_DESCRIPTOR_SIZE(tarray);
 
   vptr = tarray->base_addr;
-  for (i = 0; i < 9; i++, vptr += delta)
-    *vptr = x[i];
+  for (i = 0; i < 9; i++)
+    {
+      *vptr = x[i];
+      PTR_INCREMENT_BYTES (vptr, delta);
+    }
 }
 
 

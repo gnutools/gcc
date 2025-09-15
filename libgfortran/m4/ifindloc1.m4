@@ -56,11 +56,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
   if (len < 0)
     len = 0;
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -68,7 +68,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -114,7 +114,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -131,39 +131,41 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = base + (len - 1) * delta * 'base_mult`;
-	  for (n = len; n > 0; n--, src -= delta * 'base_mult`)
+	  src = (const 'atype_name` * restrict) (((char*) base) + (len - 1) * delta);
+	  for (n = len; n > 0; n--)
 	    {
 	      if ('comparison`)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_DECREMENT_BYTES (src, delta);
 	    }
 	}
       else
 	{
 	  src = base;
-	  for (n = 1; n <= len; n++, src += delta * 'base_mult`)
+	  for (n = 1; n <= len; n++)
 	    {
 	      if ('comparison`)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_INCREMENT_BYTES (src, delta);
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base += sstride[0] * 'base_mult`;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base -= sstride[n] * extent[n] * 'base_mult`;
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -173,8 +175,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n] * 'base_mult`;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -213,7 +215,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   if (len < 0)
     len = 0;
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   mbase = mask->base_addr;
@@ -231,7 +233,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -240,7 +242,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -287,7 +289,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -305,43 +307,47 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       result = 0;
       if (back)
 	{
-	  src = base + (len - 1) * delta * 'base_mult`;
+	  src = (const 'atype_name` * restrict) (((char*)base) + (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
-	  for (n = len; n > 0; n--, src -= delta * 'base_mult`, msrc -= mdelta)
+	  for (n = len; n > 0; n--)
 	    {
 	      if (*msrc && 'comparison`)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_DECREMENT_BYTES (src, delta);
+	      msrc -= mdelta;
 	    }
 	}
       else
 	{
 	  src = base;
 	  msrc = mbase;
-	  for (n = 1; n <= len; n++, src += delta * 'base_mult`, msrc += mdelta)
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (*msrc && 'comparison`)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_INCREMENT_BYTES (src, delta);
+	      msrc += mdelta;
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base += sstride[0] * 'base_mult`;
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base -= sstride[n] * extent[n] * 'base_mult`;
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -351,8 +357,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n] * 'base_mult`;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -446,7 +452,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -458,12 +464,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
       *dest = 0;
 
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -473,7 +479,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }

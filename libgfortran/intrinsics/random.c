@@ -631,7 +631,7 @@ arandom_r4 (gfc_array_r4 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
         return;
@@ -650,7 +650,7 @@ arandom_r4 (gfc_array_r4 *x)
       rnumber_4 (dest, high);
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -661,7 +661,7 @@ arandom_r4 (gfc_array_r4 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -671,7 +671,7 @@ arandom_r4 (gfc_array_r4 *x)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }
@@ -698,7 +698,7 @@ arandom_r8 (gfc_array_r8 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
         return;
@@ -716,7 +716,7 @@ arandom_r8 (gfc_array_r8 *x)
       rnumber_8 (dest, r);
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -727,7 +727,7 @@ arandom_r8 (gfc_array_r8 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -737,7 +737,7 @@ arandom_r8 (gfc_array_r8 *x)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }
@@ -766,7 +766,7 @@ arandom_r10 (gfc_array_r10 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
         return;
@@ -784,7 +784,7 @@ arandom_r10 (gfc_array_r10 *x)
       rnumber_10 (dest, r);
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -795,7 +795,7 @@ arandom_r10 (gfc_array_r10 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -805,7 +805,7 @@ arandom_r10 (gfc_array_r10 *x)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }
@@ -836,7 +836,7 @@ arandom_r16 (gfc_array_r16 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
         return;
@@ -855,7 +855,7 @@ arandom_r16 (gfc_array_r16 *x)
       rnumber_16 (dest, r1, r2);
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -866,7 +866,7 @@ arandom_r16 (gfc_array_r16 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -876,7 +876,7 @@ arandom_r16 (gfc_array_r16 *x)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }
@@ -907,7 +907,7 @@ arandom_r17 (gfc_array_r17 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
         return;
@@ -926,7 +926,7 @@ arandom_r17 (gfc_array_r17 *x)
       rnumber_17 (dest, r1, r2);
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -937,7 +937,7 @@ arandom_r17 (gfc_array_r17 *x)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -947,7 +947,7 @@ arandom_r17 (gfc_array_r17 *x)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }
@@ -1040,7 +1040,7 @@ arandom_m2 (gfc_array_m2 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
 	return;
@@ -1058,7 +1058,7 @@ arandom_m2 (gfc_array_m2 *x)
       *dest = r >> 48;
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1069,7 +1069,7 @@ arandom_m2 (gfc_array_m2 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1079,7 +1079,7 @@ arandom_m2 (gfc_array_m2 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n];
+	      PTR_INCREMENT_BYTES (dest, stride[n]);
 	    }
 	}
     }
@@ -1105,7 +1105,7 @@ arandom_m4 (gfc_array_m4 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
 	return;
@@ -1123,7 +1123,7 @@ arandom_m4 (gfc_array_m4 *x)
       *dest = r >> 32;
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1134,7 +1134,7 @@ arandom_m4 (gfc_array_m4 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1144,7 +1144,7 @@ arandom_m4 (gfc_array_m4 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n];
+	      PTR_INCREMENT_BYTES(dest, stride[n]);
 	    }
 	}
     }
@@ -1170,7 +1170,7 @@ arandom_m8 (gfc_array_m8 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
 	return;
@@ -1188,7 +1188,7 @@ arandom_m8 (gfc_array_m8 *x)
       *dest = r;
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1199,7 +1199,7 @@ arandom_m8 (gfc_array_m8 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1209,7 +1209,7 @@ arandom_m8 (gfc_array_m8 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n];
+	      PTR_INCREMENT_BYTES (dest, stride[n]);
 	    }
 	}
     }
@@ -1237,7 +1237,7 @@ arandom_m16 (gfc_array_m16 *x)
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(x,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(x,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(x,n);
       if (extent[n] <= 0)
 	return;
@@ -1255,7 +1255,7 @@ arandom_m16 (gfc_array_m16 *x)
       *dest = (((GFC_UINTEGER_16) r1) << 64) | (GFC_UINTEGER_16) r2;
 
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -1266,7 +1266,7 @@ arandom_m16 (gfc_array_m16 *x)
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= stride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
 	  n++;
 	  if (n == dim)
 	    {
@@ -1276,7 +1276,7 @@ arandom_m16 (gfc_array_m16 *x)
 	  else
 	    {
 	      count[n]++;
-	      dest += stride[n];
+	      PTR_INCREMENT_BYTES (dest, stride[n]);
 	    }
 	}
     }

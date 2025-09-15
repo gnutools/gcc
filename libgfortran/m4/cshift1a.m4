@@ -84,21 +84,21 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
     {
       if (dim == which)
         {
-          roffset = GFC_DESCRIPTOR_STRIDE(ret,dim);
+          roffset = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
           if (roffset == 0)
-            roffset = 1;
-          soffset = GFC_DESCRIPTOR_STRIDE(array,dim);
+            roffset = sizeof ('atype_name`);
+          soffset = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
           if (soffset == 0)
-            soffset = 1;
+            soffset = sizeof ('atype_name`);
           len = GFC_DESCRIPTOR_EXTENT(array,dim);
         }
       else
         {
           count[n] = 0;
           extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-          rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-          sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
-          hstride[n] = GFC_DESCRIPTOR_STRIDE(h,n);
+          rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+          sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
+          hstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(h,n);
 	  rs_ex[n] = rstride[n] * extent[n];
 	  ss_ex[n] = sstride[n] * extent[n];
 	  hs_ex[n] = hstride[n] * extent[n];
@@ -106,11 +106,11 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
         }
     }
   if (sstride[0] == 0)
-    sstride[0] = 1;
+    sstride[0] = sizeof ('atype_name`);
   if (rstride[0] == 0)
-    rstride[0] = 1;
+    rstride[0] = sizeof ('atype_name`);
   if (hstride[0] == 0)
-    hstride[0] = 1;
+    hstride[0] = sizeof ('rtype_name`);
 
   dim = GFC_DESCRIPTOR_RANK (array);
   rstride0 = rstride[0];
@@ -134,9 +134,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 	  if (sh < 0)
             sh += len;
 	}
-      src = &sptr[sh * soffset];
+      src = (const 'atype_name` *) (((char*)sptr) + sh * soffset);
       dest = rptr;
-      if (soffset == 1 && roffset == 1)
+      if (soffset == sizeof ('atype_name`) && roffset == sizeof ('atype_name`))
 	{
 	  size_t len1 = sh * sizeof ('atype_name`);
 	  size_t len2 = (len - sh) * sizeof ('atype_name`);
@@ -148,21 +148,21 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
 	  for (n = 0; n < len - sh; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      PTR_INCREMENT_BYTES (dest, roffset);
+	      PTR_INCREMENT_BYTES (src, soffset);
 	    }
 	  for (src = sptr, n = 0; n < sh; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      PTR_INCREMENT_BYTES (dest, roffset);
+	      PTR_INCREMENT_BYTES (src, soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
-      hptr += hstride0;
+      PTR_INCREMENT_BYTES (rptr, rstride0);
+      PTR_INCREMENT_BYTES (sptr, sstride0);
+      PTR_INCREMENT_BYTES (hptr, hstride0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -170,9 +170,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
           /* When we get to the end of a dimension, reset it and increment
              the next dimension.  */
           count[n] = 0;
-          rptr -= rs_ex[n];
-          sptr -= ss_ex[n];
-	  hptr -= hs_ex[n];
+          PTR_DECREMENT_BYTES (rptr, rs_ex[n]);
+          PTR_DECREMENT_BYTES (sptr, ss_ex[n]);
+	  PTR_DECREMENT_BYTES (hptr, hs_ex[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -183,9 +183,9 @@ cshift1'rtype_qual`_'atype_code` ('atype` * const restrict ret,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
-	      hptr += hstride[n];
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
+              PTR_INCREMENT_BYTES (sptr, sstride[n]);
+	      PTR_INCREMENT_BYTES (hptr, hstride[n]);
             }
         }
     }

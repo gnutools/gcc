@@ -54,7 +54,7 @@ etime_sub (gfc_array_r4 *t, GFC_REAL_4 *result)
   tp = t->base_addr;
 
   *tp = tu;
-  tp += GFC_DESCRIPTOR_STRIDE(t,0);
+  PTR_INCREMENT_BYTES (tp, GFC_DESCRIPTOR_STRIDE_BYTES(t,0));
   *tp = ts;
   *result = tt;
 }

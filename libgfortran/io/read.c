@@ -600,7 +600,7 @@ read_default_char4 (st_parameter_dt *dtp, char *p, size_t len, size_t width)
       if (s4 == NULL)
 	return;
       if (width > len)
-	 s4 += (width - len);
+	s4 += (width - len);
 
       m = (width > len) ? len : width;
 

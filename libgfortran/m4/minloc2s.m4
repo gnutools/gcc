@@ -59,7 +59,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
 
   ret = 1;
   src = array->base_addr;
@@ -72,7 +72,7 @@ export_proto('name`'rtype_qual`_'atype_code`);
 	 ret = i;
 	 minval = src;
       }
-      src += sstride;
+      PTR_INCREMENT_BYTES (src, sstride);
     }
   return ret;
 }
@@ -101,7 +101,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
 
   mask_kind = GFC_DESCRIPTOR_SIZE (mask);
   mbase = mask->base_addr;
@@ -122,7 +122,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
     {
       if (*mbase)
         break;
-      mbase += mstride;
+      PTR_INCREMENT_BYTES (mbase, mstride);
     }
 
   if (j == extent)
@@ -141,7 +141,7 @@ m'name`'rtype_qual`_'atype_code` ('atype` * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src += sstride;
+      PTR_INCREMENT_BYTES (src, sstride);
       mbase += mstride;
     }
   return ret;

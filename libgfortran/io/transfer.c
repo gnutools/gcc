@@ -2843,13 +2843,13 @@ transfer_array_inner (st_parameter_dt *dtp, gfc_array_char *desc, int kind,
 	    return;
 
 	  dtp->u.p.transfer (dtp, iotype, data, kind, size, tsize);
-	  data += stride0 * tsize;
+	  PTR_INCREMENT_BYTES (data, stride0 * tsize);
 	  count[0] += tsize;
 	  n = 0;
 	  while (count[n] == extent[n])
 	    {
 	      count[n] = 0;
-	      data -= stride[n] * extent[n];
+	      PTR_DECREMENT_BYTES (data, stride[n] * extent[n]);
 	      n++;
 	      if (n == rank)
 		{
@@ -2859,7 +2859,7 @@ transfer_array_inner (st_parameter_dt *dtp, gfc_array_char *desc, int kind,
 	      else
 		{
 		  count[n]++;
-		  data += stride[n];
+		  PTR_INCREMENT_BYTES (data, stride[n]);
 		}
 	    }
 	}
@@ -2869,13 +2869,13 @@ transfer_array_inner (st_parameter_dt *dtp, gfc_array_char *desc, int kind,
       while (data)
 	{
 	  dtp->u.p.transfer (dtp, iotype, data, kind, size, tsize);
-	  data += stride0 * tsize;
+	  PTR_INCREMENT_BYTES (data, stride0 * tsize);
 	  count[0] += tsize;
 	  n = 0;
 	  while (count[n] == extent[n])
 	    {
 	      count[n] = 0;
-	      data -= stride[n] * extent[n];
+	      PTR_DECREMENT_BYTES (data, stride[n] * extent[n]);
 	      n++;
 	      if (n == rank)
 		{
@@ -2885,7 +2885,7 @@ transfer_array_inner (st_parameter_dt *dtp, gfc_array_char *desc, int kind,
 	      else
 		{
 		  count[n]++;
-		  data += stride[n];
+		  PTR_INCREMENT_BYTES (data, stride[n]);
 		}
 	    }
 	}
