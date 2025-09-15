@@ -294,7 +294,7 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
+      index_type a_dim1, b_dim1, c_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -310,18 +310,12 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 
       /* Parameter adjustments */
       c_dim1 = rystride;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
       a_dim1 = aystride;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
       b_dim1 = bystride;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
 
       /* Empty c first.  */
-      for (j=1; j<=n; j++)
-	for (i=1; i<=m; i++)
+      for (j=0; j<n; j++)
+	for (i=0; i<m; i++)
 	  c[i + j * c_dim1] = (GFC_REAL_10)0;
 
       /* Early exit if possible */
@@ -343,35 +337,35 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 
       /* Start turning the crank. */
       i1 = n;
-      for (jj = 1; jj <= i1; jj += 512)
+      for (jj = 0; jj < i1; jj += 512)
 	{
 	  /* Computing MIN */
 	  i2 = 512;
-	  i3 = n - jj + 1;
+	  i3 = n - jj;
 	  jsec = min(i2,i3);
 	  ujsec = jsec - jsec % 4;
 	  i2 = k;
-	  for (ll = 1; ll <= i2; ll += 256)
+	  for (ll = 0; ll < i2; ll += 256)
 	    {
 	      /* Computing MIN */
 	      i3 = 256;
-	      i4 = k - ll + 1;
+	      i4 = k - ll;
 	      lsec = min(i3,i4);
 	      ulsec = lsec - lsec % 2;
 
 	      i3 = m;
-	      for (ii = 1; ii <= i3; ii += 256)
+	      for (ii = 0; ii < i3; ii += 256)
 		{
 		  /* Computing MIN */
 		  i4 = 256;
-		  i5 = m - ii + 1;
+		  i5 = m - ii;
 		  isec = min(i4,i5);
 		  uisec = isec - isec % 2;
-		  i4 = ll + ulsec - 1;
-		  for (l = ll; l <= i4; l += 2)
+		  i4 = ll + ulsec;
+		  for (l = ll; l < i4; l += 2)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 2)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
 					a[i + l * a_dim1];
@@ -392,8 +386,8 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ulsec < lsec)
 		    {
-		      i4 = ii + isec - 1;
-		      for (i = ii; i<= i4; ++i)
+		      i4 = ii + isec;
+		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
 				    a[i + (ll + lsec - 1) * a_dim1];
@@ -401,11 +395,11 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 		    }
 
 		  uisec = isec - isec % 4;
-		  i4 = jj + ujsec - 1;
-		  for (j = jj; j <= i4; j += 4)
+		  i4 = jj + ujsec;
+		  for (j = jj; j < i4; j += 4)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 4)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 4)
 			{
 			  f11 = c[i + j * c_dim1];
 			  f21 = c[i + 1 + j * c_dim1];
@@ -423,8 +417,8 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 			  f43 = c[i + 3 + (j + 2) * c_dim1];
 			  f34 = c[i + 2 + (j + 3) * c_dim1];
 			  f44 = c[i + 3 + (j + 3) * c_dim1];
-			  i6 = ll + lsec - 1;
-			  for (l = ll; l <= i6; ++l)
+			  i6 = ll + lsec;
+			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
 				      * b[l + j * b_dim1];
@@ -478,15 +472,15 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 			}
 		      if (uisec < isec)
 			{
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f12 = c[i + (j + 1) * c_dim1];
 			      f13 = c[i + (j + 2) * c_dim1];
 			      f14 = c[i + (j + 3) * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -506,18 +500,18 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ujsec < jsec)
 		    {
-		      i4 = jj + jsec - 1;
-		      for (j = jj + ujsec; j <= i4; ++j)
+		      i4 = jj + jsec;
+		      for (j = jj + ujsec; j < i4; ++j)
 			{
-			  i5 = ii + uisec - 1;
-			  for (i = ii; i <= i5; i += 4)
+			  i5 = ii + uisec;
+			  for (i = ii; i < i5; i += 4)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f21 = c[i + 1 + j * c_dim1];
 			      f31 = c[i + 2 + j * c_dim1];
 			      f41 = c[i + 3 + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -533,12 +527,12 @@ matmul_r10_avx (gfc_array_r10 * const restrict retarray,
 			      c[i + 2 + j * c_dim1] = f31;
 			      c[i + 3 + j * c_dim1] = f41;
 			    }
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -863,7 +857,7 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
+      index_type a_dim1, b_dim1, c_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -879,18 +873,12 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 
       /* Parameter adjustments */
       c_dim1 = rystride;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
       a_dim1 = aystride;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
       b_dim1 = bystride;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
 
       /* Empty c first.  */
-      for (j=1; j<=n; j++)
-	for (i=1; i<=m; i++)
+      for (j=0; j<n; j++)
+	for (i=0; i<m; i++)
 	  c[i + j * c_dim1] = (GFC_REAL_10)0;
 
       /* Early exit if possible */
@@ -912,35 +900,35 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 
       /* Start turning the crank. */
       i1 = n;
-      for (jj = 1; jj <= i1; jj += 512)
+      for (jj = 0; jj < i1; jj += 512)
 	{
 	  /* Computing MIN */
 	  i2 = 512;
-	  i3 = n - jj + 1;
+	  i3 = n - jj;
 	  jsec = min(i2,i3);
 	  ujsec = jsec - jsec % 4;
 	  i2 = k;
-	  for (ll = 1; ll <= i2; ll += 256)
+	  for (ll = 0; ll < i2; ll += 256)
 	    {
 	      /* Computing MIN */
 	      i3 = 256;
-	      i4 = k - ll + 1;
+	      i4 = k - ll;
 	      lsec = min(i3,i4);
 	      ulsec = lsec - lsec % 2;
 
 	      i3 = m;
-	      for (ii = 1; ii <= i3; ii += 256)
+	      for (ii = 0; ii < i3; ii += 256)
 		{
 		  /* Computing MIN */
 		  i4 = 256;
-		  i5 = m - ii + 1;
+		  i5 = m - ii;
 		  isec = min(i4,i5);
 		  uisec = isec - isec % 2;
-		  i4 = ll + ulsec - 1;
-		  for (l = ll; l <= i4; l += 2)
+		  i4 = ll + ulsec;
+		  for (l = ll; l < i4; l += 2)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 2)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
 					a[i + l * a_dim1];
@@ -961,8 +949,8 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ulsec < lsec)
 		    {
-		      i4 = ii + isec - 1;
-		      for (i = ii; i<= i4; ++i)
+		      i4 = ii + isec;
+		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
 				    a[i + (ll + lsec - 1) * a_dim1];
@@ -970,11 +958,11 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 		    }
 
 		  uisec = isec - isec % 4;
-		  i4 = jj + ujsec - 1;
-		  for (j = jj; j <= i4; j += 4)
+		  i4 = jj + ujsec;
+		  for (j = jj; j < i4; j += 4)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 4)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 4)
 			{
 			  f11 = c[i + j * c_dim1];
 			  f21 = c[i + 1 + j * c_dim1];
@@ -992,8 +980,8 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 			  f43 = c[i + 3 + (j + 2) * c_dim1];
 			  f34 = c[i + 2 + (j + 3) * c_dim1];
 			  f44 = c[i + 3 + (j + 3) * c_dim1];
-			  i6 = ll + lsec - 1;
-			  for (l = ll; l <= i6; ++l)
+			  i6 = ll + lsec;
+			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
 				      * b[l + j * b_dim1];
@@ -1047,15 +1035,15 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 			}
 		      if (uisec < isec)
 			{
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f12 = c[i + (j + 1) * c_dim1];
 			      f13 = c[i + (j + 2) * c_dim1];
 			      f14 = c[i + (j + 3) * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -1075,18 +1063,18 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ujsec < jsec)
 		    {
-		      i4 = jj + jsec - 1;
-		      for (j = jj + ujsec; j <= i4; ++j)
+		      i4 = jj + jsec;
+		      for (j = jj + ujsec; j < i4; ++j)
 			{
-			  i5 = ii + uisec - 1;
-			  for (i = ii; i <= i5; i += 4)
+			  i5 = ii + uisec;
+			  for (i = ii; i < i5; i += 4)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f21 = c[i + 1 + j * c_dim1];
 			      f31 = c[i + 2 + j * c_dim1];
 			      f41 = c[i + 3 + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -1102,12 +1090,12 @@ matmul_r10_avx2 (gfc_array_r10 * const restrict retarray,
 			      c[i + 2 + j * c_dim1] = f31;
 			      c[i + 3 + j * c_dim1] = f41;
 			    }
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -1432,7 +1420,7 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
+      index_type a_dim1, b_dim1, c_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -1448,18 +1436,12 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 
       /* Parameter adjustments */
       c_dim1 = rystride;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
       a_dim1 = aystride;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
       b_dim1 = bystride;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
 
       /* Empty c first.  */
-      for (j=1; j<=n; j++)
-	for (i=1; i<=m; i++)
+      for (j=0; j<n; j++)
+	for (i=0; i<m; i++)
 	  c[i + j * c_dim1] = (GFC_REAL_10)0;
 
       /* Early exit if possible */
@@ -1481,35 +1463,35 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 
       /* Start turning the crank. */
       i1 = n;
-      for (jj = 1; jj <= i1; jj += 512)
+      for (jj = 0; jj < i1; jj += 512)
 	{
 	  /* Computing MIN */
 	  i2 = 512;
-	  i3 = n - jj + 1;
+	  i3 = n - jj;
 	  jsec = min(i2,i3);
 	  ujsec = jsec - jsec % 4;
 	  i2 = k;
-	  for (ll = 1; ll <= i2; ll += 256)
+	  for (ll = 0; ll < i2; ll += 256)
 	    {
 	      /* Computing MIN */
 	      i3 = 256;
-	      i4 = k - ll + 1;
+	      i4 = k - ll;
 	      lsec = min(i3,i4);
 	      ulsec = lsec - lsec % 2;
 
 	      i3 = m;
-	      for (ii = 1; ii <= i3; ii += 256)
+	      for (ii = 0; ii < i3; ii += 256)
 		{
 		  /* Computing MIN */
 		  i4 = 256;
-		  i5 = m - ii + 1;
+		  i5 = m - ii;
 		  isec = min(i4,i5);
 		  uisec = isec - isec % 2;
-		  i4 = ll + ulsec - 1;
-		  for (l = ll; l <= i4; l += 2)
+		  i4 = ll + ulsec;
+		  for (l = ll; l < i4; l += 2)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 2)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
 					a[i + l * a_dim1];
@@ -1530,8 +1512,8 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ulsec < lsec)
 		    {
-		      i4 = ii + isec - 1;
-		      for (i = ii; i<= i4; ++i)
+		      i4 = ii + isec;
+		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
 				    a[i + (ll + lsec - 1) * a_dim1];
@@ -1539,11 +1521,11 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 		    }
 
 		  uisec = isec - isec % 4;
-		  i4 = jj + ujsec - 1;
-		  for (j = jj; j <= i4; j += 4)
+		  i4 = jj + ujsec;
+		  for (j = jj; j < i4; j += 4)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 4)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 4)
 			{
 			  f11 = c[i + j * c_dim1];
 			  f21 = c[i + 1 + j * c_dim1];
@@ -1561,8 +1543,8 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 			  f43 = c[i + 3 + (j + 2) * c_dim1];
 			  f34 = c[i + 2 + (j + 3) * c_dim1];
 			  f44 = c[i + 3 + (j + 3) * c_dim1];
-			  i6 = ll + lsec - 1;
-			  for (l = ll; l <= i6; ++l)
+			  i6 = ll + lsec;
+			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
 				      * b[l + j * b_dim1];
@@ -1616,15 +1598,15 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 			}
 		      if (uisec < isec)
 			{
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f12 = c[i + (j + 1) * c_dim1];
 			      f13 = c[i + (j + 2) * c_dim1];
 			      f14 = c[i + (j + 3) * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -1644,18 +1626,18 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ujsec < jsec)
 		    {
-		      i4 = jj + jsec - 1;
-		      for (j = jj + ujsec; j <= i4; ++j)
+		      i4 = jj + jsec;
+		      for (j = jj + ujsec; j < i4; ++j)
 			{
-			  i5 = ii + uisec - 1;
-			  for (i = ii; i <= i5; i += 4)
+			  i5 = ii + uisec;
+			  for (i = ii; i < i5; i += 4)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f21 = c[i + 1 + j * c_dim1];
 			      f31 = c[i + 2 + j * c_dim1];
 			      f41 = c[i + 3 + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -1671,12 +1653,12 @@ matmul_r10_avx512f (gfc_array_r10 * const restrict retarray,
 			      c[i + 2 + j * c_dim1] = f31;
 			      c[i + 3 + j * c_dim1] = f41;
 			    }
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2015,7 +1997,7 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
+      index_type a_dim1, b_dim1, c_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -2031,18 +2013,12 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 
       /* Parameter adjustments */
       c_dim1 = rystride;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
       a_dim1 = aystride;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
       b_dim1 = bystride;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
 
       /* Empty c first.  */
-      for (j=1; j<=n; j++)
-	for (i=1; i<=m; i++)
+      for (j=0; j<n; j++)
+	for (i=0; i<m; i++)
 	  c[i + j * c_dim1] = (GFC_REAL_10)0;
 
       /* Early exit if possible */
@@ -2064,35 +2040,35 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 
       /* Start turning the crank. */
       i1 = n;
-      for (jj = 1; jj <= i1; jj += 512)
+      for (jj = 0; jj < i1; jj += 512)
 	{
 	  /* Computing MIN */
 	  i2 = 512;
-	  i3 = n - jj + 1;
+	  i3 = n - jj;
 	  jsec = min(i2,i3);
 	  ujsec = jsec - jsec % 4;
 	  i2 = k;
-	  for (ll = 1; ll <= i2; ll += 256)
+	  for (ll = 0; ll < i2; ll += 256)
 	    {
 	      /* Computing MIN */
 	      i3 = 256;
-	      i4 = k - ll + 1;
+	      i4 = k - ll;
 	      lsec = min(i3,i4);
 	      ulsec = lsec - lsec % 2;
 
 	      i3 = m;
-	      for (ii = 1; ii <= i3; ii += 256)
+	      for (ii = 0; ii < i3; ii += 256)
 		{
 		  /* Computing MIN */
 		  i4 = 256;
-		  i5 = m - ii + 1;
+		  i5 = m - ii;
 		  isec = min(i4,i5);
 		  uisec = isec - isec % 2;
-		  i4 = ll + ulsec - 1;
-		  for (l = ll; l <= i4; l += 2)
+		  i4 = ll + ulsec;
+		  for (l = ll; l < i4; l += 2)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 2)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
 					a[i + l * a_dim1];
@@ -2113,8 +2089,8 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ulsec < lsec)
 		    {
-		      i4 = ii + isec - 1;
-		      for (i = ii; i<= i4; ++i)
+		      i4 = ii + isec;
+		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
 				    a[i + (ll + lsec - 1) * a_dim1];
@@ -2122,11 +2098,11 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 		    }
 
 		  uisec = isec - isec % 4;
-		  i4 = jj + ujsec - 1;
-		  for (j = jj; j <= i4; j += 4)
+		  i4 = jj + ujsec;
+		  for (j = jj; j < i4; j += 4)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 4)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 4)
 			{
 			  f11 = c[i + j * c_dim1];
 			  f21 = c[i + 1 + j * c_dim1];
@@ -2144,8 +2120,8 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 			  f43 = c[i + 3 + (j + 2) * c_dim1];
 			  f34 = c[i + 2 + (j + 3) * c_dim1];
 			  f44 = c[i + 3 + (j + 3) * c_dim1];
-			  i6 = ll + lsec - 1;
-			  for (l = ll; l <= i6; ++l)
+			  i6 = ll + lsec;
+			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
 				      * b[l + j * b_dim1];
@@ -2199,15 +2175,15 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 			}
 		      if (uisec < isec)
 			{
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f12 = c[i + (j + 1) * c_dim1];
 			      f13 = c[i + (j + 2) * c_dim1];
 			      f14 = c[i + (j + 3) * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2227,18 +2203,18 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ujsec < jsec)
 		    {
-		      i4 = jj + jsec - 1;
-		      for (j = jj + ujsec; j <= i4; ++j)
+		      i4 = jj + jsec;
+		      for (j = jj + ujsec; j < i4; ++j)
 			{
-			  i5 = ii + uisec - 1;
-			  for (i = ii; i <= i5; i += 4)
+			  i5 = ii + uisec;
+			  for (i = ii; i < i5; i += 4)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f21 = c[i + 1 + j * c_dim1];
 			      f31 = c[i + 2 + j * c_dim1];
 			      f41 = c[i + 3 + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2254,12 +2230,12 @@ matmul_r10_vanilla (gfc_array_r10 * const restrict retarray,
 			      c[i + 2 + j * c_dim1] = f31;
 			      c[i + 3 + j * c_dim1] = f41;
 			    }
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2657,7 +2633,7 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
       const index_type m = xcount, n = ycount, k = count;
 
       /* System generated locals */
-      index_type a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset,
+      index_type a_dim1, b_dim1, c_dim1,
 		 i1, i2, i3, i4, i5, i6;
 
       /* Local variables */
@@ -2673,18 +2649,12 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 
       /* Parameter adjustments */
       c_dim1 = rystride;
-      c_offset = 1 + c_dim1;
-      c -= c_offset;
       a_dim1 = aystride;
-      a_offset = 1 + a_dim1;
-      a -= a_offset;
       b_dim1 = bystride;
-      b_offset = 1 + b_dim1;
-      b -= b_offset;
 
       /* Empty c first.  */
-      for (j=1; j<=n; j++)
-	for (i=1; i<=m; i++)
+      for (j=0; j<n; j++)
+	for (i=0; i<m; i++)
 	  c[i + j * c_dim1] = (GFC_REAL_10)0;
 
       /* Early exit if possible */
@@ -2706,35 +2676,35 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 
       /* Start turning the crank. */
       i1 = n;
-      for (jj = 1; jj <= i1; jj += 512)
+      for (jj = 0; jj < i1; jj += 512)
 	{
 	  /* Computing MIN */
 	  i2 = 512;
-	  i3 = n - jj + 1;
+	  i3 = n - jj;
 	  jsec = min(i2,i3);
 	  ujsec = jsec - jsec % 4;
 	  i2 = k;
-	  for (ll = 1; ll <= i2; ll += 256)
+	  for (ll = 0; ll < i2; ll += 256)
 	    {
 	      /* Computing MIN */
 	      i3 = 256;
-	      i4 = k - ll + 1;
+	      i4 = k - ll;
 	      lsec = min(i3,i4);
 	      ulsec = lsec - lsec % 2;
 
 	      i3 = m;
-	      for (ii = 1; ii <= i3; ii += 256)
+	      for (ii = 0; ii < i3; ii += 256)
 		{
 		  /* Computing MIN */
 		  i4 = 256;
-		  i5 = m - ii + 1;
+		  i5 = m - ii;
 		  isec = min(i4,i5);
 		  uisec = isec - isec % 2;
-		  i4 = ll + ulsec - 1;
-		  for (l = ll; l <= i4; l += 2)
+		  i4 = ll + ulsec;
+		  for (l = ll; l < i4; l += 2)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 2)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
 					a[i + l * a_dim1];
@@ -2755,8 +2725,8 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ulsec < lsec)
 		    {
-		      i4 = ii + isec - 1;
-		      for (i = ii; i<= i4; ++i)
+		      i4 = ii + isec;
+		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
 				    a[i + (ll + lsec - 1) * a_dim1];
@@ -2764,11 +2734,11 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 		    }
 
 		  uisec = isec - isec % 4;
-		  i4 = jj + ujsec - 1;
-		  for (j = jj; j <= i4; j += 4)
+		  i4 = jj + ujsec;
+		  for (j = jj; j < i4; j += 4)
 		    {
-		      i5 = ii + uisec - 1;
-		      for (i = ii; i <= i5; i += 4)
+		      i5 = ii + uisec;
+		      for (i = ii; i < i5; i += 4)
 			{
 			  f11 = c[i + j * c_dim1];
 			  f21 = c[i + 1 + j * c_dim1];
@@ -2786,8 +2756,8 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 			  f43 = c[i + 3 + (j + 2) * c_dim1];
 			  f34 = c[i + 2 + (j + 3) * c_dim1];
 			  f44 = c[i + 3 + (j + 3) * c_dim1];
-			  i6 = ll + lsec - 1;
-			  for (l = ll; l <= i6; ++l)
+			  i6 = ll + lsec;
+			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
 				      * b[l + j * b_dim1];
@@ -2841,15 +2811,15 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 			}
 		      if (uisec < isec)
 			{
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f12 = c[i + (j + 1) * c_dim1];
 			      f13 = c[i + (j + 2) * c_dim1];
 			      f14 = c[i + (j + 3) * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2869,18 +2839,18 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 		    }
 		  if (ujsec < jsec)
 		    {
-		      i4 = jj + jsec - 1;
-		      for (j = jj + ujsec; j <= i4; ++j)
+		      i4 = jj + jsec;
+		      for (j = jj + ujsec; j < i4; ++j)
 			{
-			  i5 = ii + uisec - 1;
-			  for (i = ii; i <= i5; i += 4)
+			  i5 = ii + uisec;
+			  for (i = ii; i < i5; i += 4)
 			    {
 			      f11 = c[i + j * c_dim1];
 			      f21 = c[i + 1 + j * c_dim1];
 			      f31 = c[i + 2 + j * c_dim1];
 			      f41 = c[i + 3 + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
@@ -2896,12 +2866,12 @@ matmul_r10 (gfc_array_r10 * const restrict retarray,
 			      c[i + 2 + j * c_dim1] = f31;
 			      c[i + 3 + j * c_dim1] = f41;
 			    }
-			  i5 = ii + isec - 1;
-			  for (i = ii + uisec; i <= i5; ++i)
+			  i5 = ii + isec;
+			  for (i = ii + uisec; i < i5; ++i)
 			    {
 			      f11 = c[i + j * c_dim1];
-			      i6 = ll + lsec - 1;
-			      for (l = ll; l <= i6; ++l)
+			      i6 = ll + lsec;
+			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
 					  257] * b[l + j * b_dim1];
