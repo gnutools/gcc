@@ -79,11 +79,11 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
   if (len < 0)
     len = 0;
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -91,7 +91,7 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -138,7 +138,7 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n) * string_len;
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -159,13 +159,14 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  memset (dest, 0, sizeof (*dest) * string_len);
 	else
 	  {
-	    for (n = 0; n < len; n++, src += delta)
+	    for (n = 0; n < len; n++)
 	      {
 
 		if (compare_fcn (src, retval, string_len) > 0)
 		  {
 		    retval = src;
 		  }
+PTR_INCREMENT_BYTES (src, delta);
 	      }
 	    
 	    memcpy (dest, retval, sizeof (*dest) * string_len);
@@ -173,8 +174,8 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -183,8 +184,8 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -195,8 +196,8 @@ maxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -268,12 +269,12 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -283,7 +284,7 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -332,7 +333,7 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n) * string_len;
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -352,7 +353,7 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
 	const GFC_UINTEGER_4 *retval;
 	memset (dest, 0, sizeof (*dest) * string_len);
 	retval = dest;
-	for (n = 0; n < len; n++, src += delta, msrc += mdelta)
+	for (n = 0; n < len; n++)
 	  {
 
 		if (*msrc)
@@ -360,22 +361,26 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
 			retval = src;
 			break;
 		      }
+	      PTR_INCREMENT_BYTES (src, delta);
+	      msrc += mdelta;
 	    }
-	    for (; n < len; n++, src += delta, msrc += mdelta)
+	    for (; n < len; n++)
 	      {
 		if (*msrc && compare_fcn (src, retval, string_len) > 0)
 		  {
 		    retval = src;
 		  }
 	      
+	    PTR_INCREMENT_BYTES (src, delta);
+	    msrc += mdelta;
 	  }
 	memcpy (dest, retval, sizeof (*dest) * string_len);
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -384,9 +389,9 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -397,9 +402,9 @@ mmaxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	      mbase += mstride[n];
-	      dest += dstride[n];
 	    }
 	}
     }
@@ -513,7 +518,7 @@ smaxval1_s4 (gfc_array_s4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n) * string_len;
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
     }
 
   dest = retarray->base_addr;
@@ -522,7 +527,7 @@ smaxval1_s4 (gfc_array_s4 * const restrict retarray,
     {
       memset (dest, 0, sizeof (*dest) * string_len);
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -531,14 +536,14 @@ smaxval1_s4 (gfc_array_s4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    return;
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
       	}
     }

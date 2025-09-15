@@ -161,13 +161,13 @@ matmul_l16 (gfc_array_l16 * const restrict retarray,
 
   if (GFC_DESCRIPTOR_RANK (retarray) == 1)
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rxstride = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride = rxstride;
     }
   else
     {
-      rxstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rxstride = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
 
   /* If we have rank 1 parameters, zero the absent stride, and set the size to
@@ -225,12 +225,12 @@ matmul_l16 (gfc_array_l16 * const restrict retarray,
               pb += bstride;
             }
 
-          dest += rxstride;
+          PTR_INCREMENT_BYTES (dest, rxstride);
           abase += xstride;
         }
       abase -= xstride * xcount;
       bbase += ystride;
-      dest += rystride - (rxstride * xcount);
+      PTR_INCREMENT_BYTES (dest, rystride - (rxstride * xcount));
     }
 }
 

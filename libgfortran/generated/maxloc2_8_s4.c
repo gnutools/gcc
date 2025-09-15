@@ -57,7 +57,7 @@ maxloc2_8_s4 (gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charl
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
 
   ret = 1;
   src = array->base_addr;
@@ -70,7 +70,7 @@ maxloc2_8_s4 (gfc_array_s4 * const restrict array, GFC_LOGICAL_4 back, gfc_charl
 	 ret = i;
 	 maxval = src;
       }
-      src += sstride;
+      PTR_INCREMENT_BYTES (src, sstride);
     }
   return ret;
 }
@@ -99,7 +99,7 @@ mmaxloc2_8_s4 (gfc_array_s4 * const restrict array,
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
 
   mask_kind = GFC_DESCRIPTOR_SIZE (mask);
   mbase = mask->base_addr;
@@ -138,7 +138,7 @@ mmaxloc2_8_s4 (gfc_array_s4 * const restrict array,
 	 ret = i;
 	 maxval = src;
       }
-      src += sstride;
+      PTR_INCREMENT_BYTES (src, sstride);
       mbase += mstride;
     }
   return ret;

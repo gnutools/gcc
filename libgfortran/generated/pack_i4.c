@@ -126,11 +126,11 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       if (extent[n] <= 0)
        zero_sized = 1;
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
     }
   if (sstride[0] == 0)
-    sstride[0] = 1;
+    sstride[0] = sizeof (GFC_INTEGER_4);
   if (mstride[0] == 0)
     mstride[0] = mask_kind;
 
@@ -187,9 +187,9 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
 	}
     }
 
-  rstride0 = GFC_DESCRIPTOR_STRIDE(ret,0);
+  rstride0 = GFC_DESCRIPTOR_STRIDE_BYTES(ret,0);
   if (rstride0 == 0)
-    rstride0 = 1;
+    rstride0 = sizeof (GFC_INTEGER_4);
   sstride0 = sstride[0];
   mstride0 = mstride[0];
   rptr = ret->base_addr;
@@ -201,10 +201,10 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
         {
           /* Add it.  */
 	  *rptr = *sptr;
-          rptr += rstride0;
+          PTR_INCREMENT_BYTES (rptr, rstride0);
         }
       /* Advance to the next element.  */
-      sptr += sstride0;
+      PTR_INCREMENT_BYTES (sptr, sstride0);
       mptr += mstride0;
       count[0]++;
       n = 0;
@@ -215,7 +215,7 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr -= sstride[n] * extent[n];
+          PTR_DECREMENT_BYTES (sptr, sstride[n] * extent[n]);
           mptr -= mstride[n] * extent[n];
           n++;
           if (n >= dim)
@@ -227,7 +227,7 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
           else
             {
               count[n]++;
-              sptr += sstride[n];
+              PTR_INCREMENT_BYTES (sptr, sstride[n]);
               mptr += mstride[n];
             }
         }
@@ -237,20 +237,20 @@ pack_i4 (gfc_array_i4 *ret, const gfc_array_i4 *array,
   if (vector)
     {
       n = GFC_DESCRIPTOR_EXTENT(vector,0);
-      nelem = ((rptr - ret->base_addr) / rstride0);
+      nelem = ((char*)rptr - (char*)ret->base_addr) / rstride0;
       if (n > nelem)
         {
-          sstride0 = GFC_DESCRIPTOR_STRIDE(vector,0);
+          sstride0 = GFC_DESCRIPTOR_STRIDE_BYTES(vector,0);
           if (sstride0 == 0)
-            sstride0 = 1;
+            sstride0 = sizeof (GFC_INTEGER_4);
 
           sptr = (const GFC_INTEGER_4 *) GFC_DESCRIPTOR1_ELEM_ADDRESS (vector, nelem);
           n -= nelem;
           while (n--)
             {
 	      *rptr = *sptr;
-              rptr += rstride0;
-              sptr += sstride0;
+              PTR_INCREMENT_BYTES (rptr, rstride0);
+              PTR_INCREMENT_BYTES (sptr, sstride0);
             }
         }
     }

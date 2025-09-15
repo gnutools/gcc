@@ -49,12 +49,12 @@ internal_pack_r16 (gfc_array_r16 * source)
      since the stride=0 thing has been removed from the frontend.  */
 
   dim = GFC_DESCRIPTOR_RANK (source);
-  ssize = 1;
+  ssize = sizeof (GFC_REAL_16);
   packed = 1;
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(source,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (extent[n] <= 0)
         {
@@ -84,7 +84,7 @@ internal_pack_r16 (gfc_array_r16 * source)
       /* Copy the data.  */
       *(dest++) = *src;
       /* Advance to the next element.  */
-      src += stride0;
+      PTR_INCREMENT_BYTES (src, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -95,7 +95,7 @@ internal_pack_r16 (gfc_array_r16 * source)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= stride[n] * extent[n];
+          PTR_DECREMENT_BYTES (src, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -105,7 +105,7 @@ internal_pack_r16 (gfc_array_r16 * source)
           else
             {
               count[n]++;
-              src += stride[n];
+              PTR_INCREMENT_BYTES (src, stride[n]);
             }
         }
     }

@@ -68,11 +68,11 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
   if (len < 0)
     len = 0;
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -80,7 +80,7 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -103,6 +103,8 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      retarray->dtype.elem_len = sizeof (GFC_INTEGER_8);
+      retarray->span = sizeof (GFC_INTEGER_8);
 
       alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
 
@@ -126,7 +128,7 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -154,30 +156,32 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	else
 	  {
 #if ! defined HAVE_BACK_ARG
-	    for (n = 0; n < len; n++, src += delta)
+	    for (n = 0; n < len; n++)
 	      {
 #endif
 
 #if defined (GFC_INTEGER_4_QUIET_NAN)
-     	     for (n = 0; n < len; n++, src += delta)
-	       {
-		if (*src >= maxval)
-		  {
-		    maxval = *src;
-		    result = (GFC_INTEGER_8)n + 1;
-		    break;
-		  }
-	      }
+     	      for (n = 0; n < len; n++)
+	        {
+		  if (*src >= maxval)
+		    {
+		      maxval = *src;
+		      result = (GFC_INTEGER_8)n + 1;
+		      break;
+		    }
+		  PTR_INCREMENT_BYTES (src, delta);
+		}
 #else
 	    n = 0;
 #endif
-	    for (; n < len; n++, src += delta)
+	    for (; n < len; n++)
 	      {
 		if (back ? *src >= maxval : *src > maxval)
 		  {
 		    maxval = *src;
 		    result = (GFC_INTEGER_8)n + 1;
 		  }
+		PTR_INCREMENT_BYTES (src, delta);
 	      }
 	    
 	    *dest = result;
@@ -185,8 +189,8 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -195,8 +199,8 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -207,8 +211,8 @@ maxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -280,12 +284,12 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -295,7 +299,7 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -321,6 +325,8 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 
       retarray->offset = 0;
       retarray->dtype.rank = rank;
+      retarray->dtype.elem_len = sizeof (GFC_INTEGER_8);
+      retarray->span = sizeof (GFC_INTEGER_8);
 
       retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_INTEGER_8));
       if (alloc_size == 0)
@@ -343,7 +349,7 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -370,7 +376,7 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	GFC_INTEGER_8 result2 = 0;
 #endif
 	result = 0;
-	for (n = 0; n < len; n++, src += delta, msrc += mdelta)
+	for (n = 0; n < len; n++)
 	  {
 
 		if (*msrc)
@@ -386,6 +392,8 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 			break;
 		      }
 		  }
+		PTR_INCREMENT_BYTES (src, delta);
+		msrc += mdelta;
 	      }
 #if defined (GFC_INTEGER_4_QUIET_NAN)
 	    if (unlikely (n >= len))
@@ -393,30 +401,34 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	    else
 #endif
 	    if (back)
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++)
 	      	{
 		  if (*msrc && unlikely (*src >= maxval))
 		    {
 		      maxval = *src;
 		      result = (GFC_INTEGER_8)n + 1;
 		    }
+		  PTR_INCREMENT_BYTES (src, delta);
+		  msrc += mdelta;
 		}
 	    else
-	      for (; n < len; n++, src += delta, msrc += mdelta)
+	      for (; n < len; n++)
 	        {
 		  if (*msrc && unlikely (*src > maxval))
 		    {
 		      maxval = *src;
 		      result = (GFC_INTEGER_8)n + 1;
 		    }
+	    PTR_INCREMENT_BYTES (src, delta);
+	    msrc += mdelta;
 	  }
 	*dest = result;
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -425,9 +437,9 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -438,9 +450,9 @@ mmaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	      mbase += mstride[n];
-	      dest += dstride[n];
 	    }
 	}
     }
@@ -554,7 +566,7 @@ smaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
     }
 
   dest = retarray->base_addr;
@@ -563,7 +575,7 @@ smaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
     {
       *dest = 0;
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -572,14 +584,14 @@ smaxloc1_8_i4 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    return;
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
       	}
     }

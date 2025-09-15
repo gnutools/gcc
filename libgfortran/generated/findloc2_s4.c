@@ -45,7 +45,7 @@ findloc2_s4 (gfc_array_s4 * const restrict array, const GFC_UINTEGER_4 * restric
   if (extent <= 0)
     return 0;
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len_array;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
   if (back)
     {
       src = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, extent - 1);
@@ -53,7 +53,7 @@ findloc2_s4 (gfc_array_s4 * const restrict array, const GFC_UINTEGER_4 * restric
 	{
 	  if (compare_string_char4 (len_array, src, len_value, value) == 0)
 	    return i;
-	  src -= sstride;
+	  PTR_DECREMENT_BYTES (src, sstride);
 	}
     }
   else
@@ -63,7 +63,7 @@ findloc2_s4 (gfc_array_s4 * const restrict array, const GFC_UINTEGER_4 * restric
 	{
 	  if (compare_string_char4 (len_array, src, len_value, value) == 0)
 	    return i;
-	  src += sstride;
+	  PTR_INCREMENT_BYTES (src, sstride);
 	}
     }
   return 0;
@@ -105,7 +105,7 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  sstride = GFC_DESCRIPTOR_STRIDE(array,0) * len_array;
+  sstride = GFC_DESCRIPTOR_STRIDE_BYTES(array,0);
   mstride = GFC_DESCRIPTOR_STRIDE_BYTES(mask,0);
 
   if (back)
@@ -116,7 +116,7 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
 	{
 	  if (*mbase && (compare_string_char4 (len_array, src, len_value, value) == 0))
 	    return i;
-	  src -= sstride;
+	  PTR_DECREMENT_BYTES (src, sstride);
 	  mbase -= mstride;
 	}
     }
@@ -127,7 +127,7 @@ mfindloc2_s4 (gfc_array_s4 * const restrict array,
 	{
 	  if (*mbase && (compare_string_char4 (len_array, src, len_value, value) == 0))
 	    return i;
-	  src += sstride;
+	  PTR_INCREMENT_BYTES (src, sstride);
 	  mbase += mstride;
 	}
     }

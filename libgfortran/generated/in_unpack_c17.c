@@ -45,11 +45,11 @@ internal_unpack_c17 (gfc_array_c17 * d, const GFC_COMPLEX_17 * src)
     return;
 
   dim = GFC_DESCRIPTOR_RANK (d);
-  dsize = 1;
+  dsize = sizeof (GFC_COMPLEX_17);
   for (index_type n = 0; n < dim; n++)
     {
       count[n] = 0;
-      stride[n] = GFC_DESCRIPTOR_STRIDE(d,n);
+      stride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(d,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(d,n);
       if (extent[n] <= 0)
 	return;
@@ -62,7 +62,7 @@ internal_unpack_c17 (gfc_array_c17 * d, const GFC_COMPLEX_17 * src)
 
   if (dsize != 0)
     {
-      memcpy (dest, src, dsize * sizeof (GFC_COMPLEX_17));
+      memcpy (dest, src, dsize);
       return;
     }
 
@@ -73,7 +73,7 @@ internal_unpack_c17 (gfc_array_c17 * d, const GFC_COMPLEX_17 * src)
       /* Copy the data.  */
       *dest = *(src++);
       /* Advance to the next element.  */
-      dest += stride0;
+      PTR_INCREMENT_BYTES (dest, stride0);
       count[0]++;
       /* Advance to the next source element.  */
       index_type n = 0;
@@ -84,7 +84,7 @@ internal_unpack_c17 (gfc_array_c17 * d, const GFC_COMPLEX_17 * src)
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          dest -= stride[n] * extent[n];
+          PTR_DECREMENT_BYTES (dest, stride[n] * extent[n]);
           n++;
           if (n == dim)
             {
@@ -94,7 +94,7 @@ internal_unpack_c17 (gfc_array_c17 * d, const GFC_COMPLEX_17 * src)
           else
             {
               count[n]++;
-              dest += stride[n];
+              PTR_INCREMENT_BYTES (dest, stride[n]);
             }
         }
     }

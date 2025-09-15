@@ -111,10 +111,10 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 	 bn = cshift(a,sh*n1*n2,1)
 
 	 we can used a more blocked algorithm for dim>1.  */
-      sstride[0] = 1;
-      rstride[0] = 1;
-      roffset = 1;
-      soffset = 1;
+      sstride[0] = sizeof (GFC_COMPLEX_4);
+      rstride[0] = sizeof (GFC_COMPLEX_4);
+      roffset = sizeof (GFC_COMPLEX_4);
+      soffset = sizeof (GFC_COMPLEX_4);
       len = GFC_DESCRIPTOR_STRIDE(array, which)
 	* GFC_DESCRIPTOR_EXTENT(array, which);      
       shift *= GFC_DESCRIPTOR_STRIDE(array, which);
@@ -122,8 +122,8 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 	{
 	  count[n] = 0;
 	  extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	  rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	  sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	  rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+	  sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 	  n++;
 	}
       dim = GFC_DESCRIPTOR_RANK (array) - which;
@@ -134,27 +134,27 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 	{
 	  if (dim == which)
 	    {
-	      roffset = GFC_DESCRIPTOR_STRIDE(ret,dim);
+	      roffset = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
 	      if (roffset == 0)
-		roffset = 1;
-	      soffset = GFC_DESCRIPTOR_STRIDE(array,dim);
+		roffset = sizeof (GFC_COMPLEX_4);
+	      soffset = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 	      if (soffset == 0)
-		soffset = 1;
+		soffset = sizeof (GFC_COMPLEX_4);
 	      len = GFC_DESCRIPTOR_EXTENT(array,dim);
 	    }
 	  else
 	    {
 	      count[n] = 0;
 	      extent[n] = GFC_DESCRIPTOR_EXTENT(array,dim);
-	      rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
-	      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,dim);
+	      rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
+	      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 	      n++;
 	    }
 	}
       if (sstride[0] == 0)
-	sstride[0] = 1;
+	sstride[0] = sizeof (GFC_COMPLEX_4);
       if (rstride[0] == 0)
-	rstride[0] = 1;
+	rstride[0] = sizeof (GFC_COMPLEX_4);
 
       dim = GFC_DESCRIPTOR_RANK (array);
     }
@@ -178,7 +178,7 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 
       /* If elements are contiguous, perform the operation
 	 in two block moves.  */
-      if (soffset == 1 && roffset == 1)
+      if (soffset == sizeof (GFC_COMPLEX_4) && roffset == sizeof (GFC_COMPLEX_4))
 	{
 	  size_t len1 = shift * sizeof (GFC_COMPLEX_4);
 	  size_t len2 = (len - shift) * sizeof (GFC_COMPLEX_4);
@@ -190,25 +190,25 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
 	  /* Otherwise, we will have to perform the copy one element at
 	     a time.  */
 	  GFC_COMPLEX_4 *dest = rptr;
-	  const GFC_COMPLEX_4 *src = &sptr[shift * soffset];
+	  const GFC_COMPLEX_4 *src = (const GFC_COMPLEX_4 *) (((char*)sptr) + shift * soffset);
 
 	  for (n = 0; n < len - shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      PTR_INCREMENT_BYTES (dest, roffset);
+	      PTR_INCREMENT_BYTES (src, soffset);
 	    }
 	  for (src = sptr, n = 0; n < shift; n++)
 	    {
 	      *dest = *src;
-	      dest += roffset;
-	      src += soffset;
+	      PTR_INCREMENT_BYTES (dest, roffset);
+	      PTR_INCREMENT_BYTES (src, soffset);
 	    }
 	}
 
       /* Advance to the next section.  */
-      rptr += rstride0;
-      sptr += sstride0;
+      PTR_INCREMENT_BYTES (rptr, rstride0);
+      PTR_INCREMENT_BYTES (sptr, sstride0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -218,8 +218,8 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * extent[n];
-          sptr -= sstride[n] * extent[n];
+          PTR_DECREMENT_BYTES (rptr, rstride[n] * extent[n]);
+          PTR_DECREMENT_BYTES (sptr, sstride[n] * extent[n]);
           n++;
           if (n >= dim - 1)
             {
@@ -230,8 +230,8 @@ cshift0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *array, ptrdiff_t shift,
           else
             {
               count[n]++;
-              rptr += rstride[n];
-              sptr += sstride[n];
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
+              PTR_INCREMENT_BYTES (sptr, sstride[n]);
             }
         }
     }

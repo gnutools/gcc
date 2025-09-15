@@ -64,11 +64,11 @@ findloc1_i8 (gfc_array_index_type * const restrict retarray,
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
   if (len < 0)
     len = 0;
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -76,7 +76,7 @@ findloc1_i8 (gfc_array_index_type * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -122,7 +122,7 @@ findloc1_i8 (gfc_array_index_type * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -139,39 +139,41 @@ findloc1_i8 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = base + (len - 1) * delta * 1;
-	  for (n = len; n > 0; n--, src -= delta * 1)
+	  src = (const GFC_INTEGER_8 * restrict) (((char*) base) + (len - 1) * delta);
+	  for (n = len; n > 0; n--)
 	    {
 	      if (*src == value)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_DECREMENT_BYTES (src, delta);
 	    }
 	}
       else
 	{
 	  src = base;
-	  for (n = 1; n <= len; n++, src += delta * 1)
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (*src == value)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_INCREMENT_BYTES (src, delta);
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base += sstride[0] * 1;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base -= sstride[n] * extent[n] * 1;
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -181,8 +183,8 @@ findloc1_i8 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n] * 1;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -231,7 +233,7 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
   if (len < 0)
     len = 0;
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim);
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   mbase = mask->base_addr;
@@ -249,7 +251,7 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -258,7 +260,7 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -305,7 +307,7 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -323,43 +325,47 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
       result = 0;
       if (back)
 	{
-	  src = base + (len - 1) * delta * 1;
+	  src = (const GFC_INTEGER_8 * restrict) (((char*)base) + (len - 1) * delta);
 	  msrc = mbase + (len - 1) * mdelta; 
-	  for (n = len; n > 0; n--, src -= delta * 1, msrc -= mdelta)
+	  for (n = len; n > 0; n--)
 	    {
 	      if (*msrc && *src == value)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_DECREMENT_BYTES (src, delta);
+	      msrc -= mdelta;
 	    }
 	}
       else
 	{
 	  src = base;
 	  msrc = mbase;
-	  for (n = 1; n <= len; n++, src += delta * 1, msrc += mdelta)
+	  for (n = 1; n <= len; n++)
 	    {
 	      if (*msrc && *src == value)
 		{
 		  result = n;
 		  break;
 		}
+	      PTR_INCREMENT_BYTES (src, delta);
+	      msrc += mdelta;
 	    }
 	}
       *dest = result;
 
       count[0]++;
-      base += sstride[0] * 1;
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  base -= sstride[n] * extent[n] * 1;
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -369,8 +375,8 @@ mfindloc1_i8 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n] * 1;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -474,7 +480,7 @@ sfindloc1_i8 (gfc_array_index_type * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -486,12 +492,12 @@ sfindloc1_i8 (gfc_array_index_type * const restrict retarray,
       *dest = 0;
 
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
 	  count[n] = 0;
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -501,7 +507,7 @@ sfindloc1_i8 (gfc_array_index_type * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }

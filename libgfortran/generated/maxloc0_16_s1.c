@@ -79,7 +79,7 @@ maxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -116,7 +116,7 @@ maxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -127,7 +127,7 @@ maxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -138,7 +138,7 @@ maxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -216,7 +216,7 @@ mmaxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
@@ -256,7 +256,7 @@ mmaxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
     }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	  mbase += mstride[0];
 	}
       while (++count[0] != extent[0]);
@@ -268,7 +268,7 @@ mmaxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -280,7 +280,7 @@ mmaxloc0_16_s1 (gfc_array_i16 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	      mbase += mstride[n];
 	    }
 	}

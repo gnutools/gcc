@@ -65,7 +65,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
       if (extent[n] <= 0)
@@ -111,7 +111,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  break;
 		}
-	      base += sstride[0];
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	    }
 	  while (++count[0] != extent[0]);
 	  if (likely (fast))
@@ -128,7 +128,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 		for (n = 0; n < rank; n++)
 		  GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	      }
-	    base += sstride[0];
+	    PTR_INCREMENT_BYTES (base, sstride[0]);
 	  }
 	while (++count[0] != extent[0]);
       else
@@ -142,7 +142,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	      }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	}
       while (++count[0] != extent[0]);
       n = 0;
@@ -153,7 +153,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -164,7 +164,7 @@ minloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	    }
 	}
       while (count[n] == extent[n]);
@@ -237,7 +237,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       count[n] = 0;
@@ -289,7 +289,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 		      break;
 		    }
 		}
-	      base += sstride[0];
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	      mbase += mstride[0];
 	    }
 	  while (++count[0] != extent[0]);
@@ -306,7 +306,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	      	  for (n = 0; n < rank; n++)
 		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	    	}
-		base += sstride[0];
+		PTR_INCREMENT_BYTES (base, sstride[0]);
 	    }
 	    while (++count[0] != extent[0]);
 	else
@@ -320,7 +320,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 		}
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
-	  base += sstride[0];
+	  PTR_INCREMENT_BYTES (base, sstride[0]);
 	  mbase += mstride[0];
 	}
       while (++count[0] != extent[0]);
@@ -332,7 +332,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
@@ -344,7 +344,7 @@ mminloc0_8_r17 (gfc_array_i8 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
 	      mbase += mstride[n];
 	    }
 	}

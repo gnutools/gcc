@@ -125,12 +125,12 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
   if (pad)
     {
       pdim = GFC_DESCRIPTOR_RANK (pad);
-      psize = 1;
+      psize = GFC_DESCRIPTOR_SIZE(pad);
       pempty = 0;
       for (index_type n = 0; n < pdim; n++)
         {
           pcount[n] = 0;
-          pstride[n] = GFC_DESCRIPTOR_STRIDE(pad,n);
+          pstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(pad,n);
           pextent[n] = GFC_DESCRIPTOR_EXTENT(pad,n);
           if (pextent[n] <= 0)
 	    {
@@ -208,7 +208,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
 	}
     }
 
-  rsize = 1;
+  rsize = GFC_DESCRIPTOR_SIZE(ret);
   for (index_type n = 0; n < rdim; n++)
     {
       index_type dim;
@@ -218,7 +218,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
         dim = n;
 
       rcount[n] = 0;
-      rstride[n] = GFC_DESCRIPTOR_STRIDE(ret,dim);
+      rstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,dim);
       rextent[n] = GFC_DESCRIPTOR_EXTENT(ret,dim);
       if (rextent[n] < 0)
         rextent[n] = 0;
@@ -240,12 +240,12 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
    avoids a warning.  */
   GFC_ASSERT(sdim>0);
 
-  ssize = 1;
+  ssize = GFC_DESCRIPTOR_SIZE(source);
   sempty = 0;
   for (index_type n = 0; n < sdim; n++)
     {
       scount[n] = 0;
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(source,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(source,n);
       sextent[n] = GFC_DESCRIPTOR_EXTENT(source,n);
       if (sextent[n] <= 0)
 	{
@@ -261,8 +261,6 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
 
   if (rsize != 0 && ssize != 0 && psize != 0)
     {
-      rsize *= sizeof (GFC_COMPLEX_4);
-      ssize *= sizeof (GFC_COMPLEX_4);
       psize *= sizeof (GFC_COMPLEX_4);
       reshape_packed ((char *)ret->base_addr, rsize, (char *)source->base_addr,
 		      ssize, pad ? (char *)pad->base_addr : NULL, psize);
@@ -296,8 +294,8 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
       /* Select between the source and pad arrays.  */
       *rptr = *src;
       /* Advance to the next element.  */
-      rptr += rstride0;
-      src += sstride0;
+      PTR_INCREMENT_BYTES (rptr, rstride0);
+      PTR_INCREMENT_BYTES (src, sstride0);
       rcount[0]++;
       scount[0]++;
 
@@ -310,7 +308,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
           rcount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          rptr -= rstride[n] * rextent[n];
+          PTR_DECREMENT_BYTES (rptr, rstride[n] * rextent[n]);
           n++;
           if (n == rdim)
             {
@@ -321,7 +319,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
           else
             {
               rcount[n]++;
-              rptr += rstride[n];
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
             }
         }
       /* Advance to the next source element.  */
@@ -333,7 +331,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
           scount[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          src -= sstride[n] * sextent[n];
+          PTR_DECREMENT_BYTES (src, sstride[n] * sextent[n]);
           n++;
           if (n == sdim)
             {
@@ -357,7 +355,7 @@ reshape_c4 (gfc_array_c4 * const restrict ret,
           else
             {
               scount[n]++;
-              src += sstride[n];
+              PTR_INCREMENT_BYTES (src, sstride[n]);
             }
         }
     }

@@ -80,11 +80,11 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
   if (len < 0)
     len = 0;
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
       if (extent[n] < 0)
@@ -92,7 +92,7 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array, n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
       if (extent[n] < 0)
@@ -138,7 +138,7 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -161,7 +161,7 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  *dest = 0;
 	else
 	  {
-	    for (n = 0; n < len; n++, src += delta)
+	    for (n = 0; n < len; n++)
 	      {
 
 		if (maxval == NULL || (back ? compare_fcn (src, maxval, string_len) >= 0 :
@@ -170,6 +170,7 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 		    maxval = src;
 		    result = (GFC_INTEGER_4)n + 1;
 		  }
+PTR_INCREMENT_BYTES (src, delta);
 	      }
 	    
 	    *dest = result;
@@ -177,8 +178,8 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -187,8 +188,8 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    {
@@ -199,8 +200,8 @@ maxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
 	}
     }
@@ -273,12 +274,12 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  delta = GFC_DESCRIPTOR_STRIDE(array,dim) * string_len;
+  delta = GFC_DESCRIPTOR_STRIDE_BYTES(array,dim);
   mdelta = GFC_DESCRIPTOR_STRIDE_BYTES(mask,dim);
 
   for (n = 0; n < dim; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
 
@@ -288,7 +289,7 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
     }
   for (n = dim; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n + 1) * string_len;
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n + 1);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask, n + 1);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array, n + 1);
 
@@ -336,7 +337,7 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
       if (extent[n] <= 0)
 	return;
     }
@@ -356,7 +357,7 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	const GFC_UINTEGER_4 *maxval;
 	maxval = base;
 	result = 0;
-	for (n = 0; n < len; n++, src += delta, msrc += mdelta)
+	for (n = 0; n < len; n++)
 	  {
 
 		if (*msrc)
@@ -365,8 +366,10 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 			result = (GFC_INTEGER_4)n + 1;
 			break;
 		      }
+	      PTR_INCREMENT_BYTES (src, delta);
+	      msrc += mdelta;
 	    }
-	    for (; n < len; n++, src += delta, msrc += mdelta)
+	    for (; n < len; n++)
 	      {
 		if (*msrc && (back ? compare_fcn (src, maxval, string_len) >= 0 :
 		   	     	     compare_fcn (src, maxval, string_len) > 0))
@@ -375,14 +378,16 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 		    result = (GFC_INTEGER_4)n + 1;
 		  }
 	      
+	    PTR_INCREMENT_BYTES (src, delta);
+	    msrc += mdelta;
 	  }
 	*dest = result;
       }
       /* Advance to the next element.  */
       count[0]++;
-      base += sstride[0];
+      PTR_INCREMENT_BYTES (base, sstride[0]);
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       mbase += mstride[0];
-      dest += dstride[0];
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -391,9 +396,9 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  base -= sstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  mbase -= mstride[n] * extent[n];
-	  dest -= dstride[n] * extent[n];
 	  n++;
 	  if (n >= rank)
 	    {
@@ -404,9 +409,9 @@ mmaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  else
 	    {
 	      count[n]++;
-	      base += sstride[n];
+	      PTR_INCREMENT_BYTES (base, sstride[n]);
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	      mbase += mstride[n];
-	      dest += dstride[n];
 	    }
 	}
     }
@@ -519,7 +524,7 @@ smaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
   for (n = 0; n < rank; n++)
     {
       count[n] = 0;
-      dstride[n] = GFC_DESCRIPTOR_STRIDE(retarray,n);
+      dstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,n);
     }
 
   dest = retarray->base_addr;
@@ -528,7 +533,7 @@ smaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
     {
       *dest = 0;
       count[0]++;
-      dest += dstride[0];
+      PTR_INCREMENT_BYTES (dest, dstride[0]);
       n = 0;
       while (count[n] == extent[n])
 	{
@@ -537,14 +542,14 @@ smaxloc1_4_s4 (gfc_array_i4 * const restrict retarray,
 	  count[n] = 0;
 	  /* We could precalculate these products, but this is a less
 	     frequently used path so probably not worth it.  */
-	  dest -= dstride[n] * extent[n];
+	  PTR_DECREMENT_BYTES (dest, dstride[n] * extent[n]);
 	  n++;
 	  if (n >= rank)
 	    return;
 	  else
 	    {
 	      count[n]++;
-	      dest += dstride[n];
+	      PTR_INCREMENT_BYTES (dest, dstride[n]);
 	    }
       	}
     }

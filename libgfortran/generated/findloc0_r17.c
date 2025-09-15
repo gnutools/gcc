@@ -71,7 +71,7 @@ findloc0_r17 (gfc_array_index_type * const restrict retarray,
   sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       sz *= extent[n];
       if (extent[n] <= 0)
@@ -96,7 +96,7 @@ findloc0_r17 (gfc_array_index_type * const restrict retarray,
 
 		  return;
 		}
-	      base -= sstride[0] * 1;
+	      PTR_DECREMENT_BYTES (base, sstride[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -107,14 +107,14 @@ findloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 1;
+	      PTR_INCREMENT_BYTES (base, sstride[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 1;
+		  PTR_DECREMENT_BYTES (base, sstride[n]);
 		}
 	    } while (count[n] == extent[n]);      
 	}
@@ -133,7 +133,7 @@ findloc0_r17 (gfc_array_index_type * const restrict retarray,
 
 		  return;
 		}
-	      base += sstride[0] * 1;
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	    } while(++count[0] != extent[0]);
 
 	  n = 0;
@@ -144,14 +144,14 @@ findloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 1;
+	      PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	      n++;
 	      if (n >= rank)
 	        return;
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n] * 1;
+		  PTR_INCREMENT_BYTES (base, sstride[n]);
 		}
 	    } while (count[n] == extent[n]);
 	}
@@ -222,7 +222,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
   sz = 1;
   for (n = 0; n < rank; n++)
     {
-      sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
+      sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
       sz *= extent[n];
@@ -248,7 +248,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 
 		  return;
 		}
-	      base -= sstride[0] * 1;
+	      PTR_DECREMENT_BYTES (base, sstride[0]);
 	      mbase -= mstride[0];
 	    } while(++count[0] != extent[0]);
 
@@ -260,7 +260,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base += sstride[n] * extent[n] * 1;
+	      PTR_INCREMENT_BYTES (base, sstride[n] * extent[n]);
 	      mbase -= mstride[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -268,7 +268,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      else
 		{
 		  count[n]++;
-		  base -= sstride[n] * 1;
+		  PTR_DECREMENT_BYTES (base, sstride[n]);
 		  mbase += mstride[n];
 		}
 	    } while (count[n] == extent[n]);      
@@ -288,7 +288,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 
 		  return;
 		}
-	      base += sstride[0] * 1;
+	      PTR_INCREMENT_BYTES (base, sstride[0]);
 	      mbase += mstride[0];
 	    } while(++count[0] != extent[0]);
 
@@ -300,7 +300,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      count[n] = 0;
 	      /* We could precalculate these products, but this is a less
 		 frequently used path so probably not worth it.  */
-	      base -= sstride[n] * extent[n] * 1;
+	      PTR_DECREMENT_BYTES (base, sstride[n] * extent[n]);
 	      mbase -= mstride[n] * extent[n];
 	      n++;
 	      if (n >= rank)
@@ -308,7 +308,7 @@ mfindloc0_r17 (gfc_array_index_type * const restrict retarray,
 	      else
 		{
 		  count[n]++;
-		  base += sstride[n]* 1;
+		  PTR_INCREMENT_BYTES (base, sstride[n]);
 		  mbase += mstride[n];
 		}
 	    } while (count[n] == extent[n]);

@@ -84,15 +84,15 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 	  if (n == along - 1)
 	    {
 	      ub = ncopies - 1;
-	      rdelta = rs;
+	      rdelta = rs * sizeof (GFC_INTEGER_4);
 	      rs *= ncopies;
 	    }
 	  else
 	    {
 	      count[dim] = 0;
 	      extent[dim] = GFC_DESCRIPTOR_EXTENT(source,dim);
-	      sstride[dim] = GFC_DESCRIPTOR_STRIDE(source,dim);
-	      rstride[dim] = rs;
+	      sstride[dim] = GFC_DESCRIPTOR_STRIDE_BYTES(source,dim);
+	      rstride[dim] = rs * sizeof (GFC_INTEGER_4);
 
 	      ub = extent[dim] - 1;
 	      rs *= extent[dim];
@@ -126,7 +126,7 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 	      ret_extent = GFC_DESCRIPTOR_EXTENT(ret,n);
 	      if (n == along - 1)
 		{
-		  rdelta = GFC_DESCRIPTOR_STRIDE(ret,n);
+		  rdelta = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 
 		  if (ret_extent != ncopies)
 		    runtime_error("Incorrect extent in return value of SPREAD"
@@ -147,8 +147,8 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 		    
 		  if (extent[dim] <= 0)
 		    zero_sized = 1;
-		  sstride[dim] = GFC_DESCRIPTOR_STRIDE(source,dim);
-		  rstride[dim] = GFC_DESCRIPTOR_STRIDE(ret,n);
+		  sstride[dim] = GFC_DESCRIPTOR_STRIDE_BYTES(source,dim);
+		  rstride[dim] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 		  dim++;
 		}
 	    }
@@ -159,7 +159,7 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 	    {
 	      if (n == along - 1)
 		{
-		  rdelta = GFC_DESCRIPTOR_STRIDE(ret,n);
+		  rdelta = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 		}
 	      else
 		{
@@ -167,8 +167,8 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 		  extent[dim] = GFC_DESCRIPTOR_EXTENT(source,dim);
 		  if (extent[dim] <= 0)
 		    zero_sized = 1;
-		  sstride[dim] = GFC_DESCRIPTOR_STRIDE(source,dim);
-		  rstride[dim] = GFC_DESCRIPTOR_STRIDE(ret,n);
+		  sstride[dim] = GFC_DESCRIPTOR_STRIDE_BYTES(source,dim);
+		  rstride[dim] = GFC_DESCRIPTOR_STRIDE_BYTES(ret,n);
 		  dim++;
 		}
 	    }
@@ -178,7 +178,7 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
 	return;
 
       if (sstride[0] == 0)
-	sstride[0] = 1;
+	sstride[0] = GFC_DESCRIPTOR_SIZE(source);
     }
   sstride0 = sstride[0];
   rstride0 = rstride[0];
@@ -192,11 +192,11 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
       for (n = 0; n < ncopies; n++)
         {
 	  *dest = *sptr;
-          dest += rdelta;
+          PTR_INCREMENT_BYTES (dest, rdelta);
         }
       /* Advance to the next element.  */
-      sptr += sstride0;
-      rptr += rstride0;
+      PTR_INCREMENT_BYTES (sptr, sstride0);
+      PTR_INCREMENT_BYTES (rptr, rstride0);
       count[0]++;
       n = 0;
       while (count[n] == extent[n])
@@ -206,8 +206,8 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
           count[n] = 0;
           /* We could precalculate these products, but this is a less
              frequently used path so probably not worth it.  */
-          sptr -= sstride[n] * extent[n];
-          rptr -= rstride[n] * extent[n];
+          PTR_DECREMENT_BYTES (sptr, sstride[n] * extent[n]);
+          PTR_DECREMENT_BYTES (rptr, rstride[n] * extent[n]);
           n++;
           if (n >= srank)
             {
@@ -218,8 +218,8 @@ spread_i4 (gfc_array_i4 *ret, const gfc_array_i4 *source,
           else
             {
               count[n]++;
-              sptr += sstride[n];
-              rptr += rstride[n];
+              PTR_INCREMENT_BYTES (sptr, sstride[n]);
+              PTR_INCREMENT_BYTES (rptr, rstride[n]);
             }
         }
     }
@@ -255,12 +255,12 @@ spread_scalar_i4 (gfc_array_i4 *ret, const GFC_INTEGER_4 *source,
     }
 
   dest = ret->base_addr;
-  stride = GFC_DESCRIPTOR_STRIDE(ret,0);
+  stride = GFC_DESCRIPTOR_STRIDE_BYTES(ret,0);
 
   for (index_type n = 0; n < ncopies; n++)
     {
       *dest = *source;
-      dest += stride;
+      PTR_INCREMENT_BYTES (dest, stride);
     }
 }
 
