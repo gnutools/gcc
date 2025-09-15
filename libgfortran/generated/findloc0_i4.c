@@ -41,9 +41,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const GFC_INTEGER_4 *base;
-  index_type * restrict dest;
   index_type rank;
   index_type n;
   index_type sz;
@@ -66,12 +64,9 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 				"FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
@@ -88,7 +83,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 1;
+      base = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, sz - 1);
 
       while (1)
         {
@@ -97,7 +92,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
@@ -134,7 +129,7 @@ findloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 
 		  return;
 		}
@@ -178,9 +173,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const GFC_INTEGER_4 *base;
-  index_type * restrict dest;
   GFC_LOGICAL_1 *mbase;
   index_type rank;
   index_type n;
@@ -222,12 +215,9 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
   else
     internal_error (NULL, "Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
-
   /* Set the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 
   sz = 1;
   for (n = 0; n < rank; n++)
@@ -245,7 +235,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 
   if (back)
     {
-      base = array->base_addr + (sz - 1) * 1;
+      base = GFC_DESCRIPTOR1_ELEM_ADDRESS (array, sz - 1);
       mbase = mbase + (sz - 1) * mask_kind;
       while (1)
         {
@@ -254,7 +244,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && *base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = extent[n] - count[n];
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = extent[n] - count[n];
 
 		  return;
 		}
@@ -294,7 +284,7 @@ mfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	      if (unlikely(*mbase && *base == value))
 	        {
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 
 		  return;
 		}
@@ -338,8 +328,6 @@ sfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 	    GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  index_type dstride;
-  index_type * restrict dest;
   index_type n;
 
   if (mask == NULL || *mask)
@@ -366,10 +354,8 @@ sfindloc0_i4 (gfc_array_index_type * const restrict retarray,
 			       "FINDLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0 ;
 }
 
 #endif

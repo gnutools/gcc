@@ -313,10 +313,19 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
       a_dim1 = aystride;
       b_dim1 = bystride;
 
+#define A_ARRAY_ELEM(i,j) \
+    a[(i) + (j) * a_dim1]
+
+#define B_ARRAY_ELEM(i,j) \
+    b[(i) + (j) * b_dim1]
+
+#define C_ARRAY_ELEM(i,j) \
+    c[(i) + (j) * c_dim1]
+
       /* Empty c first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
-	  c[i + j * c_dim1] = (GFC_COMPLEX_17)0;
+	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_17)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -368,20 +377,20 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					A_ARRAY_ELEM (i, l);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i, l + 1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					A_ARRAY_ELEM (i + 1, l);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i + 1, l + 1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l + 1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -390,7 +399,7 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    A_ARRAY_ELEM (i, ll + lsec - 1);
 			}
 		    }
 
@@ -401,100 +410,100 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 		      i5 = ii + uisec;
 		      for (i = ii; i < i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = C_ARRAY_ELEM (i, j);
+			  f21 = C_ARRAY_ELEM (i + 1, j);
+			  f12 = C_ARRAY_ELEM (i, j + 1);
+			  f22 = C_ARRAY_ELEM (i + 1, j + 1);
+			  f13 = C_ARRAY_ELEM (i, j + 2);
+			  f23 = C_ARRAY_ELEM (i + 1, j + 2);
+			  f14 = C_ARRAY_ELEM (i, j + 3);
+			  f24 = C_ARRAY_ELEM (i + 1, j + 3);
+			  f31 = C_ARRAY_ELEM (i + 2, j);
+			  f41 = C_ARRAY_ELEM (i + 3, j);
+			  f32 = C_ARRAY_ELEM (i + 2, j + 1);
+			  f42 = C_ARRAY_ELEM (i + 3, j + 1);
+			  f33 = C_ARRAY_ELEM (i + 2, j + 2);
+			  f43 = C_ARRAY_ELEM (i + 3, j + 2);
+			  f34 = C_ARRAY_ELEM (i + 2, j + 3);
+			  f44 = C_ARRAY_ELEM (i + 3, j + 3);
 			  i6 = ll + lsec;
 			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  C_ARRAY_ELEM (i, j) = f11;
+			  C_ARRAY_ELEM (i + 1, j) = f21;
+			  C_ARRAY_ELEM (i, j + 1) = f12;
+			  C_ARRAY_ELEM (i + 1, j + 1) = f22;
+			  C_ARRAY_ELEM (i, j + 2) = f13;
+			  C_ARRAY_ELEM (i + 1, j + 2) = f23;
+			  C_ARRAY_ELEM (i, j + 3) = f14;
+			  C_ARRAY_ELEM (i + 1, j + 3) = f24;
+			  C_ARRAY_ELEM (i + 2, j) = f31;
+			  C_ARRAY_ELEM (i + 3, j) = f41;
+			  C_ARRAY_ELEM (i + 2, j + 1) = f32;
+			  C_ARRAY_ELEM (i + 3, j + 1) = f42;
+			  C_ARRAY_ELEM (i + 2, j + 2) = f33;
+			  C_ARRAY_ELEM (i + 3, j + 2) = f43;
+			  C_ARRAY_ELEM (i + 2, j + 3) = f34;
+			  C_ARRAY_ELEM (i + 3, j + 3) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f12 = C_ARRAY_ELEM (i, j + 1);
+			      f13 = C_ARRAY_ELEM (i, j + 2);
+			      f14 = C_ARRAY_ELEM (i, j + 3);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 2);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 3);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i, j + 1) = f12;
+			      C_ARRAY_ELEM (i, j + 2) = f13;
+			      C_ARRAY_ELEM (i, j + 3) = f14;
 			    }
 			}
 		    }
@@ -506,38 +515,38 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 			  i5 = ii + uisec;
 			  for (i = ii; i < i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f21 = C_ARRAY_ELEM (i + 1, j);
+			      f31 = C_ARRAY_ELEM (i + 2, j);
+			      f41 = C_ARRAY_ELEM (i + 3, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i + 1, j) = f21;
+			      C_ARRAY_ELEM (i + 2, j) = f31;
+			      C_ARRAY_ELEM (i + 3, j) = f41;
 			    }
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
+			      C_ARRAY_ELEM (i, j) = f11;
 			    }
 			}
 		    }
@@ -546,6 +555,9 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 	}
       free(t1);
       return;
+#undef A_ARRAY_ELEM
+#undef B_ARRAY_ELEM
+#undef C_ARRAY_ELEM
     }
   else if (rxstride == 1 && aystride == 1 && bxstride == 1)
     {
@@ -580,7 +592,7 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 	      bbase_y = &bbase[y*bystride];
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axstride] * bbase_y[n];
+		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
 	      dest[y*rystride] = s;
 	    }
 	}
@@ -595,23 +607,23 @@ matmul_c17_avx (gfc_array_c17 * const restrict retarray,
 	  bbase_y = &bbase[y*bystride];
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axstride] * bbase_y[n*bxstride];
-	  dest[y*rxstride] = s;
+	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
   else if (axstride < aystride)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxstride + y*rystride] = (GFC_COMPLEX_17)0;
+	  GFC_DESCRIPTOR2_ELEM (retarray, x, y) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxstride + y*rystride] +=
-					abase[x*axstride + n*aystride] *
-					bbase[n*bxstride + y*bystride];
+	    GFC_DESCRIPTOR2_ELEM (retarray, x, y)
+		    += GFC_DESCRIPTOR2_ELEM (a, x, n)
+		       * GFC_DESCRIPTOR2_ELEM (b, n, y);
     }
   else
     {
@@ -876,10 +888,19 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
       a_dim1 = aystride;
       b_dim1 = bystride;
 
+#define A_ARRAY_ELEM(i,j) \
+    a[(i) + (j) * a_dim1]
+
+#define B_ARRAY_ELEM(i,j) \
+    b[(i) + (j) * b_dim1]
+
+#define C_ARRAY_ELEM(i,j) \
+    c[(i) + (j) * c_dim1]
+
       /* Empty c first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
-	  c[i + j * c_dim1] = (GFC_COMPLEX_17)0;
+	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_17)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -931,20 +952,20 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					A_ARRAY_ELEM (i, l);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i, l + 1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					A_ARRAY_ELEM (i + 1, l);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i + 1, l + 1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l + 1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -953,7 +974,7 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    A_ARRAY_ELEM (i, ll + lsec - 1);
 			}
 		    }
 
@@ -964,100 +985,100 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 		      i5 = ii + uisec;
 		      for (i = ii; i < i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = C_ARRAY_ELEM (i, j);
+			  f21 = C_ARRAY_ELEM (i + 1, j);
+			  f12 = C_ARRAY_ELEM (i, j + 1);
+			  f22 = C_ARRAY_ELEM (i + 1, j + 1);
+			  f13 = C_ARRAY_ELEM (i, j + 2);
+			  f23 = C_ARRAY_ELEM (i + 1, j + 2);
+			  f14 = C_ARRAY_ELEM (i, j + 3);
+			  f24 = C_ARRAY_ELEM (i + 1, j + 3);
+			  f31 = C_ARRAY_ELEM (i + 2, j);
+			  f41 = C_ARRAY_ELEM (i + 3, j);
+			  f32 = C_ARRAY_ELEM (i + 2, j + 1);
+			  f42 = C_ARRAY_ELEM (i + 3, j + 1);
+			  f33 = C_ARRAY_ELEM (i + 2, j + 2);
+			  f43 = C_ARRAY_ELEM (i + 3, j + 2);
+			  f34 = C_ARRAY_ELEM (i + 2, j + 3);
+			  f44 = C_ARRAY_ELEM (i + 3, j + 3);
 			  i6 = ll + lsec;
 			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  C_ARRAY_ELEM (i, j) = f11;
+			  C_ARRAY_ELEM (i + 1, j) = f21;
+			  C_ARRAY_ELEM (i, j + 1) = f12;
+			  C_ARRAY_ELEM (i + 1, j + 1) = f22;
+			  C_ARRAY_ELEM (i, j + 2) = f13;
+			  C_ARRAY_ELEM (i + 1, j + 2) = f23;
+			  C_ARRAY_ELEM (i, j + 3) = f14;
+			  C_ARRAY_ELEM (i + 1, j + 3) = f24;
+			  C_ARRAY_ELEM (i + 2, j) = f31;
+			  C_ARRAY_ELEM (i + 3, j) = f41;
+			  C_ARRAY_ELEM (i + 2, j + 1) = f32;
+			  C_ARRAY_ELEM (i + 3, j + 1) = f42;
+			  C_ARRAY_ELEM (i + 2, j + 2) = f33;
+			  C_ARRAY_ELEM (i + 3, j + 2) = f43;
+			  C_ARRAY_ELEM (i + 2, j + 3) = f34;
+			  C_ARRAY_ELEM (i + 3, j + 3) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f12 = C_ARRAY_ELEM (i, j + 1);
+			      f13 = C_ARRAY_ELEM (i, j + 2);
+			      f14 = C_ARRAY_ELEM (i, j + 3);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 2);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 3);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i, j + 1) = f12;
+			      C_ARRAY_ELEM (i, j + 2) = f13;
+			      C_ARRAY_ELEM (i, j + 3) = f14;
 			    }
 			}
 		    }
@@ -1069,38 +1090,38 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 			  i5 = ii + uisec;
 			  for (i = ii; i < i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f21 = C_ARRAY_ELEM (i + 1, j);
+			      f31 = C_ARRAY_ELEM (i + 2, j);
+			      f41 = C_ARRAY_ELEM (i + 3, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i + 1, j) = f21;
+			      C_ARRAY_ELEM (i + 2, j) = f31;
+			      C_ARRAY_ELEM (i + 3, j) = f41;
 			    }
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
+			      C_ARRAY_ELEM (i, j) = f11;
 			    }
 			}
 		    }
@@ -1109,6 +1130,9 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 	}
       free(t1);
       return;
+#undef A_ARRAY_ELEM
+#undef B_ARRAY_ELEM
+#undef C_ARRAY_ELEM
     }
   else if (rxstride == 1 && aystride == 1 && bxstride == 1)
     {
@@ -1143,7 +1167,7 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 	      bbase_y = &bbase[y*bystride];
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axstride] * bbase_y[n];
+		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
 	      dest[y*rystride] = s;
 	    }
 	}
@@ -1158,23 +1182,23 @@ matmul_c17_avx2 (gfc_array_c17 * const restrict retarray,
 	  bbase_y = &bbase[y*bystride];
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axstride] * bbase_y[n*bxstride];
-	  dest[y*rxstride] = s;
+	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
   else if (axstride < aystride)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxstride + y*rystride] = (GFC_COMPLEX_17)0;
+	  GFC_DESCRIPTOR2_ELEM (retarray, x, y) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxstride + y*rystride] +=
-					abase[x*axstride + n*aystride] *
-					bbase[n*bxstride + y*bystride];
+	    GFC_DESCRIPTOR2_ELEM (retarray, x, y)
+		    += GFC_DESCRIPTOR2_ELEM (a, x, n)
+		       * GFC_DESCRIPTOR2_ELEM (b, n, y);
     }
   else
     {
@@ -1439,10 +1463,19 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
       a_dim1 = aystride;
       b_dim1 = bystride;
 
+#define A_ARRAY_ELEM(i,j) \
+    a[(i) + (j) * a_dim1]
+
+#define B_ARRAY_ELEM(i,j) \
+    b[(i) + (j) * b_dim1]
+
+#define C_ARRAY_ELEM(i,j) \
+    c[(i) + (j) * c_dim1]
+
       /* Empty c first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
-	  c[i + j * c_dim1] = (GFC_COMPLEX_17)0;
+	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_17)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -1494,20 +1527,20 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					A_ARRAY_ELEM (i, l);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i, l + 1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					A_ARRAY_ELEM (i + 1, l);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i + 1, l + 1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l + 1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -1516,7 +1549,7 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    A_ARRAY_ELEM (i, ll + lsec - 1);
 			}
 		    }
 
@@ -1527,100 +1560,100 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 		      i5 = ii + uisec;
 		      for (i = ii; i < i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = C_ARRAY_ELEM (i, j);
+			  f21 = C_ARRAY_ELEM (i + 1, j);
+			  f12 = C_ARRAY_ELEM (i, j + 1);
+			  f22 = C_ARRAY_ELEM (i + 1, j + 1);
+			  f13 = C_ARRAY_ELEM (i, j + 2);
+			  f23 = C_ARRAY_ELEM (i + 1, j + 2);
+			  f14 = C_ARRAY_ELEM (i, j + 3);
+			  f24 = C_ARRAY_ELEM (i + 1, j + 3);
+			  f31 = C_ARRAY_ELEM (i + 2, j);
+			  f41 = C_ARRAY_ELEM (i + 3, j);
+			  f32 = C_ARRAY_ELEM (i + 2, j + 1);
+			  f42 = C_ARRAY_ELEM (i + 3, j + 1);
+			  f33 = C_ARRAY_ELEM (i + 2, j + 2);
+			  f43 = C_ARRAY_ELEM (i + 3, j + 2);
+			  f34 = C_ARRAY_ELEM (i + 2, j + 3);
+			  f44 = C_ARRAY_ELEM (i + 3, j + 3);
 			  i6 = ll + lsec;
 			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  C_ARRAY_ELEM (i, j) = f11;
+			  C_ARRAY_ELEM (i + 1, j) = f21;
+			  C_ARRAY_ELEM (i, j + 1) = f12;
+			  C_ARRAY_ELEM (i + 1, j + 1) = f22;
+			  C_ARRAY_ELEM (i, j + 2) = f13;
+			  C_ARRAY_ELEM (i + 1, j + 2) = f23;
+			  C_ARRAY_ELEM (i, j + 3) = f14;
+			  C_ARRAY_ELEM (i + 1, j + 3) = f24;
+			  C_ARRAY_ELEM (i + 2, j) = f31;
+			  C_ARRAY_ELEM (i + 3, j) = f41;
+			  C_ARRAY_ELEM (i + 2, j + 1) = f32;
+			  C_ARRAY_ELEM (i + 3, j + 1) = f42;
+			  C_ARRAY_ELEM (i + 2, j + 2) = f33;
+			  C_ARRAY_ELEM (i + 3, j + 2) = f43;
+			  C_ARRAY_ELEM (i + 2, j + 3) = f34;
+			  C_ARRAY_ELEM (i + 3, j + 3) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f12 = C_ARRAY_ELEM (i, j + 1);
+			      f13 = C_ARRAY_ELEM (i, j + 2);
+			      f14 = C_ARRAY_ELEM (i, j + 3);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 2);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 3);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i, j + 1) = f12;
+			      C_ARRAY_ELEM (i, j + 2) = f13;
+			      C_ARRAY_ELEM (i, j + 3) = f14;
 			    }
 			}
 		    }
@@ -1632,38 +1665,38 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 			  i5 = ii + uisec;
 			  for (i = ii; i < i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f21 = C_ARRAY_ELEM (i + 1, j);
+			      f31 = C_ARRAY_ELEM (i + 2, j);
+			      f41 = C_ARRAY_ELEM (i + 3, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i + 1, j) = f21;
+			      C_ARRAY_ELEM (i + 2, j) = f31;
+			      C_ARRAY_ELEM (i + 3, j) = f41;
 			    }
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
+			      C_ARRAY_ELEM (i, j) = f11;
 			    }
 			}
 		    }
@@ -1672,6 +1705,9 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 	}
       free(t1);
       return;
+#undef A_ARRAY_ELEM
+#undef B_ARRAY_ELEM
+#undef C_ARRAY_ELEM
     }
   else if (rxstride == 1 && aystride == 1 && bxstride == 1)
     {
@@ -1706,7 +1742,7 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 	      bbase_y = &bbase[y*bystride];
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axstride] * bbase_y[n];
+		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
 	      dest[y*rystride] = s;
 	    }
 	}
@@ -1721,23 +1757,23 @@ matmul_c17_avx512f (gfc_array_c17 * const restrict retarray,
 	  bbase_y = &bbase[y*bystride];
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axstride] * bbase_y[n*bxstride];
-	  dest[y*rxstride] = s;
+	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
   else if (axstride < aystride)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxstride + y*rystride] = (GFC_COMPLEX_17)0;
+	  GFC_DESCRIPTOR2_ELEM (retarray, x, y) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxstride + y*rystride] +=
-					abase[x*axstride + n*aystride] *
-					bbase[n*bxstride + y*bystride];
+	    GFC_DESCRIPTOR2_ELEM (retarray, x, y)
+		    += GFC_DESCRIPTOR2_ELEM (a, x, n)
+		       * GFC_DESCRIPTOR2_ELEM (b, n, y);
     }
   else
     {
@@ -2016,10 +2052,19 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
       a_dim1 = aystride;
       b_dim1 = bystride;
 
+#define A_ARRAY_ELEM(i,j) \
+    a[(i) + (j) * a_dim1]
+
+#define B_ARRAY_ELEM(i,j) \
+    b[(i) + (j) * b_dim1]
+
+#define C_ARRAY_ELEM(i,j) \
+    c[(i) + (j) * c_dim1]
+
       /* Empty c first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
-	  c[i + j * c_dim1] = (GFC_COMPLEX_17)0;
+	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_17)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -2071,20 +2116,20 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					A_ARRAY_ELEM (i, l);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i, l + 1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					A_ARRAY_ELEM (i + 1, l);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i + 1, l + 1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l + 1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -2093,7 +2138,7 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    A_ARRAY_ELEM (i, ll + lsec - 1);
 			}
 		    }
 
@@ -2104,100 +2149,100 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 		      i5 = ii + uisec;
 		      for (i = ii; i < i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = C_ARRAY_ELEM (i, j);
+			  f21 = C_ARRAY_ELEM (i + 1, j);
+			  f12 = C_ARRAY_ELEM (i, j + 1);
+			  f22 = C_ARRAY_ELEM (i + 1, j + 1);
+			  f13 = C_ARRAY_ELEM (i, j + 2);
+			  f23 = C_ARRAY_ELEM (i + 1, j + 2);
+			  f14 = C_ARRAY_ELEM (i, j + 3);
+			  f24 = C_ARRAY_ELEM (i + 1, j + 3);
+			  f31 = C_ARRAY_ELEM (i + 2, j);
+			  f41 = C_ARRAY_ELEM (i + 3, j);
+			  f32 = C_ARRAY_ELEM (i + 2, j + 1);
+			  f42 = C_ARRAY_ELEM (i + 3, j + 1);
+			  f33 = C_ARRAY_ELEM (i + 2, j + 2);
+			  f43 = C_ARRAY_ELEM (i + 3, j + 2);
+			  f34 = C_ARRAY_ELEM (i + 2, j + 3);
+			  f44 = C_ARRAY_ELEM (i + 3, j + 3);
 			  i6 = ll + lsec;
 			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  C_ARRAY_ELEM (i, j) = f11;
+			  C_ARRAY_ELEM (i + 1, j) = f21;
+			  C_ARRAY_ELEM (i, j + 1) = f12;
+			  C_ARRAY_ELEM (i + 1, j + 1) = f22;
+			  C_ARRAY_ELEM (i, j + 2) = f13;
+			  C_ARRAY_ELEM (i + 1, j + 2) = f23;
+			  C_ARRAY_ELEM (i, j + 3) = f14;
+			  C_ARRAY_ELEM (i + 1, j + 3) = f24;
+			  C_ARRAY_ELEM (i + 2, j) = f31;
+			  C_ARRAY_ELEM (i + 3, j) = f41;
+			  C_ARRAY_ELEM (i + 2, j + 1) = f32;
+			  C_ARRAY_ELEM (i + 3, j + 1) = f42;
+			  C_ARRAY_ELEM (i + 2, j + 2) = f33;
+			  C_ARRAY_ELEM (i + 3, j + 2) = f43;
+			  C_ARRAY_ELEM (i + 2, j + 3) = f34;
+			  C_ARRAY_ELEM (i + 3, j + 3) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f12 = C_ARRAY_ELEM (i, j + 1);
+			      f13 = C_ARRAY_ELEM (i, j + 2);
+			      f14 = C_ARRAY_ELEM (i, j + 3);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 2);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 3);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i, j + 1) = f12;
+			      C_ARRAY_ELEM (i, j + 2) = f13;
+			      C_ARRAY_ELEM (i, j + 3) = f14;
 			    }
 			}
 		    }
@@ -2209,38 +2254,38 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 			  i5 = ii + uisec;
 			  for (i = ii; i < i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f21 = C_ARRAY_ELEM (i + 1, j);
+			      f31 = C_ARRAY_ELEM (i + 2, j);
+			      f41 = C_ARRAY_ELEM (i + 3, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i + 1, j) = f21;
+			      C_ARRAY_ELEM (i + 2, j) = f31;
+			      C_ARRAY_ELEM (i + 3, j) = f41;
 			    }
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
+			      C_ARRAY_ELEM (i, j) = f11;
 			    }
 			}
 		    }
@@ -2249,6 +2294,9 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 	}
       free(t1);
       return;
+#undef A_ARRAY_ELEM
+#undef B_ARRAY_ELEM
+#undef C_ARRAY_ELEM
     }
   else if (rxstride == 1 && aystride == 1 && bxstride == 1)
     {
@@ -2283,7 +2331,7 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 	      bbase_y = &bbase[y*bystride];
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axstride] * bbase_y[n];
+		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
 	      dest[y*rystride] = s;
 	    }
 	}
@@ -2298,23 +2346,23 @@ matmul_c17_vanilla (gfc_array_c17 * const restrict retarray,
 	  bbase_y = &bbase[y*bystride];
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axstride] * bbase_y[n*bxstride];
-	  dest[y*rxstride] = s;
+	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
   else if (axstride < aystride)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxstride + y*rystride] = (GFC_COMPLEX_17)0;
+	  GFC_DESCRIPTOR2_ELEM (retarray, x, y) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxstride + y*rystride] +=
-					abase[x*axstride + n*aystride] *
-					bbase[n*bxstride + y*bystride];
+	    GFC_DESCRIPTOR2_ELEM (retarray, x, y)
+		    += GFC_DESCRIPTOR2_ELEM (a, x, n)
+		       * GFC_DESCRIPTOR2_ELEM (b, n, y);
     }
   else
     {
@@ -2652,10 +2700,19 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
       a_dim1 = aystride;
       b_dim1 = bystride;
 
+#define A_ARRAY_ELEM(i,j) \
+    a[(i) + (j) * a_dim1]
+
+#define B_ARRAY_ELEM(i,j) \
+    b[(i) + (j) * b_dim1]
+
+#define C_ARRAY_ELEM(i,j) \
+    c[(i) + (j) * c_dim1]
+
       /* Empty c first.  */
       for (j=0; j<n; j++)
 	for (i=0; i<m; i++)
-	  c[i + j * c_dim1] = (GFC_COMPLEX_17)0;
+	  C_ARRAY_ELEM (i, j) = (GFC_COMPLEX_17)0;
 
       /* Early exit if possible */
       if (m == 0 || n == 0 || k == 0)
@@ -2707,20 +2764,20 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i < i5; i += 2)
 			{
 			  t1[l - ll + 1 + ((i - ii + 1) << 8) - 257] =
-					a[i + l * a_dim1];
+					A_ARRAY_ELEM (i, l);
 			  t1[l - ll + 2 + ((i - ii + 1) << 8) - 257] =
-					a[i + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i, l + 1);
 			  t1[l - ll + 1 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + l * a_dim1];
+					A_ARRAY_ELEM (i + 1, l);
 			  t1[l - ll + 2 + ((i - ii + 2) << 8) - 257] =
-					a[i + 1 + (l + 1) * a_dim1];
+					A_ARRAY_ELEM (i + 1, l + 1);
 			}
 		      if (uisec < isec)
 			{
 			  t1[l - ll + 1 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + l * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l);
 			  t1[l - ll + 2 + (isec << 8) - 257] =
-				    a[ii + isec - 1 + (l + 1) * a_dim1];
+				    A_ARRAY_ELEM (ii + isec - 1, l + 1);
 			}
 		    }
 		  if (ulsec < lsec)
@@ -2729,7 +2786,7 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 		      for (i = ii; i< i4; ++i)
 			{
 			  t1[lsec + ((i - ii + 1) << 8) - 257] =
-				    a[i + (ll + lsec - 1) * a_dim1];
+				    A_ARRAY_ELEM (i, ll + lsec - 1);
 			}
 		    }
 
@@ -2740,100 +2797,100 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 		      i5 = ii + uisec;
 		      for (i = ii; i < i5; i += 4)
 			{
-			  f11 = c[i + j * c_dim1];
-			  f21 = c[i + 1 + j * c_dim1];
-			  f12 = c[i + (j + 1) * c_dim1];
-			  f22 = c[i + 1 + (j + 1) * c_dim1];
-			  f13 = c[i + (j + 2) * c_dim1];
-			  f23 = c[i + 1 + (j + 2) * c_dim1];
-			  f14 = c[i + (j + 3) * c_dim1];
-			  f24 = c[i + 1 + (j + 3) * c_dim1];
-			  f31 = c[i + 2 + j * c_dim1];
-			  f41 = c[i + 3 + j * c_dim1];
-			  f32 = c[i + 2 + (j + 1) * c_dim1];
-			  f42 = c[i + 3 + (j + 1) * c_dim1];
-			  f33 = c[i + 2 + (j + 2) * c_dim1];
-			  f43 = c[i + 3 + (j + 2) * c_dim1];
-			  f34 = c[i + 2 + (j + 3) * c_dim1];
-			  f44 = c[i + 3 + (j + 3) * c_dim1];
+			  f11 = C_ARRAY_ELEM (i, j);
+			  f21 = C_ARRAY_ELEM (i + 1, j);
+			  f12 = C_ARRAY_ELEM (i, j + 1);
+			  f22 = C_ARRAY_ELEM (i + 1, j + 1);
+			  f13 = C_ARRAY_ELEM (i, j + 2);
+			  f23 = C_ARRAY_ELEM (i + 1, j + 2);
+			  f14 = C_ARRAY_ELEM (i, j + 3);
+			  f24 = C_ARRAY_ELEM (i + 1, j + 3);
+			  f31 = C_ARRAY_ELEM (i + 2, j);
+			  f41 = C_ARRAY_ELEM (i + 3, j);
+			  f32 = C_ARRAY_ELEM (i + 2, j + 1);
+			  f42 = C_ARRAY_ELEM (i + 3, j + 1);
+			  f33 = C_ARRAY_ELEM (i + 2, j + 2);
+			  f43 = C_ARRAY_ELEM (i + 3, j + 2);
+			  f34 = C_ARRAY_ELEM (i + 2, j + 3);
+			  f44 = C_ARRAY_ELEM (i + 3, j + 3);
 			  i6 = ll + lsec;
 			  for (l = ll; l < i6; ++l)
 			    {
 			      f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f22 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f23 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f24 += t1[l - ll + 1 + ((i - ii + 2) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + j * b_dim1];
+				      * B_ARRAY_ELEM (l, j);
 			      f32 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f42 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 1) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 1);
 			      f33 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f43 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 2) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 2);
 			      f34 += t1[l - ll + 1 + ((i - ii + 3) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			      f44 += t1[l - ll + 1 + ((i - ii + 4) << 8) - 257]
-				      * b[l + (j + 3) * b_dim1];
+				      * B_ARRAY_ELEM (l, j + 3);
 			    }
-			  c[i + j * c_dim1] = f11;
-			  c[i + 1 + j * c_dim1] = f21;
-			  c[i + (j + 1) * c_dim1] = f12;
-			  c[i + 1 + (j + 1) * c_dim1] = f22;
-			  c[i + (j + 2) * c_dim1] = f13;
-			  c[i + 1 + (j + 2) * c_dim1] = f23;
-			  c[i + (j + 3) * c_dim1] = f14;
-			  c[i + 1 + (j + 3) * c_dim1] = f24;
-			  c[i + 2 + j * c_dim1] = f31;
-			  c[i + 3 + j * c_dim1] = f41;
-			  c[i + 2 + (j + 1) * c_dim1] = f32;
-			  c[i + 3 + (j + 1) * c_dim1] = f42;
-			  c[i + 2 + (j + 2) * c_dim1] = f33;
-			  c[i + 3 + (j + 2) * c_dim1] = f43;
-			  c[i + 2 + (j + 3) * c_dim1] = f34;
-			  c[i + 3 + (j + 3) * c_dim1] = f44;
+			  C_ARRAY_ELEM (i, j) = f11;
+			  C_ARRAY_ELEM (i + 1, j) = f21;
+			  C_ARRAY_ELEM (i, j + 1) = f12;
+			  C_ARRAY_ELEM (i + 1, j + 1) = f22;
+			  C_ARRAY_ELEM (i, j + 2) = f13;
+			  C_ARRAY_ELEM (i + 1, j + 2) = f23;
+			  C_ARRAY_ELEM (i, j + 3) = f14;
+			  C_ARRAY_ELEM (i + 1, j + 3) = f24;
+			  C_ARRAY_ELEM (i + 2, j) = f31;
+			  C_ARRAY_ELEM (i + 3, j) = f41;
+			  C_ARRAY_ELEM (i + 2, j + 1) = f32;
+			  C_ARRAY_ELEM (i + 3, j + 1) = f42;
+			  C_ARRAY_ELEM (i + 2, j + 2) = f33;
+			  C_ARRAY_ELEM (i + 3, j + 2) = f43;
+			  C_ARRAY_ELEM (i + 2, j + 3) = f34;
+			  C_ARRAY_ELEM (i + 3, j + 3) = f44;
 			}
 		      if (uisec < isec)
 			{
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f12 = c[i + (j + 1) * c_dim1];
-			      f13 = c[i + (j + 2) * c_dim1];
-			      f14 = c[i + (j + 3) * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f12 = C_ARRAY_ELEM (i, j + 1);
+			      f13 = C_ARRAY_ELEM (i, j + 2);
+			      f14 = C_ARRAY_ELEM (i, j + 3);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f12 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 1) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 1);
 				  f13 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 2) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 2);
 				  f14 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + (j + 3) * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j + 3);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + (j + 1) * c_dim1] = f12;
-			      c[i + (j + 2) * c_dim1] = f13;
-			      c[i + (j + 3) * c_dim1] = f14;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i, j + 1) = f12;
+			      C_ARRAY_ELEM (i, j + 2) = f13;
+			      C_ARRAY_ELEM (i, j + 3) = f14;
 			    }
 			}
 		    }
@@ -2845,38 +2902,38 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 			  i5 = ii + uisec;
 			  for (i = ii; i < i5; i += 4)
 			    {
-			      f11 = c[i + j * c_dim1];
-			      f21 = c[i + 1 + j * c_dim1];
-			      f31 = c[i + 2 + j * c_dim1];
-			      f41 = c[i + 3 + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
+			      f21 = C_ARRAY_ELEM (i + 1, j);
+			      f31 = C_ARRAY_ELEM (i + 2, j);
+			      f41 = C_ARRAY_ELEM (i + 3, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f21 += t1[l - ll + 1 + ((i - ii + 2) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f31 += t1[l - ll + 1 + ((i - ii + 3) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				  f41 += t1[l - ll + 1 + ((i - ii + 4) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
-			      c[i + 1 + j * c_dim1] = f21;
-			      c[i + 2 + j * c_dim1] = f31;
-			      c[i + 3 + j * c_dim1] = f41;
+			      C_ARRAY_ELEM (i, j) = f11;
+			      C_ARRAY_ELEM (i + 1, j) = f21;
+			      C_ARRAY_ELEM (i + 2, j) = f31;
+			      C_ARRAY_ELEM (i + 3, j) = f41;
 			    }
 			  i5 = ii + isec;
 			  for (i = ii + uisec; i < i5; ++i)
 			    {
-			      f11 = c[i + j * c_dim1];
+			      f11 = C_ARRAY_ELEM (i, j);
 			      i6 = ll + lsec;
 			      for (l = ll; l < i6; ++l)
 				{
 				  f11 += t1[l - ll + 1 + ((i - ii + 1) << 8) -
-					  257] * b[l + j * b_dim1];
+					  257] * B_ARRAY_ELEM (l, j);
 				}
-			      c[i + j * c_dim1] = f11;
+			      C_ARRAY_ELEM (i, j) = f11;
 			    }
 			}
 		    }
@@ -2885,6 +2942,9 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 	}
       free(t1);
       return;
+#undef A_ARRAY_ELEM
+#undef B_ARRAY_ELEM
+#undef C_ARRAY_ELEM
     }
   else if (rxstride == 1 && aystride == 1 && bxstride == 1)
     {
@@ -2919,7 +2979,7 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 	      bbase_y = &bbase[y*bystride];
 	      s = (GFC_COMPLEX_17) 0;
 	      for (n = 0; n < count; n++)
-		s += abase[n*axstride] * bbase_y[n];
+		s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n];
 	      dest[y*rystride] = s;
 	    }
 	}
@@ -2934,23 +2994,23 @@ matmul_c17 (gfc_array_c17 * const restrict retarray,
 	  bbase_y = &bbase[y*bystride];
 	  s = (GFC_COMPLEX_17) 0;
 	  for (n = 0; n < count; n++)
-	    s += abase[n*axstride] * bbase_y[n*bxstride];
-	  dest[y*rxstride] = s;
+	    s += GFC_DESCRIPTOR1_ELEM (a, n) * bbase_y[n*bxstride];
+	  GFC_DESCRIPTOR1_ELEM (retarray, y) = s;
 	}
     }
   else if (axstride < aystride)
     {
       for (y = 0; y < ycount; y++)
 	for (x = 0; x < xcount; x++)
-	  dest[x*rxstride + y*rystride] = (GFC_COMPLEX_17)0;
+	  GFC_DESCRIPTOR2_ELEM (retarray, x, y) = (GFC_COMPLEX_17)0;
 
       for (y = 0; y < ycount; y++)
 	for (n = 0; n < count; n++)
 	  for (x = 0; x < xcount; x++)
 	    /* dest[x,y] += a[x,n] * b[n,y] */
-	    dest[x*rxstride + y*rystride] +=
-					abase[x*axstride + n*aystride] *
-					bbase[n*bxstride + y*bystride];
+	    GFC_DESCRIPTOR2_ELEM (retarray, x, y)
+		    += GFC_DESCRIPTOR2_ELEM (a, x, n)
+		       * GFC_DESCRIPTOR2_ELEM (b, n, y);
     }
   else
     {

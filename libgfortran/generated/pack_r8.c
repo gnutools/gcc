@@ -244,7 +244,7 @@ pack_r8 (gfc_array_r8 *ret, const gfc_array_r8 *array,
           if (sstride0 == 0)
             sstride0 = 1;
 
-          sptr = vector->base_addr + sstride0 * nelem;
+          sptr = (const GFC_REAL_8 *) GFC_DESCRIPTOR1_ELEM_ADDRESS (vector, nelem);
           n -= nelem;
           while (n--)
             {

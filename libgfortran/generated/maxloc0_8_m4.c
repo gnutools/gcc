@@ -41,9 +41,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
   index_type count[GFC_MAX_DIMENSIONS];
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
   const GFC_UINTEGER_4 *base;
-  GFC_INTEGER_8 * restrict dest;
   index_type rank;
   index_type n;
 
@@ -65,8 +63,6 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 				"MAXLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
@@ -76,7 +72,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 	  return;
 	}
     }
@@ -85,7 +81,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 1;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 1;
   {
 
     GFC_UINTEGER_4 maxval;
@@ -112,7 +108,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 		  fast = 1;
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  break;
 		}
 	      base += sstride[0];
@@ -130,7 +126,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	       {
 	         maxval = *base;
 	      	 for (n = 0; n < rank; n++)
-		   dest[n * dstride] = count[n] + 1;
+		   GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	       }
 	     base += sstride[0];
 	   }
@@ -142,7 +138,7 @@ maxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	       {
 	         maxval = *base;
 		 for (n = 0; n < rank; n++)
-		   dest[n * dstride] = count[n] + 1;
+		   GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	       }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -190,8 +186,6 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
   index_type extent[GFC_MAX_DIMENSIONS];
   index_type sstride[GFC_MAX_DIMENSIONS];
   index_type mstride[GFC_MAX_DIMENSIONS];
-  index_type dstride;
-  GFC_INTEGER_8 *dest;
   const GFC_UINTEGER_4 *base;
   GFC_LOGICAL_1 *mbase;
   int rank;
@@ -241,8 +235,6 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
   else
     runtime_error ("Funny sized logical array");
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n < rank; n++)
     {
       sstride[n] = GFC_DESCRIPTOR_STRIDE(array,n);
@@ -253,7 +245,7 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	{
 	  /* Set the return value.  */
 	  for (n = 0; n < rank; n++)
-	    dest[n * dstride] = 0;
+	    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
 	  return;
 	}
     }
@@ -262,7 +254,7 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 
   /* Initialize the return value.  */
   for (n = 0; n < rank; n++)
-    dest[n * dstride] = 0;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0;
   {
 
   GFC_UINTEGER_4 maxval;
@@ -284,16 +276,16 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	      if (*mbase)
 		{
 #if defined(GFC_UINTEGER_4_QUIET_NAN)
-		  if (unlikely (dest[0] == 0))
+		  if (unlikely (GFC_DESCRIPTOR1_ELEM (retarray, 0) == 0))
 		    for (n = 0; n < rank; n++)
-		      dest[n * dstride] = count[n] + 1;
+		      GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		  if (*base >= maxval)
 #endif
 		    {
 		      fast = 1;
 		      maxval = *base;
 		      for (n = 0; n < rank; n++)
-			dest[n * dstride] = count[n] + 1;
+			GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		      break;
 		    }
 		}
@@ -312,7 +304,7 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	        {
 	          maxval = *base;
 	          for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 		}
 	      base += sstride[0];
 	    }
@@ -324,7 +316,7 @@ mmaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	        {
 		  maxval = *base;
 		  for (n = 0; n < rank; n++)
-		    dest[n * dstride] = count[n] + 1;
+		    GFC_DESCRIPTOR1_ELEM (retarray, n) = count[n] + 1;
 	        }
 	  /* Implementation end.  */
 	  /* Advance to the next element.  */
@@ -372,9 +364,7 @@ smaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 	GFC_LOGICAL_4 * mask, GFC_LOGICAL_4 back)
 {
   index_type rank;
-  index_type dstride;
   index_type n;
-  GFC_INTEGER_8 *dest;
 
   if (mask == NULL || *mask)
     {
@@ -400,9 +390,7 @@ smaxloc0_8_m4 (gfc_array_i8 * const restrict retarray,
 			       "MAXLOC");
     }
 
-  dstride = GFC_DESCRIPTOR_STRIDE(retarray,0);
-  dest = retarray->base_addr;
   for (n = 0; n<rank; n++)
-    dest[n * dstride] = 0 ;
+    GFC_DESCRIPTOR1_ELEM (retarray, n) = 0 ;
 }
 #endif
