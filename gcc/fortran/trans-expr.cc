@@ -5569,7 +5569,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 			       rse.loop->loopvar[0], offset);
 
   /* Now use the offset for the reference.  */
-  tmp = build_fold_indirect_ref_loc (input_location, info->element_ref.base);
+  tmp = build_fold_indirect_ref_loc (input_location, info->current_elem.base);
   rse.expr = gfc_build_array_ref (tmp, tmp_index);
 
   if (expr->ts.type == BT_CHARACTER)
@@ -9228,7 +9228,7 @@ gfc_trans_subarray_assign (tree dest, gfc_component * cm, gfc_expr * expr)
   lss_array->shape = gfc_get_shape (cm->as->rank);
   lss_array->descriptor = dest;
   lss_array->data = gfc_conv_array_data (dest);
-  lss_array->element_ref.index = gfc_conv_array_offset (dest);
+  lss_array->current_elem.index = gfc_conv_array_offset (dest);
   for (n = 0; n < cm->as->rank; n++)
     {
       lss_array->start[n] = gfc_conv_array_lbound (dest, n);

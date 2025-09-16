@@ -223,7 +223,7 @@ typedef struct gfc_array_info
   tree stride[GFC_MAX_DIMENSIONS];
   tree delta[GFC_MAX_DIMENSIONS];
 
-  struct gfc_array_ref_info element_ref;
+  struct gfc_array_ref_info current_elem;
 }
 gfc_array_info;
 

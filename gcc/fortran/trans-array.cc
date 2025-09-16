@@ -635,7 +635,7 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
   bool onstack;
 
   desc = info->descriptor;
-  info->element_ref.index = gfc_index_zero_node;
+  info->current_elem.index = gfc_index_zero_node;
   if (size == NULL_TREE || (dynamic && integer_zerop (size)))
     {
       /* A callee allocated array.  */
@@ -2231,7 +2231,7 @@ trans_constant_array_constructor (gfc_ss * ss, tree type)
 
   info->descriptor = tmp;
   info->data = gfc_build_addr_expr (NULL_TREE, tmp);
-  info->element_ref.index = gfc_index_zero_node;
+  info->current_elem.index = gfc_index_zero_node;
 
   for (i = 0; i < ss->dimen; i++)
     {
@@ -2814,7 +2814,7 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		tree tmp = gfc_class_data_get (se.expr);
 		info->descriptor = tmp;
 		info->data = gfc_conv_descriptor_data_get (tmp);
-		info->element_ref.index = gfc_conv_descriptor_offset_get (tmp);
+		info->current_elem.index = gfc_conv_descriptor_offset_get (tmp);
 		for (gfc_ss *s = ss; s; s = s->parent)
 		  for (int n = 0; n < s->dimen; n++)
 		    {
@@ -3107,12 +3107,12 @@ gfc_conv_ss_descriptor (stmtblock_t * block, gfc_ss * ss, int base)
       tmp = gfc_conv_array_offset (se.expr);
       if (!ss->is_alloc_lhs)
 	tmp = gfc_evaluate_now (tmp, block);
-      info->element_ref.index = tmp;
+      info->current_elem.index = tmp;
 
       /* Make absolutely sure that the saved_offset is indeed saved
 	 so that the variable is still accessible after the loops
 	 are translated.  */
-      info->saved_offset = info->element_ref.index;
+      info->saved_offset = info->current_elem.index;
     }
 }
 
@@ -3567,7 +3567,7 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
   /* Add the offset for this dimension to the stored offset for all other
      dimensions.  */
   return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			  info->element_ref.index, index);
+			  info->current_elem.index, index);
 }
 
 
@@ -3712,7 +3712,7 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
 
   index = conv_array_index_offset (se, ss, ss->dim[n], n, ar, info->stride0);
 
-  base = build_fold_indirect_ref_loc (input_location, info->element_ref.base);
+  base = build_fold_indirect_ref_loc (input_location, info->current_elem.base);
 
   /* Use the vptr 'size' field to access the element of a class array.  */
   if (build_class_array_ref (se, base, index))
@@ -4028,7 +4028,7 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
   index = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar, stride);
   gfc_add_block_to_block (pblock, &se.pre);
 
-  info->element_ref.index = gfc_evaluate_now (index, pblock);
+  info->current_elem.index = gfc_evaluate_now (index, pblock);
 }
 
 
@@ -4136,7 +4136,7 @@ gfc_trans_preloop_setup (gfc_loopinfo * loop, int dim, int flag,
 
       /* Remember this offset for the second loop.  */
       if (dim == loop->temp_dim - 1 && loop->parent == NULL)
-	info->saved_offset = info->element_ref.index;
+	info->saved_offset = info->current_elem.index;
     }
 }
 
@@ -4173,7 +4173,7 @@ gfc_start_scalarized_body (gfc_loopinfo * loop, stmtblock_t * pbody)
 
       gfc_array_info *info = &ss_info->data.array;
 
-      info->element_ref.base = info->data;
+      info->current_elem.base = info->data;
     }
 
   for (dim = loop->dimen - 1; dim >= 0; dim--)
@@ -4390,8 +4390,8 @@ gfc_trans_scalarized_loop_boundary (gfc_loopinfo * loop, stmtblock_t * body)
 
       gfc_array_info *info = &ss_info->data.array;
 
-      info->element_ref.base = info->data;
-      info->element_ref.index = info->saved_offset;
+      info->current_elem.base = info->data;
+      info->current_elem.index = info->saved_offset;
     }
 
   /* Restart all the inner loops we just finished.  */
@@ -4785,7 +4785,7 @@ done:
 
 		info->data = gfc_conv_array_data (info->descriptor);
 		info->data = gfc_evaluate_now (info->data, &outer_loop->pre);
-		info->element_ref.index = gfc_index_zero_node;
+		info->current_elem.index = gfc_index_zero_node;
 
 		gfc_expr *array = expr->value.function.actual->expr;
 		tree rank = build_int_cst (gfc_array_index_type, array->rank);
@@ -10417,8 +10417,8 @@ gfc_update_reallocated_descriptor (stmtblock_t *block, gfc_loopinfo *loop)
 
       if (save_descriptor_data (info->descriptor, info->data))
 	SAVE_VALUE (info->data);
-      SAVE_VALUE (info->element_ref.index);
-      info->saved_offset = info->element_ref.index;
+      SAVE_VALUE (info->current_elem.index);
+      info->saved_offset = info->current_elem.index;
       for (int i = 0; i < s->dimen; i++)
 	{
 	  int dim = s->dim[i];

@@ -2188,7 +2188,7 @@ transfer_array_component (tree expr, gfc_component * cm, locus * where)
 
   ss_array->descriptor = expr;
   ss_array->data = gfc_conv_array_data (expr);
-  ss_array->element_ref.index = gfc_conv_array_offset (expr);
+  ss_array->current_elem.index = gfc_conv_array_offset (expr);
   for (n = 0; n < cm->as->rank; n++)
     {
       ss_array->start[n] = gfc_conv_array_lbound (expr, n);
