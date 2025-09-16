@@ -3452,7 +3452,68 @@ array_bound_check_elemental (gfc_se * se, gfc_ss * ss, gfc_expr * expr)
 }
 
 
+struct gfc_offset_pair
+{
+  tree cst_part, non_cst_part;
+};
+
+
+/* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
+
+static void
+gfc_offset_add (gfc_offset_pair &offset, tree t)
+{
+  if (TREE_CODE (t) == INTEGER_CST)
+    {
+      if (offset.cst_part == NULL_TREE)
+	offset.cst_part = t;
+      else
+	offset.cst_part = int_const_binop (PLUS_EXPR, offset.cst_part, t);
+    }
+  else
+    {
+      if (offset.non_cst_part == NULL_TREE)
+	offset.non_cst_part = t;
+      else
+	offset.non_cst_part = fold_build2_loc (input_location, PLUS_EXPR,
+					       gfc_array_index_type,
+					       offset.non_cst_part, t);
+    }
+}
+
+
 static tree
+gfc_offset_pair_materialize (gfc_offset_pair &pair)
+{
+  if (pair.cst_part == NULL_TREE
+      || integer_zerop (pair.cst_part))
+    {
+      if (pair.non_cst_part == NULL_TREE)
+	return gfc_index_zero_node;
+      else
+	return pair.non_cst_part;
+    }
+  else
+    return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+			    pair.non_cst_part, pair.cst_part);
+}
+
+
+/* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
+
+static gfc_offset_pair
+add_to_offset (gfc_array_ref_info *ref_info, tree val)
+{
+  gfc_offset_pair offset {NULL_TREE, NULL_TREE};
+  memset (&offset, 0, sizeof (offset));
+  offset.cst_part = ref_info->cst_index;
+  offset.non_cst_part = ref_info->index;
+  gfc_offset_add (offset, val);
+  return offset;
+}
+
+
+static gfc_offset_pair
 conv_array_index_dim (gfc_array_ref_info *ref_info, tree index, tree stride)
 {
   /* Multiply by the stride.  */
@@ -3462,8 +3523,7 @@ conv_array_index_dim (gfc_array_ref_info *ref_info, tree index, tree stride)
 
   /* Add the offset for this dimension to the stored offset for all other
      dimensions.  */
-  return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			  ref_info->index, index);
+  return add_to_offset (ref_info, index);
 }
 
 
@@ -3471,7 +3531,7 @@ conv_array_index_dim (gfc_array_ref_info *ref_info, tree index, tree stride)
    dimensions.  Single element references are processed separately.
    DIM is the array dimension, I is the loop dimension.  */
 
-static tree
+static gfc_offset_pair
 conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
 			 gfc_array_ref * ar)
 {
@@ -3715,7 +3775,6 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
 {
   gfc_array_info *info;
   tree decl = NULL_TREE;
-  tree index;
   tree base;
   gfc_ss *ss;
   gfc_expr *expr;
@@ -3729,7 +3788,8 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
   else
     n = 0;
 
-  index = conv_array_index_offset (se, ss, ss->dim[n], n, ar);
+  gfc_offset_pair pair = conv_array_index_offset (se, ss, ss->dim[n], n, ar);
+  tree index = gfc_offset_pair_materialize (pair);
 
   base = build_fold_indirect_ref_loc (input_location, info->current_elem.base);
 
@@ -3770,23 +3830,6 @@ gfc_conv_tmp_array_ref (gfc_se * se)
   se->string_length = se->ss->info->string_length;
   gfc_conv_scalarized_array_ref (se, NULL, true);
   gfc_advance_se_ss_chain (se);
-}
-
-/* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
-
-static void
-add_to_offset (tree *cst_offset, tree *offset, tree t)
-{
-  if (TREE_CODE (t) == INTEGER_CST)
-    *cst_offset = int_const_binop (PLUS_EXPR, *cst_offset, t);
-  else
-    {
-      if (!integer_zerop (*offset))
-	*offset = fold_build2_loc (input_location, PLUS_EXPR,
-				   gfc_array_index_type, *offset, t);
-      else
-	*offset = t;
-    }
 }
 
 
@@ -3837,9 +3880,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 		    locus * where)
 {
   int n;
-  tree offset, cst_offset;
   tree tmp;
-  tree stride;
   tree decl = NULL_TREE;
   gfc_se indexse;
   gfc_se tmpse;
@@ -3895,8 +3936,13 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
       && ar->as->type != AS_DEFERRED)
     decl = sym->backend_decl;
 
-  cst_offset = offset = gfc_index_zero_node;
-  add_to_offset (&cst_offset, &offset, gfc_conv_array_offset (decl));
+  gfc_array_ref_info ref_info;
+  memset (&ref_info, 0, sizeof (ref_info));
+
+  ref_info.base = decl;
+  gfc_offset_pair offset = add_to_offset (&ref_info, gfc_conv_array_offset (decl));
+  ref_info.cst_index = offset.cst_part;
+  ref_info.index = offset.non_cst_part;
 
   /* Calculate the offsets from all the dimensions.  Make sure to associate
      the final offset so that we form a chain of loop invariant summands.  */
@@ -3963,18 +4009,28 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 	    }
 	}
 
-      /* Multiply the index by the stride.  */
-      stride = gfc_conv_array_stride (decl, n);
-      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     indexse.expr, stride);
-
-      /* And add it to the total.  */
-      add_to_offset (&cst_offset, &offset, tmp);
+      gfc_offset_pair offset;
+      offset = conv_array_index_dim (&ref_info, indexse.expr,
+				     gfc_conv_array_stride (decl, n));
+      ref_info.cst_index = offset.cst_part;
+      ref_info.index = offset.non_cst_part;
     }
 
-  if (!integer_zerop (cst_offset))
-    offset = fold_build2_loc (input_location, PLUS_EXPR,
-			      gfc_array_index_type, offset, cst_offset);
+  tree index;
+  if (ref_info.cst_index == NULL_TREE
+      || integer_zerop (ref_info.cst_index))
+    {
+      if (ref_info.index == NULL_TREE)
+	index = gfc_index_zero_node;
+      else
+	index = ref_info.index;
+    }
+  else if (ref_info.index == NULL_TREE)
+    index = ref_info.cst_index;
+  else
+    index = fold_build2_loc (input_location, PLUS_EXPR,
+			     gfc_array_index_type, ref_info.index,
+			     ref_info.cst_index);
 
   /* A pointer array component can be detected from its field decl. Fix
      the descriptor, mark the resulting variable decl and pass it to
@@ -4022,7 +4078,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
     }
 
   free (var_name);
-  se->expr = build_array_ref (se->expr, offset, decl, se->class_vptr);
+  se->expr = build_array_ref (se->expr, index, decl, se->class_vptr);
 }
 
 
@@ -4035,16 +4091,16 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 {
   gfc_se se;
   gfc_array_info *info;
-  tree index;
 
   info = &ss->info->data.array;
 
   gfc_init_se (&se, NULL);
   se.loop = loop;
   se.expr = info->descriptor;
-  index = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar);
+  gfc_offset_pair pair = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar);
   gfc_add_block_to_block (pblock, &se.pre);
 
+  tree index = gfc_offset_pair_materialize (pair);
   info->current_elem.index = gfc_evaluate_now (index, pblock);
 }
 
