@@ -3564,7 +3564,10 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
     index = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			     index, stride);
 
-  return index;
+  /* Add the offset for this dimension to the stored offset for all other
+     dimensions.  */
+  return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+			  info->element_ref.index, index);
 }
 
 
@@ -3708,11 +3711,6 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
     n = 0;
 
   index = conv_array_index_offset (se, ss, ss->dim[n], n, ar, info->stride0);
-  /* Add the offset for this dimension to the stored offset for all other
-     dimensions.  */
-  if (info->element_ref.index && !integer_zerop (info->element_ref.index))
-    index = fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			     index, info->element_ref.index);
 
   base = build_fold_indirect_ref_loc (input_location, info->element_ref.base);
 
@@ -4018,7 +4016,8 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 {
   gfc_se se;
   gfc_array_info *info;
-  tree stride, index;
+  tree stride;
+  tree index;
 
   info = &ss->info->data.array;
 
@@ -4029,10 +4028,7 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
   index = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar, stride);
   gfc_add_block_to_block (pblock, &se.pre);
 
-  info->element_ref.index = fold_build2_loc (input_location, PLUS_EXPR,
-					     gfc_array_index_type,
-					     info->element_ref.index, index);
-  info->element_ref.index = gfc_evaluate_now (info->element_ref.index, pblock);
+  info->element_ref.index = gfc_evaluate_now (index, pblock);
 }
 
 

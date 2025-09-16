@@ -137,7 +137,7 @@ contains
     allocatable_y = 21
     if (any(allocatable_y /= 21)) stop 21
     ! Allocatable arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*D.\\d+\\)\\\[S.\\d+ \\+ \\D.\\d+\\\] = 21;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\(\*D.\d+\)\[D.\d+ \+ S.\d+\] = 21;} 1 "original" } }
   end subroutine check_allocatable_array_scalarized
   subroutine cares(assumed_rank_x)
     integer :: assumed_rank_x(..)
