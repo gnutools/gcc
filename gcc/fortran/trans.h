@@ -182,6 +182,21 @@ enum gfc_structure_caf_mode_t {
 };
 
 
+typedef struct gfc_array_ref_info
+{
+  tree base;
+  enum access_type
+  {
+    ARRAY_INDEX,
+    POINTER_OFFSET
+  };
+
+  access_type access;
+  tree index;
+}
+gfc_array_ref_info;
+
+
 /* The array-specific scalarization information.  The array members of
    this struct are indexed by actual array index, and thus can be sparse.  */
 
@@ -195,8 +210,6 @@ typedef struct gfc_array_info
   tree descriptor;
   /* holds the pointer to the data array.  */
   tree data;
-  /* To move some of the array index calculation out of the innermost loop.  */
-  tree offset;
   tree saved_offset;
   tree stride0;
   /* Holds the SS for a subscript.  Indexed by actual dimension.  */
@@ -209,6 +222,8 @@ typedef struct gfc_array_info
   tree end[GFC_MAX_DIMENSIONS];
   tree stride[GFC_MAX_DIMENSIONS];
   tree delta[GFC_MAX_DIMENSIONS];
+
+  struct gfc_array_ref_info element_ref;
 }
 gfc_array_info;
 
