@@ -192,7 +192,7 @@ typedef struct gfc_array_ref_info
   };
 
   access_type access;
-  tree index;
+  tree cst_index, index;
 }
 gfc_array_ref_info;
 

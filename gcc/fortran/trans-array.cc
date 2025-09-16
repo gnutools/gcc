@@ -3452,18 +3452,34 @@ array_bound_check_elemental (gfc_se * se, gfc_ss * ss, gfc_expr * expr)
 }
 
 
+static tree
+conv_array_index_dim (gfc_array_ref_info *ref_info, tree index, tree stride)
+{
+  /* Multiply by the stride.  */
+  if (stride != NULL && !integer_onep (stride))
+    index = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     index, stride);
+
+  /* Add the offset for this dimension to the stored offset for all other
+     dimensions.  */
+  return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
+			  ref_info->index, index);
+}
+
+
 /* Return the offset for an index.  Performs bound checking for elemental
    dimensions.  Single element references are processed separately.
    DIM is the array dimension, I is the loop dimension.  */
 
 static tree
 conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
-			 gfc_array_ref * ar, tree stride)
+			 gfc_array_ref * ar)
 {
   gfc_array_info *info;
   tree index;
   tree desc;
   tree data;
+  tree stride = NULL_TREE;
 
   info = &ss->info->data.array;
 
@@ -3559,15 +3575,18 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
 				 gfc_array_index_type, index, info->delta[dim]);
     }
 
-  /* Multiply by the stride.  */
-  if (stride != NULL && !integer_onep (stride))
-    index = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     index, stride);
+  if (stride == NULL_TREE)
+    {
+      if (ss->loop == se->loop
+	  && se->loop->nested == nullptr
+	  && ss->nested_ss == nullptr
+	  && i == 0)
+	stride = info->stride0;
+      else
+	stride = gfc_conv_array_stride (info->descriptor, dim);
+    }
 
-  /* Add the offset for this dimension to the stored offset for all other
-     dimensions.  */
-  return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
-			  info->current_elem.index, index);
+  return conv_array_index_dim (&info->current_elem, index, stride);
 }
 
 
@@ -3710,7 +3729,7 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
   else
     n = 0;
 
-  index = conv_array_index_offset (se, ss, ss->dim[n], n, ar, info->stride0);
+  index = conv_array_index_offset (se, ss, ss->dim[n], n, ar);
 
   base = build_fold_indirect_ref_loc (input_location, info->current_elem.base);
 
@@ -4016,7 +4035,6 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
 {
   gfc_se se;
   gfc_array_info *info;
-  tree stride;
   tree index;
 
   info = &ss->info->data.array;
@@ -4024,8 +4042,7 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
   gfc_init_se (&se, NULL);
   se.loop = loop;
   se.expr = info->descriptor;
-  stride = gfc_conv_array_stride (info->descriptor, array_dim);
-  index = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar, stride);
+  index = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar);
   gfc_add_block_to_block (pblock, &se.pre);
 
   info->current_elem.index = gfc_evaluate_now (index, pblock);
@@ -4153,28 +4170,29 @@ gfc_start_scalarized_body (gfc_loopinfo * loop, stmtblock_t * pbody)
 
   gcc_assert (!loop->array_parameter);
 
-  for (gfc_ss *ss = loop->ss; ss != gfc_ss_terminator; ss = ss->loop_chain)
-    {
-      gfc_ss_type ss_type;
-      gfc_ss_info *ss_info;
+  if (loop->parent == nullptr)
+    for (gfc_ss *ss = loop->ss; ss != gfc_ss_terminator; ss = ss->loop_chain)
+      {
+	gfc_ss_type ss_type;
+	gfc_ss_info *ss_info;
 
-      ss_info = ss->info;
+	ss_info = ss->info;
 
-      if ((ss_info->useflags & 1) == 0)
-	continue;
+	if ((ss_info->useflags & 1) == 0)
+	  continue;
 
-      ss_type = ss_info->type;
-      if (ss_type != GFC_SS_SECTION
-	  && ss_type != GFC_SS_FUNCTION
-	  && ss_type != GFC_SS_INTRINSIC
-	  && ss_type != GFC_SS_CONSTRUCTOR
-	  && ss_type != GFC_SS_COMPONENT)
-	continue;
+	ss_type = ss_info->type;
+	if (ss_type != GFC_SS_SECTION
+	    && ss_type != GFC_SS_FUNCTION
+	    && ss_type != GFC_SS_INTRINSIC
+	    && ss_type != GFC_SS_CONSTRUCTOR
+	    && ss_type != GFC_SS_COMPONENT)
+	  continue;
 
-      gfc_array_info *info = &ss_info->data.array;
+	gfc_array_info *info = &ss_info->data.array;
 
-      info->current_elem.base = info->data;
-    }
+	info->current_elem.base = info->data;
+      }
 
   for (dim = loop->dimen - 1; dim >= 0; dim--)
     {
