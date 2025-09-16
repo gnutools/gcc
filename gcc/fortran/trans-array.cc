@@ -3539,7 +3539,6 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
   tree index;
   tree desc;
   tree data;
-  tree stride = NULL_TREE;
 
   info = &ss->info->data.array;
 
@@ -3619,32 +3618,29 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
       gcc_assert (se->loop);
       index = se->loop->loopvar[se->loop->order[i]];
 
-      /* Pointer functions can have stride[0] different from unity.
-	 Use the stride returned by the function call and stored in
-	 the descriptor for the temporary.  */
-      if (se->ss && se->ss->info->type == GFC_SS_FUNCTION
-	  && se->ss->info->expr
-	  && se->ss->info->expr->symtree
-	  && se->ss->info->expr->symtree->n.sym->result
-	  && se->ss->info->expr->symtree->n.sym->result->attr.pointer)
-	stride = gfc_conv_descriptor_stride_get (info->descriptor,
-						 gfc_rank_cst[dim]);
-
       if (info->delta[dim] && !integer_zerop (info->delta[dim]))
 	index = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, index, info->delta[dim]);
     }
 
-  if (stride == NULL_TREE)
-    {
-      if (ss->loop == se->loop
-	  && se->loop->nested == nullptr
-	  && ss->nested_ss == nullptr
-	  && i == 0)
-	stride = info->stride0;
-      else
-	stride = gfc_conv_array_stride (info->descriptor, dim);
-    }
+  tree stride;
+  if (i == 0
+      && ss->loop == se->loop
+      && se->loop->nested == nullptr
+      && ss->nested_ss == nullptr
+      && !(ar == nullptr
+	   /* Pointer functions can have stride[0] different from unity.
+	      Use the stride returned by the function call and stored in
+	      the descriptor for the temporary in that case.  */
+	   && se->ss
+	   && se->ss->info->type == GFC_SS_FUNCTION
+	   && se->ss->info->expr
+	   && se->ss->info->expr->symtree
+	   && se->ss->info->expr->symtree->n.sym->result
+	   && se->ss->info->expr->symtree->n.sym->result->attr.pointer))
+    stride = info->stride0;
+  else
+    stride = gfc_conv_array_stride (info->descriptor, dim);
 
   return conv_array_index_dim (&info->current_elem, index, stride);
 }
