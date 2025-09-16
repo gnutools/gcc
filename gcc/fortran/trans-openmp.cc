@@ -644,13 +644,13 @@ gfc_walk_alloc_comps (tree decl, tree dest, tree var,
       gfc_init_block (&tmpblock);
       tem = gfc_conv_array_data (decl);
       tree declvar = build_fold_indirect_ref_loc (input_location, tem);
-      tree declvref = gfc_build_array_ref (declvar, index, NULL);
+      tree declvref = gfc_build_array_ref (declvar, index);
       tree destvar, destvref = NULL_TREE;
       if (dest)
 	{
 	  tem = gfc_conv_array_data (dest);
 	  destvar = build_fold_indirect_ref_loc (input_location, tem);
-	  destvref = gfc_build_array_ref (destvar, index, NULL);
+	  destvref = gfc_build_array_ref (destvar, index);
 	}
       gfc_add_expr_to_block (&tmpblock,
 			     gfc_walk_alloc_comps (declvref, destvref,
@@ -1276,8 +1276,8 @@ gfc_omp_linear_clause_add_loop (stmtblock_t *block, tree dest, tree src,
   gfc_init_block (&tmpblock);
   if (TREE_CODE (TREE_TYPE (dest)) == ARRAY_TYPE)
     {
-      desta = gfc_build_array_ref (dest, index, NULL);
-      srca = gfc_build_array_ref (src, index, NULL);
+      desta = gfc_build_array_ref (dest, index);
+      srca = gfc_build_array_ref (src, index);
     }
   else
     {

@@ -1426,7 +1426,7 @@ gfc_trans_array_ctor_element (stmtblock_t * pblock, tree desc,
   /* The offset may change, so get its value now and use that to free memory.
    */
   offset_eval = gfc_evaluate_now (offset, &se->pre);
-  tmp = gfc_build_array_ref (tmp, offset_eval, NULL);
+  tmp = gfc_build_array_ref (tmp, offset_eval);
 
   if (expr->expr_type == EXPR_FUNCTION && expr->ts.type == BT_DERIVED
       && expr->ts.u.derived->attr.alloc_comp)
@@ -1757,7 +1757,7 @@ gfc_trans_array_constructor_value (stmtblock_t * pblock,
 	      tmp = gfc_conv_descriptor_data_get (desc);
 	      tmp = build_fold_indirect_ref_loc (input_location,
 					     tmp);
-	      tmp = gfc_build_array_ref (tmp, *poffset, NULL);
+	      tmp = gfc_build_array_ref (tmp, *poffset);
 	      tmp = gfc_build_addr_expr (NULL_TREE, tmp);
 	      init = gfc_build_addr_expr (NULL_TREE, init);
 
@@ -3507,7 +3507,7 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
 	  /* Read the vector to get an index into info->descriptor.  */
 	  data = build_fold_indirect_ref_loc (input_location,
 					  gfc_conv_array_data (desc));
-	  index = gfc_build_array_ref (data, index, NULL);
+	  index = gfc_build_array_ref (data, index);
 	  index = gfc_evaluate_now (index, &se->pre);
 	  index = fold_convert (gfc_array_index_type, index);
 
@@ -3741,8 +3741,7 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
 
   bool non_negative_stride = tmp_array
 			     || non_negative_strides_array_p (info->descriptor);
-  se->expr = gfc_build_array_ref (base, index, decl,
-				  non_negative_stride);
+  se->expr = gfc_build_array_ref (base, index, non_negative_stride, decl);
 }
 
 
@@ -3804,9 +3803,8 @@ build_array_ref (tree desc, tree offset, tree decl, tree vptr)
 
   tmp = gfc_conv_array_data (desc);
   tmp = build_fold_indirect_ref_loc (input_location, tmp);
-  tmp = gfc_build_array_ref (tmp, offset, decl,
-			     non_negative_strides_array_p (desc),
-			     vptr);
+  tmp = gfc_build_array_ref (tmp, offset, non_negative_strides_array_p (desc),
+			     decl, vptr);
   return tmp;
 }
 
@@ -7099,7 +7097,7 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 	      gfc_init_se (&start, NULL);
 	      gfc_conv_expr_type (&start, ref->u.ss.start, gfc_charlen_type_node);
 	      gfc_add_block_to_block (block, &start.pre);
-	      tmp = gfc_build_array_ref (tmp, start.expr, NULL);
+	      tmp = gfc_build_array_ref (tmp, start.expr);
 	      break;
 
 	    case REF_ARRAY:
@@ -7144,7 +7142,7 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 		}
 
 	      /* Apply the index to obtain the array element.  */
-	      tmp = gfc_build_array_ref (tmp, index, NULL);
+	      tmp = gfc_build_array_ref (tmp, index);
 	      break;
 
 	    case REF_INQUIRY:
@@ -8993,13 +8991,13 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
       /* Build the body of the loop.  */
       gfc_init_block (&loopbody);
 
-      vref = gfc_build_array_ref (var, index, NULL);
+      vref = gfc_build_array_ref (var, index);
 
       if (purpose == COPY_ALLOC_COMP || purpose == COPY_ONLY_ALLOC_COMP)
 	{
 	  tmp = build_fold_indirect_ref_loc (input_location,
 					     gfc_conv_array_data (dest));
-	  dref = gfc_build_array_ref (tmp, index, NULL);
+	  dref = gfc_build_array_ref (tmp, index);
 	  tmp = structure_alloc_comps (der_type, vref, dref, rank,
 				       COPY_ALLOC_COMP, caf_mode, args,
 				       no_finalization);

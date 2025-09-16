@@ -1657,7 +1657,7 @@ nml_get_addr_expr (gfc_symbol * sym, gfc_component * c,
 	tmp = gfc_build_addr_expr (NULL_TREE, tmp);
 
       if (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE)
-         tmp = gfc_build_array_ref (tmp, gfc_index_zero_node, NULL);
+         tmp = gfc_build_array_ref (tmp, gfc_index_zero_node);
 
       if (!POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location,

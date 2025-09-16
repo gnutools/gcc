@@ -487,8 +487,8 @@ gfc_build_spanned_array_ref (tree base, tree offset, tree span)
    have to play it safe and use pointer arithmetic.  */
 
 tree
-gfc_build_array_ref (tree base, tree offset, tree decl,
-		     bool non_negative_offset, tree vptr)
+gfc_build_array_ref (tree base, tree offset, bool non_negative_offset,
+		     tree decl, tree vptr)
 {
   tree type = TREE_TYPE (base);
   tree span = NULL_TREE;

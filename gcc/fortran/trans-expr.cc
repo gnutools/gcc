@@ -1578,7 +1578,7 @@ gfc_copy_class_to_class (tree from, tree to, tree nelems, bool unlimited)
 	  tmp = gfc_conv_array_data (to);
 	  tmp = build_fold_indirect_ref_loc (input_location, tmp);
 	  to_ref = gfc_build_addr_expr (NULL_TREE,
-					gfc_build_array_ref (tmp, index, to));
+					gfc_build_array_ref (tmp, index, false, to));
 	}
       vec_safe_push (args, to_ref);
 
@@ -2734,7 +2734,7 @@ gfc_conv_substring (gfc_se * se, gfc_ref * ref, int kind,
       /* For BIND(C), a BT_CHARACTER is not an ARRAY_TYPE.  */
       if (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE)
 	{
-	  tmp = gfc_build_array_ref (tmp, start.expr, NULL_TREE, true);
+	  tmp = gfc_build_array_ref (tmp, start.expr, true);
 	  se->expr = gfc_build_addr_expr (type, tmp);
 	}
       else if (POINTER_TYPE_P (TREE_TYPE (tmp)))
@@ -5571,7 +5571,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
   /* Now use the offset for the reference.  */
   tmp = build_fold_indirect_ref_loc (input_location,
 				 info->data);
-  rse.expr = gfc_build_array_ref (tmp, tmp_index, NULL);
+  rse.expr = gfc_build_array_ref (tmp, tmp_index);
 
   if (expr->ts.type == BT_CHARACTER)
     rse.string_length = expr->ts.u.cl->backend_decl;

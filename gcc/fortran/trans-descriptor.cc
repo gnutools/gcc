@@ -102,7 +102,7 @@ static tree
 gfc_get_cfi_dim_item (tree desc, tree idx, unsigned field_idx)
 {
   tree tmp = gfc_get_cfi_descriptor_field (desc, CFI_FIELD_DIM);
-  tmp = gfc_build_array_ref (tmp, idx, NULL_TREE, true);
+  tmp = gfc_build_array_ref (tmp, idx, true);
   tree field = gfc_advance_chain (TYPE_FIELDS (TREE_TYPE (tmp)), field_idx);
   gcc_assert (field != NULL_TREE);
   return fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
@@ -462,7 +462,7 @@ get_descriptor_dimension (tree desc, tree dim)
 
   tmp = gfc_get_descriptor_dimension (desc);
 
-  return gfc_build_array_ref (tmp, dim, NULL_TREE, true);
+  return gfc_build_array_ref (tmp, dim, true);
 }
 
 tree

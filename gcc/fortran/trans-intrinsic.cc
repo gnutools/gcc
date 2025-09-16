@@ -2161,7 +2161,7 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
      thus we need explicitly check this - and return 0 if they are exceeded.  */
 
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
-  tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1], NULL);
+  tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1]);
   invalid_bound = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 				 fold_convert (gfc_array_index_type, tmp),
 				 lbound);
@@ -2170,7 +2170,7 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
     {
       lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[codim]);
       ubound = gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[codim]);
-      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], NULL);
+      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank]);
       cond = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
 			      fold_convert (gfc_array_index_type, tmp),
 			      lbound);
@@ -2189,8 +2189,8 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 
   /* coindex = sub(corank) - lcobound(n).  */
   coindex = fold_convert (gfc_array_index_type,
-			  gfc_build_array_ref (subdesc, gfc_rank_cst[corank-1],
-					       NULL));
+			  gfc_build_array_ref (subdesc,
+					       gfc_rank_cst[corank-1]));
   lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[rank+corank-1]);
   coindex = fold_build2_loc (input_location, MINUS_EXPR, gfc_array_index_type,
 			     fold_convert (gfc_array_index_type, coindex),
@@ -2208,7 +2208,7 @@ trans_image_index (gfc_se * se, gfc_expr *expr)
 				 gfc_array_index_type, coindex, extent);
 
       /* coindex += sub(codim).  */
-      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank], NULL);
+      tmp = gfc_build_array_ref (subdesc, gfc_rank_cst[codim-rank]);
       coindex = fold_build2_loc (input_location, PLUS_EXPR,
 				 gfc_array_index_type, coindex,
 				 fold_convert (gfc_array_index_type, tmp));
@@ -5613,8 +5613,7 @@ gfc_conv_intrinsic_minmaxloc (gfc_se * se, gfc_expr * expr, enum tree_code op)
       for (int i = 0; i < arrayexpr->rank; i++)
 	{
 	  tree res_idx = build_int_cst (gfc_array_index_type, i);
-	  tree res_arr_ref = gfc_build_array_ref (result_var, res_idx,
-						  NULL_TREE, true);
+	  tree res_arr_ref = gfc_build_array_ref (result_var, res_idx, true);
 
 	  tree value = convert (type, pos[i]);
 	  gfc_add_modify (&se->pre, res_arr_ref, value);
