@@ -25,7 +25,8 @@
 #include "tree-switch-conversion.h"
 #include "tree-ssa-reassoc.h"
 #include "tree-ssa.h"
-
+#include <vector>
+#include <algorithm>
 
 /* The struct holding the info about outer switch and all inner switches it
    points to. */
@@ -80,6 +81,7 @@ print_nested_switches (basic_block bb, gswitch *sw1, gswitch *sw2)
 struct case_info
 {
   using mapping_vec = auto_vec<std::pair<gphi *, tree>>;
+  using case_info_ptr = std::shared_ptr<case_info>;
 
   case_info (tree low, tree high, tree label, basic_block this_bb,
              basic_block dest_bb, bool is_inner, bool points_to_nested) :
@@ -98,9 +100,17 @@ struct case_info
     m_points_to_nested (other.m_points_to_nested), m_phi_mapping (),
     m_forwarder_bb (other.m_forwarder_bb)
   {
-    m_phi_mapping.create (other.m_phi_mapping.length());
-    for (unsigned i = 0; i < other.m_phi_mapping.length(); ++i)
-      m_phi_mapping.safe_push(other.m_phi_mapping[i]);
+    m_phi_mapping = other.m_phi_mapping.copy();
+  }
+
+  case_info(case_info_ptr& other) :
+  m_low (other->m_low), m_high (other->m_high), m_label (other->m_label),
+  m_this_bb (other->m_this_bb), m_dest_bb (other->m_dest_bb),
+  m_is_inner (other->m_is_inner),
+  m_points_to_nested (other->m_points_to_nested), m_phi_mapping (),
+  m_forwarder_bb (other->m_forwarder_bb)
+  {
+    m_phi_mapping = other->m_phi_mapping.copy();
   }
 
   /* Creates case label to be added to gimple switch statement from
@@ -109,20 +119,20 @@ struct case_info
   /* Checks if the case label is default */
   bool is_default ();
   /* Checks if 2 case ranges have empty intersection */
-  bool is_intersection_empty (case_info *other);
+  bool is_intersection_empty (case_info_ptr other);
   /* Checks if case range of this struct is a subset of other case range */
-  bool is_subset_of (case_info *other);
+  bool is_subset_of (case_info_ptr other);
   /* Checks if 2 ranges are equal*/
-  bool is_range_equal (case_info *other);
+  bool is_range_equal (case_info_ptr other);
   /* Checks if 2 ranges have the same lower bound */
-  bool share_lower_bound (case_info *other);
+  bool share_lower_bound (case_info_ptr other);
   /* Checks if 2 ranges have the same upper bound */
-  bool share_upper_bound (case_info *other);
+  bool share_upper_bound (case_info_ptr other);
   /* Recond PHI mapping for an original edge E from switch statement to case
     label dest and save these into vector m_phi_mapping.  */
   void record_phi_mapping ();
   /* Makes this case point to the same label as the other case */
-  void point_to_as (case_info *other);
+  void point_to_as (case_info_ptr other);
 
   tree m_low; /* lower bound of case range */
   tree m_high; /* upper bound of case range */
@@ -135,12 +145,15 @@ struct case_info
   basic_block m_forwarder_bb;
 };
 
-/* Creates case label to be added to gimple switch statement from this struct */
+using case_info_ptr = std::shared_ptr<case_info>;
+
+/* Creates case label */
 tree
 case_info::build_case ()
 {
   tree label = (m_forwarder_bb == NULL)
-               ? m_label : gimple_block_label (m_forwarder_bb);
+               ? gimple_block_label (m_dest_bb)
+               : gimple_block_label (m_forwarder_bb);
   return build_case_label (m_low,
                            m_low == m_high ? NULL_TREE : m_high,
                            label);
@@ -156,7 +169,7 @@ case_info::is_default ()
 
 /* Checks if 2 case ranges have empty intersection */
 bool
-case_info::is_intersection_empty (case_info *other)
+case_info::is_intersection_empty (case_info_ptr other)
 {
   return (tree_int_cst_lt (m_high, other->m_low)
           || tree_int_cst_lt (other->m_high, m_low));
@@ -164,7 +177,7 @@ case_info::is_intersection_empty (case_info *other)
 
 /* Checks if case range of this struct is a subset of other case range */
 bool
-case_info::is_subset_of (case_info *other)
+case_info::is_subset_of (case_info_ptr other)
 {
   return (tree_int_cst_le (other->m_low, m_low)
           && tree_int_cst_le (m_high, other->m_high));
@@ -172,7 +185,7 @@ case_info::is_subset_of (case_info *other)
 
 /* Checks if 2 ranges are equal*/
 bool
-case_info::is_range_equal (case_info *other)
+case_info::is_range_equal (case_info_ptr other)
 {
   return (tree_int_cst_equal (m_low, other->m_low)
           && tree_int_cst_equal (m_high, other->m_high));
@@ -180,21 +193,21 @@ case_info::is_range_equal (case_info *other)
 
 /* Checks if 2 ranges have the same lower bound */
 bool
-case_info::share_lower_bound (case_info *other)
+case_info::share_lower_bound (case_info_ptr other)
 {
   return tree_int_cst_equal (m_low, other->m_low);
 }
 
 /* Checks if 2 ranges have the same upper bound */
 bool
-case_info::share_upper_bound (case_info *other)
+case_info::share_upper_bound (case_info_ptr other)
 {
   return tree_int_cst_equal (m_high, other->m_high);
 }
 
 /* Makes this case point to the same label as the other case */
 void
-case_info::point_to_as (case_info *other)
+case_info::point_to_as (case_info_ptr other)
 {
   m_label = other->m_label;
   m_dest_bb = other->m_dest_bb;
@@ -220,7 +233,20 @@ case_info::record_phi_mapping ()
     }
 }
 
-using case_informations = auto_vec<case_info*>;
+
+/* Compare 2 case label ranges by lower bound, default label always compares
+  as lower */
+
+auto case_info_cmp = [](const std::shared_ptr<case_info>& a,
+                        const std::shared_ptr<case_info>& b)
+  {
+    if (a->m_low == NULL_TREE && b->m_low == NULL_TREE) return false;
+    if (a->m_low == NULL_TREE) return true;
+    if (b->m_low == NULL_TREE) return false;
+    return tree_int_cst_compare(a->m_low, b->m_low) < 0;
+  };
+
+using case_informations = std::vector<case_info_ptr>;
 
 void print_merged_switch (case_informations &merged_infos)
 {
@@ -237,7 +263,7 @@ void print_merged_switch (case_informations &merged_infos)
   }
 }
 
-void print_inner_outer (case_info *outer, case_info *inner)
+void print_inner_outer (case_info_ptr outer, case_info_ptr inner)
 {
   if (!dump_file)
     return;
@@ -254,24 +280,9 @@ void print_inner_outer (case_info *outer, case_info *inner)
 }
 
 
-/* Compare 2 case label ranges by lower bound, default label always compares
-  as lower */
-static int
-case_info_cmp (const void *a, const void *b)
-{
-  const case_info *ci1 = *(const case_info * const *) a;
-  const case_info *ci2 = *(const case_info * const *) b;
-  if (ci1->m_low == NULL_TREE && ci2->m_low == NULL_TREE)
-    return 0;
-  if (ci1->m_low == NULL_TREE)
-    return -1;
-  if (ci2->m_low == NULL_TREE)
-    return 1;
-  return tree_int_cst_compare (ci1->m_low, ci2->m_low);
-}
 
 /* Create struct case_info */
-static case_info*
+static case_info_ptr
 get_case_info (function* fun, basic_block this_bb, tree case_label,
                bool is_inner, bool points_to_nested)
 {
@@ -280,7 +291,7 @@ get_case_info (function* fun, basic_block this_bb, tree case_label,
   tree dest = CASE_LABEL (case_label);
   basic_block dest_bb = label_to_block (fun, dest);
 
-  return new case_info (low, (high == NULL_TREE) ? low : high,
+  return std::make_shared<case_info> (low, (high == NULL_TREE) ? low : high,
                         dest, this_bb, dest_bb, is_inner, points_to_nested);
 }
 
@@ -294,8 +305,8 @@ inner_switch_case_informations (function* fun, const gswitch* inner_switch,
   for (unsigned i = 0; i < n; ++i)
     {
       tree label = gimple_switch_label (inner_switch, i);
-      case_info* info = get_case_info (fun, bb, label, true, false);
-      case_infos.safe_push (info);
+      case_info_ptr info = get_case_info (fun, bb, label, true, false);
+      case_infos.push_back (info);
     }
 }
 
@@ -313,9 +324,9 @@ outer_switch_case_informations (function *fun, const gswitch *outer_switch,
       tree label = gimple_switch_label (outer_switch, i);
       tree dest  = CASE_LABEL (label);
       bool points_to_inner = (label_to_block (fun, dest) == inner_switch_bb);
-      case_info *info = get_case_info (fun, outer_switch_bb, label,
+      case_info_ptr info = get_case_info (fun, outer_switch_bb, label,
                                        false, points_to_inner);
-      case_infos.safe_push (info);
+      case_infos.push_back (info);
     }
 }
 
@@ -398,9 +409,10 @@ int_cst_minus_one (tree cst)
 
 /* This cuts out inner range from outer, adds left result to merged case infos
    and returns the rest to be processed later. */
-case_info*
-subtract_ranges_and_merge (case_info *outer, case_info *inner,
-                           case_info *inner_default,
+case_info_ptr
+subtract_ranges_and_merge (case_info_ptr outer,
+                           case_info_ptr inner,
+                           case_info_ptr inner_default,
                            case_informations &merged_case_infos)
 {
   print_inner_outer(outer, inner);
@@ -421,7 +433,7 @@ subtract_ranges_and_merge (case_info *outer, case_info *inner,
     left to process in next iterations, we return NULL */
   if (outer->is_range_equal (inner))
     {
-      merged_case_infos.safe_push (inner);
+      merged_case_infos.push_back (inner);
       return NULL;
     }
 
@@ -430,7 +442,7 @@ subtract_ranges_and_merge (case_info *outer, case_info *inner,
     - outer=[0,4], inner=[0,1] -> we have to process later [2,4] */
   if (outer->share_lower_bound (inner))
     {
-      merged_case_infos.safe_push (inner);
+      merged_case_infos.push_back (inner);
       outer->m_low = int_cst_plus_one (inner->m_high);
       return outer;
     }
@@ -442,8 +454,8 @@ subtract_ranges_and_merge (case_info *outer, case_info *inner,
     {
       outer->m_high = int_cst_minus_one (inner->m_low);
       outer->point_to_as (inner_default);
-      merged_case_infos.safe_push (outer);
-      merged_case_infos.safe_push (inner);
+      merged_case_infos.push_back (outer);
+      merged_case_infos.push_back (inner);
       return NULL;
     }
 
@@ -451,12 +463,12 @@ subtract_ranges_and_merge (case_info *outer, case_info *inner,
     add left side to merged cases and return right side:
     - outer=[0,5], inner=[2,3] -> new cases are [0,1] and [2,3], we process
       later [4,5] */
-  case_info *copy_outer = new case_info (*outer);
+  case_info_ptr copy_outer = std::make_shared<case_info> (*outer);
   copy_outer->m_high = int_cst_minus_one (inner->m_low);
   copy_outer->point_to_as (inner_default);
   outer->m_low = int_cst_plus_one (inner->m_high);
-  merged_case_infos.safe_push (copy_outer);
-  merged_case_infos.safe_push (inner);
+  merged_case_infos.push_back (copy_outer);
+  merged_case_infos.push_back (inner);
   return outer;
 }
 
@@ -473,16 +485,16 @@ get_merged_case_infos_def_not_to_inner (const case_informations &outer_infos,
                                         const case_informations &inner_infos,
                                         case_informations &merged_case_infos)
 {
-  case_info *inner_default = inner_infos[0];
+  case_info_ptr inner_default = inner_infos[0];
   for (auto outer_info : outer_infos)
     {
       if (!outer_info->m_points_to_nested)
         {
-          merged_case_infos.safe_push (outer_info);
+          merged_case_infos.push_back (outer_info);
           continue;
         }
 
-      case_info *remaining_outer_info = outer_info;
+      case_info_ptr remaining_outer_info = outer_info;
       for (auto inner_info : inner_infos)
         {
           remaining_outer_info = subtract_ranges_and_merge (
@@ -492,7 +504,7 @@ get_merged_case_infos_def_not_to_inner (const case_informations &outer_infos,
       if (remaining_outer_info != NULL)
         {
           remaining_outer_info->point_to_as (inner_default);
-          merged_case_infos.safe_push (remaining_outer_info);
+          merged_case_infos.push_back (remaining_outer_info);
         }
 
     }
@@ -512,12 +524,12 @@ get_merged_case_infos_def_to_inner (const case_informations &outer_infos,
     {
       if (outer_info->m_points_to_nested)
         continue;
-      merged_case_infos.safe_push (outer_info);
+      merged_case_infos.push_back (outer_info);
     }
 
   for (auto inner_info : inner_infos)
     {
-      merged_case_infos.safe_push (inner_info);
+      merged_case_infos.push_back (inner_info);
     }
 }
 
@@ -529,8 +541,8 @@ merge_case_infos (case_informations &outer_infos,
                   case_informations &merged_case_infos)
 {
   bool outer_default_points_to_inner = outer_infos[0]->m_points_to_nested;
-  outer_infos.qsort (case_info_cmp);
-  inner_infos.qsort (case_info_cmp);
+  std::sort(outer_infos.begin(), outer_infos.end(), case_info_cmp);
+  std::sort(inner_infos.begin(), inner_infos.end(), case_info_cmp);
 
   if (outer_default_points_to_inner)
     get_merged_case_infos_def_to_inner (outer_infos, inner_infos,
@@ -539,7 +551,7 @@ merge_case_infos (case_informations &outer_infos,
     get_merged_case_infos_def_not_to_inner (outer_infos, inner_infos,
                                        merged_case_infos);
 
-  merged_case_infos.qsort (case_info_cmp);
+  std::sort(merged_case_infos.begin(), merged_case_infos.end(), case_info_cmp);
   if (dump_file)
     print_merged_switch(merged_case_infos);
 }
@@ -596,14 +608,15 @@ repair_cfg (case_informations &merged_case_infos, basic_block merged_switch_bb)
 
 /* Adjusts the outer switch to be merged switch */
 static void
-change_outer_switch_to_merged_switch (gswitch *outer, case_informations &merged_case_infos)
+change_outer_switch_to_merged_switch (gswitch *outer,
+                                      case_informations &merged_case_infos)
 {
-  gcc_assert (merged_case_infos.length () > 0);
+  gcc_assert (merged_case_infos.size () > 0);
   gcc_assert (merged_case_infos[0]->is_default ());
-  gimple_switch_set_num_labels (outer, merged_case_infos.length ());
-  for (unsigned i = 0; i < merged_case_infos.length (); ++i)
+  gimple_switch_set_num_labels (outer, merged_case_infos.size ());
+  for (unsigned i = 0; i < merged_case_infos.size (); ++i)
     {
-      case_info *info = merged_case_infos[i];
+      case_info_ptr info = merged_case_infos[i];
       tree label = info->build_case ();
       gimple_switch_set_label (outer, i, label);
     }
@@ -627,9 +640,6 @@ merge_nested_switches (function *fun, switch_info *info)
       dump_function_to_file (fun->decl, stderr, TDF_DETAILS);
       merge_case_infos (outer_case_info, inner_case_info, merged_case_info);
       repair_cfg (merged_case_info, outer->bb);
-      basic_block inner_bb = gimple_bb (inner);
-      basic_block outer_bb = gimple_bb (outer);
-      remove_edge (find_edge (outer_bb, inner_bb));
       change_outer_switch_to_merged_switch (outer, merged_case_info);
       delete_basic_block (inner->bb);
     }
