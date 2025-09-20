@@ -961,7 +961,7 @@ tree
 gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 			     tree eltype, tree initial, bool dynamic,
 			     bool dealloc, bool callee_alloc, locus * where,
-			     bool shift_bounds)
+			     bool shift_bounds, bool packed)
 {
   gfc_loopinfo *loop;
   gfc_ss *s;
@@ -1086,7 +1086,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
 
   /* Initialize the descriptor.  */
   type =
-    gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, 1,
+    gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, packed,
 			       GFC_ARRAY_UNKNOWN, true);
   desc = gfc_create_var (type, "atmp");
   GFC_DECL_PACKED_ARRAY (desc) = 1;

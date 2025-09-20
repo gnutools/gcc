@@ -8313,7 +8313,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_trans_create_temp_array (&se->pre, &se->post, se->ss,
 				       tmp, NULL_TREE, false,
 				       !comp->attr.pointer, callee_alloc,
-				       &se->ss->info->expr->where);
+				       &se->ss->info->expr->where, true,
+				       !IS_POINTER (comp));
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;
@@ -8349,7 +8350,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_trans_create_temp_array (&se->pre, &se->post, se->ss,
 				       tmp, NULL_TREE, false,
 				       !sym->attr.pointer, callee_alloc,
-				       &se->ss->info->expr->where);
+				       &se->ss->info->expr->where, true,
+				       !IS_POINTER (sym));
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;
