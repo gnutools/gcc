@@ -1,3 +1,62 @@
+==================== Branch work222, patch #18 ====================
+
+Remove -mpower8-internal support.
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (ISA_2_7_MASKS_SERVER): Delete
+	-mpower8-internal support in favor of using power8 CPU option.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Likewise.
+	* config/rs6000/rs6000.h (TARGET_POWER8): New macro.
+	* config/rs6000/rs6000.opt (-mpower8-internal): Remove setting ISA bit.
+
+==================== Branch work222, patch #17 ====================
+
+Remove internal -mpower9-misc support.
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/dfp.h (dfptstsfi_<code>_<mode>): Change TARGET_P9_MISC
+	to TARGET_POWER9.
+	(dfp_sgnfcnc_<mode): Likewise.
+	* config/rs6000/rs6000-cpus.def (ISA_3_0_MASKS_SERVER): Remove
+	OPTION_MASK_P9_MISC.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000-string.cc (do_load_mask_compare): Change
+	TARGET_P9_MISC to TARGET_POWER9.
+	(do_overlap_load_compare): Likewise.
+	(expand_compare_loop): Likewise.
+	(expand_block_compare_gpr): Likewise.
+	(expand_block_compare): Likewise.
+	* config/rs6000/rs6000.md (rs6000_option_override_internal): Likewise.
+	(rs6000_opt_masks): Remove -mpower9-misc.
+	* config/rs6000/rs6000.h (TARGET_POWER9): New macro.
+	* config/rs6000/rs6000.md (rs6000_mffscrn): Change TARGET_P9_MISC to
+	TARGET_POWER9.
+	(rs6000_mffscrni): Likewise.
+	(rs6000_mffscdrn): Likewise.
+	(rs6000_set_fpscr_rn): Likewise.
+	(rs6000_set_fpscr_drn): Likewise.
+	(rs6000_mffsl): Likewise.
+	(darn_32_<mode>): Likewise.
+	(darn_64_<mode>): Likewise.
+	(darn_raw_<mode>): Likewise.
+	(@darn<mode>): Likewise.
+	(cmprb): Likewise.
+	(cmprb_internal): Likewise.
+	(setb_signed): Likewise.
+	(setb_unsigned): Likewise.
+	(cmprb2): Likewise.
+	(cmprb2_internal): Likewise.
+	(cmpeqb): Likewise.
+	(cmpeqb_internal): Likewise.
+	* config/rs6000/rs6000.opt (-mpower9-misc): Change to WarnRemoved.
+
 ==================== Branch work222, patch #16 ====================
 
 Remove internal -mpower10 support.
