@@ -635,7 +635,7 @@ gfc_trans_allocate_array_storage (stmtblock_t * pre, stmtblock_t * post,
   bool onstack;
 
   desc = info->descriptor;
-  info->current_elem.index = gfc_index_zero_node;
+  info->current_elem.index = {NULL_TREE, NULL_TREE};
   if (size == NULL_TREE || (dynamic && integer_zerop (size)))
     {
       /* A callee allocated array.  */
@@ -2231,7 +2231,6 @@ trans_constant_array_constructor (gfc_ss * ss, tree type)
 
   info->descriptor = tmp;
   info->data = gfc_build_addr_expr (NULL_TREE, tmp);
-  info->current_elem.index = gfc_index_zero_node;
 
   for (i = 0; i < ss->dimen; i++)
     {
@@ -2814,7 +2813,8 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 		tree tmp = gfc_class_data_get (se.expr);
 		info->descriptor = tmp;
 		info->data = gfc_conv_descriptor_data_get (tmp);
-		info->current_elem.index = gfc_conv_descriptor_offset_get (tmp);
+		gfc_offset_add (info->current_elem.index,
+				gfc_conv_descriptor_offset_get (tmp));
 		for (gfc_ss *s = ss; s; s = s->parent)
 		  for (int n = 0; n < s->dimen; n++)
 		    {
@@ -3107,7 +3107,7 @@ gfc_conv_ss_descriptor (stmtblock_t * block, gfc_ss * ss, int base)
       tmp = gfc_conv_array_offset (se.expr);
       if (!ss->is_alloc_lhs)
 	tmp = gfc_evaluate_now (tmp, block);
-      info->current_elem.index = tmp;
+      gfc_offset_add (info->current_elem.index, tmp);
 
       /* Make absolutely sure that the saved_offset is indeed saved
 	 so that the variable is still accessible after the loops
@@ -3452,15 +3452,9 @@ array_bound_check_elemental (gfc_se * se, gfc_ss * ss, gfc_expr * expr)
 }
 
 
-struct gfc_offset_pair
-{
-  tree cst_part, non_cst_part;
-};
-
-
 /* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
 
-static void
+void
 gfc_offset_add (gfc_offset_pair &offset, tree t)
 {
   if (TREE_CODE (t) == INTEGER_CST)
@@ -3493,6 +3487,8 @@ gfc_offset_pair_materialize (gfc_offset_pair &pair)
       else
 	return pair.non_cst_part;
     }
+  else if (pair.non_cst_part == NULL_TREE)
+    return pair.cst_part;
   else
     return fold_build2_loc (input_location, PLUS_EXPR, gfc_array_index_type,
 			    pair.non_cst_part, pair.cst_part);
@@ -3504,10 +3500,7 @@ gfc_offset_pair_materialize (gfc_offset_pair &pair)
 static gfc_offset_pair
 add_to_offset (gfc_array_ref_info *ref_info, tree val)
 {
-  gfc_offset_pair offset {NULL_TREE, NULL_TREE};
-  memset (&offset, 0, sizeof (offset));
-  offset.cst_part = ref_info->cst_index;
-  offset.non_cst_part = ref_info->index;
+  gfc_offset_pair offset = ref_info->index;
   gfc_offset_add (offset, val);
   return offset;
 }
@@ -3937,8 +3930,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 
   ref_info.base = decl;
   gfc_offset_pair offset = add_to_offset (&ref_info, gfc_conv_array_offset (decl));
-  ref_info.cst_index = offset.cst_part;
-  ref_info.index = offset.non_cst_part;
+  ref_info.index = offset;
 
   /* Calculate the offsets from all the dimensions.  Make sure to associate
      the final offset so that we form a chain of loop invariant summands.  */
@@ -4005,28 +3997,11 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
 	    }
 	}
 
-      gfc_offset_pair offset;
-      offset = conv_array_index_dim (&ref_info, indexse.expr,
-				     gfc_conv_array_stride (decl, n));
-      ref_info.cst_index = offset.cst_part;
-      ref_info.index = offset.non_cst_part;
+      ref_info.index = conv_array_index_dim (&ref_info, indexse.expr,
+					     gfc_conv_array_stride (decl, n));
     }
 
-  tree index;
-  if (ref_info.cst_index == NULL_TREE
-      || integer_zerop (ref_info.cst_index))
-    {
-      if (ref_info.index == NULL_TREE)
-	index = gfc_index_zero_node;
-      else
-	index = ref_info.index;
-    }
-  else if (ref_info.index == NULL_TREE)
-    index = ref_info.cst_index;
-  else
-    index = fold_build2_loc (input_location, PLUS_EXPR,
-			     gfc_array_index_type, ref_info.index,
-			     ref_info.cst_index);
+  tree index = gfc_offset_pair_materialize (ref_info.index);
 
   /* A pointer array component can be detected from its field decl. Fix
      the descriptor, mark the resulting variable decl and pass it to
@@ -4096,8 +4071,9 @@ add_array_offset (stmtblock_t *pblock, gfc_loopinfo *loop, gfc_ss *ss,
   gfc_offset_pair pair = conv_array_index_offset (&se, ss, array_dim, loop_dim, ar);
   gfc_add_block_to_block (pblock, &se.pre);
 
-  tree index = gfc_offset_pair_materialize (pair);
-  info->current_elem.index = gfc_evaluate_now (index, pblock);
+  if (pair.non_cst_part != NULL_TREE)
+    pair.non_cst_part = gfc_evaluate_now (pair.non_cst_part, pblock);
+  info->current_elem.index = pair;
 }
 
 
@@ -4855,7 +4831,6 @@ done:
 
 		info->data = gfc_conv_array_data (info->descriptor);
 		info->data = gfc_evaluate_now (info->data, &outer_loop->pre);
-		info->current_elem.index = gfc_index_zero_node;
 
 		gfc_expr *array = expr->value.function.actual->expr;
 		tree rank = build_int_cst (gfc_array_index_type, array->rank);
@@ -10487,7 +10462,8 @@ gfc_update_reallocated_descriptor (stmtblock_t *block, gfc_loopinfo *loop)
 
       if (save_descriptor_data (info->descriptor, info->data))
 	SAVE_VALUE (info->data);
-      SAVE_VALUE (info->current_elem.index);
+      if (info->current_elem.index.non_cst_part != NULL_TREE)
+	SAVE_VALUE (info->current_elem.index.non_cst_part);
       info->saved_offset = info->current_elem.index;
       for (int i = 0; i < s->dimen; i++)
 	{

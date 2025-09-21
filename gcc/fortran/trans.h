@@ -182,6 +182,12 @@ enum gfc_structure_caf_mode_t {
 };
 
 
+struct gfc_offset_pair
+{
+  tree cst_part, non_cst_part;
+};
+
+
 typedef struct gfc_array_ref_info
 {
   tree base;
@@ -192,7 +198,7 @@ typedef struct gfc_array_ref_info
   };
 
   access_type access;
-  tree cst_index, index;
+  gfc_offset_pair index;
 }
 gfc_array_ref_info;
 
@@ -210,7 +216,7 @@ typedef struct gfc_array_info
   tree descriptor;
   /* holds the pointer to the data array.  */
   tree data;
-  tree saved_offset;
+  gfc_offset_pair saved_offset;
   tree stride0;
   /* Holds the SS for a subscript.  Indexed by actual dimension.  */
   struct gfc_ss *subscript[GFC_MAX_DIMENSIONS];

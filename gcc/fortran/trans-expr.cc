@@ -9230,7 +9230,7 @@ gfc_trans_subarray_assign (tree dest, gfc_component * cm, gfc_expr * expr)
   lss_array->shape = gfc_get_shape (cm->as->rank);
   lss_array->descriptor = dest;
   lss_array->data = gfc_conv_array_data (dest);
-  lss_array->current_elem.index = gfc_conv_array_offset (dest);
+  gfc_offset_add (lss_array->current_elem.index, gfc_conv_array_offset (dest));
   for (n = 0; n < cm->as->rank; n++)
     {
       lss_array->start[n] = gfc_conv_array_lbound (dest, n);
