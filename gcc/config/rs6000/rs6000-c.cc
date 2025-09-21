@@ -438,7 +438,7 @@ rs6000_target_modify_macros (bool define_p,
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR9");
   if ((flags & OPTION_MASK_POWER10) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR10");
-  if ((flags & OPTION_MASK_POWER11) != 0)
+  if ((cpu_option & CPU_OPTION_POWER11_MASK) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR11");
   if ((cpu_option & CPU_OPTION_FUTURE_MASK) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_FUTURE");
