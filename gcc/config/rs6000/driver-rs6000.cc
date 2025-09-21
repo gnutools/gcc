@@ -45,8 +45,10 @@ along with GCC; see the file COPYING3.  If not see
 static const char *rs6000_supported_cpu_names[] =
 {
 #define RS6000_CPU(NAME, CPU, FLAGS) NAME,
+#define RS6000_CPU_OPTION(NAME, CPU, FLAGS, CPU_OPTION)	NAME,
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
+#undef RS6000_CPU_OPTION
 };
 
 /* This table holds a list of cpus where their Linux AT_PLATFORM name differs
