@@ -1,3 +1,90 @@
+==================== Branch work222, patch #2 ====================
+
+Add -mcpu=future support.
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): If -mcpu=future, pass -mfuture
+	to the assembler.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000.c.cc (rs6000_target_modify_macros): If
+	-mcpu=future define _ARCH_FUTURE.
+	* config/rs6000/rs6000-cpus.def (CPU_OPTION_FUTURE_MASK): Add support
+	for -mcpu=future.
+	(CPU_OPTION_FUTURE_ALL_MASKS): Likewise.
+	(future cpu): Likewise.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (power10_cost): Update comment.
+	(rs6000_machine_from_flags): Add support for -mcpu=future.
+	(rs6000_cpu_opt_masks): Likewise.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): If -mcpu=future, pass -mfuture
+	to the assembler.
+	(TARGET_FUTURE): New macro.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
+==================== Branch work222, patch #1 ====================
+
+Add cpu option flag bits
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/aix71.h (RS6000_CPU_OPTION): Define and undefine macro.
+	* config/rs6000/aix72.h (RS6000_CPU_OPTION): Likewise.
+	* config/rs6000/aix73.h (RS6000_CPU_OPTION): Likewise.
+	* config/rs6000/default64.h (RS6000_CPU_OPTION): Likewise.
+	* config/rs6000/driver-rs6000.cc (RS6000_CPU_OPTION): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Add CPU
+	options parameter.
+	(rs6000_cpu_cpp_builtins): Likewise.
+	* config/rs6000/rs6000-cpus.def (toplevel): Add comment describing ISA
+	mask bits and CPU option mask bits.
+	(CPU_OPTION_POWER7_MASK): New macro.
+	(CPU_OPTION_POWER8_MASK): Likewise.
+	(CPU_OPTION_POWER9_MASK): Likewise.
+	(CPU_OPTION_POWER10_MASK): Likewise.
+	(CPU_OPTION_POWER11_MASK): Likewise.
+	(CPU_OPTION_POWER7_ALL_MASKS): Likewise.
+	(CPU_OPTION_POWER8_ALL_MASKS): Likewise.
+	(CPU_OPTION_POWER9_ALL_MASKS): Likewise.
+	(CPU_OPTION_POWER10_ALL_MASKS): Likewise.
+	(CPU_OPTION_POWER11_ALL_MASKS): Likewise.
+	(power7 cpu): Switch to use RS6000_CPU_OPTION in order to set the CPU
+	option mask bits.
+	(power8): Likewise.
+	(power9): Likewise.
+	(power10): Likewise.
+	(power11): Likewise.
+	* config/rs6000/rs6000-protos.h (rs6000_target_modify_macros): Add CPU
+	option argument.
+	(rs6000_target_modify_macros_ptr): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_target_modify_macros_ptr): Likewise.
+	(rs6000_print_isa_options): Likewise.
+	(struct rs6000_ptt): Likewise.
+	(RS6000_CPU): Likewise.
+	(RS6000_CPU_OPTION): Likewise.
+	(DEBUG_FMT_WX): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_option_override_internal): Likewise.
+	(struct rs6000_cpu_opt_mask): Likewise.
+	(rs6000_cpu_opt_masks): Likewise.
+	(rs6000_pragma_target_parse): Likewise.
+	(rs6000_function_specific_save): Likewise.
+	(rs6000_function_specific_restore): Likewise.
+	(rs6000_function_specific_print): Likewise.
+	(rs6000_print_options_internal): Likewise.
+	* config/rs6000/rs6000.opt (rs6000_cpu_option_flags): New target
+	variable.
+	(x_rs6000_cpu_option_flags): Likewise.
+
 ==================== Branch work222, baseline ====================
 
 2025-09-19   Michael Meissner  <meissner@linux.ibm.com>
