@@ -122,8 +122,7 @@
 				 | OPTION_MASK_POWER10			\
 				 | OTHER_POWER10_MASKS)
 
-#define POWER11_MASKS_SERVER (ISA_3_1_MASKS_SERVER			\
-			      | OPTION_MASK_POWER11)
+#define POWER11_MASKS_SERVER	ISA_3_1_MASKS_SERVER
 
 /* At the moment, do not define any addition -m<xxx> arguments for -mcpu=future
    support.  */
@@ -166,7 +165,6 @@
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
 				 | OPTION_MASK_FPRND			\
 				 | OPTION_MASK_POWER10			\
-				 | OPTION_MASK_POWER11			\
 				 | OPTION_MASK_P10_FUSION		\
 				 | OPTION_MASK_HTM			\
 				 | OPTION_MASK_ISEL			\
