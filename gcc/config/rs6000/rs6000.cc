@@ -3829,9 +3829,7 @@ rs6000_option_override_internal (bool global_init_p)
     }
 
   /* If little-endian, default to -mstrict-align on older processors.  */
-  if (!BYTES_BIG_ENDIAN
-      && !(processor_target_table[tune_index].target_enable
-	   & OPTION_MASK_POWER8))
+  if (!BYTES_BIG_ENDIAN && !TARGET_POWER8)
     rs6000_isa_flags |= ~rs6000_isa_flags_explicit & OPTION_MASK_STRICT_ALIGN;
 
   /* Add some warnings for VSX.  */
