@@ -38,6 +38,7 @@ Add -mcpu=future support.
 
 gcc/
 
+	* config.gcc (powerpc*-*-*): Add support for --with-cpu=future.
 	* config/rs6000/aix71.h (ASM_CPU_SPEC): If -mcpu=future, pass -mfuture
 	to the assembler.
 	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
