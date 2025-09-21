@@ -347,7 +347,7 @@
 	(DFP_TEST:SI (match_dup 3)
 		     (const_int 0)))
   ]
-  "TARGET_P9_MISC"
+  "TARGET_POWER9"
 {
   if (<CODE> == UNORDERED && !HONOR_NANS (<MODE>mode))
     {
@@ -365,7 +365,7 @@
 		       (match_operand:DDTD 2 "gpc_reg_operand" "d")]
 		      UNSPEC_DTSTSFI)
 	 (match_operand:SI 3 "zero_constant" "j")))]
-  "TARGET_P9_MISC"
+  "TARGET_POWER9"
 {
   /* If immediate operand is greater than 63, it will behave as if
      the value had been 63.  The code generator does not support
