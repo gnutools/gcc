@@ -135,8 +135,10 @@ do {									\
    %{pthread: -D_THREAD_SAFE}"
 
 #define RS6000_CPU(NAME, CPU, FLAGS)
+#define RS6000_CPU_OPTION(NAME, CPU, FLAGS, CPU_OPTION)
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
+#undef RS6000_CPU_OPTION
 
 #undef  TARGET_DEFAULT
 #ifdef RS6000_BI_ARCH

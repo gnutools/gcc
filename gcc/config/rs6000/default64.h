@@ -19,8 +19,10 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #define RS6000_CPU(NAME, CPU, FLAGS)
+#define RS6000_CPU_OPTION(NAME, CPU, FLAGS, CPU_OPTION)
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
+#undef RS6000_CPU_OPTION
 
 #if (TARGET_DEFAULT & MASK_LITTLE_ENDIAN)
 #undef TARGET_DEFAULT
