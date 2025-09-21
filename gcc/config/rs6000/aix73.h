@@ -79,7 +79,6 @@ do {									\
 #undef ASM_CPU_SPEC
 #define ASM_CPU_SPEC \
 "%{mcpu=native: %(asm_cpu_native); \
-  mcpu=future: -mfuture; \
   mcpu=power11: -mpwr11; \
   mcpu=power10: -mpwr10; \
   mcpu=power9: -mpwr9; \
@@ -136,10 +135,8 @@ do {									\
    %{pthread: -D_THREAD_SAFE}"
 
 #define RS6000_CPU(NAME, CPU, FLAGS)
-#define RS6000_CPU_OPTION(NAME, CPU, FLAGS, CPU_OPTION)
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
-#undef RS6000_CPU_OPTION
 
 #undef  TARGET_DEFAULT
 #ifdef RS6000_BI_ARCH

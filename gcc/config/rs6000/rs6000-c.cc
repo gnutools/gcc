@@ -338,16 +338,13 @@ rs6000_define_or_undefine_macro (bool define_p, const char *name)
    #pragma GCC target, we need to adjust the macros dynamically.  */
 
 void
-rs6000_target_modify_macros (bool define_p,
-			     HOST_WIDE_INT flags,
-			     HOST_WIDE_INT cpu_option)
+rs6000_target_modify_macros (bool define_p, HOST_WIDE_INT flags)
 {
   if (TARGET_DEBUG_BUILTIN || TARGET_DEBUG_TARGET)
     fprintf (stderr,
-	     "rs6000_target_modify_macros (%s, "
-	     HOST_WIDE_INT_PRINT_HEX ", " HOST_WIDE_INT_PRINT_HEX ")\n",
+	     "rs6000_target_modify_macros (%s, " HOST_WIDE_INT_PRINT_HEX ")\n",
 	     (define_p) ? "define" : "undef",
-	     flags, cpu_option);
+	     flags);
 
   /* Each of the flags mentioned below controls whether certain
      preprocessor macros will be automatically defined when
@@ -428,20 +425,18 @@ rs6000_target_modify_macros (bool define_p,
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR5");
   if ((flags & OPTION_MASK_FPRND) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR5X");
-  if ((cpu_option & CPU_OPTION_POWER6_MASK) != 0)
+  if ((flags & OPTION_MASK_CMPB) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR6");
-  if ((cpu_option & CPU_OPTION_POWER7_MASK) != 0)
+  if ((flags & OPTION_MASK_POPCNTD) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR7");
-  if ((cpu_option & CPU_OPTION_POWER8_MASK) != 0)
+  if ((flags & OPTION_MASK_POWER8) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR8");
-  if ((cpu_option & CPU_OPTION_POWER9_MASK) != 0)
+  if ((flags & OPTION_MASK_MODULO) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR9");
-  if ((cpu_option & CPU_OPTION_POWER10_MASK) != 0)
+  if ((flags & OPTION_MASK_POWER10) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR10");
-  if ((cpu_option & CPU_OPTION_POWER11_MASK) != 0)
+  if ((flags & OPTION_MASK_POWER11) != 0)
     rs6000_define_or_undefine_macro (define_p, "_ARCH_PWR11");
-  if ((cpu_option & CPU_OPTION_FUTURE_MASK) != 0)
-    rs6000_define_or_undefine_macro (define_p, "_ARCH_FUTURE");
   if ((flags & OPTION_MASK_SOFT_FLOAT) != 0)
     rs6000_define_or_undefine_macro (define_p, "_SOFT_FLOAT");
   if ((flags & OPTION_MASK_RECIP_PRECISION) != 0)
@@ -610,8 +605,7 @@ void
 rs6000_cpu_cpp_builtins (cpp_reader *pfile)
 {
   /* Define all of the common macros.  */
-  rs6000_target_modify_macros (true, rs6000_isa_flags,
-			       rs6000_cpu_option_flags);
+  rs6000_target_modify_macros (true, rs6000_isa_flags);
 
   if (TARGET_FRE)
     builtin_define ("__RECIP__");

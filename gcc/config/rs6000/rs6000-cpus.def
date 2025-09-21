@@ -18,48 +18,6 @@
    along with GCC; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
-/* There are two different ISA/CPU options.
-
-   Historically, the PowerPC port has used the ISA flags.  These flags are set
-   up based on -m<options> set in rs6000.opt.  There are two HOST_WIDE_INT
-   variables for these options:
-
-	rs6000_isa_flags: These are the current named ISA options that are set
-	for the current build.
-
-	rs6000_isa_flags_explicit: These are the current name ISA options that
-	were used by the user on the command line.
-
-   However, the problem with the ISA bits is that you must have a named -m
-   option that the user can use on the command line.  For example, the
-   -mpopcntd option sets one of the bits for ISA 2.06 features (power7), and
-   -mquad-memory-atomic sets one of the bits for ISA 2.07 features (power8).
-   In general, we don't want the user to be able to say:
-
-	-mcpu=power9 -mno-popcntd -mno-quad-memory-atomic
-
-   Instead there are now a parallel set of cpu option bits that are only set
-   via the -mcpu=<xxx> option.  The user cannot turn these individual cpu
-   options on or off via separate -m<xxx> options.
-
-   There are ISA options that we want the user to still turn on/off, and these
-   options should remain as -m<xxx> options.  Some of these options that the
-   user should be able disable include:
-
-	-mno-altivec
-	-mno-vsx
-	-mno-mma
-	-mno-crypto
-	-mno-htm
-	-mno-power8-fusion
-	-mno-power10-fusion
-
-   There are other options historically that were documented as user -m<xxx>
-   options, and because they were documented, they need to remain as -m<xxx>
-   options at the current time.  Perhaps these options can be deprecated and
-   removed in future GCC revisions.  As these options are removed from GCC,
-   these options should be moved from the ISA flags to the cpu flags.  */
-
 /* ISA masks.  */
 #ifndef ISA_2_1_MASKS
 #define ISA_2_1_MASKS		OPTION_MASK_MFCRF
@@ -119,13 +77,11 @@
 				 | OPTION_MASK_PREFIXED)
 
 #define ISA_3_1_MASKS_SERVER	(ISA_3_0_MASKS_SERVER			\
+				 | OPTION_MASK_POWER10			\
 				 | OTHER_POWER10_MASKS)
 
-#define POWER11_MASKS_SERVER	ISA_3_1_MASKS_SERVER
-
-/* At the moment, do not define any addition -m<xxx> arguments for -mcpu=future
-   support.  */
-#define FUTURE_MASKS_SERVER	POWER11_MASKS_SERVER
+#define POWER11_MASKS_SERVER (ISA_3_1_MASKS_SERVER			\
+			      | OPTION_MASK_POWER11)
 
 /* Flags that need to be turned off if -mno-vsx.  */
 #define OTHER_VSX_VECTOR_MASKS	(OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
@@ -163,6 +119,8 @@
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
 				 | OPTION_MASK_FPRND			\
+				 | OPTION_MASK_POWER10			\
+				 | OPTION_MASK_POWER11			\
 				 | OPTION_MASK_P10_FUSION		\
 				 | OPTION_MASK_HTM			\
 				 | OPTION_MASK_ISEL			\
@@ -192,37 +150,7 @@
 				 | OPTION_MASK_STRICT_ALIGN_OPTIONAL	\
 				 | OPTION_MASK_VSX)
 
-
-/* CPU option mask bits that are set only via -mcpu=<xxx> options.  */
-#ifndef CPU_OPTION_POWER6_MASK
-#define CPU_OPTION_POWER6_MASK		HOST_WIDE_INT_UC (0x00000001)
-#define CPU_OPTION_POWER7_MASK		HOST_WIDE_INT_UC (0x00000002)
-#define CPU_OPTION_POWER8_MASK		HOST_WIDE_INT_UC (0x00000004)
-#define CPU_OPTION_POWER9_MASK		HOST_WIDE_INT_UC (0x00000008)
-#define CPU_OPTION_POWER10_MASK		HOST_WIDE_INT_UC (0x00000010)
-#define CPU_OPTION_POWER11_MASK		HOST_WIDE_INT_UC (0x00000020)
-#define CPU_OPTION_FUTURE_MASK		HOST_WIDE_INT_UC (0x00000040)
-
-/* Processor ISA mask bits that are set for each processor.  */
-#define CPU_OPTION_POWER7_ALL_MASKS	CPU_OPTION_POWER7_MASK
-
-#define CPU_OPTION_POWER8_ALL_MASKS	(CPU_OPTION_POWER8_MASK	\
-					 | CPU_OPTION_POWER7_ALL_MASKS)
-
-#define CPU_OPTION_POWER9_ALL_MASKS	(CPU_OPTION_POWER9_MASK	\
-					 | CPU_OPTION_POWER8_ALL_MASKS)
-
-#define CPU_OPTION_POWER10_ALL_MASKS	(CPU_OPTION_POWER10_MASK	\
-					 | CPU_OPTION_POWER9_ALL_MASKS)
-
-#define CPU_OPTION_POWER11_ALL_MASKS	(CPU_OPTION_POWER11_MASK	\
-					 | CPU_OPTION_POWER10_ALL_MASKS)
-
-#define CPU_OPTION_FUTURE_ALL_MASKS	(CPU_OPTION_FUTURE_MASK		\
-					 | CPU_OPTION_POWER11_ALL_MASKS)
-
-#endif	/* #ifndef CPU_OPTION_POWER7_MASK.  */
-#endif	/* #ifndef ISA_2_1_MASKS.  */
+#endif
 
 /* This table occasionally claims that a processor does not support a
    particular feature even though it does, but the feature is slower than the
@@ -232,15 +160,11 @@
    Please keep this list in order, and don't forget to update the documentation
    in invoke.texi when adding a new processor or flag.
 
-   Before including this file, define two macros:
+   Before including this file, define a macro:
 
    RS6000_CPU (NAME, CPU, FLAGS)
-   RS6000_CPU_OPTION (NAME, CPU, FLAGS, CPU_OPTION)
 
-   where the arguments of RS6000_CPU and RS6000_CPU_OPTION are the fields of
-   struct rs6000_ptt.  The RS6000_CPU_OPTION's 4th argument is the CPU option
-   mask to use for this -mcpu=<xxx> variant, and it is assumed to be 0 for the
-   RS6000_CPU macro.  */
+   where the arguments are the fields of struct rs6000_ptt.  */
 
 RS6000_CPU ("401", PROCESSOR_PPC403, OPTION_MASK_SOFT_FLOAT)
 RS6000_CPU ("403", PROCESSOR_PPC403, OPTION_MASK_SOFT_FLOAT | MASK_STRICT_ALIGN)
@@ -318,27 +242,13 @@ RS6000_CPU ("power6x", PROCESSOR_POWER6, MASK_POWERPC64 | OPTION_MASK_PPC_GPOPT
 	    | OPTION_MASK_PPC_GFXOPT | OPTION_MASK_MFCRF | OPTION_MASK_POPCNTB
 	    | OPTION_MASK_FPRND | OPTION_MASK_CMPB | OPTION_MASK_DFP
 	    | OPTION_MASK_RECIP_PRECISION)
-RS6000_CPU_OPTION ("power7", PROCESSOR_POWER7,
-		   MASK_POWERPC64 | ISA_2_6_MASKS_SERVER,
-		   CPU_OPTION_POWER7_ALL_MASKS)
-RS6000_CPU_OPTION ("power8", PROCESSOR_POWER8,
-		   MASK_POWERPC64 | ISA_2_7_MASKS_SERVER | OPTION_MASK_HTM,
-		   CPU_OPTION_POWER8_ALL_MASKS)
-RS6000_CPU_OPTION ("power9", PROCESSOR_POWER9,
-		   MASK_POWERPC64 | ISA_3_0_MASKS_SERVER | OPTION_MASK_HTM,
-		   CPU_OPTION_POWER9_ALL_MASKS)
-RS6000_CPU_OPTION ("power10", PROCESSOR_POWER10,
-		   MASK_POWERPC64 | ISA_3_1_MASKS_SERVER,
-		   CPU_OPTION_POWER10_ALL_MASKS)
-RS6000_CPU_OPTION ("power11", PROCESSOR_POWER11,
-		   MASK_POWERPC64 | POWER11_MASKS_SERVER,
-		   CPU_OPTION_POWER11_ALL_MASKS)
-/* At the present time, do not define a new processor for -mcpu=future.  At
-   some point, it may be provided, but for now, treat the cpu as being tuned
-   the same as a power11.  */
-RS6000_CPU_OPTION ("future", PROCESSOR_POWER11,
-		   MASK_POWERPC64 | FUTURE_MASKS_SERVER,
-		   CPU_OPTION_FUTURE_ALL_MASKS)
+RS6000_CPU ("power7", PROCESSOR_POWER7, MASK_POWERPC64 | ISA_2_6_MASKS_SERVER)
+RS6000_CPU ("power8", PROCESSOR_POWER8, MASK_POWERPC64 | ISA_2_7_MASKS_SERVER
+	    | OPTION_MASK_HTM)
+RS6000_CPU ("power9", PROCESSOR_POWER9, MASK_POWERPC64 | ISA_3_0_MASKS_SERVER
+	    | OPTION_MASK_HTM)
+RS6000_CPU ("power10", PROCESSOR_POWER10, MASK_POWERPC64 | ISA_3_1_MASKS_SERVER)
+RS6000_CPU ("power11", PROCESSOR_POWER11, MASK_POWERPC64 | POWER11_MASKS_SERVER)
 RS6000_CPU ("powerpc", PROCESSOR_POWERPC, 0)
 RS6000_CPU ("powerpc64", PROCESSOR_POWERPC64, OPTION_MASK_PPC_GFXOPT
 	    | MASK_POWERPC64)
