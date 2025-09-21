@@ -250,17 +250,17 @@ enum {
 
 /* Map compiler ISA bits into HWCAP names.  */
 struct clone_map {
-  HOST_WIDE_INT cpu_option;	/* CPU options mask */
+  HOST_WIDE_INT isa_mask;	/* rs6000_isa mask */
   const char *name;		/* name to use in __builtin_cpu_supports.  */
 };
 
 static const struct clone_map rs6000_clone_map[CLONE_MAX] = {
   { 0,				"" },		/* Default options.  */
-  { CPU_OPTION_POWER6_MASK,	"arch_2_05" },	/* ISA 2.05 (power6).  */
-  { CPU_OPTION_POWER7_MASK,	"arch_2_06" },	/* ISA 2.06 (power7).  */
-  { CPU_OPTION_POWER8_MASK,	"arch_2_07" },	/* ISA 2.07 (power8).  */
-  { CPU_OPTION_POWER9_MASK,	"arch_3_00" },	/* ISA 3.0 (power9).  */
-  { CPU_OPTION_POWER10_MASK,	"arch_3_1" },	/* ISA 3.1 (power10).  */
+  { OPTION_MASK_CMPB,		"arch_2_05" },	/* ISA 2.05 (power6).  */
+  { OPTION_MASK_POPCNTD,	"arch_2_06" },	/* ISA 2.06 (power7).  */
+  { OPTION_MASK_P8_VECTOR,	"arch_2_07" },	/* ISA 2.07 (power8).  */
+  { OPTION_MASK_P9_VECTOR,	"arch_3_00" },	/* ISA 3.0 (power9).  */
+  { OPTION_MASK_POWER10,	"arch_3_1" },	/* ISA 3.1 (power10).  */
 };
 
 
@@ -276,7 +276,7 @@ bool cpu_builtin_p = false;
 /* Pointer to function (in rs6000-c.cc) that can define or undefine target
    macros that have changed.  Languages that don't support the preprocessor
    don't link in rs6000-c.cc, so we can't call it directly.  */
-void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT, HOST_WIDE_INT);
+void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT);
 
 /* Simplfy register classes into simpler classifications.  We assume
    GPR_REG_TYPE - FPR_REG_TYPE are ordered so that we can use a simple range
@@ -1066,7 +1066,7 @@ struct processor_costs power9_cost = {
   COSTS_N_INSNS (3),	/* SF->DF convert */
 };
 
-/* Instruction costs on Power10/Power11/Future processors.  */
+/* Instruction costs on Power10/Power11 processors.  */
 static const
 struct processor_costs power10_cost = {
   COSTS_N_INSNS (2),	/* mulsi */
@@ -1169,7 +1169,7 @@ enum reg_class (*rs6000_preferred_reload_class_ptr) (rtx, enum reg_class)
 const int INSN_NOT_AVAILABLE = -1;
 
 static void rs6000_print_isa_options (FILE *, int, const char *,
-				      HOST_WIDE_INT, HOST_WIDE_INT);
+				      HOST_WIDE_INT);
 static HOST_WIDE_INT rs6000_disable_incompatible_switches (void);
 
 static enum rs6000_reg_type register_to_reg_type (rtx, bool *);
@@ -1792,17 +1792,13 @@ struct rs6000_ptt
   const char *const name;		/* Canonical processor name.  */
   const enum processor_type processor;	/* Processor type enum value.  */
   const HOST_WIDE_INT target_enable;	/* Target flags to enable.  */
-  const HOST_WIDE_INT cpu_option;	/* CPU flags set with -mcpu=.  */
 };
 
 static struct rs6000_ptt const processor_target_table[] =
 {
-#define RS6000_CPU(NAME, CPU, FLAGS) { NAME, CPU, FLAGS, 0 },
-#define RS6000_CPU_OPTION(NAME, CPU, FLAGS, CPU_OPTION)			\
-  { NAME, CPU, FLAGS, CPU_OPTION },
+#define RS6000_CPU(NAME, CPU, FLAGS) { NAME, CPU, FLAGS },
 #include "rs6000-cpus.def"
 #undef RS6000_CPU
-#undef RS6000_CPU_OPTION
 };
 
 /* Look up a processor name for -mcpu=xxx and -mtune=xxx.  Return -1 if the
@@ -2224,8 +2220,7 @@ rs6000_debug_print_mode (ssize_t m)
 
 #define DEBUG_FMT_ID "%-32s= "
 #define DEBUG_FMT_D   DEBUG_FMT_ID "%d\n"
-#define DEBUG_FMT_WX  DEBUG_FMT_ID "%#.12" HOST_WIDE_INT_PRINT "x" \
-                                    ", 0x%.2" HOST_WIDE_INT_PRINT "x: "
+#define DEBUG_FMT_WX  DEBUG_FMT_ID "%#.12" HOST_WIDE_INT_PRINT "x: "
 #define DEBUG_FMT_S   DEBUG_FMT_ID "%s\n"
 
 /* Print various interesting information with -mdebug=reg.  */
@@ -2405,11 +2400,9 @@ rs6000_debug_reg_global (void)
       const char *name = processor_target_table[rs6000_cpu_index].name;
       HOST_WIDE_INT flags
 	= processor_target_table[rs6000_cpu_index].target_enable;
-      HOST_WIDE_INT cpu_option
-	= processor_target_table[rs6000_cpu_index].cpu_option;
 
       sprintf (flags_buffer, "-mcpu=%s flags", name);
-      rs6000_print_isa_options (stderr, 0, flags_buffer, flags, cpu_option);
+      rs6000_print_isa_options (stderr, 0, flags_buffer, flags);
     }
   else
     fprintf (stderr, DEBUG_FMT_S, "cpu", "<none>");
@@ -2421,19 +2414,19 @@ rs6000_debug_reg_global (void)
 	= processor_target_table[rs6000_tune_index].target_enable;
 
       sprintf (flags_buffer, "-mtune=%s flags", name);
-      rs6000_print_isa_options (stderr, 0, flags_buffer, flags, 0);
+      rs6000_print_isa_options (stderr, 0, flags_buffer, flags);
     }
   else
     fprintf (stderr, DEBUG_FMT_S, "tune", "<none>");
 
   cl_target_option_save (&cl_opts, &global_options, &global_options_set);
   rs6000_print_isa_options (stderr, 0, "rs6000_isa_flags",
-			    rs6000_isa_flags, rs6000_cpu_option_flags);
+			    rs6000_isa_flags);
 
   rs6000_print_isa_options (stderr, 0, "rs6000_isa_flags_explicit",
-			    rs6000_isa_flags_explicit, 0);
+			    rs6000_isa_flags_explicit);
 
-  rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT, 0);
+  rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT);
 
   fprintf (stderr, DEBUG_FMT_S, "--with-cpu default",
 	   OPTION_TARGET_CPU_DEFAULT ? OPTION_TARGET_CPU_DEFAULT : "<none>");
@@ -3630,7 +3623,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* Print defaults.  */
   if ((TARGET_DEBUG_REG || TARGET_DEBUG_TARGET) && global_init_p)
-    rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT, 0);
+    rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT);
 
   /* Remember the explicit arguments.  */
   if (global_init_p)
@@ -3734,7 +3727,6 @@ rs6000_option_override_internal (bool global_init_p)
       rs6000_isa_flags &= ~set_masks;
       rs6000_isa_flags |= (processor_target_table[cpu_index].target_enable
 			   & set_masks);
-      rs6000_cpu_option_flags = processor_target_table[cpu_index].cpu_option;
     }
   else
     {
@@ -3760,7 +3752,6 @@ rs6000_option_override_internal (bool global_init_p)
 	  flags = processor_target_table[default_cpu_index].target_enable;
 	}
       rs6000_isa_flags |= (flags & ~rs6000_isa_flags_explicit);
-      rs6000_cpu_option_flags = 0;
     }
 
   /* Don't expect powerpc64 enabled on those OSes with OS_MISSING_POWERPC64,
@@ -3882,8 +3873,7 @@ rs6000_option_override_internal (bool global_init_p)
 		         & ~rs6000_isa_flags_explicit);
 
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "before defaults", rs6000_isa_flags,
-			      rs6000_cpu_option_flags);
+    rs6000_print_isa_options (stderr, 0, "before defaults", rs6000_isa_flags);
 
 #ifdef XCOFF_DEBUGGING_INFO
   /* For AIX default to 64-bit DWARF.  */
@@ -4244,8 +4234,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* Print the options after updating the defaults.  */
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "after defaults", rs6000_isa_flags,
-			      rs6000_cpu_option_flags);
+    rs6000_print_isa_options (stderr, 0, "after defaults", rs6000_isa_flags);
 
   /* E500mc does "better" if we inline more aggressively.  Respect the
      user's opinion, though.  */
@@ -4352,8 +4341,7 @@ rs6000_option_override_internal (bool global_init_p)
     TARGET_NO_FP_IN_TOC = 1;
 
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "before subtarget", rs6000_isa_flags,
-			      rs6000_cpu_option_flags);
+    rs6000_print_isa_options (stderr, 0, "before subtarget", rs6000_isa_flags);
 
 #ifdef SUBTARGET_OVERRIDE_OPTIONS
   SUBTARGET_OVERRIDE_OPTIONS;
@@ -4420,8 +4408,7 @@ rs6000_option_override_internal (bool global_init_p)
     rs6000_isa_flags &= ~OPTION_MASK_PCREL_OPT;
 
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags,
-			      rs6000_cpu_option_flags);
+    rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags);
 
   rs6000_always_hint = (rs6000_tune != PROCESSOR_POWER4
 			&& rs6000_tune != PROCESSOR_POWER5
@@ -5929,19 +5916,17 @@ rs6000_machine_from_flags (void)
   flags &= ~(OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT | OPTION_MASK_ISEL
 	     | OPTION_MASK_ALTIVEC);
 
-  if ((rs6000_cpu_option_flags & CPU_OPTION_FUTURE_MASK) != 0)
-    return "future";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER11_MASK) != 0)
+  if ((flags & (POWER11_MASKS_SERVER & ~ISA_3_1_MASKS_SERVER)) != 0)
     return "power11";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER10_MASK) != 0)
+  if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
     return "power10";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER9_MASK) != 0)
+  if ((flags & (ISA_3_0_MASKS_SERVER & ~ISA_2_7_MASKS_SERVER)) != 0)
     return "power9";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER8_MASK) != 0)
+  if ((flags & (ISA_2_7_MASKS_SERVER & ~ISA_2_6_MASKS_SERVER)) != 0)
     return "power8";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER7_MASK) != 0)
+  if ((flags & (ISA_2_6_MASKS_SERVER & ~ISA_2_5_MASKS_SERVER)) != 0)
     return "power7";
-  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER6_MASK) != 0)
+  if ((flags & (ISA_2_5_MASKS_SERVER & ~ISA_2_4_MASKS)) != 0)
     return "power6";
   if ((flags & (ISA_2_4_MASKS & ~ISA_2_1_MASKS)) != 0)
     return "power5";
@@ -24481,6 +24466,8 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "float128",			OPTION_MASK_FLOAT128_KEYWORD,	false, true  },
   { "float128-hardware",	OPTION_MASK_FLOAT128_HW,	false, true  },
   { "fprnd",			OPTION_MASK_FPRND,		false, true  },
+  { "power10",			OPTION_MASK_POWER10,		false, true  },
+  { "power11",			OPTION_MASK_POWER11,		false, false },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
@@ -24535,22 +24522,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
 #endif
   { "soft-float",		OPTION_MASK_SOFT_FLOAT,		false, false },
   { "string",			0,				false, false },
-};
-
-/* Map CPU option mask bits to a printable string.  */
-struct rs6000_cpu_opt_mask {
-  const char *name;		/* option name */
-  const HOST_WIDE_INT mask;	/* mask for the cpu option */
-};
-
-static struct rs6000_cpu_opt_mask const rs6000_cpu_opt_masks[] =
-{
-  { "power7",	CPU_OPTION_POWER7_MASK	},
-  { "power8",	CPU_OPTION_POWER8_MASK	},
-  { "power9",	CPU_OPTION_POWER9_MASK	},
-  { "power10",	CPU_OPTION_POWER10_MASK	},
-  { "power11",	CPU_OPTION_POWER11_MASK	},
-  { "future",	CPU_OPTION_FUTURE_MASK	},
 };
 
 /* Option variables that we want to support inside attribute((target)) and
@@ -24911,7 +24882,6 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
   tree cur_tree;
   struct cl_target_option *prev_opt, *cur_opt;
   HOST_WIDE_INT prev_flags, cur_flags, diff_flags;
-  HOST_WIDE_INT prev_cpu_option, cur_cpu_option, diff_cpu_option;
 
   if (TARGET_DEBUG_TARGET)
     {
@@ -24962,28 +24932,23 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
      change the macros that are defined.  */
   if (rs6000_target_modify_macros_ptr)
     {
-      prev_opt        = TREE_TARGET_OPTION (prev_tree);
-      prev_flags      = prev_opt->x_rs6000_isa_flags;
-      prev_cpu_option = prev_opt->x_rs6000_cpu_option_flags;
+      prev_opt    = TREE_TARGET_OPTION (prev_tree);
+      prev_flags  = prev_opt->x_rs6000_isa_flags;
 
-      cur_opt         = TREE_TARGET_OPTION (cur_tree);
-      cur_flags       = cur_opt->x_rs6000_isa_flags;
-      cur_cpu_option  = cur_opt->x_rs6000_cpu_option_flags;
+      cur_opt     = TREE_TARGET_OPTION (cur_tree);
+      cur_flags   = cur_opt->x_rs6000_isa_flags;
 
-      diff_flags      = (prev_flags ^ cur_flags);
-      diff_cpu_option = (prev_cpu_option ^ cur_cpu_option);
+      diff_flags  = (prev_flags ^ cur_flags);
 
-      if (diff_flags != 0 || diff_cpu_option != 0)
+      if (diff_flags != 0)
 	{
 	  /* Delete old macros.  */
 	  rs6000_target_modify_macros_ptr (false,
-					   prev_flags & diff_flags,
-					   prev_cpu_option & diff_cpu_option);
+					   prev_flags & diff_flags);
 
 	  /* Define new macros.  */
 	  rs6000_target_modify_macros_ptr (true,
-					   cur_flags & diff_flags,
-					   cur_cpu_option & diff_cpu_option);
+					   cur_flags & diff_flags);
 	}
     }
 
@@ -25097,7 +25062,6 @@ rs6000_function_specific_save (struct cl_target_option *ptr,
 {
   ptr->x_rs6000_isa_flags = opts->x_rs6000_isa_flags;
   ptr->x_rs6000_isa_flags_explicit = opts->x_rs6000_isa_flags_explicit;
-  ptr->x_rs6000_cpu_option_flags = opts->x_rs6000_cpu_option_flags;
 }
 
 /* Restore the current options */
@@ -25110,7 +25074,6 @@ rs6000_function_specific_restore (struct gcc_options *opts,
 {
   opts->x_rs6000_isa_flags = ptr->x_rs6000_isa_flags;
   opts->x_rs6000_isa_flags_explicit = ptr->x_rs6000_isa_flags_explicit;
-  opts->x_rs6000_cpu_option_flags = ptr->x_rs6000_cpu_option_flags;
   (void) rs6000_option_override_internal (false);
 }
 
@@ -25121,11 +25084,10 @@ rs6000_function_specific_print (FILE *file, int indent,
 				struct cl_target_option *ptr)
 {
   rs6000_print_isa_options (file, indent, "Isa options set",
-			    ptr->x_rs6000_isa_flags,
-			    ptr->x_rs6000_cpu_option_flags);
+			    ptr->x_rs6000_isa_flags);
 
   rs6000_print_isa_options (file, indent, "Isa options explicit",
-			    ptr->x_rs6000_isa_flags_explicit, 0);
+			    ptr->x_rs6000_isa_flags_explicit);
 }
 
 /* Helper function to print the current isa or misc options on a line.  */
@@ -25137,11 +25099,7 @@ rs6000_print_options_internal (FILE *file,
 			       HOST_WIDE_INT flags,
 			       const char *prefix,
 			       const struct rs6000_opt_mask *opts,
-			       size_t num_elements,
-			       HOST_WIDE_INT cpu_option,
-			       const char *cpu_option_prefix,
-			       const struct rs6000_cpu_opt_mask *cpu_opts,
-			       size_t num_cpu_elements)
+			       size_t num_elements)
 {
   size_t i;
   size_t start_column = 0;
@@ -25154,13 +25112,13 @@ rs6000_print_options_internal (FILE *file,
   if (indent)
     start_column += fprintf (file, "%*s", indent, "");
 
-  if (!flags && !cpu_option)
+  if (!flags)
     {
       fprintf (stderr, DEBUG_FMT_S, string, "<none>");
       return;
     }
 
-  start_column += fprintf (stderr, DEBUG_FMT_WX, string, flags, cpu_option);
+  start_column += fprintf (stderr, DEBUG_FMT_WX, string, flags);
 
   /* Print the various mask options.  */
   cur_column = start_column;
@@ -25207,33 +25165,6 @@ rs6000_print_options_internal (FILE *file,
       comma_len = strlen (", ");
     }
 
-  /* print the cpu isa bits that are set directly from -mcpu=<xxx> and there
-     is not an explicit -m<foo> option.  We don't have to worry about inverting
-     options for the CPU ISA bits.  */
-  for (i = 0; i < num_cpu_elements; i++)
-    {
-      const char *name = cpu_opts[i].name;
-      HOST_WIDE_INT mask = cpu_opts[i].mask;
-      size_t len = comma_len + prefix_len + strlen (name);
-
-      if ((cpu_option & mask) != 0)
-	{
-	  cpu_option &= ~mask;
-
-	  cur_column += len;
-	  if (cur_column > max_column)
-	    {
-	      fprintf (stderr, ", \\\n%*s", (int)start_column, "");
-	      cur_column = start_column + len;
-	      comma = "";
-	    }
-
-	  fprintf (file, "%s%s%s", comma, cpu_option_prefix, name);
-	  comma = ", ";
-	  comma_len = strlen (", ");
-	}
-    }
-
   fputs ("\n", file);
 }
 
@@ -25241,14 +25172,11 @@ rs6000_print_options_internal (FILE *file,
 
 static void
 rs6000_print_isa_options (FILE *file, int indent, const char *string,
-			  HOST_WIDE_INT flags, HOST_WIDE_INT cpu_option)
+			  HOST_WIDE_INT flags)
 {
   rs6000_print_options_internal (file, indent, string, flags, "-m",
 				 &rs6000_opt_masks[0],
-				 ARRAY_SIZE (rs6000_opt_masks),
-				 cpu_option, "cpu-option=",
-				 &rs6000_cpu_opt_masks[0],
-				 ARRAY_SIZE (rs6000_cpu_opt_masks));
+				 ARRAY_SIZE (rs6000_opt_masks));
 }
 
 /* If the user used -mno-vsx, we need turn off all of the implicit ISA 2.06,
@@ -25338,7 +25266,7 @@ static int
 rs6000_clone_priority (tree fndecl)
 {
   tree fn_opts = DECL_FUNCTION_SPECIFIC_TARGET (fndecl);
-  HOST_WIDE_INT cpu_option;
+  HOST_WIDE_INT isa_masks;
   int ret = CLONE_DEFAULT;
   tree attrs = lookup_attribute ("target", DECL_ATTRIBUTES (fndecl));
   const char *attrs_str = NULL;
@@ -25354,12 +25282,12 @@ rs6000_clone_priority (tree fndecl)
 	fn_opts = target_option_default_node;
 
       if (!fn_opts || !TREE_TARGET_OPTION (fn_opts))
-	cpu_option = rs6000_cpu_option_flags;
+	isa_masks = rs6000_isa_flags;
       else
-	cpu_option = TREE_TARGET_OPTION (fn_opts)->x_rs6000_cpu_option_flags;
+	isa_masks = TREE_TARGET_OPTION (fn_opts)->x_rs6000_isa_flags;
 
       for (ret = CLONE_MAX - 1; ret != 0; ret--)
-	if ((rs6000_clone_map[ret].cpu_option & cpu_option) != 0)
+	if ((rs6000_clone_map[ret].isa_mask & isa_masks) != 0)
 	  break;
     }
 
