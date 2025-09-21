@@ -3452,6 +3452,21 @@ array_bound_check_elemental (gfc_se * se, gfc_ss * ss, gfc_expr * expr)
 }
 
 
+static tree
+build_array_ref (gfc_array_ref_info * array_ref)
+{
+  switch (array_ref->access)
+    {
+    case gfc_array_ref_info::ARRAY_INDEX:
+      break;
+    case gfc_array_ref_info::POINTER_OFFSET:
+      break;
+    }
+  
+  return NULL_TREE;
+}
+
+
 /* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
 
 void
