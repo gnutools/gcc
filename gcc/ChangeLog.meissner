@@ -1,3 +1,21 @@
+==================== Branch work222, patch #3 ====================
+
+Remove internal -mpower11 support.
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Move power11
+	support to use CPU options.
+	* config/rs6000/rs6000-cpus.def (POWER11_MASKS_SERVER): Likewise.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_machine_from_flags): Likewise.
+	(rs6000_opt_masks): Likewise.
+	* config/rs6000/rs6000.h (TARGET_POWER11): New macro.
+	* config/rs6000/rs6000.opt (-mpower11): Drop power11 from being an ISA
+	option.
+
 ==================== Branch work222, patch #2 ====================
 
 Add -mcpu=future support.
