@@ -8671,9 +8671,12 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
 	      gcc_assert (arg->expr->expr_type == EXPR_VARIABLE);
 	      source = argse.expr;
 	      class_expr = gfc_find_and_cut_at_last_class_ref (arg->expr);
-	      gfc_init_se (&argse, NULL);
-	      gfc_conv_expr (&argse, class_expr);
-	      class_ref = argse.expr;
+	      gfc_se class_se;
+	      gfc_init_se (&class_se, NULL);
+	      gfc_conv_expr (&class_se, class_expr);
+	      class_ref = class_se.expr;
+	      gfc_add_block_to_block (&argse.pre, &class_se.pre);
+	      gfc_add_block_to_block (&argse.post, &class_se.post);
 	    }
 	}
       else
