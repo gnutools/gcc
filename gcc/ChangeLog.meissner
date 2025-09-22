@@ -1,3 +1,40 @@
+==================== Branch work222, patch #19 ====================
+
+Use power7 CPU option for power7 support instead of -mpopcntd
+
+2025-09-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/dfp.h (cmp<mode>_internal1): Use power7 CPU option
+	support instead of -mpopcntd, except for population count instructions.
+	* config/rs6000/rs6000-builtin.cc (rs6000_builtin_is_supported):
+	Likewise.
+	* config/rs6000/rs6000-string.cc (expand_block_compare_gpr): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached):
+	Likewise.
+	(rs6000_option_override_internal): Likewise.
+	* config/rs6000/rs6000.h (TARGET_LDBRX): Likewise.
+	(TARGET_FCFID): Likewise.
+	(TARGET_LFIWZX): Likewise.
+	(TARGET_FCFIDS): Likewise.
+	(TARGET_FCFIDU): Likewise.
+	(TARGET_FCFIDUS): Likewise.
+	(TARGET_FCTIDUZ): Likewise.
+	(TARGET_FCTIWUZ): Likewise.
+	(TARGET_EXTRA_BUILTINS): Likewise.
+	(TARGET_POWER7): New macro.
+	* config/rs6000/rs6000.md (isa attribute): Use power7 CPU option support
+	instead of -mpopcntd, except for population count instructions.
+	(lrint<mode>s): Likewise.
+	(lrint<mode>si_di): Likewise.
+	(cmpmemsi): Likewise.
+	(bpermd_<mode>): Likewise.
+	(addg6s): Likewise.
+	(cdtbcd): Likewise.
+	(cbcdtd): Likewise.
+	(div<div_extend>_<mode>): Likewise.
+
 ==================== Branch work222, patch #18 ====================
 
 Remove -mpower8-internal support.
