@@ -439,7 +439,8 @@ get_CFI_desc (gfc_symbol *sym, gfc_expr *expr,
   if (tmp && DECL_LANG_SPECIFIC (tmp) && GFC_DECL_SAVED_DESCRIPTOR (tmp))
     tmp = GFC_DECL_SAVED_DESCRIPTOR (tmp);
 
-  *desc = tmp;
+  if (desc != nullptr)
+    *desc = tmp;
   return true;
 }
 
@@ -3452,21 +3453,6 @@ array_bound_check_elemental (gfc_se * se, gfc_ss * ss, gfc_expr * expr)
 }
 
 
-static tree
-build_array_ref (gfc_array_ref_info * array_ref)
-{
-  switch (array_ref->access)
-    {
-    case gfc_array_ref_info::ARRAY_INDEX:
-      break;
-    case gfc_array_ref_info::POINTER_OFFSET:
-      break;
-    }
-  
-  return NULL_TREE;
-}
-
-
 /* Add T to the offset pair *OFFSET, *CST_OFFSET.  */
 
 void
@@ -3654,18 +3640,25 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
 }
 
 
-/* Build a scalarized array reference using the vptr 'size'.  */
-
 static bool
-build_class_array_ref (gfc_se *se, tree base, tree index)
+is_class_array_ref (gfc_se *se, tree base, gfc_expr *expr, gfc_array_ref *ar,
+		    tree *class_descr)
 {
-  tree size;
   tree decl = NULL_TREE;
   tree tmp;
-  gfc_expr *expr = se->ss->info->expr;
-  gfc_expr *class_expr;
+  gfc_expr *class_expr = nullptr;
   gfc_typespec *ts;
   gfc_symbol *sym;
+
+  if (se->class_container)
+    {
+      if (class_descr)
+	*class_descr = se->class_container;
+      return true;
+    }
+  else if (ar && ar->type == AR_ELEMENT
+	   && !(expr && UNLIMITED_POLY (expr)))
+    return false;
 
   tmp = !VAR_P (base) ? gfc_get_class_from_expr (base) : NULL_TREE;
 
@@ -3687,7 +3680,7 @@ build_class_array_ref (gfc_se *se, tree base, tree index)
       class_expr = gfc_find_and_cut_at_last_class_ref (expr, false, &ts);
 
       if (!ts)
-	return false;
+	goto give_up;
 
       sym = (!class_expr && expr) ? expr->symtree->n.sym : NULL;
       if (sym && sym->attr.function
@@ -3715,6 +3708,31 @@ build_class_array_ref (gfc_se *se, tree base, tree index)
       if (!GFC_CLASS_TYPE_P (TREE_TYPE (decl)))
 	return false;
     }
+
+  if (class_descr)
+    *class_descr = decl;
+  if (class_expr != nullptr)
+    gfc_free_expr (class_expr);
+  return true;
+
+give_up:
+  if (class_expr != nullptr)
+    gfc_free_expr (class_expr);
+  return false;
+}
+
+
+/* Build a scalarized array reference using the vptr 'size'.  */
+
+static bool
+build_class_array_ref (gfc_se *se, tree base, gfc_expr * expr,
+		       gfc_array_ref *ar, tree index)
+{
+  tree size;
+  tree decl = NULL_TREE;
+
+  if (!is_class_array_ref (se, base, expr, ar, &decl))
+    return false;
 
   se->class_vptr = gfc_evaluate_now (gfc_class_vptr_get (decl), &se->pre);
 
@@ -3759,6 +3777,9 @@ non_negative_strides_array_p (tree expr)
   if (!GFC_ARRAY_TYPE_P (type))
     return false;
 
+  if (INDIRECT_REF_P (expr))
+    expr = TREE_OPERAND (expr, 0);
+
   /* If the array was originally a dummy with a descriptor, strides can be
      negative.  */
   if (DECL_P (expr)
@@ -3771,6 +3792,139 @@ non_negative_strides_array_p (tree expr)
 }
 
 
+enum gfc_array_ref_sort
+{
+  /* A regular array reference.  */
+  ARS_REGULAR_ARRAY_REF,
+  /* Pointer arithmetics, with the element size picked from the class
+     descriptor's _size field.  */
+  ARS_CLASS_PTR_ARITH,
+  /* Pointer arithmetics, with the element size picked from the array
+     descriptor's span field.  */
+  ARS_SPANNED_PTR_ARITH,
+  /* Pointer arithmetics, using the CFI descriptor's sm fields.  */
+  ARS_CFI_PTR_ARITH,
+  /* Not really an array ref.  */
+  ARS_SCALAR_COARRAY
+};
+
+
+static gfc_array_ref_sort
+classify_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
+		    gfc_array_ref *ar, bool tmp_array)
+{
+  if (ar && ar->dimen == 0 && ar->codimen != 0)
+    return ARS_SCALAR_COARRAY;
+
+  if (get_CFI_desc (NULL, expr, nullptr, ar))
+    return ARS_CFI_PTR_ARITH;
+
+  if (is_pointer_array (array)
+      || (expr && expr->ts.deferred && array
+	  && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array))))
+    return ARS_SPANNED_PTR_ARITH;
+
+  if (ar && ar->type == AR_ELEMENT)
+    {
+      tree cdesc;
+      /* For class arrays the class declaration is stored in the saved
+	 descriptor.  */
+      if (INDIRECT_REF_P (array)
+	  && DECL_LANG_SPECIFIC (TREE_OPERAND (array, 0))
+	  && GFC_DECL_SAVED_DESCRIPTOR (TREE_OPERAND (array, 0)))
+	cdesc = gfc_class_data_get (GFC_DECL_SAVED_DESCRIPTOR (
+				      TREE_OPERAND (array, 0)));
+      else
+	cdesc = array;
+
+      /* Class container types do not always have the GFC_CLASS_TYPE_P
+	 but the canonical type does.  */
+      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (cdesc))
+	  && TREE_CODE (cdesc) == COMPONENT_REF)
+	{
+	  tree type = TREE_TYPE (TREE_OPERAND (cdesc, 0));
+	  if (TYPE_CANONICAL (type)
+	      && GFC_CLASS_TYPE_P (TYPE_CANONICAL (type)))
+	    return ARS_CLASS_PTR_ARITH;
+	}
+    }
+  else if (is_class_array_ref (se, ref_base, expr, ar, nullptr))
+    return ARS_CLASS_PTR_ARITH;
+
+  if (tmp_array || non_negative_strides_array_p (array))
+    return ARS_REGULAR_ARRAY_REF;
+
+  return ARS_SPANNED_PTR_ARITH;
+}
+
+
+static void
+build_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
+		 gfc_array_ref *ar, bool is_temp_array, tree index)
+{
+  switch (classify_array_ref (se, array, ref_base, expr, ar, is_temp_array))
+    {
+    case ARS_CLASS_PTR_ARITH:
+      {
+	bool success = build_class_array_ref (se, ref_base, expr, ar, index);
+	gcc_assert (success);
+      }
+      break;
+
+    case ARS_CFI_PTR_ARITH:
+      {
+	tree cfi_decl = NULL_TREE;
+	if (get_CFI_desc (NULL, expr, &cfi_decl, ar))
+	  cfi_decl = build_fold_indirect_ref_loc (input_location, cfi_decl);
+	bool non_negative_stride = is_temp_array
+				   || non_negative_strides_array_p (array);
+	se->expr = gfc_build_array_ref (ref_base, index, non_negative_stride,
+					cfi_decl);
+      }
+      break;
+
+    case ARS_SPANNED_PTR_ARITH:
+      {
+	tree decl = NULL_TREE;
+	if (is_pointer_array (array)
+	    || (expr && UNLIMITED_POLY (expr))
+	    || (expr && expr->ts.deferred && array
+		&& GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array))))
+	  {
+	    decl = array;
+	    if (INDIRECT_REF_P (decl)
+		&& !GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (decl)))
+	      decl = TREE_OPERAND (decl, 0);
+
+	    if (DECL_P (decl)
+		&& DECL_LANG_SPECIFIC (decl)
+		&& GFC_DECL_SAVED_DESCRIPTOR (decl))
+	      decl = GFC_DECL_SAVED_DESCRIPTOR (decl);
+
+	    if (POINTER_TYPE_P (TREE_TYPE (decl))
+		&& GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (TREE_TYPE (decl))))
+	      decl = build_fold_indirect_ref_loc (input_location, decl);
+	  }
+
+	bool non_negative_stride = is_temp_array
+				   || non_negative_strides_array_p (array);
+	se->expr = gfc_build_array_ref (ref_base, index, non_negative_stride,
+					decl);
+      }
+      break;
+
+
+    default:
+      {
+	bool non_negative_stride = is_temp_array
+				   || non_negative_strides_array_p (array);
+	se->expr = gfc_build_array_ref (ref_base, index, non_negative_stride);
+      }
+      break;
+    }
+}
+
+
 /* Build a scalarized reference to an array.  */
 
 static void
@@ -3778,7 +3932,6 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
 			       bool tmp_array = false)
 {
   gfc_array_info *info;
-  tree decl = NULL_TREE;
   tree base;
   gfc_ss *ss;
   gfc_expr *expr;
@@ -3797,32 +3950,7 @@ gfc_conv_scalarized_array_ref (gfc_se * se, gfc_array_ref * ar,
 
   base = build_fold_indirect_ref_loc (input_location, info->current_elem.base);
 
-  /* Use the vptr 'size' field to access the element of a class array.  */
-  if (build_class_array_ref (se, base, index))
-    return;
-
-  if (get_CFI_desc (NULL, expr, &decl, ar))
-    decl = build_fold_indirect_ref_loc (input_location, decl);
-
-  /* A pointer array component can be detected from its field decl. Fix
-     the descriptor, mark the resulting variable decl and pass it to
-     gfc_build_array_ref.  */
-  if (is_pointer_array (info->descriptor)
-      || (expr && expr->ts.deferred && info->descriptor
-	  && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (info->descriptor))))
-    {
-      if (TREE_CODE (info->descriptor) == COMPONENT_REF)
-	decl = info->descriptor;
-      else if (INDIRECT_REF_P (info->descriptor))
-	decl = TREE_OPERAND (info->descriptor, 0);
-
-      if (decl == NULL_TREE)
-	decl = info->descriptor;
-    }
-
-  bool non_negative_stride = tmp_array
-			     || non_negative_strides_array_p (info->descriptor);
-  se->expr = gfc_build_array_ref (base, index, non_negative_stride, decl);
+  build_array_ref (se, info->descriptor, base, expr, ar, tmp_array, index);
 }
 
 
@@ -3837,39 +3965,13 @@ gfc_conv_tmp_array_ref (gfc_se * se)
 }
 
 
-static tree
-build_array_ref (tree desc, tree offset, tree decl, tree vptr)
+static void
+build_array_ref (gfc_se *se, tree array, gfc_expr *expr, gfc_array_ref *ar,
+		 tree index)
 {
-  tree tmp;
-  tree type;
-  tree cdesc;
-
-  /* For class arrays the class declaration is stored in the saved
-     descriptor.  */
-  if (INDIRECT_REF_P (desc)
-      && DECL_LANG_SPECIFIC (TREE_OPERAND (desc, 0))
-      && GFC_DECL_SAVED_DESCRIPTOR (TREE_OPERAND (desc, 0)))
-    cdesc = gfc_class_data_get (GFC_DECL_SAVED_DESCRIPTOR (
-				  TREE_OPERAND (desc, 0)));
-  else
-    cdesc = desc;
-
-  /* Class container types do not always have the GFC_CLASS_TYPE_P
-     but the canonical type does.  */
-  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (cdesc))
-      && TREE_CODE (cdesc) == COMPONENT_REF)
-    {
-      type = TREE_TYPE (TREE_OPERAND (cdesc, 0));
-      if (TYPE_CANONICAL (type)
-	  && GFC_CLASS_TYPE_P (TYPE_CANONICAL (type)))
-	vptr = gfc_class_vptr_get (TREE_OPERAND (cdesc, 0));
-    }
-
-  tmp = gfc_conv_array_data (desc);
+  tree tmp = gfc_conv_array_data (array);
   tmp = build_fold_indirect_ref_loc (input_location, tmp);
-  tmp = gfc_build_array_ref (tmp, offset, non_negative_strides_array_p (desc),
-			     decl, vptr);
-  return tmp;
+  build_array_ref (se, array, tmp, expr, ar, false, index);
 }
 
 
@@ -4064,7 +4166,7 @@ gfc_conv_array_ref (gfc_se * se, gfc_array_ref * ar, gfc_expr *expr,
     }
 
   free (var_name);
-  se->expr = build_array_ref (se->expr, index, decl, se->class_vptr);
+  build_array_ref (se, se->expr, expr, ar, index);
 }
 
 
@@ -7146,7 +7248,13 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 	return;
     }
 
-  tmp = build_array_ref (desc, offset, NULL, NULL);
+  gfc_se se;
+  gfc_init_se (&se, nullptr);
+  build_array_ref (&se, desc, expr,
+		   gfc_find_array_ref (expr, expr->expr_type != EXPR_VARIABLE),
+		   offset);
+  gfc_add_block_to_block (block, &se.pre);
+  tmp = se.expr;
 
   /* Offset the data pointer for pointer assignments from arrays with
      subreferences; e.g. my_integer => my_type(:)%integer_component.  */
@@ -7175,6 +7283,8 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
 	      break;
 
 	    case REF_SUBSTRING:
+	      if (TREE_CODE (TREE_TYPE (tmp)) == POINTER_TYPE)
+		tmp = build_fold_indirect_ref_loc (input_location, tmp);
 	      gcc_assert (TREE_CODE (TREE_TYPE (tmp)) == ARRAY_TYPE);
 	      gfc_init_se (&start, NULL);
 	      gfc_conv_expr_type (&start, ref->u.ss.start, gfc_charlen_type_node);
@@ -7253,7 +7363,18 @@ gfc_get_dataptr_offset (stmtblock_t *block, tree parm, tree desc, tree offset,
     }
 
   /* Set the target data pointer.  */
-  offset = gfc_build_addr_expr (gfc_array_dataptr_type (desc), tmp);
+  if (TREE_CODE (TREE_TYPE (tmp)) == POINTER_TYPE
+      && (TREE_CODE (TREE_TYPE (TREE_TYPE (tmp))) == ARRAY_TYPE
+	  || TREE_CODE (TREE_TYPE (TREE_TYPE (tmp))) == INTEGER_TYPE)
+      && TYPE_STRING_FLAG (TREE_TYPE (TREE_TYPE (tmp))))
+    offset = fold_convert (gfc_array_dataptr_type (desc), tmp);
+  else
+    offset = gfc_build_addr_expr (gfc_array_dataptr_type (desc), tmp);
+  if (se.post.head != NULL_TREE)
+    {
+      offset = gfc_evaluate_now (offset, block);
+      gfc_add_block_to_block (block, &se.post);
+    }
 
   /* Check for optional dummy argument being present.  Arguments of BIND(C)
      procedures are excepted here since they are handled differently.  */
