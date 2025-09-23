@@ -28,27 +28,17 @@
 #include <vector>
 #include <algorithm>
 
-/* The struct holding the info about outer switch and all inner switches it
-   points to. */
+/* The struct holding the info about outer and inenr switch pair. */
 struct switch_info
 {
-  switch_info(gswitch *outer_switch, gswitch *inner_switch) :
-  m_outer_switch(outer_switch), m_inner_switches()
-  {
-    m_inner_switches.create (1);
-    m_inner_switches.safe_push (inner_switch);
-  }
+  switch_info (gswitch *outer_switch, gswitch *inner_switch) :
+  m_outer_switch (outer_switch), m_inner_switch (inner_switch)
+  {}
 
-  void add_inner_switch (gswitch *inner_switch);
   gswitch *m_outer_switch;
-  auto_vec<gswitch*> m_inner_switches;
+  gswitch *m_inner_switch;
 };
 
-void
-switch_info::add_inner_switch (gswitch *inner_switch)
-{
-  m_inner_switches.safe_push(inner_switch);
-}
 
 void
 print_nested_switches (basic_block bb, gswitch *sw1, gswitch *sw2)
@@ -591,58 +581,40 @@ repair_cfg (case_informations &merged_case_infos, basic_block merged_switch_bb)
       make_edge (info->m_this_bb, info->m_dest_bb, 0);
     }
 
-    /* Add the missing phi arguments */
-    for (auto info : merged_case_infos)
-      {
-        edge e = (info->m_forwarder_bb == NULL)
-                 ? find_edge(info->m_this_bb, info->m_dest_bb)
-                 : find_edge(info->m_forwarder_bb, info->m_dest_bb);
+  /* Add the missing phi arguments */
+  for (auto info : merged_case_infos)
+    {
+      edge e = (info->m_forwarder_bb == NULL)
+                ? find_edge(info->m_this_bb, info->m_dest_bb)
+                : find_edge(info->m_forwarder_bb, info->m_dest_bb);
 
-        for (auto item : info->m_phi_mapping)
-          {
-            add_phi_arg (item.first, item.second, e, UNKNOWN_LOCATION);
-          }
-      }
+      for (auto item : info->m_phi_mapping)
+        add_phi_arg (item.first, item.second, e, UNKNOWN_LOCATION);
+    }
 }
 
 
 /* Adjusts the outer switch to be merged switch */
 static void
-change_outer_switch_to_merged_switch (gswitch *outer,
-                                      case_informations &merged_case_infos)
+create_merged_switch (gswitch *outer,
+                      case_informations &merged_case_infos)
 {
   gcc_assert (merged_case_infos.size () > 0);
   gcc_assert (merged_case_infos[0]->is_default ());
-  gimple_switch_set_num_labels (outer, merged_case_infos.size ());
-  for (unsigned i = 0; i < merged_case_infos.size (); ++i)
+  gimple_stmt_iterator gsi = gsi_for_stmt (outer);
+  auto_vec<tree> labels;
+  for (unsigned i = 1; i < merged_case_infos.size (); ++i)
     {
       case_info_ptr info = merged_case_infos[i];
       tree label = info->build_case ();
-      gimple_switch_set_label (outer, i, label);
+      labels.safe_push (label);
     }
-}
 
-/* Merges nested switches */
-static void
-merge_nested_switches (function *fun, switch_info *info)
-{
-  gswitch* outer = info->m_outer_switch;
-  for (gswitch* inner : info->m_inner_switches)
-    {
-      case_informations outer_case_info{}, inner_case_info{};
-      outer_switch_case_informations (fun, outer, inner, outer_case_info);
-      inner_switch_case_informations (fun, inner, inner_case_info);
-
-      if (!check_if_switches_mergeable (outer_case_info, inner_case_info))
-        continue;
-
-      case_informations merged_case_info{};
-      dump_function_to_file (fun->decl, stderr, TDF_DETAILS);
-      merge_case_infos (outer_case_info, inner_case_info, merged_case_info);
-      repair_cfg (merged_case_info, outer->bb);
-      change_outer_switch_to_merged_switch (outer, merged_case_info);
-      delete_basic_block (inner->bb);
-    }
+  gswitch *s = gimple_build_switch (gimple_switch_index(outer),
+                                    merged_case_infos[0]->build_case (),
+                                    labels);
+  gsi_remove (&gsi, true);
+  gsi_insert_before (&gsi, s, GSI_NEW_STMT);
 }
 
 
@@ -666,18 +638,17 @@ bb_only_labels_and_switch (basic_block bb)
   return true;
 }
 
-/* Finds the pairs of outer and inner switches */
-static void
-find_nested_switches (hash_map<basic_block, switch_info *> *switch_in_bb,
-                      basic_block bb)
+/* Finds the pair of outer and inner switch */
+static switch_info *
+find_nested_switch (basic_block bb)
 {
   gimple_stmt_iterator gsi = gsi_last_nondebug_bb(bb);
   if (gsi_end_p(gsi))
-    return;
+    return NULL;
 
   gswitch *outer_switch = dyn_cast<gswitch *>(gsi_stmt(gsi));
   if (outer_switch == NULL)
-    return;
+    return NULL;
 
   edge e;
   edge_iterator ei;
@@ -705,17 +676,50 @@ find_nested_switches (hash_map<basic_block, switch_info *> *switch_in_bb,
         continue;
 
       print_nested_switches(bb, outer_switch, inner_switch);
-
-      switch_info** info = switch_in_bb->get(bb);
-      if (info == NULL)
-        {
-          switch_info *new_info = new switch_info (outer_switch, inner_switch);
-          switch_in_bb->put(bb, new_info);
-          continue;
-        }
-      (*info)->add_inner_switch(inner_switch);
+      return new switch_info (outer_switch, inner_switch);
     }
+
+  return NULL;
 }
+
+
+/* Merges nested switches and returns if any were even found */
+static bool
+merge_nested_switches (function *fun, basic_block bb)
+{
+  switch_info *info = find_nested_switch (bb);
+  if (info == NULL)
+    return false;
+
+  do {
+    gswitch* outer = info->m_outer_switch;
+    gswitch* inner = info->m_inner_switch;
+    case_informations outer_case_info{}, inner_case_info{};
+    outer_switch_case_informations (fun, outer, inner, outer_case_info);
+    inner_switch_case_informations (fun, inner, inner_case_info);
+
+    if (!check_if_switches_mergeable (outer_case_info, inner_case_info))
+      {
+        delete info;
+        info = find_nested_switch (bb);
+        continue;
+      }
+
+
+    case_informations merged_case_info{};
+    dump_function_to_file (fun->decl, stderr, TDF_DETAILS);
+    merge_case_infos (outer_case_info, inner_case_info, merged_case_info);
+    repair_cfg (merged_case_info, outer->bb);
+    create_merged_switch (outer, merged_case_info);
+    delete_basic_block (inner->bb);
+    delete info;
+    info = find_nested_switch (bb);
+  } while (info);
+
+  return true;
+}
+
+
 
 namespace
 {
@@ -747,20 +751,12 @@ namespace
   unsigned int
   pass_flatten_switch::execute(function *fun)
   {
-    hash_map<basic_block, switch_info *> switches_in_bbs;
-
-    basic_block bb;
-    FOR_EACH_BB_FN (bb, fun)
-      find_nested_switches (&switches_in_bbs, bb);
-
-
-    if (switches_in_bbs.is_empty ())
-      return 0;
-
+    //*
     int *rpo = XNEWVEC (int, n_basic_blocks_for_fn (fun));
 
     unsigned n = pre_and_rev_post_order_compute_fn (fun, NULL, rpo, false);
 
+    bool seen_nested_switch = false;
     auto_bitmap seen_bbs;
     for (int i = n - 1; i >= 0; --i)
       {
@@ -769,24 +765,23 @@ namespace
           continue;
 
         bitmap_set_bit (seen_bbs, bb->index);
-        switch_info **info = switches_in_bbs.get (bb);
-        if (info == NULL)
-          continue;
-        merge_nested_switches(fun, *info);
+        seen_nested_switch |= merge_nested_switches(fun, bb);
       }
 
 
     free (rpo);
-
-
-    for (hash_map<basic_block, switch_info *>::iterator it
-        = switches_in_bbs.begin (); it != switches_in_bbs.end (); ++it)
-      delete (*it).second;
+    if (!seen_nested_switch)
+      return 0;
 
     free_dominance_info (CDI_DOMINATORS);
     dump_function_to_file (fun->decl, stderr, TDF_DETAILS);
-    return 0;
 
+    /*/
+
+    if (dump_file)
+      fprintf (dump_file, "there are %d bbs\n", n_basic_blocks_for_fn(fun));
+    //*/
+    return 0;
 
   }
 
