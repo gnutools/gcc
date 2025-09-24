@@ -21766,8 +21766,14 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	  }
 	else if (TREE_CODE (member) == FIELD_DECL)
 	  {
+	    /* Assume access of this FIELD_DECL has already been checked; we
+	       don't recheck it to avoid bogus access errors when substituting
+	       a reduced constant initializer (97740).  */
+	    gcc_checking_assert (TREE_CODE (TREE_OPERAND (t, 1)) == FIELD_DECL);
+	    push_deferring_access_checks (dk_deferred);
 	    r = finish_non_static_data_member (member, object, NULL_TREE,
 					       complain);
+	    pop_deferring_access_checks ();
 	    if (REF_PARENTHESIZED_P (t))
 	      r = force_paren_expr (r);
 	    RETURN (r);
@@ -25969,8 +25975,8 @@ unify (tree tparms, tree targs, tree parm, tree arg, int strict,
     case TYPEOF_TYPE:
     case DECLTYPE_TYPE:
     case TRAIT_TYPE:
-      /* Cannot deduce anything from TYPEOF_TYPE, DECLTYPE_TYPE,
-	 or TRAIT_TYPE nodes.  */
+    case PACK_INDEX_TYPE:
+      /* These are non-deduced contexts.  */
       return unify_success (explain_p);
 
     case ERROR_MARK:
@@ -30118,6 +30124,18 @@ make_constrained_decltype_auto (tree con, tree args)
 {
   tree type = make_auto_1 (decltype_auto_identifier, false);
   return make_constrained_placeholder_type (type, con, args);
+}
+
+/* Create an "auto..." type-specifier.  */
+
+tree
+make_auto_pack ()
+{
+  tree type = make_auto_1 (auto_identifier, false);
+  TEMPLATE_TYPE_PARAMETER_PACK (type) = true;
+  /* Our canonical type depends on being a pack.  */
+  TYPE_CANONICAL (type) = canonical_type_parameter (type);
+  return type;
 }
 
 /* Returns true if the placeholder type constraint T has any dependent

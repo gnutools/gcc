@@ -1,3 +1,187 @@
+2025-09-18  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-09-17  Patrick Palka  <ppalka@redhat.com>
+
+	* testsuite/20_util/bind/dangling_ref.cc: Compile with
+	-Wsystem-headers.
+	* testsuite/20_util/ratio/operations/ops_overflow_neg.cc: Likewise.
+	* testsuite/20_util/unique_ptr/lwg4148.cc: Likewise.
+	* testsuite/29_atomics/atomic/operators/pointer_partial_void.cc:
+	Likewise.
+	* testsuite/30_threads/packaged_task/cons/dangling_ref.cc:
+	Likewise.
+
+2025-09-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-09-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/117276
+	* include/pstl/parallel_backend_tbb.h (__func_task::finalize):
+	Make deallocation unconditional.
+
+2025-09-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-09-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/unique_ptr.h: Remove blank line.
+
+2025-09-09  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-09-05  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* doc/html/manual/status.html: Regenerate.
+	* doc/xml/manual/status_cxx2011.xml: Add entry for bad_function_call.
+	* doc/xml/manual/status_cxx2017.xml: Add entries for bad_any_cast
+	and nullptr_t output. Update entry for sf.cmath. Fix stable name for
+	mem.res.
+
+2025-09-09  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-09-05  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* doc/html/manual/status.html: Regenerate the file.
+	* doc/xml/manual/status_cxx2017.xml: Addd more entires.
+
+2025-09-08  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-09-08  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120698
+	* doc/xml/manual/configure.xml: Do not claim that vtv is enabled
+	by default.
+	* doc/html/manual/configure.html: Regenerate.
+
+2025-09-04  Yihan Wang  <yronglin777@gmail.com>
+
+	Backported from master:
+	2025-09-03  Yihan Wang  <yronglin777@gmail.com>
+
+	* include/std/expected (expected(U&&)): Add missing constraint
+	as per LWG 4222.
+	* testsuite/20_util/expected/lwg4222.cc: New test.
+
+2025-09-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-09-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/110853
+	* include/bits/stl_pair.h [C++20] (pair(const T1&, const T2&)):
+	Use std::type_identity_t<T1> for first parameter.
+	* testsuite/20_util/pair/cons/110853.cc: New test.
+
+2025-09-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-09-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/121745
+	* include/bits/stl_pair.h (get): Use forward instead of move in
+	std::get<T> overloads for rvalue pairs.
+	* testsuite/20_util/pair/astuple/get_by_type.cc: Check all value
+	categories and cv-qualification.
+
+2025-08-31  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-08-21  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/121374
+	* include/std/limits (numeric_limits<__float128>::max_digits10):
+	Fix value.
+	* testsuite/18_support/numeric_limits/128bit.cc: Check value.
+
+2025-08-31  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-08-21  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/121496
+	* include/std/mutex (__timed_mutex_impl::_M_try_wait_until):
+	Change preprocessor condition to use #if instead of #ifdef.
+	(recursive_timed_mutex::_M_clocklock): Likewise.
+	* testsuite/30_threads/timed_mutex/121496.cc: New test.
+
+2025-08-31  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-07-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/121097
+	* include/c_global/cmath (hypot): Use __promote_3 instead of
+	__promoted.
+
+2025-08-31  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-06-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120390
+	* include/bits/stl_construct.h (_Destroy_aux::__destroy_n): New
+	static member function.
+	(_Destroy_aux<true>::__destroy_n): Likewise.
+	(_Destroy_n_aux): Remove.
+	(_Destroy(ForwardIterator, ForwardIterator)): Remove
+	static_assert. Use is_trivially_destructible instead of
+	__has_trivial_destructor.
+	(_Destroy_n): Likewise. Use _Destroy_aux::__destroy_n instead of
+	_Destroy_n_aux::__destroy_n.
+	* testsuite/20_util/specialized_algorithms/memory_management_tools/destroy_neg.cc:
+	Adjust dg-error strings. Move destroy_n tests to ...
+	* testsuite/20_util/specialized_algorithms/memory_management_tools/destroy_n_neg.cc:
+	New test.
+	* testsuite/23_containers/vector/cons/destructible_debug_neg.cc:
+	Adjust dg-error strings.
+	* testsuite/23_containers/vector/cons/destructible_neg.cc:
+	Likewise.
+
+2025-08-19  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-08-18  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/121313
+	* include/bits/vector.tcc (vector::insert_range): Add check for
+	empty size.
+	* testsuite/23_containers/vector/modifiers/insert/insert_range.cc:
+	New tests.
+
+2025-08-19  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2025-07-08  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/119861
+	* include/std/format (formatter<_Rg, _CharT>::set_separator)
+	(formatter<_Rg, _CharT>::set_brackets): Constrain with
+	(format_kind<_Rg> == range_format::sequence).
+	* testsuite/std/format/ranges/pr119861_neg.cc: New test.
+
+2025-08-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-08-04  Jakub Jelinek  <jakub@redhat.com>
+		    hexne  <printfne@gmail.com>
+
+	PR libstdc++/121373
+	* src/c++23/std.cc.in (std::ranges::shift_left,
+	std::ranges::shift_right): Only export for C++23 and later.
+	(std::ranges::fold_left_first_with_iter_result,
+	std::ranges::fold_left_with_iter_result): Export.
+	(std::byteswap): Export for C++23 and later.
+	(std::ranges::iter_move, std::ranges::iter_swap): Export.
+	(std::projected_value_t): Export for C++26 and later.
+	(std::out_ptr_t, std::inout_ptr_t): Export.
+	(std::ranges::iota_result): Export.
+	(std::regex_constants): Export a lot of constants.
+	(std::is_scoped_enum, std::is_scoped_enum_v): Export.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

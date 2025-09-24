@@ -1,3 +1,76 @@
+2025-09-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/121968
+	* sem_ch12.adb (Associations.Find_Assoc): Add guard for clauses.
+	* sem_dim.adb (Analyze_Dimension_Array_Aggregate): Add test for
+	N_Iterated_Component_Association nodes.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/trans.cc (gnat_to_gnu)
+	<N_Object_Renaming_Declaration>: Deal with objects whose elaboration
+	is deferred.
+	(process_freeze_entity): Deal with renamed objects whose elaboration
+	is deferred.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* checks.adb (Apply_Discriminant_Check): Remove undocumented test
+	on Is_Aliased_View applied to the left-hand side to skip the check
+	in the case where the subtypes are the same, and replace it with a
+	test that the subtypes are constrained.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* exp_util.adb (Finalize_Address): In an untagged derivation, call
+	Root_Type on the full view of the base type if the partial view is
+	itself not a derived type.
+	(Is_Untagged_Derivation): Minor formatting tweak.
+
+2025-09-11  Gary Dismukes  <dismukes@adacore.com>
+
+	* exp_aggr.adb (Build_Container_Aggr_Code.Build_Size_Expr): In the case
+	of an association with a single choice, only call Update_Choices when
+	the choice expression is nonstatic.
+
+2025-09-11  Javier Miranda  <miranda@adacore.com>
+
+	* sem_util.adb (Needs_One_Actual): Add support for untagged record
+	types when the sources are compiled with Core Extensions allowed.
+
+2025-09-11  Viljar Indus  <indus@adacore.com>
+
+	* sem_ch13.adb (Analyze_Aspect_Definitions): Create a temporary
+	pragma for the non-task and access type cases.
+
+2025-09-11  Marc Poulhiès  <poulhies@adacore.com>
+
+	* s-pack.adb.tmpl: Typo fix in comment.
+
+2025-09-11  Piotr Trojanek  <trojanek@adacore.com>
+
+	* sem_prag.adb (Check_Interrupt_Or_Attach_Handler): Refine test for
+	protected procedures; fix typo in comment.
+
+2025-09-11  Denis Mazzucato  <mazzucato@adacore.com>
+
+	* exp_ch3.adb (Init_Formals): Remove the check on Global_No_Tasking.
+	* sem.adb: Fix typo.
+
+2025-09-11  Gary Dismukes  <dismukes@adacore.com>
+
+	* exp_aggr.adb (Build_Container_Aggr_Code.To_Int): Replace existing
+	conditional expression with call to Expr_Value.
+
+2025-09-11  Steve Baird  <baird@adacore.com>
+
+	* freeze.adb (Freeze_Profile): Do not emit a warning stating that
+	a formal parameter's size is 8 if the parameter's size is not 8.
+
+2025-09-11  Marc Poulhiès  <poulhies@adacore.com>
+
+	* gcc-interface/trans.cc (gnat_to_gnu): Fix typo in comment.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.
