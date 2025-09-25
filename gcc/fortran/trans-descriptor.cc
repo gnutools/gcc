@@ -2621,7 +2621,6 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
       tree lower = tse.expr;
       gfc_add_block_to_block (block, &tse.pre);
       gfc_conv_descriptor_lbound_set (block, descr, gfc_rank_cst[i], lower);
-      gfc_add_block_to_block (block, &tse.post);
       e = gfc_copy_expr (as->upper[i]);
       gfc_insert_parameter_exprs (e, pdt_param_list);
       gfc_conv_expr_type (&tse, e, gfc_array_index_type);
@@ -2629,7 +2628,6 @@ gfc_set_pdt_array_descriptor (stmtblock_t *block, tree descr,
       tree upper = tse.expr;
       gfc_add_block_to_block (block, &tse.pre);
       gfc_conv_descriptor_ubound_set (block, descr, gfc_rank_cst[i], upper);
-      gfc_add_block_to_block (block, &tse.post);
       gfc_conv_descriptor_stride_set (block, descr, gfc_rank_cst[i], size);
       size = gfc_evaluate_now (size, block);
       offset = fold_build2_loc (input_location, MINUS_EXPR,
