@@ -1422,13 +1422,13 @@ gfc_add_finalizer_call (stmtblock_t *block, gfc_expr *expr2,
       expr->corank = CLASS_DATA (expr2->symtree->n.sym)->as->corank;
     }
 
-  stmtblock_t tmp_block;
-  gfc_start_block (&tmp_block);
-
   gfc_se final_se;
   gfc_init_se (&final_se, NULL);
   get_final_proc_ref (&final_se, expr, class_container);
   gfc_add_block_to_block (block, &final_se.pre);
+
+  stmtblock_t tmp_block;
+  gfc_start_block (&tmp_block);
 
   gfc_se size_se;
   gfc_init_se (&size_se, NULL);
@@ -1507,8 +1507,6 @@ gfc_assignment_finalizer_call (gfc_se *lse, gfc_expr *expr1, bool init_flag)
   gfc_se se;
   gfc_symbol *sym = expr1->symtree->n.sym;
   gfc_ref *ref = expr1->ref;
-  stmtblock_t final_block;
-  gfc_init_block (&final_block);
   gfc_expr *finalize_expr;
   bool class_array_ref;
 
@@ -1544,6 +1542,8 @@ gfc_assignment_finalizer_call (gfc_se *lse, gfc_expr *expr1, bool init_flag)
   if (!gfc_may_be_finalized (sym->ts))
     return false;
 
+  stmtblock_t outer_block, final_block;
+  gfc_start_block (&outer_block);
   gfc_init_block (&final_block);
   bool finalizable = gfc_add_finalizer_call (&final_block, finalize_expr);
   gfc_free_expr (finalize_expr);
@@ -1558,7 +1558,7 @@ gfc_assignment_finalizer_call (gfc_se *lse, gfc_expr *expr1, bool init_flag)
     {
       if (expr1->ts.type == BT_CLASS)
 	{
-	  ptr = gfc_get_class_from_gfc_expr (expr1);
+	  ptr = gfc_get_class_from_gfc_expr (expr1, &outer_block);
 	  gcc_assert (ptr != NULL_TREE);
 	  ptr = gfc_class_data_get (ptr);
 	  if (lhs_attr.dimension)
@@ -1577,6 +1577,7 @@ gfc_assignment_finalizer_call (gfc_se *lse, gfc_expr *expr1, bool init_flag)
 	      gfc_conv_expr (&se, expr1);
 	      ptr = gfc_build_addr_expr (NULL_TREE, se.expr);
 	    }
+	  gfc_add_block_to_block (&outer_block, &se.pre);
 	}
 
       cond = fold_build2_loc (input_location, NE_EXPR, logical_type_node,
@@ -1597,7 +1598,8 @@ gfc_assignment_finalizer_call (gfc_se *lse, gfc_expr *expr1, bool init_flag)
 			       build_empty_stmt (input_location));
     }
 
-  gfc_add_expr_to_block (&lse->finalblock, final_expr);
+  gfc_add_expr_to_block (&outer_block, final_expr);
+  gfc_add_expr_to_block (&lse->finalblock, gfc_finish_block (&outer_block));
 
   return true;
 }

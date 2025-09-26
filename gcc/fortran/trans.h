@@ -473,7 +473,7 @@ void gfc_reset_vptr (stmtblock_t *, gfc_expr *, tree = NULL_TREE,
 		     gfc_symbol * = nullptr);
 void gfc_class_set_vptr (stmtblock_t *, tree, tree);
 void gfc_reset_len (stmtblock_t *, gfc_expr *);
-tree gfc_get_class_from_gfc_expr (gfc_expr *);
+tree gfc_get_class_from_gfc_expr (gfc_expr *, stmtblock_t *pre_block = nullptr);
 tree gfc_get_class_from_expr (tree);
 tree gfc_get_vptr_from_expr (tree);
 tree gfc_copy_class_to_class (tree, tree, tree, bool);

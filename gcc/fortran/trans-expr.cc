@@ -671,7 +671,7 @@ gfc_reset_len (stmtblock_t *block, gfc_expr *expr)
    for expressions other than variables.  */
 
 tree
-gfc_get_class_from_gfc_expr (gfc_expr *e)
+gfc_get_class_from_gfc_expr (gfc_expr *e, stmtblock_t *pre_block)
 {
   gfc_expr *class_expr;
   gfc_se cse;
@@ -681,6 +681,8 @@ gfc_get_class_from_gfc_expr (gfc_expr *e)
   gfc_init_se (&cse, NULL);
   gfc_conv_expr (&cse, class_expr);
   gfc_free_expr (class_expr);
+  if (pre_block)
+    gfc_add_block_to_block (pre_block, &cse.pre);
   return cse.expr;
 }
 
