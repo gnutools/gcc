@@ -10829,7 +10829,7 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
 	      tmp = gfc_typenode_for_spec (&expr2->ts);
 	      tmp = gfc_get_array_type_bounds (tmp, expr2->rank, 0,
 					       bound, bound, 0,
-					       GFC_ARRAY_POINTER_CONT, false);
+					       GFC_ARRAY_POINTER, false);
 	      tmp = gfc_create_var (tmp, "ptrtemp");
 	      rse.descriptor_only = 0;
 	      rse.expr = tmp;

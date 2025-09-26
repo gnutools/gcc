@@ -483,9 +483,13 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_EXTENT_BYTES(desc,i) \
   (GFC_DESCRIPTOR_EXTENT(desc,i) * GFC_DESCRIPTOR_SIZE(desc))
 
-#define GFC_DESCRIPTOR_STRIDE(desc,i) ((desc)->dim[i]._stride)
+#define GFC_DESCRIPTOR_STRIDE(desc,i) \
+  ((desc)->dim[i]._stride)
+#define GFC_DESCRIPTOR_STRIDE_UNITS(desc,i) \
+  ({assert (GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) % GFC_DESCRIPTOR_SIZE(desc) == 0); \
+   GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) / GFC_DESCRIPTOR_SIZE(desc);})
 #define GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_STRIDE(desc,i) * GFC_DESCRIPTOR_SPAN(desc))
+  (GFC_DESCRIPTOR_STRIDE((desc),(i)))
 
 /* Macros to get both the size and the type with a single masking operation  */
 

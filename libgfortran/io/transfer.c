@@ -3744,7 +3744,7 @@ init_loop_spec (gfc_array_char *desc, array_loop_spec *ls,
   int empty;
 
   empty = 0;
-  index = 1;
+  index = 0;
   *start_record = 0;
 
   for (i=0; i<rank; i++)
@@ -3752,21 +3752,21 @@ init_loop_spec (gfc_array_char *desc, array_loop_spec *ls,
       ls[i].idx = GFC_DESCRIPTOR_LBOUND(desc,i);
       ls[i].start = GFC_DESCRIPTOR_LBOUND(desc,i);
       ls[i].end = GFC_DESCRIPTOR_UBOUND(desc,i);
-      ls[i].step = GFC_DESCRIPTOR_STRIDE(desc,i);
+      ls[i].step = GFC_DESCRIPTOR_STRIDE_BYTES(desc,i);
       empty = empty || (GFC_DESCRIPTOR_UBOUND(desc,i)
 			< GFC_DESCRIPTOR_LBOUND(desc,i));
 
-      if (GFC_DESCRIPTOR_STRIDE(desc,i) > 0)
+      if (GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) > 0)
 	{
 	  index += (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_STRIDE_BYTES(desc,i);
 	}
       else
 	{
 	  index -= (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_STRIDE_BYTES(desc,i);
 	  *start_record -= (GFC_DESCRIPTOR_EXTENT(desc,i) - 1)
-	    * GFC_DESCRIPTOR_STRIDE(desc,i);
+	    * GFC_DESCRIPTOR_STRIDE_BYTES(desc,i);
 	}
     }
 
@@ -3935,7 +3935,6 @@ next_record_r (st_parameter_dt *dtp, int done)
 		hit_eof (dtp);
 
 	      /* Now seek to this record.  */
-	      record = record * dtp->u.p.current_unit->recl;
 	      if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 		{
 		  generate_error (&dtp->common, LIBERROR_INTERNAL_UNIT, NULL);
@@ -4272,8 +4271,6 @@ next_record_w (st_parameter_dt *dtp, int done)
 		dtp->u.p.current_unit->endfile = AT_ENDFILE;
 
 	      /* Now seek to this record */
-	      record = record * dtp->u.p.current_unit->recl;
-
 	      if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 		{
 		  generate_error (&dtp->common, LIBERROR_INTERNAL_UNIT, NULL);

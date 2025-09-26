@@ -1090,7 +1090,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
     gfc_get_array_type_bounds (eltype, total_dim, 0, from, to, packed,
 			       GFC_ARRAY_UNKNOWN, true);
   desc = gfc_create_var (type, "atmp");
-  GFC_DECL_PACKED_ARRAY (desc) = 1;
+  GFC_DECL_PACKED_ARRAY (desc) = packed;
 
   /* Emit a DECL_EXPR for the variable sized array type in
      GFC_TYPE_ARRAY_DATAPTR_TYPE so the gimplification of its type
@@ -3796,6 +3796,9 @@ enum gfc_array_ref_sort
 {
   /* A regular array reference.  */
   ARS_REGULAR_ARRAY_REF,
+  /* Pointer arithmetics, with the strides from the array descriptor used as
+     byte offsets.  */
+  ARS_BYTES_STRIDED_PTR_ARITH,
   /* Pointer arithmetics, with the element size picked from the class
      descriptor's _size field.  */
   ARS_CLASS_PTR_ARITH,
@@ -3822,7 +3825,12 @@ classify_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
   if (is_pointer_array (array)
       || (expr && expr->ts.deferred && array
 	  && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array))))
-    return ARS_SPANNED_PTR_ARITH;
+    {
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array)))
+	return ARS_BYTES_STRIDED_PTR_ARITH;
+      else
+	return ARS_SPANNED_PTR_ARITH;
+    }
 
   if (ar && ar->type == AR_ELEMENT)
     {
@@ -3850,6 +3858,9 @@ classify_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
     }
   else if (is_class_array_ref (se, ref_base, expr, ar, nullptr))
     return ARS_CLASS_PTR_ARITH;
+
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array)))
+    return ARS_BYTES_STRIDED_PTR_ARITH;
 
   if (tmp_array || non_negative_strides_array_p (array))
     return ARS_REGULAR_ARRAY_REF;
@@ -3880,6 +3891,18 @@ build_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
 				   || non_negative_strides_array_p (array);
 	se->expr = gfc_build_array_ref (ref_base, index, non_negative_stride,
 					cfi_decl);
+      }
+      break;
+
+    case ARS_BYTES_STRIDED_PTR_ARITH:
+      {
+	tree offset = fold_convert_loc (input_location, size_type_node,
+					index);
+	tree p = fold_build2_loc (input_location, POINTER_PLUS_EXPR,
+				  TREE_TYPE (ref_base), ref_base, offset);
+	p = fold_convert_loc (input_location,
+			      GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (array)), p);
+	se->expr = build_fold_indirect_ref_loc (input_location, p);
       }
       break;
 
@@ -6939,9 +6962,14 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 	 anything as we still don't know the array stride.  */
       partial = gfc_create_var (logical_type_node, "partial");
       TREE_USED (partial) = 1;
-      tmp = gfc_conv_descriptor_stride_get (dumdesc, gfc_rank_cst[0]);
-      tmp = fold_build2_loc (input_location, EQ_EXPR, logical_type_node, tmp,
-			     gfc_index_one_node);
+      tree packed_stride;
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dumdesc)))
+	packed_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+      else
+	packed_stride = gfc_index_one_node;
+      tree stride = gfc_conv_descriptor_stride_get (dumdesc, 0);
+      tmp = fold_build2_loc (input_location, EQ_EXPR, logical_type_node, stride,
+			     packed_stride);
       gfc_add_modify (&init, partial, tmp);
     }
   else
@@ -6957,8 +6985,13 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 
       tmp = fold_build2_loc (input_location, EQ_EXPR, logical_type_node,
 			     stride, gfc_index_zero_node);
+      tree default_stride;
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dumdesc)))
+	default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+      else
+	default_stride = gfc_index_one_node;
       tmp = fold_build3_loc (input_location, COND_EXPR, gfc_array_index_type,
-			     tmp, gfc_index_one_node, stride);
+			     tmp, default_stride, stride);
       stride = GFC_TYPE_ARRAY_STRIDE (type, 0);
       gfc_add_modify (&init, stride, tmp);
 
@@ -8807,6 +8840,9 @@ gfc_full_array_size (stmtblock_t *block, tree decl, int rank)
   tree idx;
   tree nelems;
   tree tmp;
+
+  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (decl)));
+
   if (rank < 0)
     idx = gfc_conv_descriptor_rank_get (decl);
   else

@@ -1645,9 +1645,19 @@ gfc_build_array_type (tree type, gfc_array_spec * as,
 	akind = contiguous ? GFC_ARRAY_ASSUMED_RANK_CONT
 			   : GFC_ARRAY_ASSUMED_RANK;
     }
+
+  bool packed = contiguous
+		|| as->type == AS_EXPLICIT
+		|| as->type == AS_ASSUMED_SIZE
+		|| akind == GFC_ARRAY_ALLOCATABLE
+		|| akind == GFC_ARRAY_POINTER_CONT
+		|| akind == GFC_ARRAY_ASSUMED_SHAPE_CONT
+		|| akind == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
+		|| akind == GFC_ARRAY_ASSUMED_RANK_CONT
+		|| akind == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT;
   return gfc_get_array_type_bounds (type, as->rank == -1
 					  ? GFC_MAX_DIMENSIONS : as->rank,
-				    corank, lbound, ubound, 0, akind,
+				    corank, lbound, ubound, packed, akind,
 				    restricted);
 }
 
@@ -2071,6 +2081,7 @@ gfc_get_array_type_bounds (tree etype, int dimen, int codimen, tree * lbound,
   GFC_TYPE_ARRAY_CORANK (fat_type) = codimen;
   GFC_TYPE_ARRAY_DTYPE (fat_type) = NULL_TREE;
   GFC_TYPE_ARRAY_AKIND (fat_type) = akind;
+  GFC_BYTES_STRIDES_ARRAY_TYPE_P (fat_type) = !packed;
 
   /* Build an array descriptor record type.  */
   if (packed != 0)
@@ -3757,7 +3768,8 @@ gfc_get_array_descr_info (const_tree type, struct array_descr_info *info)
 				   size_binop (PLUS_EXPR,
 					       dim_off, stride_suboff));
       t = build1 (INDIRECT_REF, gfc_array_index_type, t);
-      t = build2 (MULT_EXPR, gfc_array_index_type, t, elem_size);
+      if (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (type))
+	t = build2 (MULT_EXPR, gfc_array_index_type, t, elem_size);
       info->dimen[dim].stride = t;
       if (dim + 1 < rank)
 	dim_off = size_binop (PLUS_EXPR, dim_off, dim_size);

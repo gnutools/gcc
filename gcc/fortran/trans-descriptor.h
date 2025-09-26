@@ -45,6 +45,8 @@ tree gfc_conv_descriptor_token (tree desc);
 
 tree gfc_conv_descriptor_data_get (tree desc);
 tree gfc_conv_descriptor_offset_get (tree desc);
+tree gfc_conv_descriptor_offset_units_get (tree desc);
+tree gfc_conv_descriptor_offset_bytes_get (tree desc);
 tree gfc_conv_descriptor_dtype_get (tree desc);
 tree gfc_conv_descriptor_elem_len_get (tree desc);
 tree gfc_conv_descriptor_version_get (tree desc);
@@ -55,6 +57,8 @@ tree gfc_conv_descriptor_span_get (tree desc);
 tree gfc_conv_descriptor_dimension_get (tree desc, tree dim);
 tree gfc_conv_descriptor_dimension_get (tree desc, int dim);
 tree gfc_conv_descriptor_stride_get (tree desc, tree dim);
+tree gfc_conv_descriptor_stride_units_get (tree desc, tree dim);
+tree gfc_conv_descriptor_stride_bytes_get (tree desc, tree dim);
 tree gfc_conv_descriptor_lbound_get (tree desc, tree dim);
 tree gfc_conv_descriptor_ubound_get (tree desc, tree dim);
 tree gfc_conv_descriptor_sm_get (tree desc, tree dim);

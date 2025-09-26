@@ -87,8 +87,8 @@ cfi_desc_to_gfc_desc (gfc_array_void *d, CFI_cdesc_t **s_ptr)
 
 	GFC_DESCRIPTOR_LBOUND(d, n) = (index_type)lb;
 	GFC_DESCRIPTOR_UBOUND(d, n) = (index_type)(s->dim[n].extent + lb - 1);
-	GFC_DESCRIPTOR_STRIDE(d, n) = (index_type)(s->dim[n].sm / s->elem_len);
-	d->offset -= GFC_DESCRIPTOR_STRIDE(d, n) * GFC_DESCRIPTOR_LBOUND(d, n);
+	GFC_DESCRIPTOR_STRIDE_BYTES(d, n) = (index_type)(s->dim[n].sm / s->elem_len);
+	d->offset -= GFC_DESCRIPTOR_STRIDE_BYTES(d, n) * GFC_DESCRIPTOR_LBOUND(d, n);
       }
 }
 

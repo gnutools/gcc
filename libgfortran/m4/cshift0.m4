@@ -24,7 +24,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
 
 #include "libgfortran.h"
-#include <string.h>'
+#include <string.h>
+#include <assert.h>'
 
 include(iparm.m4)dnl
 
@@ -116,7 +117,7 @@ cshift0_'rtype_code` ('rtype` *ret, const 'rtype` *array, ptrdiff_t shift,
       rstride[0] = sizeof ('rtype_name`);
       roffset = sizeof ('rtype_name`);
       soffset = sizeof ('rtype_name`);
-      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE_UNITS(array, which);
       len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
       shift *= count_low;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)

@@ -25,6 +25,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #include "libgfortran.h"
 #include <string.h>
+#include <assert.h>
 
 
 static void
@@ -80,7 +81,6 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);
 
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, i, 0, ub, str);
-
         }
 
       /* xmallocarray allocates a single byte for zero size.  */
@@ -106,20 +106,20 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
     {
       /* Test if both ret and array are contiguous.  */
       index_type r_ex, a_ex;
-      r_ex = 1;
-      a_ex = 1;
+      r_ex = size;
+      a_ex = size;
       do_blocked = true;
       dim = GFC_DESCRIPTOR_RANK (array);
       for (n = 0; n < dim; n ++)
 	{
 	  index_type rs, as;
-	  rs = GFC_DESCRIPTOR_STRIDE (ret, n);
+	  rs = GFC_DESCRIPTOR_STRIDE_BYTES (ret, n);
 	  if (rs != r_ex)
 	    {
 	      do_blocked = false;
 	      break;
 	    }
-	  as = GFC_DESCRIPTOR_STRIDE (array, n);
+	  as = GFC_DESCRIPTOR_STRIDE_BYTES (array, n);
 	  if (as != a_ex)
 	    {
 	      do_blocked = false;
@@ -147,7 +147,7 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
 	 bn = eoshift(a,sh*n1*n2,1)
 
 	 so a block move can be used for dim>1.  */
-      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE_UNITS(array, which);
       len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
       shift *= count_low;
       roffset = size;

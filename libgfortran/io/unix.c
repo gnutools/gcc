@@ -1098,7 +1098,7 @@ open_internal4 (char *base, size_t length, gfc_offset offset)
   s->buffer = base;
   s->buffer_offset = offset;
 
-  s->active = s->file_length = length * sizeof (gfc_char4_t);
+  s->active = s->file_length = length;
 
   s->st.vptr = &mem4_vtable;
 

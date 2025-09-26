@@ -2347,9 +2347,15 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
       gfc_add_block_to_block (&se->post, &argse.post);
       desc = gfc_evaluate_now (argse.expr, &se->pre);
 
+      tree initial_stride;
       stride = gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[0]);
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)))
+	initial_stride = fold_convert (TREE_TYPE (stride),
+				       gfc_conv_descriptor_elem_len_get (desc));
+      else
+	initial_stride = build_int_cst (TREE_TYPE (stride), 1);
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
-			      stride, build_int_cst (TREE_TYPE (stride), 1));
+			      stride, initial_stride);
 
       for (i = 0; i < arg->rank - 1; i++)
 	{

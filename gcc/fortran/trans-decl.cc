@@ -7683,9 +7683,10 @@ done:
   tmp = gfc_conv_descriptor_extent_get (gfc_desc, idx);
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_extent (cfi, idx), tmp);
   /* d->dim[n].sm = gfc->dim[i].stride  * gfc->span); */
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			     gfc_conv_descriptor_stride_get (gfc_desc, idx),
-			     gfc_conv_descriptor_span_get (gfc_desc));
+  tmp = gfc_conv_descriptor_stride_get (gfc_desc, idx);
+  if (!GFC_BYTES_STRIDES_ARRAY_TYPE_P  (TREE_TYPE (gfc_desc)))
+    tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			   tmp, gfc_conv_descriptor_span_get (gfc_desc));
   gfc_add_modify (&loop_body, gfc_get_cfi_dim_sm (cfi, idx), tmp);
 
   /* Generate loop.  */

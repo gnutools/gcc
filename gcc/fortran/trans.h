@@ -1119,6 +1119,9 @@ struct GTY(()) lang_decl {
 #define GFC_ARRAY_TYPE_P(node) TYPE_LANG_FLAG_2(node)
 /* Fortran CLASS type.  */
 #define GFC_CLASS_TYPE_P(node) TYPE_LANG_FLAG_4(node)
+/* If true, the strides represent an amount of bytes.  If false they represent
+   an amount of units of the element type.  */
+#define GFC_BYTES_STRIDES_ARRAY_TYPE_P(node) TYPE_LANG_FLAG_3(node)
 /* The GFC_TYPE_ARRAY_* members are present in both descriptor and
    descriptorless array types.  */
 #define GFC_TYPE_ARRAY_LBOUND(node, dim) \
