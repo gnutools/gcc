@@ -1,3 +1,13 @@
+==================== Branch work222-float, patch #301 ====================
+
+Fix typo in _Float16 conversion.
+
+2025-09-25  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (trunc<mode>hf2): Use %x1 instead of %1.
+
 ==================== Branch work222-float, patch #300 ====================
 
 Add initial _Float16 support.
