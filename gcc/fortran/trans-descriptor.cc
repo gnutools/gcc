@@ -1849,7 +1849,7 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		    bool subref)
 {
   gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
-	      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
+	      || !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
 
   int ndim = info->ref ? info->ref->u.ar.dimen : rank;
 
@@ -1916,7 +1916,12 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 
   for (int n = 0; n < ndim; n++)
     {
-      tree stride = gfc_conv_array_stride (src, n);
+      tree stride;
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+	  == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+	stride = gfc_conv_array_stride (src, n);
+      else
+	stride = gfc_conv_array_stride_bytes (src, n);
 
       /* Work out the 1st element in the section.  */
       tree start;

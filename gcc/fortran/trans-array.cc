@@ -3207,6 +3207,27 @@ gfc_conv_array_stride (tree descriptor, int dim)
   return tmp;
 }
 
+/* Get an expression for the array stride.  */
+
+tree
+gfc_conv_array_stride_bytes (tree descriptor, int dim)
+{
+  tree type;
+
+  type = TREE_TYPE (descriptor);
+
+  tree raw_stride = gfc_conv_array_stride (descriptor, dim);
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (type))
+    return raw_stride;
+
+  tree element_type = gfc_get_element_type (type);
+  tree elt_size = TYPE_SIZE_UNIT (element_type);
+  if (elt_size == NULL_TREE)
+    elt_size = gfc_conv_descriptor_elem_len_get (descriptor);
+
+  return fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			  raw_stride, elt_size);
+}
 
 /* Like gfc_conv_array_stride, but for the lower bound.  */
 
