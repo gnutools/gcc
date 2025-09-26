@@ -25,6 +25,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #include "libgfortran.h"
 #include <string.h>
+#include <assert.h>
 
 
 #if defined (HAVE_GFC_REAL_16)
@@ -115,7 +116,7 @@ cshift0_r16 (gfc_array_r16 *ret, const gfc_array_r16 *array, ptrdiff_t shift,
       rstride[0] = sizeof (GFC_REAL_16);
       roffset = sizeof (GFC_REAL_16);
       soffset = sizeof (GFC_REAL_16);
-      index_type count_low = GFC_DESCRIPTOR_STRIDE(array, which);
+      index_type count_low = GFC_DESCRIPTOR_STRIDE_UNITS(array, which);
       len = count_low * GFC_DESCRIPTOR_EXTENT(array, which);
       shift *= count_low;
       for (dim = which + 1; dim < GFC_DESCRIPTOR_RANK (array); dim++)

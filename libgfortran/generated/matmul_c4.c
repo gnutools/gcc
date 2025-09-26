@@ -183,12 +183,12 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
@@ -196,7 +196,7 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
       /* Treat it as a a row matrix A[1,count]. */
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
       aystride = 1;
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
@@ -206,8 +206,8 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
-      aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
+      aystride = GFC_DESCRIPTOR_STRIDE_UNITS(a,1);
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
@@ -226,7 +226,7 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
       /* Treat it as a column matrix B[count,1] */
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
@@ -238,8 +238,8 @@ matmul_c4_avx (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
-      bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
+      bystride = GFC_DESCRIPTOR_STRIDE_UNITS(b,1);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
@@ -775,12 +775,12 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
@@ -788,7 +788,7 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
       /* Treat it as a a row matrix A[1,count]. */
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
       aystride = 1;
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
@@ -798,8 +798,8 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
-      aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
+      aystride = GFC_DESCRIPTOR_STRIDE_UNITS(a,1);
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
@@ -818,7 +818,7 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
       /* Treat it as a column matrix B[count,1] */
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
@@ -830,8 +830,8 @@ matmul_c4_avx2 (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
-      bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
+      bystride = GFC_DESCRIPTOR_STRIDE_UNITS(b,1);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
@@ -1367,12 +1367,12 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
@@ -1380,7 +1380,7 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
       /* Treat it as a a row matrix A[1,count]. */
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
       aystride = 1;
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
@@ -1390,8 +1390,8 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
-      aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
+      aystride = GFC_DESCRIPTOR_STRIDE_UNITS(a,1);
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
@@ -1410,7 +1410,7 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
       /* Treat it as a column matrix B[count,1] */
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
@@ -1422,8 +1422,8 @@ matmul_c4_avx512f (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
-      bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
+      bystride = GFC_DESCRIPTOR_STRIDE_UNITS(b,1);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
@@ -1973,12 +1973,12 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
@@ -1986,7 +1986,7 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
       /* Treat it as a a row matrix A[1,count]. */
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
       aystride = 1;
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
@@ -1996,8 +1996,8 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
-      aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
+      aystride = GFC_DESCRIPTOR_STRIDE_UNITS(a,1);
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
@@ -2016,7 +2016,7 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
       /* Treat it as a column matrix B[count,1] */
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
@@ -2028,8 +2028,8 @@ matmul_c4_vanilla (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
-      bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
+      bystride = GFC_DESCRIPTOR_STRIDE_UNITS(b,1);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
@@ -2638,12 +2638,12 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
       /* One-dimensional result may be addressed in the code below
 	 either as a row or a column matrix. We want both cases to
 	 work. */
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,0);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,0);
       rxstride_bytes = rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
     }
   else
     {
-      rystride = GFC_DESCRIPTOR_STRIDE(retarray,1);
+      rystride = GFC_DESCRIPTOR_STRIDE_UNITS(retarray,1);
       rxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,0);
       rystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(retarray,1);
     }
@@ -2651,7 +2651,7 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (a) == 1)
     {
       /* Treat it as a a row matrix A[1,count]. */
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
       aystride = 1;
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = sizeof (GFC_COMPLEX_4);
@@ -2661,8 +2661,8 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      axstride = GFC_DESCRIPTOR_STRIDE(a,0);
-      aystride = GFC_DESCRIPTOR_STRIDE(a,1);
+      axstride = GFC_DESCRIPTOR_STRIDE_UNITS(a,0);
+      aystride = GFC_DESCRIPTOR_STRIDE_UNITS(a,1);
       axstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,0);
       aystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(a,1);
 
@@ -2681,7 +2681,7 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
   if (GFC_DESCRIPTOR_RANK (b) == 1)
     {
       /* Treat it as a column matrix B[count,1] */
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
 
       /* bystride should never be used for 1-dimensional b.
@@ -2693,8 +2693,8 @@ matmul_c4 (gfc_array_c4 * const restrict retarray,
     }
   else
     {
-      bxstride = GFC_DESCRIPTOR_STRIDE(b,0);
-      bystride = GFC_DESCRIPTOR_STRIDE(b,1);
+      bxstride = GFC_DESCRIPTOR_STRIDE_UNITS(b,0);
+      bystride = GFC_DESCRIPTOR_STRIDE_UNITS(b,1);
       bxstride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,0);
       bystride_bytes = GFC_DESCRIPTOR_STRIDE_BYTES(b,1);
       ycount = GFC_DESCRIPTOR_EXTENT(b,1);
