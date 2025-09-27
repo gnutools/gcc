@@ -3744,7 +3744,7 @@ init_loop_spec (gfc_array_char *desc, array_loop_spec *ls,
   int empty;
 
   empty = 0;
-  index = 0;
+  index = GFC_DESCRIPTOR_SIZE (desc);
   *start_record = 0;
 
   for (i=0; i<rank; i++)

@@ -251,7 +251,6 @@ next_char_internal (st_parameter_dt *dtp)
 	      goto done;
 	    }
 
-	  record *= dtp->u.p.current_unit->recl;
 	  if (sseek (dtp->u.p.current_unit->s, record, SEEK_SET) < 0)
 	    return EOF;
 
