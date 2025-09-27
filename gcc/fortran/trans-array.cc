@@ -7017,7 +7017,12 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 			     stride, gfc_index_zero_node);
       tree default_stride;
       if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dumdesc)))
-	default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+	{
+	  default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+	  default_stride = fold_convert_loc (input_location,
+					     gfc_array_index_type,
+					     default_stride);
+	}
       else
 	default_stride = gfc_index_one_node;
       tmp = fold_build3_loc (input_location, COND_EXPR, gfc_array_index_type,
