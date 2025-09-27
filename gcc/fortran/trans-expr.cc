@@ -11644,7 +11644,7 @@ gfc_trans_arrayfunc_assign (gfc_expr * expr1, gfc_expr * expr2)
 	      tree tmp2 = gfc_get_symbol_decl (gfc_find_vtab (&expr2->ts));
 	      tmp2 = gfc_build_addr_expr (TREE_TYPE (tmp), tmp2);
 	      gfc_add_modify (&se.pre, tmp, tmp2);
-	      dtype = gfc_get_dtype_rank_type (expr1->rank,type);
+	      dtype = gfc_get_dtype_rank_type (expr1->rank, type, false);
 	    }
 	  fcncall_realloc_result (&se, expr1->rank, dtype);
 	}

@@ -171,8 +171,20 @@ tree get_dtype_type_node (void)
       suppress_warning (field);
       field = gfc_add_field_to_struct_1 (dtype_node,
 					 get_identifier ("attribute"),
-					 short_integer_type_node, &dtype_chain);
+					 short_unsigned_type_node, &dtype_chain);
+      DECL_BIT_FIELD (field) = 1;
+      tree type_size = TYPE_SIZE (TREE_TYPE (field));
+      DECL_SIZE (field) = int_const_binop (MINUS_EXPR, type_size,
+					   build_one_cst (TREE_TYPE (type_size)));
       suppress_warning (field);
+
+      field = gfc_add_field_to_struct_1 (dtype_node,
+					 get_identifier ("bytes_counted_strides"),
+					 short_unsigned_type_node, &dtype_chain);
+      DECL_BIT_FIELD (field) = 1;
+      DECL_SIZE (field) = bitsize_int (1);
+      suppress_warning (field);
+
       gfc_finish_type (dtype_node);
       TYPE_DECL_SUPPRESS_DEBUG (TYPE_STUB_DECL (dtype_node)) = 1;
       dtype_type_node = dtype_node;
@@ -1714,7 +1726,8 @@ gfc_get_dtype (tree type, int * rank)
 
   irnk = (rank) ? (*rank) : (GFC_TYPE_ARRAY_RANK (type));
   etype = gfc_get_element_type (type);
-  dtype = gfc_get_dtype_rank_type (irnk, etype);
+  dtype = gfc_get_dtype_rank_type (irnk, etype,
+				   GFC_BYTES_STRIDES_ARRAY_TYPE_P (type));
 
   GFC_TYPE_ARRAY_DTYPE (type) = dtype;
   return dtype;

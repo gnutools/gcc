@@ -1737,7 +1737,7 @@ transfer_namelist_element (stmtblock_t * block, const char * var_name,
   else
     {
       dt =  gfc_typenode_for_spec (ts);
-      dtype = gfc_get_dtype_rank_type (0, dt);
+      dtype = gfc_get_dtype_rank_type (0, dt, false);
     }
 
   /* Build up the arguments for the transfer call.

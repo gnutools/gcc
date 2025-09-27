@@ -11188,9 +11188,8 @@ gfc_trans_class_array (gfc_symbol * sym, gfc_wrapped_block * block)
 
   rank = CLASS_DATA (sym)->as ? (CLASS_DATA (sym)->as->rank) : (0);
   gcc_assert (rank>=0);
-  etype = gfc_get_element_type (type);
   gfc_conv_descriptor_dtype_set (&init, descriptor, 
-				 gfc_get_dtype_rank_type (rank, etype));
+				 gfc_get_dtype (type, &rank));
 
   gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL_TREE);
   input_location = loc;

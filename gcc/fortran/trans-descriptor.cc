@@ -185,7 +185,8 @@ enum dtype_subfield
   GFC_DTYPE_VERSION,
   GFC_DTYPE_RANK,
   GFC_DTYPE_TYPE,
-  GFC_DTYPE_ATTRIBUTE
+  GFC_DTYPE_ATTRIBUTE,
+  GFC_DTYPE_BYTES_COUNTED_STRIDES
 };
 
 
@@ -468,6 +469,41 @@ gfc_conv_descriptor_type_set (tree desc, int value)
 }
 
 
+static tree
+get_descriptor_bytes_counted_strides (tree desc)
+{
+  return get_dtype_comp (desc, GFC_DTYPE_BYTES_COUNTED_STRIDES, short_unsigned_type_node);
+}
+
+static void
+gfc_conv_descriptor_bytes_counted_strides_set (stmtblock_t *block, tree desc, tree value)
+{
+  set_value (block, get_descriptor_bytes_counted_strides (desc), value);
+}
+
+static void
+gfc_conv_descriptor_bytes_counted_strides_set (stmtblock_t *block, tree desc, int value)
+{
+  tree type = TREE_TYPE (desc);
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type));
+  gcc_assert (value == 0 || value == 1);
+
+  tree dtype = get_type_field (type, DTYPE_FIELD);
+
+  tree field = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_BYTES_COUNTED_STRIDES);
+
+  tree type_value = build_int_cst (TREE_TYPE (field), value);
+  gfc_conv_descriptor_bytes_counted_strides_set (block, desc, type_value);
+}
+
+static void
+gfc_conv_descriptor_bytes_counted_strides_set (stmtblock_t *block, tree desc)
+{
+  int value = GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc));
+  gfc_conv_descriptor_bytes_counted_strides_set (block, desc, value);
+}
+
+
 tree
 gfc_get_descriptor_dimension (tree desc)
 {
@@ -568,7 +604,7 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 tree
 gfc_conv_descriptor_stride_units_get (tree desc, tree dim)
 {
-  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
+  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
   return gfc_conv_descriptor_stride_get (desc, dim);
 }
 
@@ -663,7 +699,8 @@ gfc_conv_descriptor_extent_get (tree desc, tree dim)
    unknown cases abort.  */
 
 tree
-gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
+gfc_get_dtype_rank_type_slen (int rank, tree etype, bool bytes_counted_strides,
+			      tree length)
 {
   tree ptype;
   int n;
@@ -768,6 +805,12 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
   CONSTRUCTOR_APPEND_ELT (v, field,
 			  build_int_cst (TREE_TYPE (field), n));
 
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_BYTES_COUNTED_STRIDES);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_int_cst (TREE_TYPE (field),
+					 bytes_counted_strides));
+
   dtype = build_constructor (dtype_type_node, v);
 
   return dtype;
@@ -775,9 +818,10 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, tree length)
 
 
 tree
-gfc_get_dtype_rank_type (int rank, tree etype)
+gfc_get_dtype_rank_type (int rank, tree etype, bool bytes_counted_strides)
 {
-  return gfc_get_dtype_rank_type_slen (rank, etype, NULL_TREE);
+  return gfc_get_dtype_rank_type_slen (rank, etype, bytes_counted_strides,
+				       NULL_TREE);
 }
 
 
@@ -957,8 +1001,11 @@ get_descriptor_dtype_value (tree descr, const value_source &src)
       else
 	rank = -1;
 
-      tree etype = gfc_get_element_type (TREE_TYPE (descr));
-      return gfc_get_dtype_rank_type_slen (rank, etype, string_length);
+      tree type = TREE_TYPE (descr);
+      tree etype = gfc_get_element_type (type);
+      bool bytes_counted_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
+      return gfc_get_dtype_rank_type_slen (rank, etype, bytes_counted_strides,
+					   string_length);
     }
   else if (src.type == STATIC_INIT)
     {
@@ -978,8 +1025,7 @@ get_descriptor_dtype_value (tree descr, const value_source &src)
       else
 	rank = -1;
 
-      tree etype = gfc_get_element_type (TREE_TYPE (descr));
-      return gfc_get_dtype_rank_type (rank, etype);
+      return gfc_get_dtype (TREE_TYPE (descr), &rank);
     }
 
   return NULL_TREE;
@@ -1030,6 +1076,9 @@ set_descriptor (descriptor_write &dest, const value_source &src)
       tree cstr = dest.u.static_init.build (type);
       DECL_INITIAL (decl) = cstr;
     }
+  else if (dtype_value == NULL_TREE)
+    gfc_conv_descriptor_bytes_counted_strides_set (dest.u.regular_assign.block,
+						   dest.ref);
 }
 
 
@@ -1210,8 +1259,10 @@ gfc_create_null_actual_descriptor (stmtblock_t *block, gfc_typespec *ts,
   tree desc = gfc_create_var (type, "desc");
   DECL_ARTIFICIAL (desc) = 1;
 
+  bool bytes_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
   gfc_conv_descriptor_dtype_set (block, desc,
-				 gfc_get_dtype_rank_type (rank, etype));
+				 gfc_get_dtype_rank_type (rank, etype,
+							  bytes_strides));
   gfc_conv_descriptor_data_set (block, desc, null_pointer_node);
   gfc_conv_descriptor_span_set (block, desc,
 				gfc_conv_descriptor_elem_len_get (desc));
@@ -2040,12 +2091,13 @@ void
 gfc_set_contiguous_descriptor (stmtblock_t *block, tree desc, tree size,
 			       tree data_ptr)
 {
+  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (desc));
   gfc_conv_descriptor_dtype_set (block, desc,
-				gfc_get_dtype_rank_type (1, TREE_TYPE (desc)));
+				 gfc_get_dtype_rank_type (1, TREE_TYPE (desc),
+							  false));
   gfc_conv_descriptor_lbound_set (block, desc,
 				  gfc_index_zero_node,
 				  gfc_index_one_node);
-  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (desc));
   gfc_conv_descriptor_stride_set (block, desc,
 				  gfc_index_zero_node,
 				  gfc_index_one_node);
@@ -2284,10 +2336,9 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
 		      tree rank, tree cfi, gfc_symbol *sym, bool do_copy_inout)
 {
   /* gfc->dtype = ... (from declaration, not from cfi).  */
-  tree etype = gfc_get_element_type (TREE_TYPE (gfc_desc));
   gfc_conv_descriptor_dtype_set (block, gfc_desc,
-				 gfc_get_dtype_rank_type (sym->as->rank,
-							  etype));
+				 gfc_get_dtype (TREE_TYPE (gfc_desc),
+						&sym->as->rank));
   /* gfc->data = cfi->base_addr. */
   gfc_conv_descriptor_data_set (block, gfc_desc,
 				gfc_get_cfi_desc_base_addr (cfi));
@@ -2637,6 +2688,8 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
     gfc_conv_descriptor_span_set (block, desc, elemsize2);
 
+  bool bytes_counted_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (desc);
+
   /* For deferred character length, the 'size' field of the dtype might
      have changed so set the dtype.  */
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc))
@@ -2648,7 +2701,8 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       else
 	type = gfc_typenode_for_spec (&expr1->ts);
 
-      tree tmp = gfc_get_dtype_rank_type (expr1->rank,type);
+      tree tmp = gfc_get_dtype_rank_type (expr1->rank, type,
+					  bytes_counted_strides);
       gfc_conv_descriptor_dtype_set (block, desc, tmp);
     }
   else if (expr1->ts.type == BT_CLASS)
@@ -2660,7 +2714,8 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       else
 	type = gfc_get_character_type_len (1, elemsize2);
 
-      tree tmp = gfc_get_dtype_rank_type (expr2->rank,type);
+      tree tmp = gfc_get_dtype_rank_type (expr2->rank, type,
+					  bytes_counted_strides);
       gfc_conv_descriptor_dtype_set (block, desc, tmp);
 
       /* Set the _len field as well...  */
@@ -2854,6 +2909,8 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
   type = TREE_TYPE (descriptor);
   gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (type));
 
+  bool bytes_counted_strides = false;
+
   stride = gfc_index_one_node;
   offset = gfc_index_zero_node;
 
@@ -2864,8 +2921,8 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
       && VAR_P (expr->ts.u.cl->backend_decl))
     {
       type = gfc_typenode_for_spec (&expr->ts);
-      gfc_conv_descriptor_dtype_set (pblock, descriptor,
-				     gfc_get_dtype_rank_type (rank, type));
+      tree dtype = gfc_get_dtype_rank_type (rank, type, bytes_counted_strides);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype);
     }
   else if (expr->ts.type == BT_CHARACTER
 	   && expr->ts.deferred
@@ -2886,8 +2943,8 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 			     TREE_OPERAND (descriptor, 0), tmp, NULL_TREE);
       tmp = fold_convert (gfc_charlen_type_node, tmp);
       type = gfc_get_character_type_len (expr->ts.kind, tmp);
-      gfc_conv_descriptor_dtype_set (pblock, descriptor,
-				     gfc_get_dtype_rank_type (rank, type));
+      tree dtype = gfc_get_dtype_rank_type (rank, type, bytes_counted_strides);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype);
     }
   else if (expr3_desc && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (expr3_desc)))
     gfc_conv_descriptor_dtype_set (pblock, descriptor,
