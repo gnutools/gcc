@@ -3224,6 +3224,7 @@ gfc_conv_array_stride_bytes (tree descriptor, int dim)
   tree elt_size = TYPE_SIZE_UNIT (element_type);
   if (elt_size == NULL_TREE)
     elt_size = gfc_conv_descriptor_elem_len_get (descriptor);
+  elt_size = fold_convert_loc (input_location, gfc_array_index_type, elt_size);
 
   return fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			  raw_stride, elt_size);
