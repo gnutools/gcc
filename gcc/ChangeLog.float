@@ -1,3 +1,51 @@
+==================== Branch work222-float, patch #302 ====================
+
+Change -mieee16 to -mfloat16; Allow use on power8.
+
+2025-09-25  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	__FLOAT16__, __FLOAT16_HW__, __BFLOAT16__, and __BFLOAT16_HW__ based on
+	the options.
+	* config/rs6000/rs6000-call.cc (USE_FP_FOR_ARG_P): Change -mieee16 to
+	-mfloat16.
+	* config/rs6000/rs6000-cpus.def (ISA_3_0_MASKS_SERVER): Likewise.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_option_override_internal): Allow -mfloat16 and -mbfloat16 on
+	older systems.
+	(rs6000_function_value): Change -mieee16 to -mfloat16.
+	(rs6000_floatn_mode): Likewise.
+	(rs6000_opt_masks): Likewise.
+	* config/rs6000/rs6000.h (FP16_SCALAR_MODE_P): Likewise.
+	* config/rs6000/rs6000.md (FP16): Likewise.
+	(FP16_HW): New mode iterator.
+	(extendhf<mode>2): Require power9 support.
+	(trunc<mode>hf2): Likewise.
+	(extendbf<mode>2): Require power10 support.
+	(trunc<mode>bf2): Likewise.
+	(extend<FP16_HW:mode><FP16_CONVERT:mode>): Change FP16 mode iterator
+	FP16_HW.
+	(extend<FP16_HW:mode><FP16_CONVERT:mode>2): Likewise.
+	(trunc<FP16_CONVERT:mode><FP16_HW:mode>2): Likewise.
+	(float<GPR:mode><FP16_HW:mode>2): Likewise.
+	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
+	(fix_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	* config/rs6000/rs6000.opt (-mfloat16): Change -mieee16 to -mfloat16.
+	Remove Undocumented flag.
+	(-mfloat16-gpr-args): Change -mieee16-gpr-args to -mfloat16-gpr-args.
+	* config/rs6000/vector.md (vec_pack_trunc_v4sf): Change -mieee16 to
+	-mfloat16.
+	(-mbfloat16): Remove Undocumented flag.
+	(vec_unpacku_float_lo_v4sf): Likewise.
+	* config/rs6000/vsx.md (VECTOR_16BIT): Likewise.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+	* doc/invoke.texi (PowerPC options): Document -mfloat16 and -mbfloat16.
+
 ==================== Branch work222-float, patch #301 ====================
 
 Fix typo in _Float16 conversion.
