@@ -2688,7 +2688,8 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (desc)))
     gfc_conv_descriptor_span_set (block, desc, elemsize2);
 
-  bool bytes_counted_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (desc);
+  bool bytes_counted_strides;
+  bytes_counted_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc));
 
   /* For deferred character length, the 'size' field of the dtype might
      have changed so set the dtype.  */
