@@ -89,7 +89,10 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
     {
       index_type alloc_size;
 
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(ret))
+	rs = size;
+      else
+	rs = 1;
       for (n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -105,7 +108,10 @@ reshape_internal (parray *ret, parray *source, shape_type *shape,
       else
 	alloc_size = rs;
 
-      ret->base_addr = xmallocarray (alloc_size, size);
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(ret))
+	ret->base_addr = xmalloc (alloc_size);
+      else
+	ret->base_addr = xmallocarray (alloc_size, size);
       ret->dtype.rank = rdim;
     }
 

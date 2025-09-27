@@ -379,7 +379,8 @@ typedef struct dtype_type
   int version;
   signed char rank;
   signed char type;
-  signed short attribute;
+  unsigned short attribute:15;
+  unsigned short bytes_counted_strides:1;
 }
 dtype_type;
 
@@ -460,6 +461,7 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 #define GFC_DESCRIPTOR_RANK(desc) ((desc)->dtype.rank)
 #define GFC_DESCRIPTOR_TYPE(desc) ((desc)->dtype.type)
 #define GFC_DESCRIPTOR_SIZE(desc) ((desc)->dtype.elem_len)
+#define GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(desc) ((desc)->dtype.bytes_counted_strides)
 #define GFC_DESCRIPTOR_DATA(desc) ((desc)->base_addr)
 #define GFC_DESCRIPTOR_DTYPE(desc) ((desc)->dtype)
 #define GFC_DESCRIPTOR_SPAN(desc) ((desc)->span)
@@ -485,11 +487,20 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 
 #define GFC_DESCRIPTOR_STRIDE(desc,i) \
   ((desc)->dim[i]._stride)
-#define GFC_DESCRIPTOR_STRIDE_UNITS(desc,i) \
-  ({assert (GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) % GFC_DESCRIPTOR_SIZE(desc) == 0); \
-   GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) / GFC_DESCRIPTOR_SIZE(desc);})
+#define GFC_DESCRIPTOR_STRIDE_UNITS_FROM_BYTES_DESCR(desc,i) \
+  ({assert (GFC_DESCRIPTOR_STRIDE_BYTES((desc),(i)) % GFC_DESCRIPTOR_SPAN(desc) == 0); \
+   assert (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(desc)); \
+   GFC_DESCRIPTOR_STRIDE_BYTES((desc),(i)) / ((index_type) GFC_DESCRIPTOR_SIZE(desc));})
+#define GFC_DESCRIPTOR_STRIDE_BYTES_FROM_UNITS_DESCR(desc,i) \
+  (GFC_DESCRIPTOR_STRIDE((desc),(i))*GFC_DESCRIPTOR_SPAN(desc))
 #define GFC_DESCRIPTOR_STRIDE_BYTES(desc,i) \
-  (GFC_DESCRIPTOR_STRIDE((desc),(i)))
+  (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(desc) \
+   ? GFC_DESCRIPTOR_STRIDE((desc),(i)) \
+   : GFC_DESCRIPTOR_STRIDE_BYTES_FROM_UNITS_DESCR((desc),(i)))
+#define GFC_DESCRIPTOR_STRIDE_UNITS(desc,i) \
+  (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(desc) \
+   ? GFC_DESCRIPTOR_STRIDE_UNITS_FROM_BYTES_DESCR((desc),(i)) \
+   : GFC_DESCRIPTOR_STRIDE((desc),(i)))
 
 /* Macros to get both the size and the type with a single masking operation  */
 
@@ -501,7 +512,12 @@ typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, GFC_INTEGER_4) gfc_full_a
 
 /* Macros to set size and type information.  */
 
-#define GFC_DTYPE_COPY(a,b) do { (a)->dtype = (b)->dtype; } while(0)
+#define GFC_DTYPE_COPY(a,b) \
+  do { \
+    bool sav = GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (a); \
+    (a)->dtype = (b)->dtype; \
+    GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (a) = sav; \
+  } while(0)
 #define GFC_DTYPE_IS_UNSET(a) (unlikely((a)->dtype.elem_len == 0))
 #define GFC_DTYPE_CLEAR(a) do { (a)->dtype.elem_len = 0; \
 				(a)->dtype.version = 0; \

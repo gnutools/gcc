@@ -25,10 +25,15 @@ void
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else
     {
@@ -130,10 +135,15 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else
     {
@@ -257,10 +267,15 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
-      retarray->base_addr = xmallocarray (rank, sizeof (rtype_name));
+      retarray->base_addr = xmallocarray (rank, sizeof ('rtype_name`));
     }
   else if (unlikely (compile_options.bounds_check))
     {

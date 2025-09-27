@@ -75,7 +75,12 @@ eoshift0 (gfc_array_char * ret, const gfc_array_char * array,
           ub = GFC_DESCRIPTOR_EXTENT(array,i) - 1;
 
           if (i == 0)
-	    str = 1;
+	    {
+	      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+		str = size;
+	      else
+		str = 1;
+	    }
           else
             str = GFC_DESCRIPTOR_EXTENT(ret,i-1)
 	      * GFC_DESCRIPTOR_STRIDE(ret,i-1);

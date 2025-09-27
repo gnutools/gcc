@@ -26,6 +26,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include "libgfortran.h"
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 typedef GFC_FULL_ARRAY_DESCRIPTOR (GFC_MAX_DIMENSIONS, char) parray;
 
@@ -129,7 +130,10 @@ reduce (parray *ret,
       /* The dimensions of the return array.  */
       if (i != (int)dimen_m1)
 	{
-	  str = GFC_DESCRIPTOR_STRIDE (array, j);
+	  if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES(ret))
+	    str = GFC_DESCRIPTOR_STRIDE_BYTES (array, j);
+	  else
+	    str = GFC_DESCRIPTOR_STRIDE_UNITS (array, j);
 	  GFC_DESCRIPTOR_DIMENSION_SET (ret, j, 0, ext - 1, str);
 	  j++;
 	}

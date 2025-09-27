@@ -78,14 +78,20 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
       ret->dtype.rank = rrank;
 
       dim = 0;
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof ('rtype_name`);
+      else
+	rs = 1;
       for (n = 0; n < rrank; n++)
 	{
 	  stride = rs;
 	  if (n == along - 1)
 	    {
 	      ub = ncopies - 1;
-	      rdelta = rs * sizeof ('rtype_name`);
+	      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+		rdelta = rs;
+	      else
+		rdelta = rs * sizeof ('rtype_name`);
 	      rs *= ncopies;
 	    }
 	  else
@@ -104,7 +110,11 @@ spread_'rtype_code` ('rtype` *ret, const 'rtype` *source,
       ret->offset = 0;
 
       /* xmallocarray allocates a single byte for zero size.  */
-      ret->base_addr = xmallocarray (rs, sizeof('rtype_name`));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (rs);
+      else
+	ret->base_addr = xmallocarray (rs, sizeof('rtype_name`));
+
       if (rs <= 0)
         return;
     }
@@ -246,7 +256,12 @@ spread_scalar_'rtype_code` ('rtype` *ret, const 'rtype_name` *source,
     {
       ret->base_addr = xmallocarray (ncopies, sizeof ('rtype_name`));
       ret->offset = 0;
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, stride);
     }
   else
     {

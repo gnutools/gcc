@@ -110,7 +110,10 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = size;
+      else
+	rs = 1;
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
@@ -124,7 +127,10 @@ unpack_internal (gfc_array_char *ret, const gfc_array_char *vector,
 	  rs *= extent[n];
 	}
       ret->offset = 0;
-      ret->base_addr = xmallocarray (rs, size);
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (rs);
+      else
+	ret->base_addr = xmallocarray (rs, size);
     }
   else
     {

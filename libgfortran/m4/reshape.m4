@@ -103,7 +103,11 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof ('rtype_name`);
+      else
+	rs = 1;
+
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -119,7 +123,11 @@ reshape_'rtype_ccode` ('rtype` * const restrict ret,
       else
         alloc_size = rs;
 
-      ret->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (alloc_size);
+      else
+	ret->base_addr = xmallocarray (alloc_size, sizeof ('rtype_name`));
+
       ret->dtype.rank = rdim;
     }
 

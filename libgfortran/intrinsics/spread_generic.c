@@ -76,7 +76,10 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
       ret->dtype.rank = rrank;
 
       dim = 0;
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = size;
+      else
+	rs = 1;
       for (n = 0; n < rrank; n++)
 	{
 	  stride = rs;
@@ -101,7 +104,10 @@ spread_internal (gfc_array_char *ret, const gfc_array_char *source,
 	  GFC_DESCRIPTOR_DIMENSION_SET(ret, n, 0, ub, stride);
 	}
       ret->offset = 0;
-      ret->base_addr = xmallocarray (rs, size);
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (rs);
+      else
+	ret->base_addr = xmallocarray (rs, size);
 
       if (rs <= 0)
 	return;
@@ -248,7 +254,12 @@ spread_internal_scalar (gfc_array_char *ret, const char *source,
     {
       ret->base_addr = xmallocarray (ncopies, size);
       ret->offset = 0;
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	stride = size;
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, ncopies - 1, stride);
     }
   else
     {

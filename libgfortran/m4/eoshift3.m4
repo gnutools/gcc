@@ -87,10 +87,12 @@ eoshift3 (gfc_array_char * const restrict ret,
   if (ret->base_addr == NULL)
     {
       index_type cnt;
-      ret->base_addr = xmallocarray (arraysize, size);
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	cnt = sizeof ('rtype_name`);
+      else
+	cnt = 1;
       for (index_type i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
 	  index_type ub;

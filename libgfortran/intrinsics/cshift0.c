@@ -63,7 +63,10 @@ cshift0 (gfc_array_char * ret, const gfc_array_char * array,
 
       ret->offset = 0;
       GFC_DTYPE_COPY(ret,array);
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	cnt = size;
+      else
+	cnt = 1;
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
 	  index_type ub;

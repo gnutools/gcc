@@ -158,8 +158,13 @@ pack_internal (gfc_array_char *ret, const gfc_array_char *array,
 
       if (ret->base_addr == NULL)
 	{
+	  index_type stride;
+	  if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	    stride = size;
+	  else
+	    stride = 1;
 	  /* Setup the array descriptor.  */
-	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, stride);
 
 	  ret->offset = 0;
 	  /* xmallocarray allocates a single byte for zero size.  */
@@ -534,8 +539,14 @@ pack_s_internal (gfc_array_char *ret, const gfc_array_char *array,
 	    total = 0;
 	}
 
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	stride = size;
+      else
+	stride = 1;
+
       /* Setup the array descriptor.  */
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, stride);
 
       ret->offset = 0;
 

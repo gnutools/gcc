@@ -78,7 +78,10 @@ void
     {
       size_t cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = sizeof ('rtype_name`);
+      else
+	cnt = 1;
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -91,7 +94,11 @@ void
       retarray->dtype.elem_len = sizeof ('rtype_name`);
       retarray->span = sizeof ('rtype_name`);
 
-      retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+
       if (cnt == 0)
 	return;
     }
@@ -268,7 +275,10 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     {
       size_t cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = sizeof ('rtype_name`);
+      else
+	cnt = 1;
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -281,7 +291,11 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       retarray->dtype.elem_len = sizeof ('rtype_name`);
       retarray->span = sizeof ('rtype_name`);
 
-      retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+
       if (cnt == 0)
 	return;
     }
@@ -425,7 +439,10 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     {
       size_t cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = sizeof ('rtype_name`);
+      else
+	cnt = 1;
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -436,7 +453,11 @@ s'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (cnt, sizeof ('rtype_name`));
+
       if (cnt == 0)
 	return;
     }

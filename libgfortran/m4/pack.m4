@@ -164,8 +164,14 @@ pack_'rtype_code` ('rtype` *ret, const 'rtype` *array,
 
       if (ret->base_addr == NULL)
 	{
+	  index_type stride;
+	  if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	    stride = sizeof ('rtype_name`);
+	  else
+	    stride = 1;
+
 	  /* Setup the array descriptor.  */
-	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, stride);
 
 	  ret->offset = 0;
 

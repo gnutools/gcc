@@ -49,8 +49,14 @@ bessel_jn_r'rtype_kind` ('rtype` * const restrict ret, int n1, int n2, 'rtype_na
 
   if (ret->base_addr == NULL)
     {
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, stride);
       ret->base_addr = xmallocarray (size, sizeof ('rtype_name`));
       ret->offset = 0;
     }
@@ -111,8 +117,14 @@ bessel_yn_r'rtype_kind` ('rtype` * const restrict ret, int n1, int n2,
 
   if (ret->base_addr == NULL)
     {
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	stride = sizeof ('rtype_name`);
+      else
+	stride = 1;
+
       size_t size = n2 < n1 ? 0 : n2-n1+1; 
-      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, 1);
+      GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, size-1, stride);
       ret->base_addr = xmallocarray (size, sizeof ('rtype_name`));
       ret->offset = 0;
     }

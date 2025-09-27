@@ -78,7 +78,10 @@ eoshift2 (gfc_array_char *ret, const gfc_array_char *array,
       /* xmallocarray allocates a single byte for zero size.  */
       ret->base_addr = xmallocarray (arraysize, size);
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	cnt = size;
+      else
+	cnt = 1;
       for (i = 0; i < GFC_DESCRIPTOR_RANK (array); i++)
         {
 	  index_type ub;
