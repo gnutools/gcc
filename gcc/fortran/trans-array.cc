@@ -3919,10 +3919,19 @@ build_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
       {
 	tree offset = fold_convert_loc (input_location, size_type_node,
 					index);
+	tree ptr = ref_base;
+	if (TREE_CODE (ptr) == INDIRECT_REF
+	    && TREE_CODE (TREE_TYPE (ptr)) == ARRAY_TYPE)
+	  ptr = TREE_OPERAND (ptr, 0);
+	gcc_assert (TREE_CODE (TREE_TYPE (ptr)) == POINTER_TYPE);
+	tree data_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (array));
+	ptr = fold_convert_loc (input_location, data_type, ptr);
+	tree ptr_type = TREE_TYPE (ptr);
+	gcc_assert (TREE_CODE (ptr_type) == POINTER_TYPE);
+	if (TREE_CODE (TREE_TYPE (ptr_type)) == ARRAY_TYPE)
+	  ptr_type = build_pointer_type (TREE_TYPE (TREE_TYPE (ptr_type)));
 	tree p = fold_build2_loc (input_location, POINTER_PLUS_EXPR,
-				  TREE_TYPE (ref_base), ref_base, offset);
-	p = fold_convert_loc (input_location,
-			      GFC_TYPE_ARRAY_DATAPTR_TYPE (TREE_TYPE (array)), p);
+				  ptr_type, ptr, offset);
 	se->expr = build_fold_indirect_ref_loc (input_location, p);
       }
       break;
