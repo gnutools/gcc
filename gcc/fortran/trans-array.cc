@@ -11160,7 +11160,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 void
 gfc_trans_class_array (gfc_symbol * sym, gfc_wrapped_block * block)
 {
-  tree type, etype;
+  tree type;
   tree descriptor;
   stmtblock_t init;
   int rank;
