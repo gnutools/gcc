@@ -1363,7 +1363,8 @@ See RS/6000 and PowerPC Options.
 -mstack-protector-guard=@var{guard} -mstack-protector-guard-reg=@var{reg}
 -mstack-protector-guard-offset=@var{offset} -mprefixed -mno-prefixed
 -mpcrel -mno-pcrel -mmma -mno-mmma -mrop-protect -mno-rop-protect
--mprivileged -mno-privileged}
+-mprivileged -mno-privileged
+-mfloat16 -mno-float16 -mbfloat16 -mno-bfloat16}
 
 @emph{RX Options} (@ref{RX Options})
 @gccoptlist{-m64bit-doubles  -m32bit-doubles  -fpu  -nofpu
@@ -32962,6 +32963,18 @@ optimization (@option{-fshrink-wrap}).
 @item -mprivileged
 @itemx -mno-privileged
 Generate (do not generate) code that will run in privileged state.
+
+@opindex mfloat16
+@opindex mno-float16
+@item -mfloat16
+@itemx -mno-float16
+Allow (do not allow) use of the @code{__Float16} type.
+
+@opindex mbfloat16
+@opindex mno-bfloat16
+@item -mbfloat16
+@itemx -mno-bfloat16
+Allow (do not allow) use of the @code{__bfloat16} type.
 
 @opindex block-ops-unaligned-vsx
 @opindex no-block-ops-unaligned-vsx

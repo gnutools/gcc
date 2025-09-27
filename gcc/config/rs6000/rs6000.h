@@ -345,7 +345,7 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 
 /* Is this a valid 16-bit scalar floating point mode?  */
 #define FP16_SCALAR_MODE_P(MODE)					\
-  (((MODE) == HFmode && TARGET_IEEE16)					\
+  (((MODE) == HFmode && TARGET_FLOAT16)					\
    || ((MODE) == BFmode && TARGET_BFLOAT16))
 
 /* Return true for floating point that does not use a vector register.  */

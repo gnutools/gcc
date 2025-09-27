@@ -2944,7 +2944,7 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
     }
 
   /* _Float16 support.  */
-  if (TARGET_IEEE16)
+  if (TARGET_FLOAT16)
     {
       rs6000_vector_unit[V8HFmode] = VECTOR_VSX;
       rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
@@ -3079,7 +3079,7 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_di_load;
 	    }
 
-	  if (TARGET_IEEE16)
+	  if (TARGET_FLOAT16)
 	    {
 	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_di_store;
 	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
@@ -3191,7 +3191,7 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_si_load;
 	    }
 
-	  if (TARGET_IEEE16)
+	  if (TARGET_FLOAT16)
 	    {
 	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_si_store;
 	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
@@ -3942,20 +3942,19 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
-  /* -mieee16 needs power9 at a minimum.  */
-  if (TARGET_IEEE16 && !TARGET_P9_VECTOR)
+  /* -mfloat16 and -mbfloat16 needs VSX at a minimum.  */
+  if (TARGET_FLOAT16 && !TARGET_VSX)
     {
-      rs6000_isa_flags &= ~OPTION_MASK_IEEE16;
-      if (rs6000_isa_flags_explicit & OPTION_MASK_IEEE16)
-	error ("%qs requires at least %qs", "-mieee16", "-mcpu=power9");
+      rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
+      if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
+	error ("%qs requires at least %qs", "-mfloat16", "-mvsx");
     }
 
-  /* -mbfloat16 needs power10 at a minimum.  */
-  if (TARGET_BFLOAT16 && !TARGET_POWER10)
+  if (TARGET_BFLOAT16 && !TARGET_VSX)
     {
       rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
       if (rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16)
-	error ("%qs requires at least %qs", "-mbfloat16", "-mcpu=power10");
+	error ("%qs requires at least %qs", "-mbfloat16", "-mvsx");
     }
 
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
@@ -24118,7 +24117,7 @@ rs6000_function_value (const_tree valtype,
   if (DECIMAL_FLOAT_MODE_P (mode) && TARGET_HARD_FLOAT)
     /* _Decimal128 must use an even/odd register pair.  */
     regno = (mode == TDmode) ? FP_ARG_RETURN + 1 : FP_ARG_RETURN;
-  else if (FP16_SCALAR_MODE_P (mode) && TARGET_IEEE16_GPR_ARGS)
+  else if (FP16_SCALAR_MODE_P (mode) && TARGET_FLOAT16_GPR_ARGS)
     regno = GP_ARG_RETURN;
   else if (SCALAR_FLOAT_TYPE_P (valtype) && TARGET_HARD_FLOAT
 	   && !FLOAT128_VECTOR_P (mode))
@@ -24446,7 +24445,7 @@ rs6000_floatn_mode (int n, bool extended)
       switch (n)
 	{
 	case 16:
-	  return TARGET_IEEE16 ? SFmode : opt_scalar_float_mode ();
+	  return TARGET_FLOAT16 ? SFmode : opt_scalar_float_mode ();
 
 	case 32:
 	  return DFmode;
@@ -24470,7 +24469,7 @@ rs6000_floatn_mode (int n, bool extended)
       switch (n)
 	{
 	case 16:
-	  return TARGET_IEEE16 ? HFmode : opt_scalar_float_mode ();
+	  return TARGET_FLOAT16 ? HFmode : opt_scalar_float_mode ();
 
 	case 32:
 	  return SFmode;
@@ -24592,7 +24591,7 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "fprnd",			OPTION_MASK_FPRND,		false, true  },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
-  { "ieee16",			OPTION_MASK_IEEE16,		false, true  },
+  { "float16",			OPTION_MASK_FLOAT16,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
   { "mfcrf",			OPTION_MASK_MFCRF,		false, true  },
   { "mfpgpr",			0,				false, true  },

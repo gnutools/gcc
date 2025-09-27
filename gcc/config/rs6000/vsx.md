@@ -49,13 +49,13 @@
 ;; Iterator for 8 element vectors
 (define_mode_iterator VECTOR_16BIT [V8HI
 				    (V8BF "TARGET_BFLOAT16")
-				    (V8HF "TARGET_IEEE16")])
+				    (V8HF "TARGET_FLOAT16")])
 
 ;; Iterator for logical types supported by VSX
 (define_mode_iterator VSX_L [V16QI
 			     V8HI
 			     (V8BF	"TARGET_BFLOAT16")
-			     (V8HF	"TARGET_IEEE16")
+			     (V8HF	"TARGET_FLOAT16")
 			     V4SI
 			     V2DI
 			     V4SF
@@ -69,7 +69,7 @@
 (define_mode_iterator VSX_M [V16QI
 			     V8HI
 			     (V8BF	"TARGET_BFLOAT16")
-			     (V8HF	"TARGET_IEEE16")
+			     (V8HF	"TARGET_FLOAT16")
 			     V4SI
 			     V2DI
 			     V4SF

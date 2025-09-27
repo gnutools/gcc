@@ -1226,7 +1226,7 @@
   [(match_operand:V8HF 0 "vfloat_operand")
    (match_operand:V4SF 1 "vfloat_operand")
    (match_operand:V4SF 2 "vfloat_operand")]
-  "TARGET_IEEE16"
+  "TARGET_FLOAT16"
 {
   rtx r1 = gen_reg_rtx (V8HFmode);
   rtx r2 = gen_reg_rtx (V8HFmode);
@@ -1313,7 +1313,7 @@
 (define_expand "vec_unpacks_hi_v8hf"
   [(match_operand:V4SF 0 "vfloat_operand")
    (match_operand:V8HF 1 "vfloat_operand")]
-  "TARGET_IEEE16"
+  "TARGET_FLOAT16"
 {
   rtx reg = gen_reg_rtx (V8HFmode);
 
