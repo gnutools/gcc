@@ -102,7 +102,11 @@ minval1_s1 (gfc_array_s1 * const restrict retarray,
     {
       size_t alloc_size, cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = string_len * sizeof (GFC_UINTEGER_1);
+      else
+	cnt = 1;
+      
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -115,7 +119,11 @@ minval1_s1 (gfc_array_s1 * const restrict retarray,
 
       alloc_size = cnt * string_len;
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+
       if (alloc_size == 0)
 	return;
     }
@@ -293,7 +301,11 @@ mminval1_s1 (gfc_array_s1 * const restrict retarray,
     {
       size_t alloc_size, cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = string_len * sizeof (GFC_UINTEGER_1);
+      else
+	cnt = 1;
+
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -306,7 +318,11 @@ mminval1_s1 (gfc_array_s1 * const restrict retarray,
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+
       if (alloc_size == 0)
 	return;
     }
@@ -465,7 +481,11 @@ sminval1_s1 (gfc_array_s1 * const restrict retarray,
     {
       size_t alloc_size, cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = string_len * sizeof (GFC_UINTEGER_1);
+      else
+	cnt = 1;
+
       for (n = 0; n < rank; n++)
 	{
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -478,7 +498,11 @@ sminval1_s1 (gfc_array_s1 * const restrict retarray,
 
       alloc_size = cnt * string_len;
 
-      retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
+
       if (alloc_size == 0)
 	return;
     }

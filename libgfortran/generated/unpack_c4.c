@@ -86,7 +86,10 @@ unpack0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *vector,
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof (GFC_COMPLEX_4);
+      else
+	rs = 1;
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
@@ -98,8 +101,13 @@ unpack0_c4 (gfc_array_c4 *ret, const gfc_array_c4 *vector,
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	  rs *= extent[n];
 	}
+
       ret->offset = 0;
-      ret->base_addr = xmallocarray (rs, sizeof (GFC_COMPLEX_4));
+
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (rs);
+      else
+	ret->base_addr = xmallocarray (rs, sizeof (GFC_COMPLEX_4));
     }
   else
     {
@@ -232,7 +240,10 @@ unpack1_c4 (gfc_array_c4 *ret, const gfc_array_c4 *vector,
       /* The front end has signalled that we need to populate the
 	 return array descriptor.  */
       dim = GFC_DESCRIPTOR_RANK (mask);
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof (GFC_COMPLEX_4);
+      else
+	rs = 1;
       for (n = 0; n < dim; n++)
 	{
 	  count[n] = 0;
@@ -245,8 +256,13 @@ unpack1_c4 (gfc_array_c4 *ret, const gfc_array_c4 *vector,
 	  mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
 	  rs *= extent[n];
 	}
+
       ret->offset = 0;
-      ret->base_addr = xmallocarray (rs, sizeof (GFC_COMPLEX_4));
+
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (rs);
+      else
+	ret->base_addr = xmallocarray (rs, sizeof (GFC_COMPLEX_4));
     }
   else
     {

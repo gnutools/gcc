@@ -78,24 +78,31 @@ matmul_i4_avx128_fma3 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
+      index_type stride0;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride0 = sizeof (GFC_INTEGER_4);
+      else
+	stride0 = 1;
+
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(b,1) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1, stride0);
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, stride0);
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, stride0);
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
 				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-				       GFC_DESCRIPTOR_EXTENT(retarray,0));
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * stride0);
         }
 
       retarray->base_addr
@@ -671,24 +678,31 @@ matmul_i4_avx128_fma4 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
+      index_type stride0;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride0 = sizeof (GFC_INTEGER_4);
+      else
+	stride0 = 1;
+
       if (GFC_DESCRIPTOR_RANK (a) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(b,1) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(b,1) - 1, stride0);
         }
       else if (GFC_DESCRIPTOR_RANK (b) == 1)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, stride0);
         }
       else
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0,
-				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, 1);
+				       GFC_DESCRIPTOR_EXTENT(a,0) - 1, stride0);
 
           GFC_DESCRIPTOR_DIMENSION_SET(retarray, 1, 0,
 				       GFC_DESCRIPTOR_EXTENT(b,1) - 1,
-				       GFC_DESCRIPTOR_EXTENT(retarray,0));
+				       GFC_DESCRIPTOR_EXTENT(retarray,0)
+				       * stride0);
         }
 
       retarray->base_addr

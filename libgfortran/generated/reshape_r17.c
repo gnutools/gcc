@@ -99,7 +99,11 @@ reshape_r17 (gfc_array_r17 * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof (GFC_REAL_17);
+      else
+	rs = 1;
+
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -115,7 +119,11 @@ reshape_r17 (gfc_array_r17 * const restrict ret,
       else
         alloc_size = rs;
 
-      ret->base_addr = xmallocarray (alloc_size, sizeof (GFC_REAL_17));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (alloc_size);
+      else
+	ret->base_addr = xmallocarray (alloc_size, sizeof (GFC_REAL_17));
+
       ret->dtype.rank = rdim;
     }
 

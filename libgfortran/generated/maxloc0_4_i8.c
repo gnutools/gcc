@@ -51,7 +51,12 @@ maxloc0_4_i8 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof (GFC_INTEGER_4);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
@@ -205,7 +210,12 @@ mmaxloc0_4_i8 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof (GFC_INTEGER_4);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank - 1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));
@@ -379,7 +389,12 @@ smaxloc0_4_i8 (gfc_array_i4 * const restrict retarray,
 
   if (retarray->base_addr == NULL)
     {
-      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, 1);
+      index_type stride;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	stride = sizeof (GFC_INTEGER_4);
+      else
+	stride = 1;
+      GFC_DESCRIPTOR_DIMENSION_SET(retarray, 0, 0, rank-1, stride);
       retarray->dtype.rank = 1;
       retarray->offset = 0;
       retarray->base_addr = xmallocarray (rank, sizeof (GFC_INTEGER_4));

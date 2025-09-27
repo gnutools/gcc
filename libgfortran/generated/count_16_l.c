@@ -85,7 +85,10 @@ count_16_l (gfc_array_i16 * const restrict retarray,
     {
       size_t cnt;
 
-      cnt = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	cnt = sizeof (GFC_INTEGER_16);
+      else
+	cnt = 1;
       for (n = 0; n < rank; n++)
         {
 	  GFC_DESCRIPTOR_DIMENSION_SET(retarray, n, 0, extent[n] - 1, cnt);
@@ -96,7 +99,11 @@ count_16_l (gfc_array_i16 * const restrict retarray,
       retarray->offset = 0;
       retarray->dtype.rank = rank;
 
-      retarray->base_addr = xmallocarray (cnt, sizeof (GFC_INTEGER_16));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (retarray))
+	retarray->base_addr = xmalloc (cnt);
+      else
+	retarray->base_addr = xmallocarray (cnt, sizeof (GFC_INTEGER_16));
+
       if (cnt == 0)
 	return;
     }

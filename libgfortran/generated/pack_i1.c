@@ -163,8 +163,14 @@ pack_i1 (gfc_array_i1 *ret, const gfc_array_i1 *array,
 
       if (ret->base_addr == NULL)
 	{
+	  index_type stride;
+	  if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	    stride = sizeof (GFC_INTEGER_1);
+	  else
+	    stride = 1;
+
 	  /* Setup the array descriptor.  */
-	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, 1);
+	  GFC_DESCRIPTOR_DIMENSION_SET(ret, 0, 0, total-1, stride);
 
 	  ret->offset = 0;
 

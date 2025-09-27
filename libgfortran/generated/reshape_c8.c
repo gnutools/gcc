@@ -99,7 +99,11 @@ reshape_c8 (gfc_array_c8 * const restrict ret,
     {
       index_type alloc_size;
 
-      rs = 1;
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	rs = sizeof (GFC_COMPLEX_8);
+      else
+	rs = 1;
+
       for (index_type n = 0; n < rdim; n++)
 	{
 	  rex = shape_data[n];
@@ -115,7 +119,11 @@ reshape_c8 (gfc_array_c8 * const restrict ret,
       else
         alloc_size = rs;
 
-      ret->base_addr = xmallocarray (alloc_size, sizeof (GFC_COMPLEX_8));
+      if (GFC_DESCRIPTOR_BYTES_COUNTED_STRIDES (ret))
+	ret->base_addr = xmalloc (alloc_size);
+      else
+	ret->base_addr = xmallocarray (alloc_size, sizeof (GFC_COMPLEX_8));
+
       ret->dtype.rank = rdim;
     }
 
