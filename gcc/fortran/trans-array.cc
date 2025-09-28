@@ -3543,6 +3543,11 @@ conv_array_index_dim (gfc_array_ref_info *ref_info, tree index, tree stride)
 }
 
 
+static void
+build_array_ref (gfc_se *se, tree array, gfc_expr *expr, gfc_array_ref *ar,
+		 tree index);
+
+
 /* Return the offset for an index.  Performs bound checking for elemental
    dimensions.  Single element references are processed separately.
    DIM is the array dimension, I is the loop dimension.  */
@@ -3554,7 +3559,6 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
   gfc_array_info *info;
   tree index;
   tree desc;
-  tree data;
 
   info = &ss->info->data.array;
 
@@ -3580,32 +3584,37 @@ conv_array_index_offset (gfc_se * se, gfc_ss * ss, int dim, int i,
 	  break;
 
 	case DIMEN_VECTOR:
-	  gcc_assert (info && se->loop);
-	  gcc_assert (info->subscript[dim]
-		      && info->subscript[dim]->info->type == GFC_SS_VECTOR);
-	  desc = info->subscript[dim]->info->data.array.descriptor;
+	  {
+	    gcc_assert (info && se->loop);
+	    gcc_assert (info->subscript[dim]
+			&& info->subscript[dim]->info->type == GFC_SS_VECTOR);
+	    desc = info->subscript[dim]->info->data.array.descriptor;
+	    gfc_expr *vector = info->subscript[dim]->info->expr;
 
-	  /* Get a zero-based index into the vector.  */
-	  index = fold_build2_loc (input_location, MINUS_EXPR,
-				   gfc_array_index_type,
-				   se->loop->loopvar[i], se->loop->from[i]);
+	    /* Get a zero-based index into the vector.  */
+	    index = fold_build2_loc (input_location, MINUS_EXPR,
+				     gfc_array_index_type,
+				     se->loop->loopvar[i], se->loop->from[i]);
 
-	  /* Multiply the index by the stride.  */
-	  index = fold_build2_loc (input_location, MULT_EXPR,
-				   gfc_array_index_type,
-				   index, gfc_conv_array_stride (desc, 0));
+	    /* Multiply the index by the stride.  */
+	    index = fold_build2_loc (input_location, MULT_EXPR,
+				     gfc_array_index_type,
+				     index, gfc_conv_array_stride (desc, 0));
 
-	  /* Read the vector to get an index into info->descriptor.  */
-	  data = build_fold_indirect_ref_loc (input_location,
-					  gfc_conv_array_data (desc));
-	  index = gfc_build_array_ref (data, index);
-	  index = gfc_evaluate_now (index, &se->pre);
-	  index = fold_convert (gfc_array_index_type, index);
+	    gfc_se vse;
+	    gfc_init_se (&vse, nullptr);
+	    build_array_ref (&vse, desc, vector, nullptr, index);
+	    gfc_add_block_to_block (&se->pre, &vse.pre);
+	    gfc_add_block_to_block (&se->post, &vse.post);
 
-	  /* Do any bounds checking on the final info->descriptor index.  */
-	  index = trans_array_bound_check (se, ss, index, dim, &ar->where,
-					   ar->as->type != AS_ASSUMED_SIZE
-					   || dim < ar->dimen - 1);
+	    index = fold_convert (gfc_array_index_type, vse.expr);
+	    index = gfc_evaluate_now (index, &se->pre);
+
+	    /* Do any bounds checking on the final info->descriptor index.  */
+	    index = trans_array_bound_check (se, ss, index, dim, &ar->where,
+					     ar->as->type != AS_ASSUMED_SIZE
+					     || dim < ar->dimen - 1);
+	  }
 	  break;
 
 	case DIMEN_RANGE:
