@@ -8886,19 +8886,37 @@ gfc_full_array_size (stmtblock_t *block, tree decl, int rank)
   tree nelems;
   tree tmp;
 
-  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (decl)));
-
-  if (rank < 0)
-    idx = gfc_conv_descriptor_rank_get (decl);
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (decl))
+      && rank > 0)
+    {
+      idx = gfc_rank_cst[rank - 1];
+      tree prod = gfc_index_one_node;
+      for (int i = 0; i < rank; i++)
+	{
+	  tmp = gfc_conv_descriptor_extent_get (decl, idx);
+	  prod = fold_build2_loc (input_location, MULT_EXPR,
+				  gfc_array_index_type, prod, tmp);
+	}
+      return gfc_evaluate_now (prod, block);
+    }
   else
-    idx = gfc_rank_cst[rank - 1];
-  tmp = gfc_conv_descriptor_extent_get (decl, idx);
-  tmp = gfc_evaluate_now (tmp, block);
+    {
+      if (rank < 0)
+	idx = gfc_conv_descriptor_rank_get (decl);
+      else
+	idx = gfc_rank_cst[rank - 1];
+      tmp = gfc_conv_descriptor_extent_get (decl, idx);
+      tmp = gfc_evaluate_now (tmp, block);
 
-  nelems = gfc_conv_descriptor_stride_get (decl, idx);
-  tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
-			 nelems, tmp);
-  return gfc_evaluate_now (tmp, block);
+      nelems = gfc_conv_descriptor_stride_get (decl, idx);
+      tmp = fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
+			     nelems, tmp);
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (decl)))
+	tmp = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+			       gfc_array_index_type,
+			       tmp, gfc_conv_descriptor_span_get (decl));
+      return gfc_evaluate_now (tmp, block);
+    }
 }
 
 
