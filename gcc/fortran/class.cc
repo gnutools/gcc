@@ -2725,6 +2725,7 @@ gfc_find_derived_vtab (gfc_symbol *derived)
 		  arg->attr.intent = INTENT_INOUT;
 		  arg->attr.dimension = 1;
 		  arg->attr.allocatable = 1;
+		  arg->attr.contiguous = 1;
 		  arg->as = gfc_get_array_spec();
 		  arg->as->type = AS_ASSUMED_SHAPE;
 		  arg->as->rank = 1;

@@ -9198,7 +9198,6 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
   tree dcmp;
   tree nelems;
   tree index;
-  tree var;
   tree cdecl;
   tree ctype;
   tree vref, dref;
@@ -9233,9 +9232,6 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
   if (TREE_CODE (decl_type) == ARRAY_TYPE
       || (GFC_DESCRIPTOR_TYPE_P (decl_type) && rank != 0))
     {
-      tmp = gfc_conv_array_data (decl);
-      var = build_fold_indirect_ref_loc (input_location, tmp);
-
       /* Get the number of elements - 1 and set the counter.  */
       if (GFC_DESCRIPTOR_TYPE_P (decl_type))
 	{
@@ -9266,13 +9262,19 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
       /* Build the body of the loop.  */
       gfc_init_block (&loopbody);
 
-      vref = gfc_build_array_ref (var, index);
+      gfc_se vse;
+      gfc_init_se (&vse, nullptr);
+      build_array_ref (&vse, decl, nullptr, nullptr, index);
+      vref = vse.expr;
+      gfc_add_block_to_block (&loopbody, &vse.pre);
 
       if (purpose == COPY_ALLOC_COMP || purpose == COPY_ONLY_ALLOC_COMP)
 	{
-	  tmp = build_fold_indirect_ref_loc (input_location,
-					     gfc_conv_array_data (dest));
-	  dref = gfc_build_array_ref (tmp, index);
+	  gfc_se dse;
+	  gfc_init_se (&dse, nullptr);
+	  build_array_ref (&dse, dest, nullptr, nullptr, index);
+	  dref = dse.expr;
+	  gfc_add_block_to_block (&loopbody, &dse.pre);
 	  tmp = structure_alloc_comps (der_type, vref, dref, rank,
 				       COPY_ALLOC_COMP, caf_mode, args,
 				       no_finalization);

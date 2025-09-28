@@ -2091,7 +2091,7 @@ void
 gfc_set_contiguous_descriptor (stmtblock_t *block, tree desc, tree size,
 			       tree data_ptr)
 {
-  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (desc));
+  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
   gfc_conv_descriptor_dtype_set (block, desc,
 				 gfc_get_dtype_rank_type (1, TREE_TYPE (desc),
 							  false));
