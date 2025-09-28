@@ -27,6 +27,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "trans-const.h"
 #include "trans-types.h"
 #include "trans-array.h"
+#include "trans-descriptor.h"
 
 
 /******************************************************************************/
@@ -1294,8 +1295,7 @@ gfc_create_null_actual_descriptor (stmtblock_t *block, gfc_typespec *ts,
 void
 gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr, tree scalar,
 				symbol_attribute attr,
-				tree cond_presence = NULL_TREE,
-				tree caf_token = NULL_TREE)
+				tree cond_presence, tree caf_token)
 {
   if (flag_coarray == GFC_FCOARRAY_LIB && caf_token)
     gfc_conv_descriptor_token_set (block, descr, caf_token);
@@ -1723,30 +1723,36 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
 void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, bool lhs_type)
 {
-  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
-	      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+    {
+      gfc_conv_descriptor_data_set (block, dest,
+				    gfc_conv_descriptor_data_get (src));
+      gfc_conv_descriptor_offset_set (block, dest,
+				      gfc_conv_descriptor_offset_get (src));
 
-  gfc_conv_descriptor_data_set (block, dest,
-				gfc_conv_descriptor_data_get (src));
-  gfc_conv_descriptor_offset_set (block, dest,
-				  gfc_conv_descriptor_offset_get (src));
+      gfc_conv_descriptor_dtype_set (block, dest,
+				     gfc_conv_descriptor_dtype_get (src));
 
-  gfc_conv_descriptor_dtype_set (block, dest,
-				 gfc_conv_descriptor_dtype_get (src));
+      gfc_conv_descriptor_span_set (block, dest,
+				    gfc_conv_descriptor_span_get (src));
 
-  gfc_conv_descriptor_span_set (block, dest,
-				gfc_conv_descriptor_span_get (src));
+      /* Assign the dimension as range-ref.  */
+      tree tmp = gfc_get_descriptor_dimension (dest);
+      tree tmp2 = gfc_get_descriptor_dimension (src);
 
-  /* Assign the dimension as range-ref.  */
-  tree tmp = gfc_get_descriptor_dimension (dest);
-  tree tmp2 = gfc_get_descriptor_dimension (src);
-
-  tree type = lhs_type ? TREE_TYPE (tmp) : TREE_TYPE (tmp2);
-  tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
-		    gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
-		     gfc_index_zero_node, NULL_TREE, NULL_TREE);
-  gfc_add_modify (block, tmp, tmp2);
+      tree type = lhs_type ? TREE_TYPE (tmp) : TREE_TYPE (tmp2);
+      tmp = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp,
+			gfc_index_zero_node, NULL_TREE, NULL_TREE);
+      tmp2 = build4_loc (input_location, ARRAY_RANGE_REF, type, tmp2,
+			 gfc_index_zero_node, NULL_TREE, NULL_TREE);
+      gfc_add_modify (block, tmp, tmp2);
+    }
+  else
+    {
+      gcc_assert (lhs_type);
+      gfc_copy_descriptor (block, dest, src);
+    }
 }
 
 
