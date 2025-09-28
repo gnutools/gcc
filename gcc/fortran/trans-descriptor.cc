@@ -2917,11 +2917,15 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
   int n;
 
   type = TREE_TYPE (descriptor);
-  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (type));
 
-  bool bytes_counted_strides = false;
+  bool bytes_counted_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
 
-  stride = gfc_index_one_node;
+  if (bytes_counted_strides)
+    stride = fold_convert_loc (input_location, gfc_array_index_type,
+			       element_size);
+  else
+    stride = gfc_index_one_node;
+
   offset = gfc_index_zero_node;
 
   /* Set the dtype before the alloc, because registration of coarrays needs
@@ -3119,9 +3123,6 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 					  gfc_rank_cst[n], se.expr);
 	}
     }
-
-  /* The stride is the number of elements in the array, so multiply by the
-     size of an element to get the total size.  */
 
   if (rank == 0)
     return gfc_index_one_node;

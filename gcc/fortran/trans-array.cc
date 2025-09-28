@@ -6225,8 +6225,17 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 					  element_size, explicit_ts,
 					  &empty_array_cond);
 
-  tree size = get_array_memory_size (element_size, count, empty_array_cond,
-				     &se->pre, &overflow);
+  tree size;
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (se->expr)))
+    size = count;
+  else
+    {
+      /* The stride is the number of elements in the array, so multiply by the
+	 size of an element to get the total size.  */
+
+      size = get_array_memory_size (element_size, count, empty_array_cond,
+				    &se->pre, &overflow);
+    }
 
   if (dimension)
     {
