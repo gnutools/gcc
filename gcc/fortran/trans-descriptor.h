@@ -116,7 +116,8 @@ void gfc_conv_remap_descriptor (stmtblock_t *, tree, int, tree, bool,
 
 void gfc_set_descriptor_from_scalar_class (stmtblock_t *, tree, tree, gfc_expr *);
 void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree, symbol_attribute,
-				     tree = NULL_TREE, tree = NULL_TREE);
+				     tree cond_presence = NULL_TREE,
+				     tree caf_token = NULL_TREE);
 void gfc_set_descriptor_from_scalar (stmtblock_t *, tree, tree, gfc_expr *,
 				     tree, tree);
 
