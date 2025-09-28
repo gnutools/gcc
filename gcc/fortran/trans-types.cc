@@ -2387,6 +2387,29 @@ gfc_nonrestricted_type (tree t)
   return ret;
 }
 
+static bool
+contiguous_attr (const symbol_attribute & attr)
+{
+  return attr.contiguous || attr.allocatable;
+}
+
+
+static bool
+is_contiguous (gfc_symbol *sym)
+{
+  if (contiguous_attr (gfc_symbol_attr (sym)))
+    return true;
+
+  if (!(sym->assoc
+	&& !sym->assoc->dangling))
+    return false;
+
+  if (!sym->assoc->variable)
+    return true;
+
+  return contiguous_attr (gfc_expr_attr (sym->assoc->target));
+}
+
 
 /* Return the type for a symbol.  Special handling is required for character
    types to get the correct level of indirection.
@@ -2486,10 +2509,7 @@ gfc_sym_type (gfc_symbol * sym, bool is_bind_c)
 	  else if (sym->attr.allocatable)
 	    akind = GFC_ARRAY_ALLOCATABLE;
 
-	  bool contiguous = sym->attr.contiguous
-			    || (sym->assoc
-				&& !sym->assoc->dangling
-				&& !sym->assoc->variable);
+	  bool contiguous = is_contiguous (sym);
 	  type = gfc_build_array_type (type, sym->as, akind, restricted,
 				       contiguous, sym->as->corank);
 	}
