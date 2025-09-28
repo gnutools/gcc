@@ -2485,8 +2485,13 @@ gfc_sym_type (gfc_symbol * sym, bool is_bind_c)
 					 : GFC_ARRAY_POINTER;
 	  else if (sym->attr.allocatable)
 	    akind = GFC_ARRAY_ALLOCATABLE;
+
+	  bool contiguous = sym->attr.contiguous
+			    || (sym->assoc
+				&& !sym->assoc->dangling
+				&& !sym->assoc->variable);
 	  type = gfc_build_array_type (type, sym->as, akind, restricted,
-				       sym->attr.contiguous, sym->as->corank);
+				       contiguous, sym->as->corank);
 	}
     }
   else
