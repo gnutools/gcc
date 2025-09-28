@@ -2033,10 +2033,13 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 
   for (int n = 0; n < ndim; n++)
     {
+      tree src_stride = gfc_conv_array_stride (src, n);
+      src_stride = gfc_evaluate_now (src_stride, block);
+
       tree stride;
       if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
 	  == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
-	stride = gfc_conv_array_stride (src, n);
+	stride = src_stride;
       else
 	stride = gfc_conv_array_stride_bytes (src, n);
 
@@ -2060,9 +2063,9 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
       tmp = fold_build2_loc (input_location, MINUS_EXPR, TREE_TYPE (tmp),
 			     start, tmp);
       tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
-			     tmp, stride);
+			     tmp, src_stride);
       base = fold_build2_loc (input_location, PLUS_EXPR, TREE_TYPE (tmp),
-				base, tmp);
+			      base, tmp);
 
       if (info->ref
 	  && info->ref->u.ar.dimen_type[n] == DIMEN_ELEMENT)
