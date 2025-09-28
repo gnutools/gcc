@@ -1688,24 +1688,31 @@ void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
 		     gfc_expr *src_expr, bool subref)
 {
-  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
-	      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+    {
+      struct lang_type *dest_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (dest));
+      struct lang_type *src_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (src));
 
-  struct lang_type *dest_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (dest));
-  struct lang_type *src_ls = TYPE_LANG_SPECIFIC (TREE_TYPE (src));
+      /* When only the array_kind differs, do a view_convert.  */
+      tree tmp1;
+      if (dest_ls
+	  && src_ls
+	  && dest_ls->rank == src_ls->rank
+	  && dest_ls->akind != src_ls->akind)
+	tmp1 = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (dest), src);
+      else
+	tmp1 = src;
 
-  /* When only the array_kind differs, do a view_convert.  */
-  tree tmp1;
-  if (dest_ls
-      && src_ls
-      && dest_ls->rank == src_ls->rank
-      && dest_ls->akind != src_ls->akind)
-    tmp1 = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (dest), src);
+      /* Copy the descriptor for pointer assignments.  */
+      gfc_add_modify (block, dest, tmp1);
+    }
   else
-    tmp1 = src;
-
-  /* Copy the descriptor for pointer assignments.  */
-  gfc_add_modify (block, dest, tmp1);
+    {
+      gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+		  && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
+      gfc_copy_descriptor (block, dest, src);
+    }
 
   /* Add any offsets from subreferences.  */
   gfc_get_dataptr_offset (block, dest, src, NULL_TREE, subref, src_expr);
