@@ -617,7 +617,9 @@ gfc_conv_descriptor_stride_bytes_get (tree desc, tree dim)
   else
     {
       tree stride_units = gfc_conv_descriptor_stride_get (desc, dim);
-      tree element_len = get_descriptor_elem_len (desc);
+      tree element_len = gfc_conv_descriptor_elem_len_get (desc);
+      element_len = fold_convert_loc (input_location, gfc_array_index_type,
+				      element_len);
       return fold_build2_loc (input_location, MULT_EXPR, gfc_array_index_type,
 			      stride_units, element_len);
     }
@@ -2295,6 +2297,12 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, tree gfc, gfc_expr *e, tree rank,
       /* Calculate offset + set lbound, ubound and stride.  */
       tree offset = gfc_create_var (gfc_array_index_type, "offset");
       gfc_add_modify (&block2, offset, gfc_index_zero_node);
+      bool contiguous = fsym->attr.allocatable;
+      tree stride;
+      if (contiguous)
+	stride = gfc_create_var (gfc_array_index_type, "stride");
+      else
+	stride = NULL_TREE;
       /* Loop: for (i = 0; i < rank; ++i).  */
       tree idx = gfc_create_var (TREE_TYPE (rank), "idx");
       /* Loop body.  */
@@ -2302,7 +2310,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, tree gfc, gfc_expr *e, tree rank,
       gfc_init_block (&loop_body);
       set_gfc_dimension_from_cfi (&loop_body, gfc, cfi, idx,
 				  gfc_get_cfi_dim_lbound (cfi, idx), offset,
-				  NULL_TREE, false);
+				  stride, contiguous);
       /* Generate loop.  */
       gfc_simple_for_loop (&block2, idx, build_int_cst (TREE_TYPE (idx), 0),
 			   rank, LT_EXPR, build_int_cst (TREE_TYPE (idx), 1),
@@ -2446,8 +2454,9 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
   gfc_add_modify (block2, offset, gfc_index_zero_node);
 
   /* Stride  */
+  bool contiguous = do_copy_inout || sym->attr.allocatable;
   tree stride;
-  if (do_copy_inout)
+  if (contiguous)
     stride = gfc_create_var (gfc_array_index_type, "stride");
   else
     stride = NULL_TREE;
@@ -2469,7 +2478,7 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
 	  tree lbound = gfc_evaluate_now (tmp, block2);
 	  gfc_add_block_to_block (block2, &se.post);
 	  set_gfc_dimension_from_cfi (block2, gfc_desc, cfi, gfc_rank_cst[i],
-				      lbound, offset, stride, do_copy_inout);
+				      lbound, offset, stride, contiguous);
 	}
     }
   else
@@ -2489,8 +2498,8 @@ gfc_set_gfc_from_cfi (stmtblock_t *block, stmtblock_t *block2, tree gfc_desc,
       else
 	gcc_unreachable ();
 
-      set_gfc_dimension_from_cfi (&loop_body, gfc_desc, cfi, idx, lbound, offset,
-				  stride, do_copy_inout);
+      set_gfc_dimension_from_cfi (&loop_body, gfc_desc, cfi, idx, lbound,
+				  offset, stride, contiguous);
 
       /* Generate loop.  */
       gfc_simple_for_loop (block2, idx, build_zero_cst (TREE_TYPE (idx)),
