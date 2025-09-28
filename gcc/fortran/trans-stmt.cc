@@ -2189,11 +2189,11 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	  else
 	    tmp = se.expr;
 
-	  gfc_add_modify (&se.pre, sym->backend_decl,
-			  gfc_class_data_get (GFC_DECL_SAVED_DESCRIPTOR (tmp)));
+	  gfc_copy_descriptor (&se.pre, sym->backend_decl,
+			       gfc_class_data_get (GFC_DECL_SAVED_DESCRIPTOR (tmp)));
 	}
       else
-	gfc_add_modify (&se.pre, sym->backend_decl, se.expr);
+	gfc_copy_descriptor (&se.pre, sym->backend_decl, se.expr);
 
       if (unlimited)
 	{

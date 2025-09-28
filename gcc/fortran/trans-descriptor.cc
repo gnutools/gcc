@@ -600,6 +600,12 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
   return non_lvalue_loc (input_location, get_descriptor_stride (desc, dim));
 }
 
+tree
+gfc_conv_descriptor_stride_get (tree desc, int dim)
+{
+  return gfc_conv_descriptor_stride_get (desc, gfc_rank_cst[dim]);
+}
+
 
 tree
 gfc_conv_descriptor_stride_units_get (tree desc, tree dim)
@@ -645,6 +651,12 @@ gfc_conv_descriptor_lbound_get (tree desc, tree dim)
   return non_lvalue_loc (input_location, get_descriptor_lbound (desc, dim));
 }
 
+tree
+gfc_conv_descriptor_lbound_get (tree desc, int dim)
+{
+  return gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
+}
+
 void
 gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
@@ -662,6 +674,12 @@ tree
 gfc_conv_descriptor_ubound_get (tree desc, tree dim)
 {
   return non_lvalue_loc (input_location, get_descriptor_ubound (desc, dim));
+}
+
+tree
+gfc_conv_descriptor_ubound_get (tree desc, int dim)
+{
+  return gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
 }
 
 void
@@ -1804,6 +1822,52 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, tree ptr,
 				   gfc_conv_descriptor_token (src));
 
   gfc_conv_descriptor_data_set (block, dest, ptr);
+}
+
+
+void
+gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
+{
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+    gfc_add_modify (block, dest, src);
+  else
+    {
+      gfc_conv_descriptor_data_set (block, dest,
+				    gfc_conv_descriptor_data_get (src));
+      gfc_conv_descriptor_dtype_set (block, dest,
+				     gfc_conv_descriptor_dtype_get (src));
+      gfc_conv_descriptor_bytes_counted_strides_set (block, dest);
+      gfc_conv_descriptor_span_set (block, dest,
+				    gfc_conv_descriptor_span_get (src));
+
+      tree element_len = gfc_conv_descriptor_elem_len_get (src);
+      element_len = fold_convert_loc (input_location, gfc_array_index_type,
+				      element_len);
+
+      tree offset = gfc_index_zero_node;
+
+      gcc_assert (GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest))
+		  == GFC_TYPE_ARRAY_RANK (TREE_TYPE (src)));
+      int rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest));
+      for (int i = 0; i < rank; i++) 
+	{
+	  tree lbound = gfc_conv_descriptor_lbound_get (src, i);
+	  tree ubound = gfc_conv_descriptor_ubound_get (src, i);
+	  tree stride_raw = gfc_conv_descriptor_stride_get (src, i);
+	  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)));
+	  tree stride = fold_build2_loc (input_location, MULT_EXPR,
+					 gfc_array_index_type, stride_raw,
+					 element_len);
+	  set_dimension_fields (block, dest, gfc_rank_cst[i],
+				lbound, ubound, stride, &offset);
+	}
+      gfc_conv_descriptor_offset_set (block, dest, offset);
+
+      if (flag_coarray == GFC_FCOARRAY_LIB)
+	gfc_conv_descriptor_token_set (block, dest,
+				       gfc_conv_descriptor_token (src));
+    }
 }
 
 

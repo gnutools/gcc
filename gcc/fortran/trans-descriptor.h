@@ -57,10 +57,13 @@ tree gfc_conv_descriptor_span_get (tree desc);
 tree gfc_conv_descriptor_dimension_get (tree desc, tree dim);
 tree gfc_conv_descriptor_dimension_get (tree desc, int dim);
 tree gfc_conv_descriptor_stride_get (tree desc, tree dim);
+tree gfc_conv_descriptor_stride_get (tree desc, int dim);
 tree gfc_conv_descriptor_stride_units_get (tree desc, tree dim);
 tree gfc_conv_descriptor_stride_bytes_get (tree desc, tree dim);
 tree gfc_conv_descriptor_lbound_get (tree desc, tree dim);
+tree gfc_conv_descriptor_lbound_get (tree desc, int dim);
 tree gfc_conv_descriptor_ubound_get (tree desc, tree dim);
+tree gfc_conv_descriptor_ubound_get (tree desc, int dim);
 tree gfc_conv_descriptor_sm_get (tree desc, tree dim);
 tree gfc_conv_descriptor_extent_get (tree desc, tree dim);
 
@@ -106,6 +109,7 @@ void gfc_copy_descriptor (stmtblock_t *, tree, tree, gfc_expr *, bool);
 void gfc_copy_descriptor (stmtblock_t *, tree, tree, tree, int, gfc_ss *);
 void gfc_copy_descriptor (stmtblock_t *, tree, tree, bool);
 void gfc_copy_descriptor (stmtblock_t *, tree, tree, int);
+void gfc_copy_descriptor (stmtblock_t *, tree, tree);
 
 void gfc_conv_remap_descriptor (stmtblock_t *, tree, int, tree, bool,
 				gfc_array_ref *);
