@@ -3887,7 +3887,8 @@ classify_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
 	    return ARS_CLASS_PTR_ARITH;
 	}
     }
-  else if (is_class_array_ref (se, ref_base, expr, ar, nullptr))
+  else if (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array))
+	   && is_class_array_ref (se, ref_base, expr, ar, nullptr))
     return ARS_CLASS_PTR_ARITH;
 
   if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array)))

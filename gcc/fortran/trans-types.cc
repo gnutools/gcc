@@ -1865,6 +1865,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
   GFC_TYPE_ARRAY_RANK (type) = as->rank;
   GFC_TYPE_ARRAY_CORANK (type) = as->corank;
   GFC_TYPE_ARRAY_DTYPE (type) = NULL_TREE;
+  GFC_BYTES_STRIDES_ARRAY_TYPE_P (type) = packed == PACKED_NO;
   range = build_range_type (gfc_array_index_type, gfc_index_zero_node,
 			    NULL_TREE);
   /* TODO: use main type if it is unbounded.  */
