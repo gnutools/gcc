@@ -658,12 +658,20 @@ gfc_conv_descriptor_lbound_get (tree desc, int dim)
   return gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[dim]);
 }
 
-void
+static void
 gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
   set_value (block, get_descriptor_lbound (desc, dim), value);
 }
+
+static void
+gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
+				int dim, tree value)
+{
+  gfc_conv_descriptor_lbound_set (block, desc, gfc_rank_cst[dim], value);
+}
+
 
 static tree
 get_descriptor_ubound (tree desc, tree dim)
@@ -683,11 +691,18 @@ gfc_conv_descriptor_ubound_get (tree desc, int dim)
   return gfc_conv_descriptor_ubound_get (desc, gfc_rank_cst[dim]);
 }
 
-void
+static void
 gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
   set_value (block, get_descriptor_ubound (desc, dim), value);
+}
+
+static void
+gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
+				int dim, tree value)
+{
+  gfc_conv_descriptor_ubound_set (block, desc, gfc_rank_cst[dim], value);
 }
 
 tree
