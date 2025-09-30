@@ -2528,7 +2528,18 @@ gfc_caf_get_image_index (stmtblock_t *block, gfc_expr *e, tree desc)
 	gfc_init_se (&se, NULL);
 	gfc_conv_expr_type (&se, ref->u.ar.start[i], gfc_array_index_type);
 	gfc_add_block_to_block (block, &se.pre);
-	lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[i]);
+	tree lbound;
+	if (ref->u.ar.as->cotype == AS_EXPLICIT)
+	  {
+	    gfc_se lbse;
+	    gfc_init_se (&lbse, nullptr);
+	    gfc_conv_expr_type (&lbse, ref->u.ar.as->lower[i],
+				gfc_array_index_type);
+	    gfc_add_block_to_block (block, &lbse.pre);
+	    lbound = se.expr;
+	  }
+	else
+	  lbound = gfc_conv_descriptor_lbound_get (desc, gfc_rank_cst[i]);
 	tmp = fold_build2_loc (input_location, MINUS_EXPR,
 			       TREE_TYPE (lbound), se.expr, lbound);
 	tmp = fold_build2_loc (input_location, MULT_EXPR, TREE_TYPE (tmp),
