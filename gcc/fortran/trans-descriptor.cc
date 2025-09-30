@@ -1329,6 +1329,23 @@ gfc_set_descriptor_from_scalar (stmtblock_t *block, tree descr, tree scalar,
   gfc_conv_descriptor_data_set (block, descr, scalar);
   gfc_conv_descriptor_span_set (block, descr,
 				gfc_conv_descriptor_elem_len_get (descr));
+
+  int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (descr));
+  if (corank != 0)
+    {
+      tree type = TREE_TYPE (scalar);
+      if (POINTER_TYPE_P (type))
+	type = TREE_TYPE (type);
+      gcc_assert (GFC_TYPE_ARRAY_CORANK (type) == corank);
+      for (int i = 0; i < corank; i++)
+	{
+	  gfc_conv_descriptor_lbound_set (block, descr, i,
+					  GFC_TYPE_ARRAY_LBOUND (type, i));
+	  if (i < corank - 1)
+	    gfc_conv_descriptor_ubound_set (block, descr, i,
+					    GFC_TYPE_ARRAY_UBOUND (type, i));
+	}
+    }
 }
 
 
@@ -1891,6 +1908,20 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 				lbound, ubound, stride, &offset);
 	}
       gfc_conv_descriptor_offset_set (block, dest, offset);
+
+      gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) > 0
+		  || GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest)) == 0);
+      int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest));
+      for (int i = 0; i < corank; i++)
+	{
+	  tree lbound = gfc_conv_descriptor_lbound_get (src, i);
+	  gfc_conv_descriptor_lbound_set (block, dest, i, lbound);
+	  if (i < corank - 1)
+	    {
+	      tree ubound = gfc_conv_descriptor_ubound_get (src, i);
+	      gfc_conv_descriptor_ubound_set (block, dest, i, ubound);
+	    }
+	}
 
       if (flag_coarray == GFC_FCOARRAY_LIB)
 	gfc_conv_descriptor_token_set (block, dest,
