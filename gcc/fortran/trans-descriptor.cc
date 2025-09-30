@@ -1743,7 +1743,7 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src,
     {
       gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
 		  && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
-      gfc_copy_descriptor (block, dest, src);
+      gfc_copy_descriptor (block, dest, src, src_expr);
     }
 
   /* Add any offsets from subreferences.  */
@@ -1870,6 +1870,35 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, tree ptr,
 }
 
 
+static tree
+find_parent_coarray_descriptor (tree t)
+{
+  do
+    {
+      switch (TREE_CODE (t))
+	{
+	case COMPONENT_REF:
+	case INDIRECT_REF:
+	case NOP_EXPR:
+	  t = TREE_OPERAND (t, 0);
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+
+      tree type = TREE_TYPE (t);
+      if (GFC_DESCRIPTOR_TYPE_P (type)
+	  && TYPE_LANG_SPECIFIC (type)
+	  && GFC_TYPE_ARRAY_CORANK (type) > 0)
+	return t;
+    }
+  while (!DECL_P (t));
+
+  return NULL_TREE;
+}
+
+
 void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 {
@@ -1909,17 +1938,36 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 	}
       gfc_conv_descriptor_offset_set (block, dest, offset);
 
-      gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) > 0
-		  || GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest)) == 0);
       int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest));
-      for (int i = 0; i < corank; i++)
+      if (corank > 0)
 	{
-	  tree lbound = gfc_conv_descriptor_lbound_get (src, i);
-	  gfc_conv_descriptor_lbound_set (block, dest, i, lbound);
-	  if (i < corank - 1)
+	  tree codims_src_descr;
+	  if (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) > 0)
 	    {
-	      tree ubound = gfc_conv_descriptor_ubound_get (src, i);
-	      gfc_conv_descriptor_ubound_set (block, dest, i, ubound);
+	      gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) == corank);
+	      codims_src_descr = src;
+	    }
+	  else
+	    /* We may pointer assign a non-coarray target to a non-coarray
+	       pointer subobject of a coarray.  Get the bounds from the parent
+	       coarray in that case.  */
+	    codims_src_descr = find_parent_coarray_descriptor (dest);
+
+	  int codims_src_rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (codims_src_descr));
+	  gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (codims_src_descr))
+		      == corank);
+	  for (int i = 0; i < corank; i++)
+	    {
+	      int src_index = codims_src_rank + i;
+	      tree lbound = gfc_conv_descriptor_lbound_get (codims_src_descr,
+							    src_index);
+	      gfc_conv_descriptor_lbound_set (block, dest, rank + i, lbound);
+	      if (i < corank - 1)
+		{
+		  tree ubound = gfc_conv_descriptor_ubound_get (codims_src_descr,
+								src_index);
+		  gfc_conv_descriptor_ubound_set (block, dest, i, ubound);
+		}
 	    }
 	}
 
