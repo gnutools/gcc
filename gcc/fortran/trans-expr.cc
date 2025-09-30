@@ -1264,7 +1264,12 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
 	gfc_class_array_data_assign (&block, ctree, parmse->expr, false);
     }
   else
-    gfc_copy_descriptor (&block, ctree, parmse->expr);
+    {
+      tree src = parmse->expr;
+      if (GFC_CLASS_TYPE_P (TREE_TYPE (src)))
+	src = gfc_class_data_get (src);
+      gfc_copy_descriptor (&block, ctree, src);
+    }
 
   /* Return the data component, except in the case of scalarized array
      references, where nullification of the cannot occur and so there
