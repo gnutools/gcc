@@ -1316,6 +1316,8 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 
   if (GFC_DESCRIPTOR_TYPE_P (type))
     {
+      bool bytes_strides_p = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
+
       /* Create a descriptorless array pointer.  */
       packed = PACKED_NO;
 
@@ -1353,6 +1355,7 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 			   : gfc_typenode_for_spec (&sym->ts);
       type = gfc_get_nodesc_array_type (type, as, packed,
 					!sym->attr.target);
+      GFC_BYTES_STRIDES_ARRAY_TYPE_P (type) = bytes_strides_p;
     }
   else
     {
