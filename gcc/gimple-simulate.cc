@@ -1079,7 +1079,7 @@ select_subref (simul_scope & context, tree data_ref, unsigned offset,
   if (val_type == VAL_ADDRESS)
     min_size = HOST_BITS_PER_PTR;
   else
-    min_size = CHAR_BIT;
+    min_size = 1;
 
   int first_ignored = 0;
   tree default_ref = NULL_TREE;
@@ -1987,8 +1987,10 @@ simul_valueize (tree t)
 {
   if (TREE_CODE (t) == SSA_NAME)
     {
-      gimple * def = SSA_NAME_DEF_STMT (t);
+      if (SSA_NAME_IS_DEFAULT_DEF (t))
+	return simul_valueize (SSA_NAME_VAR (t));
 
+      gimple * def = SSA_NAME_DEF_STMT (t);
       if (gimple_code (def) == GIMPLE_ASSIGN
 	  && gimple_assign_rhs_code (def) == ADDR_EXPR)
 	return gimple_assign_rhs1 (def);
@@ -2094,7 +2096,8 @@ simul_scope::evaluate (tree expr) const
 	    gcc_assert (is_constant && off >= 0);
 	    unsigned off_bits = off * CHAR_BIT;
 
-	    if (TREE_CODE (var) == VAR_DECL)
+	    if (TREE_CODE (var) == VAR_DECL
+		|| TREE_CODE (var) == PARM_DECL)
 	      {
 		data_storage *strg = find_reachable_var (var);
 		gcc_assert (strg != nullptr);
