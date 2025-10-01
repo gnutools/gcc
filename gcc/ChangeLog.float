@@ -1,3 +1,37 @@
+==================== Branch work222-float, patch #305 ====================
+
+Attempt to add bfloat16 operations.
+
+2025-10-01  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (output_vec_const_move): Add support for
+	16-bit floating point and vector 16-bit floating point modes.
+	(reg_offset_addressing_ok_p): Likewise.
+	(rs6000_legitimate_offset_address_p): Likewise.
+	(rs6000_const_vec): Likewise.
+	(rs6000_emit_move): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW): New macro.
+	(TARGET_FLOAT16_HW): Likewise.
+	(FP16_HW_SCALAR_MODE_P): Likewise.
+	* config/rs6000/rs6000.md (UNSPEC_XVCVBF16SPN_BF): New unspec.
+	(UNSPEC_XVCVSPBF16_BF): Likewise.
+	(UNSPEC_XXSPLTW_BF): Likewise.
+	(FP16_HW): Use TARGET_BFLOAT16_HW and TARGET_FLOAT16_HW.
+	(BF_OPS): New code iterator.
+	(BF_OPS_NAME): New code attribute.
+	(<BF_OPS_NAME>bf3): New insns for bfloat6 arithmetic operations.
+	(xxspltw_bf): New insn.
+	(xvcvbf16spn_bf): Likewise.
+	(xvcvspbf16_bf): Likewise.
+	(extendhf<mode>2): Use TARGET_FLOAT16_HW.
+	(trunc<mode>hf2): Likewise.
+	(neg<mode>2, FP16 iterator): New insns.
+	(xor<mode>3, FP16 iterator): Likewise.
+	(extendbf<mode>2): Use TARGET_BFLOAT16_HW.
+	(trunc<mode>bf2): Likewise.
+
 ==================== Branch work222-float, patch #304 ====================
 
 Use xxsldwi instead of xxspltw for bfloat16.
