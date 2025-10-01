@@ -8176,7 +8176,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	  bool contiguous = !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc))
 			    && info->ref
 			    && info->ref->u.ar.type == AR_FULL
-			    && !info->ref->next;
+			    && !info->ref->next
+			    && !se->bytes_strided;
 	  parmtype = gfc_get_array_type_bounds (parmtype, loop.dimen, codim,
 						loop.from, loop.to, contiguous,
 						GFC_ARRAY_UNKNOWN, false);
