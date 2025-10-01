@@ -8014,16 +8014,6 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       gcc_assert (loop.temp_ss->dimen == loop.dimen);
       gfc_add_ss_to_loop (&loop, loop.temp_ss);
     }
-  else if (ss
-	   && ss != gfc_ss_terminator
-	   && ss->next == gfc_ss_terminator)
-    {
-      gfc_ss_type ss_type = ss->info->type;
-      gcc_assert (ss_type != GFC_SS_SCALAR
-		  && ss_type != GFC_SS_REFERENCE
-		  && ss_type != GFC_SS_TEMP);
-      info->bytes_strided = se->bytes_strided;
-    }
 
   gfc_conv_loop_setup (&loop, & expr->where);
 
@@ -8078,7 +8068,9 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 
       desc = loop.temp_ss->info->data.array.descriptor;
     }
-  else if (expr->expr_type == EXPR_FUNCTION && !transposed_dims (ss))
+  else if (expr->expr_type == EXPR_FUNCTION && !transposed_dims (ss)
+	   && !(se->bytes_strided
+		&& !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (info->descriptor))))
     {
       desc = info->descriptor;
       se->string_length = ss_info->string_length;
@@ -8184,9 +8176,9 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	    parmtype = gfc_get_element_type (TREE_TYPE (desc));
 
 	  bool contiguous = !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc))
-			    && info->ref
-			    && info->ref->u.ar.type == AR_FULL
-			    && !info->ref->next
+			    && (!info->ref
+				|| (info->ref->u.ar.type == AR_FULL
+				    && !info->ref->next))
 			    && !se->bytes_strided;
 	  parmtype = gfc_get_array_type_bounds (parmtype, loop.dimen, codim,
 						loop.from, loop.to, contiguous,
