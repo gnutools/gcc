@@ -1,3 +1,14 @@
+==================== Branch work222-float, patch #303 ====================
+
+Change -mieee16 to -mfloat16; Allow use on power8.
+
+2025-10-01  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (altivec_vsplth_v8bf): Use xxspltw instead of
+	vspltw.
+
 ==================== Branch work222-float, patch #302 ====================
 
 Change -mieee16 to -mfloat16; Allow use on power8.
