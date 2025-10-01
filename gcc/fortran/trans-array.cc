@@ -229,7 +229,7 @@ gfc_get_array_ss (gfc_ss *next, gfc_expr *expr, int dimen, gfc_ss_type type)
 /* Creates and initializes a temporary type gfc_ss struct.  */
 
 gfc_ss *
-gfc_get_temp_ss (tree type, tree string_length, int dimen)
+gfc_get_temp_ss (tree type, tree string_length, int dimen, bool bytes_strided)
 {
   gfc_ss *ss;
   gfc_ss_info *ss_info;
@@ -240,6 +240,7 @@ gfc_get_temp_ss (tree type, tree string_length, int dimen)
   ss_info->type = GFC_SS_TEMP;
   ss_info->string_length = string_length;
   ss_info->data.temp.type = type;
+  ss_info->data.temp.bytes_strided = bytes_strided;
 
   ss = gfc_get_ss ();
   ss->info = ss_info;
@@ -1181,7 +1182,10 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
     }
 
   info->descriptor = desc;
-  size = gfc_index_one_node;
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)))
+    size = elemsize;
+  else
+    size = gfc_index_one_node;
 
   /*
      Fill in the bounds and stride.  This is a packed array, so:
@@ -5852,6 +5856,7 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
 			 tmp_ss_info->string_length);
 
       bool preserve_bounds = tmp_ss_info->data.temp.preserve_bounds;
+      bool bytes_strided = tmp_ss_info->data.temp.bytes_strided;
 
       tmp = tmp_ss_info->data.temp.type;
       memset (&tmp_ss_info->data.array, 0, sizeof (gfc_array_info));
@@ -5861,7 +5866,7 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
 
       gfc_trans_create_temp_array (&loop->pre, &loop->post, tmp_ss, tmp,
 				   NULL_TREE, false, true, false, where,
-				   !preserve_bounds);
+				   !preserve_bounds, !bytes_strided);
     }
 
   /* For array parameters we don't have loop variables, so don't calculate the
@@ -7989,7 +7994,8 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 				      ((expr->ts.type == BT_CHARACTER)
 				       ? expr->ts.u.cl->backend_decl
 				       : NULL),
-				      loop.dimen);
+				      loop.dimen,
+				      se->bytes_strided);
 
       se->string_length = loop.temp_ss->info->string_length;
       gcc_assert (loop.temp_ss->dimen == loop.dimen);
@@ -8613,6 +8619,18 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
       /* Every other type of array.  */
       se->want_pointer = (ctree) ? 0 : 1;
       se->want_coarray = expr->corank;
+      se->bytes_strided = fsym
+			  && ((fsym->ts.type != BT_CLASS
+			       && !fsym->attr.contiguous
+			       && (fsym->attr.pointer
+				   || (fsym->as
+				       && fsym->as->type == AS_ASSUMED_SHAPE)))
+			      || (fsym->ts.type == BT_CLASS
+				  && CLASS_DATA (fsym)->attr.contiguous
+				  && (CLASS_DATA (fsym)->attr.class_pointer
+				      || (CLASS_DATA (fsym)->as
+					  && CLASS_DATA (fsym)->as->type
+					     == AS_ASSUMED_SHAPE))));
       gfc_conv_expr_descriptor (se, expr);
 
       if (size)

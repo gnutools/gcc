@@ -107,6 +107,8 @@ typedef struct gfc_se
 
   unsigned want_coarray:1;
 
+  unsigned bytes_strided:1;
+
   /* Scalarization parameters.  */
   struct gfc_se *parent;
   struct gfc_ss *ss;
@@ -307,6 +309,7 @@ typedef struct gfc_ss_info
     {
       tree type;
       bool preserve_bounds;
+      bool bytes_strided;
     }
     temp;
 

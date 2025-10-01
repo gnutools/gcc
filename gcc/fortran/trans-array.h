@@ -116,7 +116,7 @@ void gfc_free_ss (gfc_ss *);
 /* Allocate a new array type ss.  */
 gfc_ss *gfc_get_array_ss (gfc_ss *, gfc_expr *, int, gfc_ss_type);
 /* Allocate a new temporary type ss.  */
-gfc_ss *gfc_get_temp_ss (tree, tree, int);
+gfc_ss *gfc_get_temp_ss (tree, tree, int, bool bytes_strided = false);
 /* Allocate a new scalar type ss.  */
 gfc_ss *gfc_get_scalar_ss (gfc_ss *, gfc_expr *);
 
