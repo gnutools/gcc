@@ -1,6 +1,6 @@
 ==================== Branch work222-float, patch #303 ====================
 
-Use xxspltw instead oof vspltw.
+Use xxspltw instead of vspltw.
 
 2025-10-01  Michael Meissner  <meissner@linux.ibm.com>
 
