@@ -8015,6 +8015,20 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       gcc_assert (loop.temp_ss->dimen == loop.dimen);
       gfc_add_ss_to_loop (&loop, loop.temp_ss);
     }
+  else if (ss
+	   && ss != gfc_ss_terminator
+	   && ss->next == gfc_ss_terminator
+	   && ss->info
+	   && ss->info->type == GFC_SS_FUNCTION
+	   && expr->expr_type == EXPR_FUNCTION
+	   && expr->value.function.isym != nullptr)
+    {
+      gfc_ss_type ss_type = ss->info->type;
+      gcc_assert (ss_type != GFC_SS_SCALAR
+		  && ss_type != GFC_SS_REFERENCE
+		  && ss_type != GFC_SS_TEMP);
+      info->bytes_strided = se->bytes_strided;
+    }
 
   gfc_conv_loop_setup (&loop, & expr->where);
 
