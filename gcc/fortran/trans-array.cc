@@ -397,6 +397,7 @@ is_pointer_array (tree expr)
     return true;
 
   if (INDIRECT_REF_P (expr)
+      && DECL_P (TREE_OPERAND (expr, 0))
       && GFC_DECL_PTR_ARRAY_P (TREE_OPERAND (expr, 0)))
     return true;
 
