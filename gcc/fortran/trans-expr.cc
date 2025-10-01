@@ -8327,7 +8327,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 				       tmp, NULL_TREE, false,
 				       !comp->attr.pointer, callee_alloc,
 				       &se->ss->info->expr->where, true,
-				       !IS_POINTER (comp));
+				       !IS_POINTER (comp)
+				       && !se->bytes_strided);
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;
@@ -8364,7 +8365,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 				       tmp, NULL_TREE, false,
 				       !sym->attr.pointer, callee_alloc,
 				       &se->ss->info->expr->where, true,
-				       !IS_POINTER (sym));
+				       !IS_POINTER (sym)
+				       && !se->bytes_strided);
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;

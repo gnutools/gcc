@@ -2806,6 +2806,7 @@ gfc_add_loop_ss_code (gfc_loopinfo * loop, gfc_ss * ss, bool subscript,
 	    gfc_init_se (&se, NULL);
 	    se.loop = loop;
 	    se.ss = ss;
+	    se.bytes_strided = info->bytes_strided;
 	    bool class_func = gfc_is_class_array_function (expr);
 	    if (class_func)
 	      expr->must_finalize = 1;
@@ -8002,6 +8003,16 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       se->string_length = loop.temp_ss->info->string_length;
       gcc_assert (loop.temp_ss->dimen == loop.dimen);
       gfc_add_ss_to_loop (&loop, loop.temp_ss);
+    }
+  else if (ss
+	   && ss != gfc_ss_terminator
+	   && ss->next == gfc_ss_terminator)
+    {
+      gfc_ss_type ss_type = ss->info->type;
+      gcc_assert (ss_type != GFC_SS_SCALAR
+		  && ss_type != GFC_SS_REFERENCE
+		  && ss_type != GFC_SS_TEMP);
+      info->bytes_strided = se->bytes_strided;
     }
 
   gfc_conv_loop_setup (&loop, & expr->where);

@@ -232,6 +232,8 @@ typedef struct gfc_array_info
   tree delta[GFC_MAX_DIMENSIONS];
 
   struct gfc_array_ref_info current_elem;
+
+  bool bytes_strided;
 }
 gfc_array_info;
 
