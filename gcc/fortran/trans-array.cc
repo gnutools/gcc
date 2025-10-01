@@ -7723,6 +7723,7 @@ is_explicit_coarray (gfc_expr *expr)
   return cas && cas->cotype == AS_EXPLICIT;
 }
 
+
 /* Convert an array for passing as an actual argument.  Expressions and
    vector subscripts are evaluated and stored in a temporary, which is then
    passed.  For whole arrays the descriptor is passed.  For array sections
@@ -8161,8 +8162,12 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	  else
 	    parmtype = gfc_get_element_type (TREE_TYPE (desc));
 
+	  bool contiguous = !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc))
+			    && info->ref
+			    && info->ref->u.ar.type == AR_FULL
+			    && !info->ref->next;
 	  parmtype = gfc_get_array_type_bounds (parmtype, loop.dimen, codim,
-						loop.from, loop.to, 0,
+						loop.from, loop.to, contiguous,
 						GFC_ARRAY_UNKNOWN, false);
 	  parm = gfc_create_var (parmtype, "parm");
 
