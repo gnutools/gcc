@@ -1826,7 +1826,7 @@ transfer_namelist_element (stmtblock_t * block, const char * var_name,
 			     iocall[IOCALL_SET_NML_VAL_DIM], 5,
 			     dt_parm_addr,
 			     build_int_cst (gfc_int4_type_node, n_dim),
-			     gfc_conv_array_stride (decl, n_dim),
+			     gfc_conv_array_stride_bytes (decl, n_dim),
 			     gfc_conv_array_lbound (decl, n_dim),
 			     gfc_conv_array_ubound (decl, n_dim));
       gfc_add_expr_to_block (block, tmp);
