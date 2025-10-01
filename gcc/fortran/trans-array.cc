@@ -7855,9 +7855,14 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       else
 	full = gfc_full_array_ref_p (info->ref, NULL);
 
-      if (full && !transposed_dims (ss))
+      if (full && !transposed_dims (ss)
+	  && !(se->bytes_strided
+	       && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc))
+	       && !se->expr))
 	{
-	  if (se->direct_byref && !se->byref_noassign)
+	  if ((se->direct_byref && !se->byref_noassign)
+	      || (se->bytes_strided
+		  && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc))))
 	    gfc_copy_descriptor (&se->pre, se->expr, desc, expr,
 				 subref_array_target);
 	  else if (se->want_pointer)
