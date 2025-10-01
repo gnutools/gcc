@@ -1,6 +1,6 @@
 ==================== Branch work222-float, patch #303 ====================
 
-Change -mieee16 to -mfloat16; Allow use on power8.
+Use xxspltw instead oof vspltw.
 
 2025-10-01  Michael Meissner  <meissner@linux.ibm.com>
 
