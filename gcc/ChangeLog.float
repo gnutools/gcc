@@ -1,3 +1,16 @@
+==================== Branch work222-float, patch #304 ====================
+
+Use xxsldwi instead of xxspltw for bfloat16.
+
+2025-10-01  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (altivec_vsplth_v8bf): Delete insn.
+	* config/rs6000/rs6000.md (UNSPEC_V8BF_SHIFT_LEFT_32BIT): New unspec.
+	(extendbf<mode>2): Use xxsldwi to get the bfloat16 into upper 32 bits.
+	(v8bf_shift_left_32bit): New insn.
+
 ==================== Branch work222-float, patch #303 ====================
 
 Use xxspltw instead of vspltw.
