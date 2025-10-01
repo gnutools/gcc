@@ -6881,6 +6881,8 @@ output_vec_const_move (rtx *operands)
 	  return "vspltisw %0,%1";
 
 	case E_V8HImode:
+	case E_V8HFmode:
+	case E_V8BFmode:
 	  return "vspltish %0,%1";
 
 	case E_V16QImode:
@@ -8747,6 +8749,8 @@ reg_offset_addressing_ok_p (machine_mode mode)
     {
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -8764,6 +8768,13 @@ reg_offset_addressing_ok_p (machine_mode mode)
       if (VECTOR_MEM_ALTIVEC_OR_VSX_P (mode))
 	return mode_supports_dq_form (mode);
       break;
+
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+    case E_BFmode:
+    case E_HFmode:
+      return false;
 
       /* The vector pair/quad types support offset addressing if the
 	 underlying vectors support offset addressing.  */
@@ -9055,6 +9066,13 @@ rs6000_legitimate_offset_address_p (machine_mode mode, rtx x,
   extra = 0;
   switch (mode)
     {
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+    case E_BFmode:
+    case E_HFmode:
+      return false;
+
     case E_DFmode:
     case E_DDmode:
     case E_DImode:
@@ -9156,6 +9174,11 @@ macho_lo_sum_memory_operand (rtx x, machine_mode mode)
 static bool
 legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
 {
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+  if (FP16_SCALAR_MODE_P (mode))
+    return false;
   if (GET_CODE (x) != LO_SUM)
     return false;
   if (!REG_P (XEXP (x, 0)))
@@ -10852,6 +10875,8 @@ rs6000_const_vec (machine_mode mode)
       subparts = 4;
       break;
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
       subparts = 8;
       break;
     case E_V16QImode:
@@ -11307,6 +11332,8 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
 
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
