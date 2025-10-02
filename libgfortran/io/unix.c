@@ -908,25 +908,6 @@ mem_read (stream *s, void *buf, ssize_t nbytes)
 }
 
 
-/* Stream read function for chracter(kind=4) internal units.  */
-
-static ssize_t
-mem_read4 (stream *s, void *buf, ssize_t nbytes)
-{
-  void *p;
-  size_t nb = nbytes;
-
-  p = mem_alloc_r4 (s, &nb);
-  if (p)
-    {
-      memcpy (buf, p, nb * 4);
-      return (ssize_t) nb;
-    }
-  else
-    return 0;
-}
-
-
 /* Stream write function for character(kind=1) internal units.  */
 
 static ssize_t
@@ -1047,7 +1028,7 @@ static const struct stream_vtable mem_vtable = {
 };
 
 static const struct stream_vtable mem4_vtable = {
-  .read = (void *) mem_read4,
+  .read = (void *) mem_read,
   .write = (void *) mem_write4,
   .seek = (void *) mem_seek,
   .tell = (void *) mem_tell,

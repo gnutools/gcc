@@ -263,7 +263,7 @@ next_char_internal (st_parameter_dt *dtp)
   if (likely (dtp->u.p.current_unit->bytes_left > 0))
     {
       if (unlikely (is_char4_unit(dtp))) /* Check for kind=4 internal unit.  */
-       length = sread (dtp->u.p.current_unit->s, &c, 1);
+       length = sread (dtp->u.p.current_unit->s, &c, sizeof (gfc_char4_t));
       else
        {
 	 char cc;
@@ -386,16 +386,17 @@ eat_spaces (st_parameter_dt *dtp)
   if (is_array_io (dtp) && (dtp->u.p.current_unit->last_char == EOF - 1))
     {
       gfc_offset offset = stell (dtp->u.p.current_unit->s);
-      gfc_offset i;
+      gfc_offset i, final_position;
 
       if (is_char4_unit(dtp)) /* kind=4 */
 	{
 	  for (i = 0; i < dtp->u.p.current_unit->bytes_left; i++)
 	    {
-	      if (dtp->internal_unit[(offset + i) * sizeof (gfc_char4_t)]
+	      if (dtp->internal_unit[offset + i * sizeof (gfc_char4_t)]
 		  != (gfc_char4_t)' ')
 	        break;
 	    }
+	  final_position = offset + i * sizeof (gfc_char4_t);
 	}
       else
 	{
@@ -404,11 +405,12 @@ eat_spaces (st_parameter_dt *dtp)
 	      if (dtp->internal_unit[offset + i] != ' ')
 	        break;
 	    }
+	  final_position = offset + i;
 	}
 
       if (i != 0)
 	{
-	  sseek (dtp->u.p.current_unit->s, offset + i, SEEK_SET);
+	  sseek (dtp->u.p.current_unit->s, final_position, SEEK_SET);
 	  dtp->u.p.current_unit->bytes_left -= i;
 	}
     }

@@ -320,7 +320,7 @@ read_sf_internal (st_parameter_dt *dtp, size_t *length)
       if (is_char4_unit(dtp))
 	{
 	  gfc_char4_t *p = (gfc_char4_t *) mem_alloc_r4 (dtp->u.p.current_unit->s,
-			    length);
+							 length);
 	  base = fbuf_alloc (dtp->u.p.current_unit, lorig);
 	  for (size_t i = 0; i < *length; i++, p++)
 	    base[i] = *p > 255 ? '?' : (unsigned char) *p;

@@ -956,6 +956,7 @@ set_internal_unit (stmtblock_t * block, stmtblock_t * post_block,
       else
 	{
 	  /* Return the data pointer and rank from the descriptor.  */
+	  se.bytes_strided = 1;
 	  gfc_conv_expr_descriptor (&se, e);
 	  tmp = gfc_conv_descriptor_data_get (se.expr);
 	  se.expr = gfc_build_addr_expr (pchar_type_node, se.expr);
