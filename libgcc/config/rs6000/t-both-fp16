@@ -1,0 +1,28 @@
+# Conversion between __bfloat16 and _Float16
+
+both_fp16_funcs	 = truncbfhf2 trunchfbf2
+both_fp16_src	 = $(addprefix $(srcdir)/soft-fp/,$(addsuffix .c,$(both_fp16_funcs)))
+both_fp16_obj	 = $(addsuffix $(objext),$(both_fp16_funcs))
+
+BOTH_FP16_CFLAGS = -mfloat16 -mbfloat16 -Wno-psabi \
+		   -I$(srcdir)/soft-fp \
+		   -I$(srcdir)/config/rs6000 \
+
+$(both_fp16_obj) : INTERNAL_CFLAGS += $(BOTH_FP16_CFLAGS)
+
+# For now, only put it in the static library
+# LIB2ADD	+= $(both_fp16_src)
+
+LIB2ADD_ST	+= $(both_fp16_src)
+
+.PHONY: test-both-fp16 clean-both-fp16
+
+test-both-fp16:
+	@echo "both_fp16_src:"; \
+	for x in $(both_fp16_src); do echo "    $$x"; done; \
+	echo; \
+	echo "both_fp16_obj:"; \
+	for x in $(both_fp16_obj); do echo "    $$x"; done;
+
+clean-both-fp16:
+	@$(MULTICLEAN) multi-clean DO=clean-both-fp16

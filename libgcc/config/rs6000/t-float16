@@ -1,0 +1,31 @@
+# _Float16 library support
+
+fp16_funcs	= eqhf2 extendhfdf2 extendhfsf2 \
+		  fixhfdi  fixhfsi fixunshfdi fixunshfsi \
+		  floatdihf floatsihf floatundihf floatunsihf \
+		  truncdfhf2 truncsfhf2
+
+fp16_src	= $(addprefix $(srcdir)/soft-fp/,$(addsuffix .c,$(fp16_funcs)))
+fp16_obj	= $(addsuffix $(objext),$(fp16_funcs))
+
+FP16_CFLAGS	= -mfloat16 -Wno-psabi \
+		  -I$(srcdir)/soft-fp -I$(srcdir)/config/rs6000
+
+$(fp16_obj)	: INTERNAL_CFLAGS += $(FP16_CFLAGS)
+
+# For now, only put it in the static library
+# LIB2ADD	+= $(fp16_src)
+
+LIB2ADD_ST	+= $(fp16_src)
+
+.PHONY: test-float16 clean-float16
+
+test-float16:
+	@echo "fp16_src:"; \
+	for x in $(fp16_src); do echo "    $$x"; done; \
+	echo; \
+	echo "fp16_obj:"; \
+	for x in $(fp16_obj); do echo "    $$x"; done;
+
+clean-float16:
+	@$(MULTICLEAN) multi-clean DO=clean-float16
