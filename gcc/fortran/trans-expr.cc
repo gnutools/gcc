@@ -7621,10 +7621,16 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 					     fsym->attr.pointer);
 		}
 	      else
-		/* This is where we introduce a temporary to store the
-		   result of a non-lvalue array expression.  */
-		gfc_conv_array_parameter (&parmse, e, nodesc_arg, fsym,
-					  sym->name, NULL);
+		{
+		  /* This is where we introduce a temporary to store the
+		     result of a non-lvalue array expression.  */
+		  if (expr
+		      && expr->expr_type == EXPR_FUNCTION
+		      && expr->value.function.isym != nullptr)
+		    parmse.bytes_strided = 1;
+		  gfc_conv_array_parameter (&parmse, e, nodesc_arg, fsym,
+					    sym->name, NULL);
+		}
 
 	      /* If an ALLOCATABLE dummy argument has INTENT(OUT) and is
 		 allocated on entry, it must be deallocated.
@@ -8366,7 +8372,12 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 				       !sym->attr.pointer, callee_alloc,
 				       &se->ss->info->expr->where, true,
 				       !IS_POINTER (sym)
-				       && !se->bytes_strided);
+				       && !se->bytes_strided
+				       && !(expr
+					    && expr->expr_type == EXPR_FUNCTION
+					    && expr->value.function.isym
+					    && expr->value.function.isym->id
+					       == GFC_ISYM_RESHAPE));
 
 	  /* Pass the temporary as the first argument.  */
 	  result = info->descriptor;

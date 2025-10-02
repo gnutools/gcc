@@ -8654,18 +8654,19 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
       /* Every other type of array.  */
       se->want_pointer = (ctree) ? 0 : 1;
       se->want_coarray = expr->corank;
-      se->bytes_strided = fsym
-			  && ((fsym->ts.type != BT_CLASS
-			       && !fsym->attr.contiguous
-			       && (fsym->attr.pointer
-				   || (fsym->as
-				       && fsym->as->type == AS_ASSUMED_SHAPE)))
-			      || (fsym->ts.type == BT_CLASS
-				  && CLASS_DATA (fsym)->attr.contiguous
-				  && (CLASS_DATA (fsym)->attr.class_pointer
-				      || (CLASS_DATA (fsym)->as
-					  && CLASS_DATA (fsym)->as->type
-					     == AS_ASSUMED_SHAPE))));
+      if (!se->bytes_strided)
+	se->bytes_strided = fsym
+			    && ((fsym->ts.type != BT_CLASS
+				 && !fsym->attr.contiguous
+				 && (fsym->attr.pointer
+				     || (fsym->as
+					 && fsym->as->type == AS_ASSUMED_SHAPE)))
+				|| (fsym->ts.type == BT_CLASS
+				    && CLASS_DATA (fsym)->attr.contiguous
+				    && (CLASS_DATA (fsym)->attr.class_pointer
+					|| (CLASS_DATA (fsym)->as
+					    && CLASS_DATA (fsym)->as->type
+					       == AS_ASSUMED_SHAPE))));
       gfc_conv_expr_descriptor (se, expr);
 
       if (size)
