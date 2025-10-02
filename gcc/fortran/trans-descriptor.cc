@@ -2239,7 +2239,8 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
   if (src_expr->ts.type == BT_CHARACTER
       && src_expr->ts.deferred
       && src_expr->ts.u.cl->backend_decl
-      && VAR_P (src_expr->ts.u.cl->backend_decl))
+      && VAR_P (src_expr->ts.u.cl->backend_decl)
+      && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
     {
       tree base_type = TREE_TYPE (base);
       base = fold_build2_loc (input_location, MULT_EXPR, base_type, base,
