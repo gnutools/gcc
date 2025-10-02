@@ -2302,7 +2302,8 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
   else if ((lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN)
 	   || (lhs_type == VAL_KNOWN && rhs_type == VAL_ADDRESS))
     {
-      if (code == PLUS_EXPR || code == POINTER_PLUS_EXPR)
+      if (code == PLUS_EXPR || code == POINTER_PLUS_EXPR
+	  || code == MINUS_EXPR)
 	{
 	  data_value *val_address = nullptr, *val_offset = nullptr;
 	  if (lhs_type == VAL_ADDRESS && rhs_type == VAL_KNOWN)
@@ -2322,6 +2323,8 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
 	  gcc_assert (address != nullptr);
 	  wide_int offset = val_offset->get_known ();
 	  wide_int bit_offset = offset * CHAR_BIT;
+	  if (code == MINUS_EXPR)
+	    bit_offset = -bit_offset;
 	  wide_int total_offset = address->offset + bit_offset;
 	  gcc_assert (wi::fits_uhwi_p (total_offset));
 	  storage_address final_address (address->storage,
