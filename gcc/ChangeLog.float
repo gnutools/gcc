@@ -1,3 +1,14 @@
+==================== Branch work222-float, patch #306 ====================
+
+Add 16-bit float to rs6000_load_constant_and_splat.
+
+2025-10-02  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (rs6000_load_constant_and_splat): Add 16-bit
+	floating point types.
+
 ==================== Branch work222-float, patch #305 ====================
 
 Attempt to add bfloat16 operations.
