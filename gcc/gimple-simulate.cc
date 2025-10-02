@@ -147,9 +147,9 @@ struct storage_address
   /* Reference to the whole storage.  */
   storage_ref storage;
   /* Offset in bits into that storage.  */
-  unsigned offset;
+  int offset;
 
-  storage_address (const storage_ref & ref, unsigned off)
+  storage_address (const storage_ref & ref, int off)
     : storage (ref), offset (off)
   {}
 };
@@ -708,11 +708,11 @@ context_printer::print (simul_scope * ctx, tree expr)
 	wide_int wi_off = val_off.get_known ();
 	wi_off = (wi_off * CHAR_BIT) + address->offset;
 
-	if (!wi::fits_uhwi_p (wi_off))
+	if (!wi::fits_shwi_p (wi_off))
 	  gcc_unreachable ();
-	unsigned offset_bits = wi_off.to_uhwi ();
+	int offset_bits = wi_off.to_shwi ();
 	gcc_assert (offset_bits % CHAR_BIT == 0);
-	unsigned offset_bytes = offset_bits / CHAR_BIT;
+	int offset_bytes = offset_bits / CHAR_BIT;
 
 	unsigned size_bits = get_constant_type_size (TREE_TYPE (expr));
 	gcc_assert (size_bits % CHAR_BIT == 0);
@@ -1727,10 +1727,16 @@ context_printer::print_at (const data_value & value, tree type, unsigned offset,
 	    storage_address *address = value.get_address_at (offset);
 	    data_storage &target_storage = address->storage.get ();
 	    target_storage.print (*this);
-	    unsigned off = address->offset;
-	    if (off > 0)
+	    int off = address->offset;
+	    if (off != 0)
 	      {
-		pp_string (&pp, " + ");
+		if (off > 0)
+		  pp_string (&pp, " + ");
+		else
+		  {
+		    pp_string (&pp, " - ");
+		    off = -off;
+		  }
 		gcc_assert (off % CHAR_BIT == 0);
 		off /= CHAR_BIT;
 		pp_decimal_int (&pp, off);
@@ -2094,7 +2100,7 @@ simul_scope::evaluate (tree expr) const
 	    HOST_WIDE_INT off;
 	    bool is_constant = offset.is_constant (&off);
 	    gcc_assert (is_constant && off >= 0);
-	    unsigned off_bits = off * CHAR_BIT;
+	    int off_bits = off * CHAR_BIT;
 
 	    if (TREE_CODE (var) == VAR_DECL
 		|| TREE_CODE (var) == PARM_DECL)
@@ -2326,9 +2332,9 @@ simul_scope::evaluate_binary (enum tree_code code, tree type, tree lhs,
 	  if (code == MINUS_EXPR)
 	    bit_offset = -bit_offset;
 	  wide_int total_offset = address->offset + bit_offset;
-	  gcc_assert (wi::fits_uhwi_p (total_offset));
+	  gcc_assert (wi::fits_shwi_p (total_offset));
 	  storage_address final_address (address->storage,
-					 total_offset.to_uhwi ());
+					 total_offset.to_shwi ());
 	  data_value result (type);
 	  result.set_address (final_address);
 	  return result;
@@ -2505,17 +2511,17 @@ simul_scope::decompose_ref (tree data_ref, data_storage * & storage,
       if (add_offset.get_precision () < HOST_BITS_PER_WIDE_INT)
 	add_offset = wide_int_storage::from (add_offset,
 					     HOST_BITS_PER_WIDE_INT,
-					     UNSIGNED);
+					     SIGNED);
 
       if (add_index.get_precision () < HOST_BITS_PER_WIDE_INT)
 	add_index = wide_int_storage::from (add_index,
 					    HOST_BITS_PER_WIDE_INT,
-					    UNSIGNED);
+					    SIGNED);
 
       if (add_multiplier.get_precision () < HOST_BITS_PER_WIDE_INT)
 	add_multiplier = wide_int_storage::from (add_multiplier,
 						 HOST_BITS_PER_WIDE_INT,
-						 UNSIGNED);
+						 SIGNED);
 
       wide_int off = add_offset + add_index * add_multiplier;
       gcc_assert (wi::fits_shwi_p (off));
