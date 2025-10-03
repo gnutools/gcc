@@ -2354,8 +2354,6 @@ void
 gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
 			       gfc_expr *shape, gfc_expr *lower, locus *where)
 {
-  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
-
   /* Set the span field.  */
   tree tmp = TYPE_SIZE_UNIT (gfc_get_element_type (TREE_TYPE (desc)));
   tree elem_len = fold_convert (gfc_array_index_type, tmp);
@@ -2402,7 +2400,10 @@ gfc_set_descriptor_with_shape (stmtblock_t *block, tree desc, tree ptr,
 
   tree stride = gfc_create_var (gfc_array_index_type, "stride");
   tree offset = gfc_create_var (gfc_array_index_type, "offset");
-  gfc_add_modify (block, stride, elem_len);
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)))
+    gfc_add_modify (block, stride, elem_len);
+  else
+    gfc_add_modify (block, stride, gfc_index_one_node);
   gfc_add_modify (block, offset, gfc_index_zero_node);
 
   /* Loop body.  */
