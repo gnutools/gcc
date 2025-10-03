@@ -3862,6 +3862,9 @@ classify_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
   if (ar && ar->dimen == 0 && ar->codimen != 0)
     return ARS_SCALAR_COARRAY;
 
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array)))
+    return ARS_BYTES_STRIDED_PTR_ARITH;
+
   if (get_CFI_desc (NULL, expr, nullptr, ar)
       && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (array)))
     return ARS_CFI_PTR_ARITH;
