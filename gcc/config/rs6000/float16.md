@@ -65,13 +65,18 @@
 ;; On power10, we can load up HFmode and BFmode constants with xxspltiw
 ;; or pli.
 (define_insn "*mov<mode>_xxspltiw"
-  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
-	(match_operand:FP16 1 "fp16_xxspltiw_constant" "eP,eP"))]
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r,wa,r")
+	(match_operand:FP16 1 "fp16_xxspltiw_constant" "j,j,eP,eP"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
 {
   rtx op1 = operands[1];
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op1);
   long real_words[1];
+
+  if (op1 == CONST0_RTX (<MODE>mode))
+    return (vsx_register_operand (operands[0], <MODE>mode)
+	    ? "xxspltib %x0,0"
+	    : "li %0,0");
 
   real_to_target (real_words, rtype, <MODE>mode);
   operands[2] = GEN_INT (real_words[0]);
@@ -79,8 +84,8 @@
 	  ? "xxspltiw %x0,%2"
 	  : "li %0,%2");
 }
-  [(set_attr "type" "vecperm,*")
-   (set_attr "prefixed" "yes")])
+  [(set_attr "type" "vecsimple,*,vecperm,*")
+   (set_attr "prefixed" "no,no,yes,no")])
 
 (define_insn "*mov<mode>_internal"
   [(set (match_operand:FP16 0 "nonimmediate_operand"
@@ -311,12 +316,13 @@
 ;; dividing by 0.
 
 (define_insn_and_split "<BF_OPS_NAME>bf3"
-  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
-	(BF_OPS:BF (match_operand:BF 1 "vsx_register_operand" "wa")
-		   (match_operand:BF 2 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:V4SF 3 "=&wa"))
-   (clobber (match_scratch:V4SF 4 "=&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa"))]
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa,wa,wa")
+	(BF_OPS:BF
+	 (match_operand:BF 1 "vsx_register_operand" "wa,wa,wa")
+	 (match_operand:BF 2 "fp16_reg_or_constant_operand" "wa,j,eP")))
+   (clobber (match_scratch:V4SF 3 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 4 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 5 "=&wa,&wa,&wa"))]
   "TARGET_BFLOAT16_HW"
   "#"
   "&& 1"
@@ -338,12 +344,34 @@
   if (GET_CODE (tmp2) == SCRATCH)
     tmp2 = gen_reg_rtx (V4SFmode);
 
-  /* Convert operand1 to V4SFmode format.  */
+  /* Convert operand1 and operand2 to V4SFmode format.  We use SPLAT for
+     registers to get the value into the upper 32-bits.  We can use XXSPLTW
+     to splat words instead of VSPLTIH since the XVCVBF16SPN instruction
+     ignores the odd half-words, and XXSPLTW can operate on all VSX registers
+     instead of just the Altivec registers.  Using SPLAT instead of a shift
+     also insure that other bits are not a signalling NaN.  If we are using
+     XXSPLTIW or XXSPLTIB to load the constant the other bits are duplicated.  */
+
+  /* Operand1.  */
   emit_insn (gen_xxspltw_bf (tmp1, op1));
   emit_insn (gen_xvcvbf16spn_bf (tmp1, tmp1));
 
-  /* Convert operand2 to V4SFmode format.  */
-  emit_insn (gen_xxspltw_bf (tmp2, op2));
+  /* Operand2.  */
+  if (REG_P (op2) || SUBREG_P (op2))
+    emit_insn (gen_xxspltw_bf (tmp2, op2));
+
+  else if (op2 == CONST0_RTX (BFmode))
+    emit_move_insn (tmp2, CONST0_RTX (V4SFmode));
+
+  else if (fp16_xxspltiw_constant (op2, BFmode))
+    {
+      rtx op2_bf = gen_lowpart (BFmode, tmp2);
+      emit_move_insn (op2_bf, op2);
+    }
+
+  else
+    gcc_unreachable ();
+
   emit_insn (gen_xvcvbf16spn_bf (tmp2, tmp2));
 
   /* Do the operation in V4SFmode.  */
@@ -354,7 +382,7 @@
   DONE;
 }
   [(set_attr "type" "vecperm")
-   (set_attr "length" "24")])
+   (set_attr "length" "24,24,32")])
 
 ;; Duplicate a BF value so it can be used for xvcvbf16spn.  Because
 ;; xvcvbf16spn only uses the even elements, we can use xxspltw instead

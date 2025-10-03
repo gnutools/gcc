@@ -2186,3 +2186,19 @@
 
   return constant_generates_xxspltiw (&vsx_const);
 })
+
+;; Return 1 if this is a 16-bit floating point operand that can be used
+;; in an add, subtract, or multiply operation that uses the vector
+;; conversion function.
+(define_predicate "fp16_reg_or_constant_operand"
+  (match_code "reg,subreg,const_double")
+{
+  if (REG_P (op) || SUBREG_P (op))
+    return vsx_register_operand (op, mode);
+
+  if (CONST_DOUBLE_P (op))
+    return (op == CONST0_RTX (mode)
+	    || fp16_xxspltiw_constant (op, mode));
+
+  return false;
+})
