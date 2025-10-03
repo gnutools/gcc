@@ -1,3 +1,15 @@
+==================== Branch work222-float, patch #311 ====================
+
+Attempt to add support for adding BFmode constants.
+
+2025-10-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (mov<mode>_xxspltiw): Prefer VSX registers
+	over GPRs; reorder register preferences; and use pli to load large
+	constants to GPR registers.
+
 ==================== Branch work222-float, patch #310 ====================
 
 Attempt to add support for adding BFmode constants.
