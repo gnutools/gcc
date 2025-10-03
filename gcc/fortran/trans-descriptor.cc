@@ -2008,7 +2008,7 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
 			   tree src, bool contiguous_src, gfc_array_ref *ar)
 {
   gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
-	      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
+	      || !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)));
 
   /* Set dtype.  */
   gfc_conv_descriptor_dtype_set (block, dest,
