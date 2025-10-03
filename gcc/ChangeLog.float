@@ -1,3 +1,15 @@
+==================== Branch work222-float, patch #308 ====================
+
+If -Ofast remove truncate and re-expand of 16-bit floating point
+
+2025-10-02  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.md (<BF_OPS_NAME>bf3): Remove debug printf.
+	(no_extend_trunc_<SFDF:mode>_<FP16_HW:mode>): If -Ofast, optimize
+	multiple 16-bit floating point truncate and extend operations.
+
 ==================== Branch work222-float, patch #307 ====================
 
 Add HF/BF emulation functions to libgcc.
