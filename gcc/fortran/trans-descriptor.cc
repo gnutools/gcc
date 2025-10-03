@@ -1826,10 +1826,7 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src, bool lhs_type)
       gfc_add_modify (block, tmp, tmp2);
     }
   else
-    {
-      gcc_assert (lhs_type);
-      gfc_copy_descriptor (block, dest, src);
-    }
+    gfc_copy_descriptor (block, dest, src);
 }
 
 
