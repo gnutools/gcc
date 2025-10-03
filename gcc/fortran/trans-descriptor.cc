@@ -1936,9 +1936,16 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 
       tree offset = gfc_index_zero_node;
 
-      gcc_assert (GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest))
-		  == GFC_TYPE_ARRAY_RANK (TREE_TYPE (src)));
-      int rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest));
+      int rank;
+      if (GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest))
+	  == GFC_TYPE_ARRAY_RANK (TREE_TYPE (src)))
+	rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest));
+      else
+	{
+	  gcc_assert (GFC_TYPE_ARRAY_AKIND (TREE_TYPE (dest))
+		      == GFC_ARRAY_ASSUMED_RANK);
+	  rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (src));
+	}
       for (int i = 0; i < rank; i++) 
 	{
 	  tree lbound = gfc_conv_descriptor_lbound_get (src, i);
