@@ -1291,7 +1291,7 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
 					 true);
 	}
       else
-	gfc_add_modify (&parmse->post, parmse->expr, ctree);
+	gfc_copy_descriptor (&parmse->post, parmse->expr, ctree);
     }
 
   /* Set the vptr.  */
