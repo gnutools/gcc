@@ -1,3 +1,17 @@
+==================== Branch work222-float, patch #310 ====================
+
+Attempt to add support for adding BFmode constants.
+
+2025-10-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (mov<mode>_xxspltiw): Add specific 0.0
+	support.
+	(<BF_OPS_NAME>bf3): Allow operand2 to be a constant.
+	* config/rs6000/predicates.md (fp16_reg_or_constant_operand): New
+	predicate.
+
 ==================== Branch work222-float, patch #309 ====================
 
 Move 16-bit floating point to float16.md.
