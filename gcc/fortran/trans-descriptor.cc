@@ -2273,18 +2273,17 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     {
       tmp = INDIRECT_REF_P (src) ? TREE_OPERAND (src, 0) : src;
       if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (tmp)))
-	{
-	  tmp = gfc_conv_descriptor_token (tmp);
-	}
+	tmp = gfc_conv_descriptor_token (tmp);
       else if (DECL_P (tmp) && DECL_LANG_SPECIFIC (tmp)
 	       && GFC_DECL_TOKEN (tmp) != NULL_TREE)
 	tmp = GFC_DECL_TOKEN (tmp);
+      else if (TYPE_LANG_SPECIFIC (TREE_TYPE (tmp)))
+	tmp = GFC_TYPE_ARRAY_CAF_TOKEN (TREE_TYPE (tmp));
       else
-	{
-	  tmp = GFC_TYPE_ARRAY_CAF_TOKEN (TREE_TYPE (tmp));
-	}
+	tmp = NULL_TREE;
 
-      gfc_conv_descriptor_token_set (block, dest, tmp);
+      if (tmp != NULL_TREE)
+	gfc_conv_descriptor_token_set (block, dest, tmp);
     }
 }
  
