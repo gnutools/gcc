@@ -2239,7 +2239,9 @@ find_interesting_uses_address (struct ivopts_data *data, gimple *stmt,
 
   /* Ignore bitfields for now.  Not really something terribly complicated
      to handle.  TODO.  */
-  if (TREE_CODE (base) == BIT_FIELD_REF)
+  if (TREE_CODE (base) == BIT_FIELD_REF
+      || (TREE_CODE (base) == COMPONENT_REF
+	  && DECL_BIT_FIELD (TREE_OPERAND (base, 1))))
     goto fail;
 
   base = unshare_expr (base);

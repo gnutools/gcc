@@ -186,10 +186,14 @@ enum dtype_subfield
   GFC_DTYPE_VERSION,
   GFC_DTYPE_RANK,
   GFC_DTYPE_TYPE,
-  GFC_DTYPE_ATTRIBUTE,
-  GFC_DTYPE_BYTES_COUNTED_STRIDES
+  GFC_DTYPE_ATTR
 };
 
+enum attr_subfield
+{
+  GFC_ATTR_ATTRIBUTE,
+  GFC_ATTR_BYTES_COUNTED_STRIDES
+};
 
 static tree
 get_type_field (tree type, unsigned field_idx, tree field_type = NULL_TREE)
@@ -471,9 +475,24 @@ gfc_conv_descriptor_type_set (tree desc, int value)
 
 
 static tree
+get_attr_comp (tree desc)
+{
+  return get_dtype_comp (desc, GFC_DTYPE_ATTR, gfc_get_attr_type_node ());
+}
+
+
+static tree
+get_attr_comp (tree desc, attr_subfield field, tree type = NULL_TREE)
+{
+  tree attr_ref = get_attr_comp (desc);
+  return get_ref_comp (attr_ref, field, type);
+}
+
+
+static tree
 get_descriptor_bytes_counted_strides (tree desc)
 {
-  return get_dtype_comp (desc, GFC_DTYPE_BYTES_COUNTED_STRIDES, short_unsigned_type_node);
+  return get_attr_comp (desc, GFC_ATTR_BYTES_COUNTED_STRIDES, short_unsigned_type_node);
 }
 
 static void
@@ -490,8 +509,8 @@ gfc_conv_descriptor_bytes_counted_strides_set (stmtblock_t *block, tree desc, in
   gcc_assert (value == 0 || value == 1);
 
   tree dtype = get_type_field (type, DTYPE_FIELD);
-
-  tree field = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_BYTES_COUNTED_STRIDES);
+  tree attr = get_type_field (TREE_TYPE (dtype), GFC_DTYPE_ATTR);
+  tree field = get_type_field (TREE_TYPE (attr), GFC_ATTR_BYTES_COUNTED_STRIDES);
 
   tree type_value = build_int_cst (TREE_TYPE (field), value);
   gfc_conv_descriptor_bytes_counted_strides_set (block, desc, type_value);
@@ -729,6 +748,26 @@ gfc_conv_descriptor_extent_get (tree desc, tree dim)
  * Array descriptor higher level routines.                                     *
  ******************************************************************************/
 
+static tree
+get_attr_constructor (bool bytes_counted_strides)
+{
+  tree attr;
+  tree field;
+  vec<constructor_elt, va_gc> *v = NULL;
+
+  tree attr_type_node = gfc_get_attr_type_node ();
+  field = gfc_advance_chain (TYPE_FIELDS (attr_type_node),
+			     GFC_ATTR_BYTES_COUNTED_STRIDES);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_int_cst (TREE_TYPE (field),
+					 bytes_counted_strides));
+
+  attr = build_constructor (attr_type_node, v);
+
+  return attr;
+}
+
+
 /* Return the DTYPE for an array.  This describes the type and type parameters
    of the array.  */
 /* TODO: Only call this when the value is actually used, and make all the
@@ -842,10 +881,9 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, bool bytes_counted_strides,
 			  build_int_cst (TREE_TYPE (field), n));
 
   field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_BYTES_COUNTED_STRIDES);
+			     GFC_DTYPE_ATTR);
   CONSTRUCTOR_APPEND_ELT (v, field,
-			  build_int_cst (TREE_TYPE (field),
-					 bytes_counted_strides));
+			  get_attr_constructor (bytes_counted_strides));
 
   dtype = build_constructor (dtype_type_node, v);
 

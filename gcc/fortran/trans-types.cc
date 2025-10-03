@@ -138,8 +138,45 @@ int gfc_size_kind;
 int gfc_numeric_storage_size;
 int gfc_character_storage_size;
 
-static tree dtype_type_node = NULL_TREE;
 
+static tree attr_type_node = NULL_TREE;
+
+tree gfc_get_attr_type_node (void)
+{
+  tree field;
+  tree attr_node;
+  tree *attr_chain = NULL;
+
+  if (attr_type_node == NULL_TREE)
+    {
+      attr_node = make_node (RECORD_TYPE);
+      TYPE_NAME (attr_node) = get_identifier ("attr_type");
+      TYPE_NAMELESS (attr_node) = 1;
+      field = gfc_add_field_to_struct_1 (attr_node,
+					 get_identifier ("attribute"),
+					 short_unsigned_type_node, &attr_chain);
+      DECL_BIT_FIELD (field) = 1;
+      tree type_size = TYPE_SIZE (TREE_TYPE (field));
+      DECL_SIZE (field) = int_const_binop (MINUS_EXPR, type_size,
+					   build_one_cst (TREE_TYPE (type_size)));
+      suppress_warning (field);
+
+      field = gfc_add_field_to_struct_1 (attr_node,
+					 get_identifier ("bytes_counted_strides"),
+					 short_unsigned_type_node, &attr_chain);
+      DECL_BIT_FIELD (field) = 1;
+      DECL_SIZE (field) = bitsize_int (1);
+      suppress_warning (field);
+
+      gfc_finish_type (attr_node);
+      TYPE_DECL_SUPPRESS_DEBUG (TYPE_STUB_DECL (attr_node)) = 1;
+      attr_type_node = attr_node;
+    }
+  return attr_type_node;
+}
+
+
+static tree dtype_type_node = NULL_TREE;
 
 /* Build the dtype_type_node if necessary.  */
 tree get_dtype_type_node (void)
@@ -170,19 +207,8 @@ tree get_dtype_type_node (void)
 					 signed_char_type_node, &dtype_chain);
       suppress_warning (field);
       field = gfc_add_field_to_struct_1 (dtype_node,
-					 get_identifier ("attribute"),
-					 short_unsigned_type_node, &dtype_chain);
-      DECL_BIT_FIELD (field) = 1;
-      tree type_size = TYPE_SIZE (TREE_TYPE (field));
-      DECL_SIZE (field) = int_const_binop (MINUS_EXPR, type_size,
-					   build_one_cst (TREE_TYPE (type_size)));
-      suppress_warning (field);
-
-      field = gfc_add_field_to_struct_1 (dtype_node,
-					 get_identifier ("bytes_counted_strides"),
-					 short_unsigned_type_node, &dtype_chain);
-      DECL_BIT_FIELD (field) = 1;
-      DECL_SIZE (field) = bitsize_int (1);
+					 get_identifier ("attr"),
+					 gfc_get_attr_type_node (), &dtype_chain);
       suppress_warning (field);
 
       gfc_finish_type (dtype_node);
