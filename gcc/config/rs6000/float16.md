@@ -65,8 +65,8 @@
 ;; On power10, we can load up HFmode and BFmode constants with xxspltiw
 ;; or pli.
 (define_insn "*mov<mode>_xxspltiw"
-  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r,wa,r")
-	(match_operand:FP16 1 "fp16_xxspltiw_constant" "j,j,eP,eP"))]
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,wa,?r,?r")
+	(match_operand:FP16 1 "fp16_xxspltiw_constant" "j,eP,j,eP"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
 {
   rtx op1 = operands[1];
@@ -82,10 +82,10 @@
   operands[2] = GEN_INT (real_words[0]);
   return (vsx_register_operand (operands[0], <MODE>mode)
 	  ? "xxspltiw %x0,%2"
-	  : "li %0,%2");
+	  : "pli %0,%2");
 }
-  [(set_attr "type" "vecsimple,*,vecperm,*")
-   (set_attr "prefixed" "no,no,yes,no")])
+  [(set_attr "type" "vecsimple,vecsimple,*,*")
+   (set_attr "prefixed" "no,yes,no,yes")])
 
 (define_insn "*mov<mode>_internal"
   [(set (match_operand:FP16 0 "nonimmediate_operand"
