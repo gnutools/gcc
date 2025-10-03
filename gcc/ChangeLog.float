@@ -1,3 +1,52 @@
+==================== Branch work222-float, patch #309 ====================
+
+Move 16-bit floating point to float16.md.
+
+2025-10-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md: New file.
+	* config/rs6000/rs6000.md (UNSPEC_V8BF_SHIFT_LEFT_32BIT): Move to
+	float16.md.
+	(UNSPEC_XVCVBF16SPN_BF): Likewise.
+	(UNSPEC_XVCVSPBF16_BF): Likewise.
+	(UNSPEC_XXSPLTW_BF): Likewise.
+	(FP16): Likewise.
+	(FP16_HW): Likewise.
+	(FP16_CONVERT): Likewise.
+	(BF_OPS): Likewise.
+	(BF_OPS_NAME): Likewise.
+	(<BF_OPS_NAME>bf3): Likewise.
+	(xxspltw_bf): Likewise.
+	(xvcvbf16spn_bf): Likewise.
+	(xvcvspbf16_bf): Likewise.
+	(extendhf<mode>2): Likewise.
+	(trunc<mode>hf2): Likewise.
+	(neg<mode>2, FP16 iterator): Likewise.
+	(xor<mode>3, FP16 iterator): Likewise.
+	(extendbf<mode>2): Likewise.
+	(v8bf_shift_left_32bi): Likewise.
+	(trunc<mode>bf2): Likewise.
+	(extend<FP16_HW:mode><FP16_CONVERT:mode>2): Likewise.
+	(trunc<FP16_CONVERT:mode><FP16_HW:mode>2): Likewise.
+	(float<GPR:mode><FP16_HW:mode>2): Likewise.
+	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
+	(fix_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	(no_extend_trunc_<SFDF:mode>_<FP16_HW:mode): Likewise.
+	(mov<mode>, FP16 iterator): Likewise.
+	(mov<mode>_xxspltiw): Likewise.
+	(mov<mode>_internal, FP16 iterator): Likewise.
+	(toplevel): Include float16.md.
+	* config/rs6000/vsx.md (VECTOR_16BIT): Change BF/HF to require hardware
+	support for the modes.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+	(vsx_xvcvhpsp_v8hf): Move to float16.md.
+	(vsx_xvcvbf16spn_v8b): Likewise.
+	(vsx_xvcvspbf16_bf): Likewise.
+
 ==================== Branch work222-float, patch #308 ====================
 
 If -Ofast remove truncate and re-expand of 16-bit floating point
