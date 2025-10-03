@@ -48,14 +48,14 @@
 
 ;; Iterator for 8 element vectors
 (define_mode_iterator VECTOR_16BIT [V8HI
-				    (V8BF "TARGET_BFLOAT16")
-				    (V8HF "TARGET_FLOAT16")])
+				    (V8BF "TARGET_BFLOAT16_HW")
+				    (V8HF "TARGET_FLOAT16_HW")])
 
 ;; Iterator for logical types supported by VSX
 (define_mode_iterator VSX_L [V16QI
 			     V8HI
-			     (V8BF	"TARGET_BFLOAT16")
-			     (V8HF	"TARGET_FLOAT16")
+			     (V8BF	"TARGET_BFLOAT16_HW")
+			     (V8HF	"TARGET_FLOAT16_HW")
 			     V4SI
 			     V2DI
 			     V4SF
@@ -68,8 +68,8 @@
 ;; Iterator for memory moves.
 (define_mode_iterator VSX_M [V16QI
 			     V8HI
-			     (V8BF	"TARGET_BFLOAT16")
-			     (V8HF	"TARGET_FLOAT16")
+			     (V8BF	"TARGET_BFLOAT16_HW")
+			     (V8HF	"TARGET_FLOAT16_HW")
 			     V4SI
 			     V2DI
 			     V4SF
@@ -2459,15 +2459,6 @@
 (define_insn "vsx_xvcvhpsp"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand: V16QI 1 "vsx_register_operand" "wa")]
-		     UNSPEC_VSX_CVHPSP))]
-  "TARGET_P9_VECTOR"
-  "xvcvhpsp %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
-;; Used for conversion to/from _Float16
-(define_insn "vsx_xvcvhpsp_v8hf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:V8HF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_CVHPSP))]
   "TARGET_P9_VECTOR"
   "xvcvhpsp %x0,%x1"
@@ -6519,22 +6510,6 @@
 		      XVCVBF16))]
   "TARGET_POWER10"
   "<xvcvbf16> %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
-(define_insn "vsx_xvcvbf16spn_v8bf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:V8BF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_VSX_XVCVBF16SPN))]
-  "TARGET_BFLOAT16"
-  "xvcvbf16spn %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
-(define_insn "vsx_xvcvspbf16_bf"
-  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
-	(unspec:BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		   UNSPEC_VSX_XVCVSPBF16))]
-  "TARGET_BFLOAT16"
-  "xvcvspbf16 %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
 (define_insn "vec_mtvsrbmi"
