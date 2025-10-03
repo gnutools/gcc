@@ -10851,9 +10851,21 @@ gfc_trans_pointer_assignment (gfc_expr * expr1, gfc_expr * expr2)
 	      for (i = 0; i < expr2->rank; i++)
 		bound[i] = NULL_TREE;
 	      tmp = gfc_typenode_for_spec (&expr2->ts);
+	      enum gfc_array_kind akind;
+	      bool packed;
+	      if (gfc_expr_attr (expr2).contiguous)
+		{
+		  akind = GFC_ARRAY_POINTER_CONT;
+		  packed = true;
+		}
+	      else
+		{
+		  akind = GFC_ARRAY_POINTER;
+		  packed = false;
+		}
 	      tmp = gfc_get_array_type_bounds (tmp, expr2->rank, 0,
-					       bound, bound, 0,
-					       GFC_ARRAY_POINTER, false);
+					       bound, bound, packed, akind,
+					       false);
 	      tmp = gfc_create_var (tmp, "ptrtemp");
 	      rse.descriptor_only = 0;
 	      rse.expr = tmp;
