@@ -425,7 +425,7 @@
 ;; power10, since we can easily load up -0.0 via XXSPLTIW.
 
 (define_insn_and_split "neg<mode>2"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,wr")
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
 	(neg:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")))
    (clobber (match_scratch:FP16 2 "=&wa,&r"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
@@ -451,8 +451,8 @@
 
 ;; XOR used to negate a 16-bit floating point type
 
-(define_insn "xor<mode>3"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,wr")
+(define_insn "*xor<mode>3"
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
 	(xor:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
 		  (match_operand:FP16 2 "register_operand" "wa,wr")))]
   "TARGET_POWER10 && TARGET_PREFIXED"
@@ -461,16 +461,85 @@
    xor %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
 
-
-;; If the user used -Ofast, eliminate back to back extend/trunc
-;; operations
+;; 16-bit floating point absolute value
 
-(define_insn_and_split "*no_extend_trunc_<SFDF:mode>_<FP16_HW:mode>"
-  [(set (match_operand:FP16_HW 0 "vsx_register_operand" "=wa")
-	(float_truncate:FP16_HW
-	 (float_extend:SFDF
-	  (match_operand:FP16_HW 1 "vsx_register_operand" "wa"))))]
-  "optimize_fast"
+(define_insn_and_split "abs<mode>2"
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
+	(abs:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  "TARGET_POWER10 && TARGET_PREFIXED"
   "#"
   "&& 1"
-  [(set (match_dup 0) (match_dup 1))])
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(and:FP16 (match_dup 1)
+		  (not:FP16 (match_dup 2))))]
+{
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  operands[3] = const_double_from_real_value (dconst, <MODE>mode);
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+;; ANDC used to clear the sign bit of a 16-bit floating point type
+;; for absolute value.
+
+(define_insn "*andc<mode>3"
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
+	(and:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
+		  (not:FP16
+		   (match_operand:FP16 2 "register_operand" "wa,wr"))))]
+  "TARGET_POWER10 && TARGET_PREFIXED"
+  "@
+   xxlandc %x0,%x1,%x2
+   andc %0,%1,%2"
+  [(set_attr "type" "veclogical,integer")])
+
+;; 16-bit negative floating point absolute value
+
+(define_insn_and_split "*nabs<mode>2"
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
+	(neg:FP16
+	 (abs:FP16
+	  (match_operand:FP16 1 "register_operand" "wa,wr"))))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  "TARGET_POWER10 && TARGET_PREFIXED"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(ior:FP16 (match_dup 1)
+		  (match_dup 2)))]
+{
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  operands[3] = const_double_from_real_value (dconst, <MODE>mode);
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+;; OR used to set the sign bit of a 16-bit floating point type
+;; for negative absolute value.
+
+(define_insn "*ior<mode>3"
+  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
+	(ior:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
+		  (match_operand:FP16 2 "register_operand" "wa,wr")))]
+  "TARGET_POWER10 && TARGET_PREFIXED"
+  "@
+   xxlor %x0,%x1,%x2
+   or %0,%1,%2"
+  [(set_attr "type" "veclogical,integer")])
