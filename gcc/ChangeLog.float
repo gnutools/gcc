@@ -1,3 +1,19 @@
+==================== Branch work222-float, patch #312 ====================
+
+Add 16-bit floating point abs; Remove expand/truncate optimization.
+
+2025-10-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (xor<mode>3): Favor vector registers over
+	GPRs.
+	(no_extend_trunc_<SFDF:mode>_<FP16_HW:mode>): Delete.
+	(abs<mode>2): New insn.
+	(andc<mode>3): Likewise.
+	(nabs<mode>2): Likewise.
+	(ior<mode>3): Likewise.
+
 ==================== Branch work222-float, patch #311 ====================
 
 Attempt to add support for adding BFmode constants.
