@@ -3579,10 +3579,12 @@ static hash_table<non_overloaded_registered_function_hasher>
 
 struct pragma_intrinsic_flags
 {
-  int intrinsic_target_flags;
+  int intrinsic_riscv_isa_flags;
+  int intrinsic_riscv_base_subext;
 
   int intrinsic_riscv_vector_elen_flags;
-  int intrinsic_riscv_zvl_flags;
+  int intrinsic_riscv_zvl_subext;
+  int intrinsic_riscv_zvf_subext;
 };
 
 static void
@@ -3594,14 +3596,23 @@ riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
      e.g. zvfbmin and zvfhmin are required to define the vector bf16 and f16,
 	  and VECTOR_ELEN* also required for vector interger and floating
 	  type.  */
-  flags->intrinsic_target_flags = target_flags;
+  flags->intrinsic_riscv_isa_flags = riscv_isa_flags;
+  flags->intrinsic_riscv_base_subext = riscv_base_subext;
   flags->intrinsic_riscv_vector_elen_flags = riscv_vector_elen_flags;
-  flags->intrinsic_riscv_zvl_flags = riscv_zvl_flags;
+  flags->intrinsic_riscv_zvl_subext = riscv_zvl_subext;
+  flags->intrinsic_riscv_zvf_subext = riscv_zvf_subext;
 
-  target_flags = target_flags
+  riscv_zvf_subext = riscv_zvf_subext
+    | MASK_ZVFBFMIN
+    | MASK_ZVFHMIN;
+
+  riscv_isa_flags = riscv_isa_flags
     | MASK_VECTOR;
 
-  riscv_zvl_flags = riscv_zvl_flags
+  riscv_base_subext = riscv_base_subext
+    | MASK_MUL;
+
+  riscv_zvl_subext = riscv_zvl_subext
     | MASK_ZVL32B
     | MASK_ZVL64B
     | MASK_ZVL128B
@@ -3615,18 +3626,20 @@ riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
     | MASK_VECTOR_ELEN_32
     | MASK_VECTOR_ELEN_64
     | MASK_VECTOR_ELEN_FP_16
-    | MASK_VECTOR_ELEN_BF_16
     | MASK_VECTOR_ELEN_FP_32
-    | MASK_VECTOR_ELEN_FP_64;
+    | MASK_VECTOR_ELEN_FP_64
+    | MASK_VECTOR_ELEN_BF_16;
 }
 
 static void
 riscv_pragma_intrinsic_flags_restore (struct pragma_intrinsic_flags *flags)
 {
-  target_flags = flags->intrinsic_target_flags;
+  riscv_isa_flags = flags->intrinsic_riscv_isa_flags;
+  riscv_base_subext = flags->intrinsic_riscv_base_subext;
 
   riscv_vector_elen_flags = flags->intrinsic_riscv_vector_elen_flags;
-  riscv_zvl_flags = flags->intrinsic_riscv_zvl_flags;
+  riscv_zvl_subext = flags->intrinsic_riscv_zvl_subext;
+  riscv_zvf_subext = flags->intrinsic_riscv_zvf_subext;
 }
 
 /* RAII class for enabling enough RVV features to define the built-in
