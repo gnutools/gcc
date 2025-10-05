@@ -6643,7 +6643,57 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
   offset = gfc_index_zero_node;
   stride = GFC_TYPE_ARRAY_STRIDE (type, 0);
   if (stride && VAR_P (stride))
-    gfc_add_modify (pblock, stride, gfc_index_one_node);
+    {
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (type))
+	{
+	  tree span;
+	  if (sym->ts.type == BT_CLASS)
+	    {
+	      tree class_descr = sym->backend_decl;
+	      if (POINTER_TYPE_P (TREE_TYPE (class_descr)))
+		class_descr = build_fold_indirect_ref_loc (input_location,
+							   class_descr);
+	      tree class_type = TREE_TYPE (class_descr);
+	      gcc_assert (GFC_CLASS_TYPE_P (class_type)
+			  || GFC_CLASS_TYPE_P (TYPE_MAIN_VARIANT (class_type)));
+	      tree array_descr = gfc_class_data_get (class_descr);
+	      span = gfc_conv_descriptor_span_get (array_descr);
+	    }
+	  else if (sym->ts.type == BT_CHARACTER)
+	    {
+	      tree len = sym->ts.u.cl->backend_decl;
+	      if (!len)
+		len = sym->ts.u.cl->passed_length;
+	      if (!len && sym->ts.u.cl->length)
+		{
+		  gfc_se se;
+		  gfc_init_se (&se, nullptr);
+		  gfc_conv_expr_val (&se, sym->ts.u.cl->length);
+		  gfc_add_block_to_block (pblock, &se.pre);
+		  len = se.expr;
+		}
+	      span = fold_convert_loc (input_location, gfc_array_index_type,
+				       len);
+	      if (sym->ts.kind != 1)
+		{
+		  tree kind = build_int_cst (gfc_array_index_type,
+					     sym->ts.kind);
+		  span = fold_build2_loc (input_location, MULT_EXPR, 
+					  gfc_array_index_type,
+					  span, kind);
+		}
+	    }
+	  else
+	    {
+	      tree elt_type = gfc_get_element_type (type);
+	      span = TYPE_SIZE_UNIT (elt_type);
+	    }
+	  span = fold_convert_loc (input_location, gfc_array_index_type, span);
+	  gfc_add_modify (pblock, stride, span);
+	}
+      else
+	gfc_add_modify (pblock, stride, gfc_index_one_node);
+    }
   for (dim = 0; dim < as->rank; dim++)
     {
       /* Evaluate non-constant array bound expressions.

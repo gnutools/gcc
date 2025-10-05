@@ -1318,41 +1318,35 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
     {
       bool bytes_strides_p = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
 
-      /* Create a descriptorless array pointer.  */
-      packed = PACKED_NO;
-
-      /* Even when -frepack-arrays is used, symbols with TARGET attribute
-	 are not repacked.  */
-      if (!flag_repack_arrays || sym->attr.target)
+      if (as->type == AS_ASSUMED_SIZE)
+	packed = PACKED_FULL;
+      else if (as->type == AS_EXPLICIT)
 	{
-	  if (as->type == AS_ASSUMED_SIZE)
-	    packed = PACKED_FULL;
-	}
-      else
-	{
-	  if (as->type == AS_EXPLICIT)
+	  packed = PACKED_FULL;
+	  for (n = 0; n < as->rank; n++)
 	    {
-	      packed = PACKED_FULL;
-	      for (n = 0; n < as->rank; n++)
+	      if (!(as->upper[n]
+		    && as->lower[n]
+		    && as->upper[n]->expr_type == EXPR_CONSTANT
+		    && as->lower[n]->expr_type == EXPR_CONSTANT))
 		{
-		  if (!(as->upper[n]
-			&& as->lower[n]
-			&& as->upper[n]->expr_type == EXPR_CONSTANT
-			&& as->lower[n]->expr_type == EXPR_CONSTANT))
-		    {
-		      packed = PACKED_PARTIAL;
-		      break;
-		    }
+		  packed = PACKED_PARTIAL;
+		  break;
 		}
 	    }
-	  else
-	    packed = PACKED_PARTIAL;
 	}
+      else if (flag_repack_arrays && !sym->attr.target)
+      /* Even when -frepack-arrays is used, symbols with TARGET attribute
+	 are not repacked.  */
+	packed = PACKED_PARTIAL;
+      else
+	packed = PACKED_NO;
 
       /* For classarrays the element type is required, but
 	 gfc_typenode_for_spec () returns the array descriptor.  */
       type = is_classarray ? gfc_get_element_type (type)
 			   : gfc_typenode_for_spec (&sym->ts);
+      /* Create a descriptorless array pointer.  */
       type = gfc_get_nodesc_array_type (type, as, packed,
 					!sym->attr.target);
       GFC_BYTES_STRIDES_ARRAY_TYPE_P (type) = bytes_strides_p;
