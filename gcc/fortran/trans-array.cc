@@ -7110,7 +7110,19 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
       tree default_stride;
       if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dumdesc)))
 	{
-	  default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+	  tree elem_type = gfc_get_element_type (TREE_TYPE (dumdesc));
+	  if (POINTER_TYPE_P (elem_type))
+	    elem_type = TREE_TYPE (elem_type);
+	  if (sym->ts.type == BT_CLASS
+	      || (sym->ts.type == BT_CHARACTER
+		  && !(sym->ts.u.cl
+		       && sym->ts.u.cl->backend_decl
+		       && TREE_CODE (sym->ts.u.cl->backend_decl)
+			  == INTEGER_CST))
+	      || TREE_CODE (TYPE_SIZE_UNIT (elem_type)) != INTEGER_CST)
+	    default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+	  else
+	    default_stride = TYPE_SIZE_UNIT (elem_type);
 	  default_stride = fold_convert_loc (input_location,
 					     gfc_array_index_type,
 					     default_stride);

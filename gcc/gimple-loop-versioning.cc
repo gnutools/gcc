@@ -165,6 +165,9 @@ struct address_term_info
      or null if no stride has been identified.  */
   tree stride;
 
+  /* The value to version for, if the term is likely an inner dimension.  */
+  tree versioning_value;
+
   /* Enumerates the likelihood that EXPR indexes the inner dimension
      of an array.  */
   enum inner_likelihood inner_likelihood;
@@ -198,6 +201,8 @@ public:
   /* All bytes accessed from the address fall in the offset range
      [MIN_OFFSET, MAX_OFFSET).  */
   HOST_WIDE_INT min_offset, max_offset;
+
+  HOST_WIDE_INT type_size;
 };
 
 /* Stores addresses based on their base and terms (ignoring the offsets).  */
@@ -206,6 +211,176 @@ struct address_info_hasher : nofree_ptr_hash <address_info>
   static hashval_t hash (const address_info *);
   static bool equal (const address_info *, const address_info *);
 };
+
+
+template <typename Hash, typename Value, Hash Empty>
+class names_hash
+: public simple_hashmap_traits <int_hash <Hash, Empty>, Value>
+{};
+
+
+enum name_presence
+{
+  NAME_VALID,
+  NAME_INVALIDATED,
+  NAME_NOT_PRESENT
+};
+
+
+template <typename Key, typename Value, Key Empty,
+	  typename Traits = names_hash <Key, Value, Empty> >
+class names_map
+{
+public:
+#if 0
+  typedef typename hash_map<Key, Value, names_hash<Key, Value, Empty>>::hash_entry hash_entry;
+  friend class hash_map;
+#endif
+
+  struct hash_entry
+  {
+    Key m_key;
+    Value m_value;
+
+    typedef hash_entry value_type;
+    typedef Key compare_type;
+
+    static hashval_t hash (const hash_entry &e)
+      {
+       	return Traits::hash (e.m_key);
+      }
+
+    static bool equal (const hash_entry &a, const Key &b)
+       	{
+	  return Traits::equal_keys (a.m_key, b);
+       	}
+
+    static void remove (hash_entry &e) { Traits::remove (e); }
+
+    static void mark_deleted (hash_entry &e) { Traits::mark_deleted (e); }
+
+    static bool is_deleted (const hash_entry &e)
+      {
+       	return Traits::is_deleted (e);
+      }
+
+    static const bool empty_zero_p = Traits::empty_zero_p;
+    static void mark_empty (hash_entry &e) { Traits::mark_empty (e); }
+    static bool is_empty (const hash_entry &e) { return Traits::is_empty (e); }
+  };
+
+  explicit names_map (size_t n = default_hash_map_size, bool ggc = false,
+		     bool sanitize_eq_and_hash = true,
+		     bool gather_mem_stats = GATHER_STATISTICS
+		     CXX_MEM_STAT_INFO)
+    : m_table (n, ggc, sanitize_eq_and_hash, gather_mem_stats,
+	       HASH_MAP_ORIGIN PASS_MEM_STAT)
+  {
+  }
+
+  name_presence find_name (Key k, Value *&output_val)
+    {
+      hash_entry *e = m_table.find_slot_with_hash (k, Traits::hash (k),
+						   NO_INSERT);
+      if (e == nullptr)
+	return NAME_NOT_PRESENT;
+
+      output_val = &e->m_value;
+      if (is_valid (e->m_key))
+	return NAME_VALID;
+      else
+	return NAME_INVALIDATED;
+    }
+
+  bool is_valid (Key k)
+    {
+      hash_entry *e = m_table.find_slot_with_hash (k, Traits::hash (k),
+						   NO_INSERT);
+      return e != nullptr && !Traits::is_empty (*e);
+    }
+
+  void invalidate (Key k)
+    {
+      hash_entry *e = m_table.find_slot_with_hash (k, Traits::hash (k),
+						   NO_INSERT);
+      Traits::mark_empty (*e);
+    }
+
+  bool put (const Key k, const Value v)
+    {
+      hash_entry *e = m_table.find_slot_with_hash (k, Traits::hash (k),
+						   INSERT);
+      bool ins = Traits::is_empty (*e);
+      if (ins)
+	{
+	  e->m_key = k;
+	  new ((void *)&e->m_value) Value (v);
+	  gcc_checking_assert (!Traits::is_empty (*e)
+			       && !Traits::is_deleted (*e));
+	}
+      else
+	e->m_value = v;
+
+      return !ins;
+    }
+
+  bool is_empty () const { return m_table.is_empty (); }
+
+  class iterator
+  {
+  public:
+    explicit iterator (const typename hash_table<hash_entry>::iterator &iter) :
+      m_iter (iter) {}
+
+    iterator &operator++ ()
+    {
+      ++m_iter;
+      return *this;
+    }
+
+    /* Can't use std::pair here, because GCC before 4.3 don't handle
+       std::pair where template parameters are references well.
+       See PR86739.  */
+    class reference_pair {
+    public:
+      const Key &first;
+      Value &second;
+
+      reference_pair (const Key &key, Value &value) : first (key), second (value) {}
+
+      template <typename K, typename V>
+      operator std::pair<K, V> () const { return std::pair<K, V> (first, second); }
+    };
+
+    reference_pair operator* ()
+    {
+      hash_entry &e = *m_iter;
+      return reference_pair (e.m_key, e.m_value);
+    }
+
+    bool operator== (const iterator &other) const
+    {
+      return m_iter == other.m_iter;
+    }
+
+    bool operator != (const iterator &other) const
+    {
+      return m_iter != other.m_iter;
+    }
+
+  private:
+    typename hash_table<hash_entry>::iterator m_iter;
+  };
+
+  /* Standard iterator retrieval methods.  */
+
+  iterator  begin () const { return iterator (m_table.begin ()); }
+  iterator end () const { return iterator (m_table.end ()); }
+
+private:
+  hash_table<hash_entry> m_table;
+};
+
 
 /* Information about the versioning we'd like to apply to a loop.  */
 class loop_info
@@ -234,8 +409,9 @@ public:
   basic_block block_list;
 
   /* We'd like to version the loop for the case in which these SSA names
-     (keyed off their SSA_NAME_VERSION) are all equal to 1 at runtime.  */
-  bitmap_head unity_names;
+     (keyed off their SSA_NAME_VERSION) are all equal to the associated value at
+     runtime.  */
+  names_map <unsigned, unsigned HOST_WIDE_INT, 0> version_names;
 
   /* If versioning succeeds, this points the version of the loop that
      assumes the version conditions holds.  */
@@ -283,12 +459,14 @@ private:
   unsigned int max_insns_for_loop (class loop *);
   bool expensive_stmt_p (gimple *);
 
-  void version_for_unity (gimple *, tree);
+  void version_for_value (gimple *, tree, tree);
+  bool acceptable_multiplier_p (unsigned HOST_WIDE_INT, unsigned HOST_WIDE_INT,
+				unsigned HOST_WIDE_INT * = 0);
   bool acceptable_multiplier_p (tree, unsigned HOST_WIDE_INT,
 				unsigned HOST_WIDE_INT * = 0);
   bool acceptable_type_p (tree, unsigned HOST_WIDE_INT *);
   bool multiply_term_by (address_term_info &, tree);
-  inner_likelihood get_inner_likelihood (tree, unsigned HOST_WIDE_INT);
+  inner_likelihood get_inner_likelihood (tree, unsigned HOST_WIDE_INT, tree &);
   void dump_inner_likelihood (address_info &, address_term_info &);
   void analyze_stride (address_info &, address_term_info &,
 		       tree, class loop *);
@@ -487,7 +665,7 @@ bool
 loop_info::worth_versioning_p () const
 {
   return (!rejected_p
-	  && (!bitmap_empty_p (&unity_names) || subloops_benefit_p));
+	  && (!version_names.is_empty () || subloops_benefit_p));
 }
 
 loop_versioning::lv_dom_walker::lv_dom_walker (loop_versioning &lv)
@@ -512,9 +690,14 @@ loop_versioning::lv_dom_walker::before_dom_children (basic_block bb)
 tree
 loop_versioning::name_prop::value_of_expr (tree val, gimple *)
 {
-  if (TREE_CODE (val) == SSA_NAME
-      && bitmap_bit_p (&m_li.unity_names, SSA_NAME_VERSION (val)))
-    return build_one_cst (TREE_TYPE (val));
+  if (TREE_CODE (val) == SSA_NAME)
+    {
+      unsigned HOST_WIDE_INT *value;
+      if (m_li.version_names.find_name (SSA_NAME_VERSION (val),
+					value)
+	  == NAME_VALID)
+	return build_int_cst (TREE_TYPE (val), *value);
+    }
   return NULL_TREE;
 }
 
@@ -534,7 +717,7 @@ loop_versioning::loop_versioning (function *fn)
   for (unsigned int i = 0; i < m_nloops; ++i)
     {
       m_loops[i].outermost = get_loop (m_fn, 0);
-      bitmap_initialize (&m_loops[i].unity_names, &m_bitmap_obstack);
+      new (&m_loops[i].version_names) names_map<unsigned, unsigned HOST_WIDE_INT, 0>  ();
     }
 
   /* Initialize the list of blocks that belong to each loop.  */
@@ -606,13 +789,28 @@ loop_versioning::expensive_stmt_p (gimple *stmt)
    is invariant in the loop.  */
 
 void
-loop_versioning::version_for_unity (gimple *stmt, tree name)
+loop_versioning::version_for_value (gimple *stmt, tree name, tree value)
 {
   class loop *loop = loop_containing_stmt (stmt);
   loop_info &li = get_loop_info (loop);
 
-  if (bitmap_set_bit (&li.unity_names, SSA_NAME_VERSION (name)))
+  unsigned HOST_WIDE_INT new_value;
+  if (value == NULL_TREE)
+    new_value = 1;
+  else
     {
+      gcc_assert (tree_fits_uhwi_p (value));
+      new_value = tree_to_uhwi (value);
+    }
+
+  unsigned HOST_WIDE_INT *actual_value;
+  enum name_presence name_info;
+  name_info = li.version_names.find_name (SSA_NAME_VERSION (name),
+					  actual_value);
+  if (name_info == NAME_NOT_PRESENT)
+    {
+      li.version_names.put (SSA_NAME_VERSION (name), new_value);
+
       /* This is the first time we've wanted to version LOOP for NAME.
 	 Keep track of the outermost loop that can handle all versioning
 	 checks in LI.  */
@@ -624,7 +822,7 @@ loop_versioning::version_for_unity (gimple *stmt, tree name)
       if (dump_enabled_p ())
 	{
 	  dump_printf_loc (MSG_NOTE, stmt, "want to version containing loop"
-			   " for when %T == 1", name);
+			   " for when %T == %T", name, value);
 	  if (outermost == loop)
 	    dump_printf (MSG_NOTE, "; cannot hoist check further");
 	  else
@@ -640,12 +838,30 @@ loop_versioning::version_for_unity (gimple *stmt, tree name)
 
       m_num_conditions += 1;
     }
+  else if (name_info == NAME_INVALIDATED)
+    {
+      /* This is a duplicate request.  */
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_NOTE, stmt, "already asked to version containing"
+			 " loop for %T, but was later invalidated\n", name);
+    }
+  else if (*actual_value == new_value)
+    {
+      /* This is a duplicate request.  */
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_NOTE, stmt, "already asked to version containing"
+			 " loop for when %T == %wd\n", name, new_value);
+    }
   else
     {
       /* This is a duplicate request.  */
       if (dump_enabled_p ())
 	dump_printf_loc (MSG_NOTE, stmt, "already asked to version containing"
-			 " loop for when %T == 1\n", name);
+			 " loop for when %T == %wd and now for when %T == %wd,"
+			 " disabling\n", name, *actual_value, name,
+			 new_value);
+
+      li.version_names.invalidate (SSA_NAME_VERSION (name));
     }
 }
 
@@ -660,6 +876,21 @@ loop_versioning::version_for_unity (gimple *stmt, tree name)
      OP1_TREE * OP2 <= M_MAXIMUM_SCALE.
 
    If RESULT is nonnull, store OP1_TREE * OP2 there when returning true.  */
+bool
+loop_versioning::acceptable_multiplier_p (unsigned HOST_WIDE_INT op1,
+					  unsigned HOST_WIDE_INT op2,
+					  unsigned HOST_WIDE_INT *result)
+{
+  /* The first part checks for overflow.  */
+  if (op1 * op2 >= op2 && op1 * op2 <= m_maximum_scale)
+    {
+      if (result)
+	*result = op1 * op2;
+      return true;
+    }
+
+  return false;
+}
 
 bool
 loop_versioning::acceptable_multiplier_p (tree op1_tree,
@@ -667,16 +898,7 @@ loop_versioning::acceptable_multiplier_p (tree op1_tree,
 					  unsigned HOST_WIDE_INT *result)
 {
   if (tree_fits_uhwi_p (op1_tree))
-    {
-      unsigned HOST_WIDE_INT op1 = tree_to_uhwi (op1_tree);
-      /* The first part checks for overflow.  */
-      if (op1 * op2 >= op2 && op1 * op2 <= m_maximum_scale)
-	{
-	  if (result)
-	    *result = op1 * op2;
-	  return true;
-	}
-    }
+    return acceptable_multiplier_p (tree_to_uhwi (op1_tree), op2, result);
   return false;
 }
 
@@ -706,7 +928,8 @@ loop_versioning::multiply_term_by (address_term_info &term, tree op)
 
 inner_likelihood
 loop_versioning::get_inner_likelihood (tree stride,
-				       unsigned HOST_WIDE_INT multiplier)
+				       unsigned HOST_WIDE_INT multiplier,
+				       tree &versioning_value)
 {
   const unsigned int MAX_NITERS = 8;
 
@@ -740,7 +963,10 @@ loop_versioning::get_inner_likelihood (tree stride,
 	  /* See if EXPR * MULTIPLIER would be consistent with an individual
 	     access or a small grouped access.  */
 	  if (acceptable_multiplier_p (expr, multiplier))
-	    return INNER_LIKELY;
+	    {
+	      versioning_value = expr;
+	      return INNER_LIKELY;
+	    }
 	  else
 	    unlikely_p = true;
 	}
@@ -813,7 +1039,8 @@ loop_versioning::analyze_stride (address_info &address,
 {
   term.stride = stride;
 
-  term.inner_likelihood = get_inner_likelihood (stride, term.multiplier);
+  term.inner_likelihood = get_inner_likelihood (stride, term.multiplier,
+						term.versioning_value);
   if (dump_enabled_p ())
     dump_inner_likelihood (address, term);
 
@@ -835,16 +1062,22 @@ loop_versioning::analyze_stride (address_info &address,
 
      - the stride is an SSA name that is invariant in STMT's loop,
        since otherwise versioning isn't possible.  */
+  if (term.versioning_value == NULL_TREE)
+    term.versioning_value = build_int_cst (TREE_TYPE (stride),
+					   address.type_size / term.multiplier);
   unsigned HOST_WIDE_INT access_size = address.max_offset - address.min_offset;
-  if (term.multiplier == access_size
+  unsigned HOST_WIDE_INT final_stride;
+  if (acceptable_multiplier_p (term.versioning_value, term.multiplier,
+			       &final_stride)
+      && final_stride == access_size
       && address.loop == op_loop
       && TREE_CODE (stride) == SSA_NAME
       && expr_invariant_in_loop_p (address.loop, stride))
     {
       term.versioning_opportunity_p = true;
       if (dump_enabled_p ())
-	dump_printf_loc (MSG_NOTE, address.stmt, "%T == 1 is a versioning"
-			 " opportunity\n", stride);
+	dump_printf_loc (MSG_NOTE, address.stmt, "%T == %T is a versioning"
+			 " opportunity\n", stride, term.versioning_value);
     }
 }
 
@@ -977,13 +1210,17 @@ loop_versioning::analyze_arbitrary_term (address_info &address,
       alt = strip_casts (gimple_assign_rhs2 (mult));
     }
   term.stride = expr;
-  term.inner_likelihood = get_inner_likelihood (expr, term.multiplier);
+  term.inner_likelihood = get_inner_likelihood (expr, term.multiplier,
+						term.versioning_value);
   if (alt)
     {
-      inner_likelihood alt_l = get_inner_likelihood (alt, term.multiplier);
+      tree versioning_value = NULL_TREE;
+      inner_likelihood alt_l = get_inner_likelihood (alt, term.multiplier,
+						     versioning_value);
       if (alt_l > term.inner_likelihood)
 	{
 	  term.stride = alt;
+	  term.versioning_value = versioning_value;
 	  term.inner_likelihood = alt_l;
 	}
     }
@@ -1127,6 +1364,7 @@ loop_versioning::analyze_address_fragment (address_info &address)
      only care about SSA names.  */
   tree chosen_stride = NULL_TREE;
   tree version_stride = NULL_TREE;
+  tree version_value = NULL_TREE;
   for (unsigned int i = 0; i < address.terms.length (); ++i)
     if (chosen_stride != address.terms[i].stride
 	&& address.terms[i].inner_likelihood == INNER_LIKELY)
@@ -1134,6 +1372,7 @@ loop_versioning::analyze_address_fragment (address_info &address)
 	if (chosen_stride)
 	  return;
 	chosen_stride = address.terms[i].stride;
+	version_value = address.terms[i].versioning_value;
 	if (address.terms[i].versioning_opportunity_p)
 	  version_stride = chosen_stride;
       }
@@ -1151,10 +1390,11 @@ loop_versioning::analyze_address_fragment (address_info &address)
 	  if (version_stride)
 	    return;
 	  version_stride = address.terms[i].stride;
+	  version_value = address.terms[i].versioning_value;
 	}
 
   if (version_stride)
-    version_for_unity (address.stmt, version_stride);
+    version_for_value (address.stmt, version_stride, version_value);
 }
 
 /* Treat EXPR * MULTIPLIER + OFFSET as a fragment of an address that addresses
@@ -1184,10 +1424,12 @@ loop_versioning::record_address_fragment (gimple *stmt,
   address->stmt = stmt;
   address->loop = loop;
   address->base = NULL_TREE;
+  address->type_size = type_size;
   address->terms.quick_grow (1);
   address->terms[0].expr = expr;
   address->terms[0].multiplier = multiplier;
   address->terms[0].stride = NULL_TREE;
+  address->terms[0].versioning_value = NULL_TREE;
   address->terms[0].inner_likelihood = INNER_UNLIKELY;
   address->terms[0].versioning_opportunity_p = false;
   address->min_offset = offset;
@@ -1463,30 +1705,28 @@ loop_versioning::prune_loop_conditions (class loop *loop)
 {
   loop_info &li = get_loop_info (loop);
 
-  int to_remove = -1;
-  bitmap_iterator bi;
-  unsigned int i;
   int_range_max r;
-  EXECUTE_IF_SET_IN_BITMAP (&li.unity_names, 0, i, bi)
+  for (auto entry : li.version_names)
     {
-      tree name = ssa_name (i);
+      unsigned name_id = entry.first;
+      if (!li.version_names.is_valid (name_id))
+	continue;
+
+      tree name = ssa_name (name_id);
+      unsigned HOST_WIDE_INT &value = entry.second;
       gimple *stmt = first_stmt (loop->header);
 
       if (get_range_query (cfun)->range_of_expr (r, name, stmt)
-	  && !r.contains_p (wi::one (TYPE_PRECISION (TREE_TYPE (name)))))
+	  && !r.contains_p (wi::uhwi (value, TYPE_PRECISION (TREE_TYPE (name)))))
 	{
 	  if (dump_enabled_p ())
 	    dump_printf_loc (MSG_NOTE, find_loop_location (loop),
-			     "%T can never be 1 in this loop\n", name);
+			     "%T can never be %wd in this loop\n", name, value);
 
-	  if (to_remove >= 0)
-	    bitmap_clear_bit (&li.unity_names, to_remove);
-	  to_remove = i;
+	  li.version_names.invalidate (name_id);
 	  m_num_conditions -= 1;
 	}
     }
-  if (to_remove >= 0)
-    bitmap_clear_bit (&li.unity_names, to_remove);
 }
 
 /* Remove any scheduled loop version conditions that will never be true.
@@ -1515,16 +1755,38 @@ loop_versioning::merge_loop_info (class loop *outer, class loop *inner)
 
   if (dump_enabled_p ())
     {
-      bitmap_iterator bi;
-      unsigned int i;
-      EXECUTE_IF_SET_IN_BITMAP (&inner_li.unity_names, 0, i, bi)
-	if (!bitmap_bit_p (&outer_li.unity_names, i))
-	  dump_printf_loc (MSG_NOTE, find_loop_location (inner),
-			   "hoisting check that %T == 1 to outer loop\n",
-			   ssa_name (i));
+      for (auto entry : inner_li.version_names)
+	{
+	  unsigned name_id = entry.first;
+	  if (!inner_li.version_names.is_valid (name_id))
+	    continue;
+
+	  tree name = ssa_name (name_id);
+	  unsigned HOST_WIDE_INT inner_value = entry.second;
+	  unsigned HOST_WIDE_INT *outer_value;
+	  name_presence name_info;
+	  name_info = outer_li.version_names.find_name (name_id, outer_value);
+	  if (name_info == NAME_INVALIDATED)
+	    dump_printf_loc (MSG_NOTE, find_loop_location (inner),
+			     "not hoisting the loop versioning check for %T to"
+			     " outer loop, as the name has been invalidated\n",
+			     name);
+	  else if (name_info == NAME_NOT_PRESENT)
+	    {
+	      dump_printf_loc (MSG_NOTE, find_loop_location (inner),
+			       "hoisting check that %T == %wd to outer loop\n",
+			       name, inner_value);
+
+	      outer_li.version_names.put (name_id, inner_value);
+	    }
+	  else if (*outer_value != inner_value)
+	    dump_printf_loc (MSG_NOTE, find_loop_location (inner),
+			     "Disabling versioning check for %T as it has a different"
+			     " value %wd in outer loop than %wd in inner loop\n",
+			     name, *outer_value, inner_value);
+	}
     }
 
-  bitmap_ior_into (&outer_li.unity_names, &inner_li.unity_names);
   if (loop_depth (outer_li.outermost) < loop_depth (inner_li.outermost))
     outer_li.outermost = inner_li.outermost;
 }
@@ -1666,14 +1928,17 @@ loop_versioning::version_loop (class loop *loop)
   /* Build up a condition that selects the original loop instead of
      the simplified loop.  */
   tree cond = boolean_false_node;
-  bitmap_iterator bi;
-  unsigned int i;
-  EXECUTE_IF_SET_IN_BITMAP (&li.unity_names, 0, i, bi)
+  for (auto entry : li.version_names)
     {
-      tree name = ssa_name (i);
-      tree ne_one = fold_build2 (NE_EXPR, boolean_type_node, name,
-				 build_one_cst (TREE_TYPE (name)));
-      cond = fold_build2 (TRUTH_OR_EXPR, boolean_type_node, cond, ne_one);
+      unsigned name_id = entry.first;
+      if (!li.version_names.is_valid (name_id))
+	continue;
+
+      tree name = ssa_name (name_id);;
+      unsigned HOST_WIDE_INT value = entry.second;
+      tree ne_val = fold_build2 (NE_EXPR, boolean_type_node, name,
+				 build_int_cst (TREE_TYPE (name), value));
+      cond = fold_build2 (TRUTH_OR_EXPR, boolean_type_node, cond, ne_val);
     }
 
   /* Convert the condition into a suitable gcond.  */
