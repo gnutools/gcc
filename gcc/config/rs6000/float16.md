@@ -38,15 +38,15 @@
 
 ;; Mode iterator for floating point modes other than SF/DFmode that we
 ;; convert to/from _Float16 (HFmode) via DFmode.
-(define_mode_iterator FP16_CONVERT [TF KF IF SD DD TD])
+(define_mode_iterator fp16_float_convert [TF KF IF SD DD TD])
 
 ;; Code iterator giving the basic operations for bfloat16 floating point
 ;; operations.
-(define_code_iterator FP16_BINARY [plus div minus mult smax smin])
+(define_code_iterator fp16_binary_op [plus div minus mult smax smin])
 
 ;; Code attribute that gives the standard name for the bfloat16
 ;; operations done via V4SF vector.
-(define_code_attr FP16_BINARY_NAME [(plus  "add")
+(define_code_attr fp16_binary_name [(plus  "add")
 				    (div   "div")
 				    (minus "sub")
 				    (mult  "mul")
@@ -55,7 +55,7 @@
 
 ;; Mode attribute giving the instruction to convert the even
 ;; V8HFmode or V8BFmode elements to V4SFmode
-(define_mode_attr CVT_FP16_TO_V4SF_INSN [(BF   "xvcvbf16spn")
+(define_mode_attr cvt_fp16_to_v4sf_insn [(BF   "xvcvbf16spn")
 					 (HF   "xvcvhpsp")
 					 (V8BF "xvcvbf16spn")
 					 (V8HF "xvcvhpsp")])
@@ -77,7 +77,7 @@
 
 ;; UNSPEC constants
 (define_c_enum "unspec"
-  [UNSPEC_V8BF_SHIFT_LEFT_32BIT
+  [UNSPEC_FP16_SHIFT_LEFT_32BIT
    UNSPEC_CVT_FP16_TO_V4SF
    UNSPEC_XXSPLTW_FP16
    UNSPEC_XVCVSPBF16_BF])
@@ -202,13 +202,14 @@
   [(set_attr "type" "fpsimple")
    (set_attr "length" "12")])
 
-;; Vector shift left by 32 bits to get the bfloat16 value into the
-;; upper 32 bits for the conversion.
-(define_insn "v8bf_shift_left_32bit"
-  [(set (match_operand:V8BF 0 "register_operand" "=wa")
-        (unspec:V8BF [(match_operand:BF 1 "register_operand" "wa")]
-                     UNSPEC_V8BF_SHIFT_LEFT_32BIT))]
-  "TARGET_BFLOAT16_HW"
+;; Vector shift left by 32 bits to get the 16-bit floating point value
+;; into the upper 32 bits for the conversion.
+(define_insn "<fp16_vector8>_shift_left_32bit"
+  [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa")
+        (unspec:<FP16_VECTOR8>
+	 [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
+	 UNSPEC_FP16_SHIFT_LEFT_32BIT))]
+  ""
   "xxsldwi %x0,%x1,%x1,1"
   [(set_attr "type" "vecperm")])
 
@@ -245,9 +246,9 @@
 
 ;; Use DFmode to convert to/from 16-bit floating point types for
 ;; scalar floating point types other than SF/DFmode.
-(define_expand "extend<FP16_HW:mode><FP16_CONVERT:mode>2"
-  [(set (match_operand:FP16_CONVERT 0 "vsx_register_operand")
-	(float_extend:FP16_CONVERT
+(define_expand "extend<FP16_HW:mode><fp16_float_convert:mode>2"
+  [(set (match_operand:fp16_float_convert 0 "vsx_register_operand")
+	(float_extend:fp16_float_convert
 	 (match_operand:FP16_HW 1 "vsx_register_operand")))]
   ""
 {
@@ -261,10 +262,10 @@
   DONE;
 })
 
-(define_expand "trunc<FP16_CONVERT:mode><FP16_HW:mode>2"
+(define_expand "trunc<fp16_float_convert:mode><FP16_HW:mode>2"
   [(set (match_operand:FP16_HW 0 "vsx_register_operand")
 	(float_truncate:FP16_HW
-	 (match_operand:FP16_CONVERT 1 "vsx_register_operand")))]
+	 (match_operand:fp16_float_convert 1 "vsx_register_operand")))]
   ""
 {
   rtx df_tmp = gen_reg_rtx (DFmode);
@@ -359,7 +360,7 @@
 		     (const_int 5)
 		     (const_int 7)]))))]
   "!WORDS_BIG_ENDIAN"
-  "<CVT_FP16_TO_V4SF_INSN> %x0,%x1"
+  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
 (define_insn "*cvt_fp16_to_v4sf_<mode>_be"
@@ -372,7 +373,7 @@
 		     (const_int 4)
 		     (const_int 6)]))))]
   "WORDS_BIG_ENDIAN"
-  "<CVT_FP16_TO_V4SF_INSN> %x0,%x1"
+  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
   [(set_attr "type" "vecfloat")])
 
 ;; Duplicate and convert a 16-bit floating point scalar to V4SFmode.
@@ -408,9 +409,9 @@
 ;; be 0, so we use a splat operation to guarantee that we are not
 ;; dividing by 0.
 
-(define_insn_and_split "<FP16_BINARY_NAME>bf3"
+(define_insn_and_split "<fp16_binary_name>bf3"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa,wa,wa")
-	(FP16_BINARY:BF
+	(fp16_binary_op:BF
 	 (match_operand:BF 1 "vsx_register_operand" "wa,wa,wa")
 	 (match_operand:BF 2 "fp16_reg_or_constant_operand" "wa,j,eP")))
    (clobber (match_scratch:V4SF 3 "=&wa,&wa,&wa"))
@@ -468,7 +469,7 @@
   emit_insn (gen_xvcvbf16spn_bf (tmp2, tmp2));
 
   /* Do the operation in V4SFmode.  */
-  emit_insn (gen_<FP16_BINARY_NAME>v4sf3 (tmp0, tmp1, tmp2));
+  emit_insn (gen_<fp16_binary_name>v4sf3 (tmp0, tmp1, tmp2));
 
   /* Convert V4SF result back to scalar mode.  */
   emit_insn (gen_xvcvspbf16_bf (op0, tmp0));
