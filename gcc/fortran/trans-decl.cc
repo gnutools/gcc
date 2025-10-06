@@ -1270,7 +1270,6 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
   symbol_attribute *array_attr;
   char *name;
   gfc_packed packed;
-  int n;
   bool known_size;
   bool is_classarray = IS_CLASS_COARRAY_OR_ARRAY (sym);
 
@@ -1318,27 +1317,14 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
     {
       bool bytes_strides_p = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
 
-      if (as->type == AS_ASSUMED_SIZE)
+      if ((sym->attr.result
+	   || (sym->attr.function && sym == sym->result))
+	  && gfc_return_by_reference (sym))
+	packed = PACKED_NO;
+      else if (as->type == AS_ASSUMED_SIZE
+	       || as->type == AS_EXPLICIT
+	       || (flag_repack_arrays && !sym->attr.target))
 	packed = PACKED_FULL;
-      else if (as->type == AS_EXPLICIT)
-	{
-	  packed = PACKED_FULL;
-	  for (n = 0; n < as->rank; n++)
-	    {
-	      if (!(as->upper[n]
-		    && as->lower[n]
-		    && as->upper[n]->expr_type == EXPR_CONSTANT
-		    && as->lower[n]->expr_type == EXPR_CONSTANT))
-		{
-		  packed = PACKED_PARTIAL;
-		  break;
-		}
-	    }
-	}
-      else if (flag_repack_arrays && !sym->attr.target)
-      /* Even when -frepack-arrays is used, symbols with TARGET attribute
-	 are not repacked.  */
-	packed = PACKED_PARTIAL;
       else
 	packed = PACKED_NO;
 
