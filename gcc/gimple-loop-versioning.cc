@@ -1063,8 +1063,12 @@ loop_versioning::analyze_stride (address_info &address,
      - the stride is an SSA name that is invariant in STMT's loop,
        since otherwise versioning isn't possible.  */
   if (term.versioning_value == NULL_TREE)
-    term.versioning_value = build_int_cst (TREE_TYPE (stride),
-					   address.type_size / term.multiplier);
+    {
+      term.versioning_value = build_int_cst (TREE_TYPE (stride),
+					     address.type_size / term.multiplier);
+      if (integer_zerop (term.versioning_value))
+	term.versioning_value = build_one_cst (TREE_TYPE (stride));
+    }
   unsigned HOST_WIDE_INT access_size = address.max_offset - address.min_offset;
   unsigned HOST_WIDE_INT final_stride;
   if (acceptable_multiplier_p (term.versioning_value, term.multiplier,
