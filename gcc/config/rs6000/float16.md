@@ -20,14 +20,21 @@
 
 ;; Support for _Float16 (HFmode) and __bfloat16 (BFmode)
 
-;; Mode iterator for 16-bit floating modes.
+;; Mode iterator for 16-bit floating point modes both as a scalar and
+;; as a vector.
 (define_mode_iterator FP16 [(BF "TARGET_BFLOAT16")
 			    (HF "TARGET_FLOAT16")])
 
-;; Mode iterator for 16-bit floating modes on machines with hardware
-;; support.
+(define_mode_iterator VFP16 [(V8BF "TARGET_BFLOAT16")
+			     (V8HF "TARGET_FLOAT16")])
+
+;; Mode iterator for 16-bit floating point modes on machines with
+;; hardware support both as a scalar and as a vector.
 (define_mode_iterator FP16_HW [(BF "TARGET_BFLOAT16_HW")
 			       (HF "TARGET_FLOAT16_HW")])
+
+(define_mode_iterator VFP16_HW [(V8BF "TARGET_BFLOAT16_HW")
+				(V8HF "TARGET_FLOAT16_HW")])
 
 ;; Mode iterator for floating point modes other than SF/DFmode that we
 ;; convert to/from _Float16 (HFmode) via DFmode.
@@ -35,20 +42,23 @@
 
 ;; Code iterator giving the basic operations for bfloat16 floating point
 ;; operations.
-(define_code_iterator BF_OPS [plus minus mult])
+(define_code_iterator FP16_BINARY [plus div minus mult smax smin])
 
 ;; Code attribute that gives the standard name for the bfloat16
 ;; operations done via V4SF vector.
-(define_code_attr BF_OPS_NAME [(plus  "add")
-			       (minus "sub")
-			       (mult  "mul")])
+(define_code_attr FP16_BINARY_NAME [(plus  "add")
+				    (div   "div")
+				    (minus "sub")
+				    (mult  "mul")
+				    (smax  "smax")
+				    (smin  "smin")])
 
 ;; UNSPEC constants
 (define_c_enum "unspec"
   [UNSPEC_V8BF_SHIFT_LEFT_32BIT
    UNSPEC_XVCVBF16SPN_BF
    UNSPEC_XVCVBF16SPN_V8BF
-   UNSPEC_XXSPLTW_BF
+   UNSPEC_XXSPLTW_FP16
    UNSPEC_XVCVSPBF16_BF])
 
 
@@ -315,9 +325,9 @@
 ;; be 0, so we use a splat operation to guarantee that we are not
 ;; dividing by 0.
 
-(define_insn_and_split "<BF_OPS_NAME>bf3"
+(define_insn_and_split "<FP16_BINARY_NAME>bf3"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa,wa,wa")
-	(BF_OPS:BF
+	(FP16_BINARY:BF
 	 (match_operand:BF 1 "vsx_register_operand" "wa,wa,wa")
 	 (match_operand:BF 2 "fp16_reg_or_constant_operand" "wa,j,eP")))
    (clobber (match_scratch:V4SF 3 "=&wa,&wa,&wa"))
@@ -375,7 +385,7 @@
   emit_insn (gen_xvcvbf16spn_bf (tmp2, tmp2));
 
   /* Do the operation in V4SFmode.  */
-  emit_insn (gen_<BF_OPS_NAME>v4sf3 (tmp0, tmp1, tmp2));
+  emit_insn (gen_<FP16_BINARY_NAME>v4sf3 (tmp0, tmp1, tmp2));
 
   /* Convert V4SF result back to scalar mode.  */
   emit_insn (gen_xvcvspbf16_bf (op0, tmp0));
@@ -384,15 +394,17 @@
   [(set_attr "type" "vecperm")
    (set_attr "length" "24,24,32")])
 
-;; Duplicate a BF value so it can be used for xvcvbf16spn.  Because
-;; xvcvbf16spn only uses the even elements, we can use xxspltw instead
-;; of vspltw.
+;; Duplicate a HF/BF value so it can be used for xvcvhpspn/xvcvbf16spn.
+;; Because xvcvhpspn/xvcvbf16spn only uses the even elements, we can
+;; use xxspltw instead of vspltw.  This has the advantage that the
+;; register allocator can use any of the 64 VSX registers instead of
+;; being limited to the 32 Altivec registers that VSPLTH would require.
 
-(define_insn "xxspltw_bf"
+(define_insn "xxspltw_<mode>"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:BF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_XXSPLTW_BF))]
-  "TARGET_BFLOAT16_HW"
+	(unspec:V4SF [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
+		     UNSPEC_XXSPLTW_FP16))]
+  ""
   "xxspltw %x0,%x1,1"
   [(set_attr "type" "vecperm")])
 
