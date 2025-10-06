@@ -1,3 +1,44 @@
+==================== Branch work222-float, patch #314 ====================
+
+Add bf and hf duplicate to v4sf.
+
+2025-10-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (CVT_FP16_TO_V4SF_INSN): New mode attribute.
+	(FP16_VECTOR8): Likewise.
+	(fp16_vector8): Likewise.
+	(FP16_VECTOR4): Likewise.
+	(UNSPEC_CVT_FP16_TO_V4SF): Replace UNSPEC_XVCVBF16SPN_BF and
+	UNSPEC_XVCVBF16SPN_V8BF.
+	(extendbf<mode>2): Change xvcvbf16spn_v8bf to cvt_fp16_to_v4sf_v8bf.
+	(cvt_fp16_to_v4sf_<mode>): Rename from xvcvbf16spn_v8bf, and add HFmode
+	support.
+	(cvt_fp16_to_v4sf_<mode>_le): New insns.
+	(cvt_fp16_to_v4sf_<mode>_be): Likewise.
+	(dup_<mode>_to_v4sf): Likewise.
+	(xvcvbf16spn_bf): Change UNSPEC_XVCVBF16SPN_BF to
+	UNSPEC_CVT_FP16_TO_V4SF.
+	* config/rs6000/rs6000-modes.def (V4BFmode): New mode.
+	(V4HFmode): Likewise.
+
+==================== Branch work222-float, patch #313 ====================
+
+Iterate on 16-bit floating point.
+
+2025-10-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (VP16): New mode iterator.
+	(VP16_HW): Likewise.
+	(FP16_BINARY): Rename from BF_OPS.
+	(FP16_BINARY_NAME): Rename from BF_OPS_NAME.
+	(UNSPEC_XXSPLTW_FP16): Rename from UNSPEC_XXSPLTW_BF.
+	(<FP16_BINARY_NAME>bf3): Rename from <BF_OPS_NAME>.
+	(xxspltw_<mode>): Rename for xxspltw_bf.  Add HFmode support.
+
 ==================== Branch work222-float, patch #312 ====================
 
 Add 16-bit floating point abs; Remove expand/truncate optimization.
