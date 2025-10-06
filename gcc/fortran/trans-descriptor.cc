@@ -3145,7 +3145,7 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
 			   tree * overflow, tree expr3_elem_size,
 			   gfc_expr *expr3, tree expr3_desc,
 			   bool e3_has_nodescriptor, gfc_expr *expr,
-			   tree element_size, bool explicit_ts,
+			   tree element_size, gfc_typespec * explicit_ts,
 			   tree *empty_array_cond)
 {
   tree type;
@@ -3205,10 +3205,17 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
   else if (expr3_desc && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (expr3_desc)))
     gfc_conv_descriptor_dtype_set (pblock, descriptor,
 				   gfc_conv_descriptor_dtype_get (expr3_desc));
-  else if (expr->ts.type == BT_CLASS && !explicit_ts
+  else if (expr->ts.type == BT_CLASS && explicit_ts->type == BT_UNKNOWN
 	   && expr3 && expr3->ts.type != BT_CLASS
 	   && expr3_elem_size != NULL_TREE && expr3_desc == NULL_TREE)
     gfc_conv_descriptor_elem_len_set (pblock, descriptor, expr3_elem_size);
+  else if (explicit_ts->type != BT_UNKNOWN)
+    {
+      tree elt_type = gfc_typenode_for_spec (explicit_ts);
+      tree dtype = gfc_get_dtype_rank_type (rank, elt_type,
+					    bytes_counted_strides);
+      gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype);
+    }
   else
     gfc_conv_descriptor_dtype_set (pblock, descriptor, gfc_get_dtype (type));
 

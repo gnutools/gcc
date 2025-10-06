@@ -6115,7 +6115,7 @@ bool
 gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 		    tree errlen, tree label_finish, tree expr3_elem_size,
 		    gfc_expr *expr3, tree e3_arr_desc, bool e3_has_nodescriptor,
-		    gfc_omp_namelist *omp_alloc, bool explicit_ts)
+		    gfc_omp_namelist *omp_alloc, gfc_typespec * explicit_ts)
 {
   tree tmp;
   tree pointer;
