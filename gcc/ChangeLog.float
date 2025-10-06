@@ -1,3 +1,28 @@
+==================== Branch work222-float, patch #315 ====================
+
+Rename attributes and add Float16 shift left.
+
+2025-10-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (fp16_float_convert): Rename from
+	FP16_CONVERT.
+	(fp16_binary_op): Rename from FP16_BINARY.
+	(fp16_binary_name): Rename from FP16_BINARY_NAME.
+	(UNSPEC_FP16_SHIFT_LEFT_32BIT): Rename from
+	UNSPEC_V8BF_SHIFT_LEFT_32BIT.
+	(<fp16_vector8>_shift_left_32bit): Rename from v8bf_shift_left_32bit and
+	add support for HFmode.
+	(extend<FP16_HW:mode><fp16_float_convert:mode>2): Rename from
+	extend<FP16_HW:mode><FP16_CONVERT:mode>2.
+	(trunc<fp16_float_convert:mode><FP16_HW:mode>2): Rename from
+	trunc<FP16_CONVERT:mode><FP16_HW:mode>2.
+	(*cvt_fp16_to_v4sf_<mode>_le): Rename cvt_fp16_to_v4sf_insn from
+	CVT_FP16_TO_V4SF_INSN.
+	(cvt_fp16_to_v4sf_<mode>_b): Likewise.
+	(<fp16_binary_name>bf3): Rename from <FP16_BINARY_NAME>bf3.
+
 ==================== Branch work222-float, patch #314 ====================
 
 Add bf and hf duplicate to v4sf.
