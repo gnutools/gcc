@@ -53,11 +53,32 @@
 				    (smax  "smax")
 				    (smin  "smin")])
 
+;; Mode attribute giving the instruction to convert the even
+;; V8HFmode or V8BFmode elements to V4SFmode
+(define_mode_attr CVT_FP16_TO_V4SF_INSN [(BF   "xvcvbf16spn")
+					 (HF   "xvcvhpsp")
+					 (V8BF "xvcvbf16spn")
+					 (V8HF "xvcvhpsp")])
+
+;; Mode attribute giving the vector mode for a 16-bit floating point
+;; scalar in both upper and lower case.
+(define_mode_attr FP16_VECTOR8 [(BF "V8BF")
+				(HF "V8HF")])
+
+(define_mode_attr fp16_vector8 [(BF "v8bf")
+				(HF "v8hf")])
+
+;; Mode attribute giving the vector mode with 4 16-bit floating point
+;; elements given a scalar or 8 element vector.
+(define_mode_attr FP16_VECTOR4 [(BF   "V4BF")
+				(HF   "V4HF")
+				(V8BF "V4BF")
+				(V8HF "V4HF")])
+
 ;; UNSPEC constants
 (define_c_enum "unspec"
   [UNSPEC_V8BF_SHIFT_LEFT_32BIT
-   UNSPEC_XVCVBF16SPN_BF
-   UNSPEC_XVCVBF16SPN_V8BF
+   UNSPEC_CVT_FP16_TO_V4SF
    UNSPEC_XXSPLTW_FP16
    UNSPEC_XVCVSPBF16_BF])
 
@@ -169,7 +190,7 @@
   emit_insn (gen_v8bf_shift_left_32bit (op2_v8bf, op1));
 
   /* XVCVBF16SPN -- convert even V8BFmode elements to V4SFmode.  */
-  emit_insn (gen_xvcvbf16spn_v8bf (op2_v4sf, op2_v8bf));
+  emit_insn (gen_cvt_fp16_to_v4sf_v8bf (op2_v4sf, op2_v8bf));
 
   /* XSCVSPNDP -- convert single V4SFmode element to DFmode.  */
   emit_insn (GET_MODE (op0) == SFmode
@@ -307,13 +328,75 @@
   DONE;
 })
 
-(define_insn "xvcvbf16spn_v8bf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:V8BF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_XVCVBF16SPN_V8BF))]
-  "TARGET_BFLOAT16"
-  "xvcvbf16spn %x0,%x1"
+;; Convert the even elements of a vector 16-bit floating point to
+;; V4SFmode.
+
+(define_expand "cvt_fp16_to_v4sf_<mode>"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(match_dup 2)
+		     (match_dup 3)
+		     (match_dup 4)
+		     (match_dup 5)]))))]
+  ""
+{
+  int endian_adjust = WORDS_BIG_ENDIAN ? 0 : 1;
+  operands[2] = GEN_INT (0 + endian_adjust);
+  operands[3] = GEN_INT (2 + endian_adjust);
+  operands[4] = GEN_INT (4 + endian_adjust);
+  operands[5] = GEN_INT (6 + endian_adjust);
+})
+
+(define_insn "*cvt_fp16_to_v4sf_<mode>_le"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(const_int 1)
+		     (const_int 3)
+		     (const_int 5)
+		     (const_int 7)]))))]
+  "!WORDS_BIG_ENDIAN"
+  "<CVT_FP16_TO_V4SF_INSN> %x0,%x1"
   [(set_attr "type" "vecfloat")])
+
+(define_insn "*cvt_fp16_to_v4sf_<mode>_be"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(const_int 0)
+		     (const_int 2)
+		     (const_int 4)
+		     (const_int 6)]))))]
+  "WORDS_BIG_ENDIAN"
+  "<CVT_FP16_TO_V4SF_INSN> %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+;; Duplicate and convert a 16-bit floating point scalar to V4SFmode.
+
+(define_insn_and_split "*dup_<mode>_to_v4sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(vec_duplicate:V4SF
+	 (float_extend:SF
+	  (match_operand:FP16_HW 1 "vsx_register_operand" "wa"))))]
+  ""
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  rtx op0 = operands[0];
+  rtx op1 = operands[1];
+  rtx op0_vfp16 = gen_lowpart (<FP16_VECTOR8>mode, op0);
+
+  emit_insn (gen_xxspltw_<mode> (op0, op1));
+  emit_insn (gen_cvt_fp16_to_v4sf_<fp16_vector8> (op0, op0_vfp16));
+  DONE;
+}
+  [(set_attr "length" "8")
+   (set_attr "type" "vecperm")])
 
 
 ;; Bfloat16 floating point operations.  We convert the 16-bit scalar to a
@@ -414,7 +497,7 @@
 (define_insn "xvcvbf16spn_bf"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_XVCVBF16SPN_BF))]
+		     UNSPEC_CVT_FP16_TO_V4SF))]
   "TARGET_BFLOAT16_HW"
   "xvcvbf16spn %x0,%x1"
   [(set_attr "type" "vecperm")])
