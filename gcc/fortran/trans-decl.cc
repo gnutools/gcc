@@ -1317,13 +1317,14 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
     {
       bool bytes_strides_p = GFC_BYTES_STRIDES_ARRAY_TYPE_P (type);
 
-      if ((sym->attr.result
-	   || (sym->attr.function && sym == sym->result))
-	  && gfc_return_by_reference (sym))
+      if (flag_repack_arrays && !sym->attr.target)
+	packed = PACKED_FULL;
+      else if ((sym->attr.result
+		|| (sym->attr.function && sym == sym->result))
+	       && gfc_return_by_reference (sym))
 	packed = PACKED_NO;
       else if (as->type == AS_ASSUMED_SIZE
-	       || as->type == AS_EXPLICIT
-	       || (flag_repack_arrays && !sym->attr.target))
+	       || as->type == AS_EXPLICIT)
 	packed = PACKED_FULL;
       else
 	packed = PACKED_NO;
