@@ -4240,6 +4240,8 @@ next_record_w (st_parameter_dt *dtp, int done)
 	      if (max_pos > m)
 		{
 		  length = (max_pos - m);
+		  if (unlikely (is_char4_unit (dtp)))
+		    length *= sizeof (gfc_char4_t);
 		  if (sseek (dtp->u.p.current_unit->s,
 			     length, SEEK_CUR) < 0)
 		    {

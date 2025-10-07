@@ -833,17 +833,18 @@ mem_alloc_r4 (stream *strm, size_t *len)
   unix_stream *s = (unix_stream *) strm;
   gfc_offset n;
   gfc_offset where = s->logical_offset;
+  const gfc_offset unit_size = sizeof (gfc_char4_t);
 
   if (where < s->buffer_offset || where > s->buffer_offset + s->active)
     return NULL;
 
-  n = s->buffer_offset + s->active - where;
+  n = (s->buffer_offset + s->active - where) / unit_size;
   if ((gfc_offset) *len > n)
     *len = n;
 
-  s->logical_offset = where + *len;
+  s->logical_offset = where + *len * unit_size;
 
-  return s->buffer + (where - s->buffer_offset) * 4;
+  return s->buffer + (where - s->buffer_offset);
 }
 
 
@@ -874,9 +875,9 @@ mem_alloc_w4 (stream *strm, size_t *len)
   unix_stream *s = (unix_stream *)strm;
   gfc_offset m;
   gfc_offset where = s->logical_offset;
-  gfc_char4_t *result = (gfc_char4_t *) s->buffer;
+  const gfc_offset unit_size = sizeof (gfc_char4_t);
 
-  m = where + *len;
+  m = where + *len * unit_size;
 
   if (where < s->buffer_offset)
     return NULL;
@@ -885,7 +886,7 @@ mem_alloc_w4 (stream *strm, size_t *len)
     return NULL;
 
   s->logical_offset = m;
-  return &result[where - s->buffer_offset];
+  return (gfc_char4_t *) (s->buffer + (where - s->buffer_offset));
 }
 
 
@@ -901,6 +902,25 @@ mem_read (stream *s, void *buf, ssize_t nbytes)
   if (p)
     {
       memcpy (buf, p, nb);
+      return (ssize_t) nb;
+    }
+  else
+    return 0;
+}
+
+
+/* Stream read function for chracter(kind=4) internal units.  */
+
+static ssize_t
+mem_read4 (stream *s, void *buf, ssize_t nbytes)
+{
+  void *p;
+  size_t nb = nbytes;
+
+  p = mem_alloc_r4 (s, &nb);
+  if (p)
+    {
+      memcpy (buf, p, nb * 4);
       return (ssize_t) nb;
     }
   else
@@ -1028,7 +1048,7 @@ static const struct stream_vtable mem_vtable = {
 };
 
 static const struct stream_vtable mem4_vtable = {
-  .read = (void *) mem_read,
+  .read = (void *) mem_read4,
   .write = (void *) mem_write4,
   .seek = (void *) mem_seek,
   .tell = (void *) mem_tell,
@@ -1079,7 +1099,7 @@ open_internal4 (char *base, size_t length, gfc_offset offset)
   s->buffer = base;
   s->buffer_offset = offset;
 
-  s->active = s->file_length = length * sizeof (gfc_char4_t);
+  s->active = s->file_length = length;
 
   s->st.vptr = &mem4_vtable;
 
