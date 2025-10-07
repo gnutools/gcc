@@ -1268,7 +1268,19 @@ gfc_conv_class_to_class (gfc_se *parmse, gfc_expr *e, gfc_typespec class_ts,
       tree src = parmse->expr;
       if (GFC_CLASS_TYPE_P (TREE_TYPE (src)))
 	src = gfc_class_data_get (src);
-      gfc_copy_descriptor (&block, ctree, src);
+      if (e->rank == 0)
+	{
+	  if (TYPE_MAIN_VARIANT (TREE_TYPE (ctree))
+	      != TYPE_MAIN_VARIANT (TREE_TYPE (src))
+	      && TREE_CODE (TREE_TYPE (ctree)) == POINTER_TYPE
+	      && TREE_CODE (TREE_TYPE (src)) == POINTER_TYPE
+	      && (TREE_CODE (TREE_TYPE (TREE_TYPE (ctree))) == VOID_TYPE
+		  || TREE_CODE (TREE_TYPE (TREE_TYPE (src))) == VOID_TYPE))
+	    src = fold_convert_loc (input_location, TREE_TYPE (ctree), src);
+	  gfc_add_modify (&block, ctree, src);
+	}
+      else
+	gfc_copy_descriptor (&block, ctree, src);
     }
 
   /* Return the data component, except in the case of scalarized array
