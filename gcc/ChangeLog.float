@@ -1,3 +1,27 @@
+==================== Branch work222-float, patch #317 ====================
+
+Do bfloat16 binary operations as combiner patterns.
+
+2025-10-07  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_binary_op_as_v4sf): Rename from
+	bfloat16_expand_binary_op.
+	* config/rs6000/float16.md (fp16_binary_op): Delete.
+	(fp16_binary_name): Likewise.
+	(<fp16_binary_name>bf): Likewise.
+	(bfloat16_binary_op_internal1): Update and extend bfloat16 combiner
+	patterns.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_binary_op_internal3): Likewise.
+	(bfloat16_binary_op_internal4): Likewise.
+	(bfloat16_binary_op_internal5): Likewise.
+	(bfloat16_binary_op_internal6): Likewise.
+	* config/rs6000/predicates.md (bfloat16_binary_operator): New predicate.
+	* config/rs6000/rs6000-protos.h (bfloat16_binary_op_as_v4sf): Rename
+	from bfloat16_expand_binary_op.
+
 ==================== Branch work222-float, patch #316 ====================
 
 Add combiner support for bfloat16.
