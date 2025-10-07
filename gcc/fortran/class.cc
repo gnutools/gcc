@@ -1841,7 +1841,6 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
   array->ts.u.derived = derived;
   array->attr.flavor = FL_VARIABLE;
   array->attr.dummy = 1;
-  array->attr.contiguous = 1;
   array->attr.dimension = 1;
   array->attr.artificial = 1;
   array->as = gfc_get_array_spec();
