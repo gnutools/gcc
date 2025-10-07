@@ -498,8 +498,7 @@
 			      operands[5],
 			      operands[6]);
   DONE;
-}
-  [(set_attr "type" "vecperm")])
+})
 
 (define_insn_and_split "*bfloat16_binary_op_internal4"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa,&wa,&wa")
@@ -524,8 +523,7 @@
 			      operands[5],
 			      operands[6]);
   DONE;
-}
-  [(set_attr "type" "vecperm")])
+})
 
 (define_insn_and_split "*bfloat16_binary_op_internal5"
   [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
@@ -549,8 +547,7 @@
 			      operands[5],
 			      operands[6]);
   DONE;
-}
-  [(set_attr "type" "vecperm")])
+})
 
 (define_insn_and_split "*bfloat16_binary_op_internal6"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
@@ -575,9 +572,57 @@
 			      operands[5],
 			      operands[6]);
   DONE;
-}
-  [(set_attr "type" "vecperm")])
+})
 
+;; If we do multiple __bfloat16 operations, between the first and
+;; second operation, GCC will want to convert the first operation from
+;; V4SFmode to SFmode and then reconvert it back to V4SFmode.  On the
+;; PowerPC, this is complicated because internally in the vector
+;; register, SFmode values are stored as DFmode values.
+;;
+;; For example, if we have:
+;;
+;;	__bfloat16 a, b, c, d;
+;;	a = b + c + d;
+;;
+;; We would generate:
+;;
+;;      lxsihzx 0,4,2           // load b as BFmode
+;;      lxsihzx 11,5,2          // load c as BFmode
+;;      lxsihzx 12,6,2          // load d as BFmode
+;;      xxspltw 0,0,1           // shift b into bits 16..31
+;;      xxspltw 11,11,1         // shift c into bits 16..31
+;;      xxspltw 12,12,1         // shift d into bits 16..31
+;;      xvcvbf16spn 0,0         // convert b into V4SFmode
+;;      xvcvbf16spn 11,11       // convert c into V4SFmode
+;;      xvcvbf16spn 12,12       // convert d into V4SFmode
+;;      xvaddsp 0,0,11          // calculate b+c as V4SFmode
+;;      xscvspdp 0,0            // convert b+c into DFmode memory format
+;;      xscvdpspn 0,0           // convert b+c into SFmode memory format
+;;      xxspltw 0,0,0           // convert b+c into V4SFmode
+;;      xvaddsp 12,12,0         // calculate b+c+d as V4SFmode
+;;      xvcvspbf16 12,12        // convert b+c+d into BFmode memory format
+;;      stxsihx 12,3,2          // store b+c+d
+;;
+;; With this peephole2, we can eliminate the xscvspdp and xscvdpspn
+;; instructions.
+;;
+;; We keep the xxspltw between the two xvaddsp's in case the user
+;; explicitly did a SFmode extract of element 0 and did a splat
+;; operation.
+
+(define_peephole2
+  [(set (match_operand:SF 0 "vsx_register_operand")
+	(unspec:SF
+	 [(match_operand:V4SF 1 "vsx_register_operand")]
+	 UNSPEC_VSX_CVSPDP))
+   (set (match_operand:V4SF 2 "vsx_register_operand")
+	(unspec:V4SF [(match_dup 0)] UNSPEC_VSX_CVDPSPN))]
+  "REGNO (operands[1]) == REGNO (operands[2])
+   || peep2_reg_dead_p (1, operands[1])"
+  [(set (match_dup 2) (match_dup 1))])
+
+
 ;; Duplicate a HF/BF value so it can be used for xvcvhpspn/xvcvbf16spn.
 ;; Because xvcvhpspn/xvcvbf16spn only uses the even elements, we can
 ;; use xxspltw instead of vspltw.  This has the advantage that the
