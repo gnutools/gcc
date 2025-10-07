@@ -8303,9 +8303,20 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 			  gfc_get_array_span (desc, expr)));
 	}
 
-      gfc_set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim, ss,
-			  info, loop.from, loop.to, se->unlimited_polymorphic,
-			  !se->data_not_needed, subref_array_target);
+      if (info
+	  && info->ref
+	  && info->ref->type == REF_ARRAY
+	  && info->ref->u.ar.type == AR_FULL
+	  && info->ref->u.ar.as->type == AS_ASSUMED_RANK)
+	{
+	  gcc_assert (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (parm))
+		      != GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
+	  gfc_copy_descriptor (&loop.pre, parm, desc);
+	}
+      else
+	gfc_set_descriptor (&loop.pre, parm, desc, expr, loop.dimen, codim, ss,
+			    info, loop.from, loop.to, se->unlimited_polymorphic,
+			    !se->data_not_needed, subref_array_target);
 
       desc = parm;
     }

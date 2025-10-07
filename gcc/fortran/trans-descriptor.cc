@@ -1949,6 +1949,62 @@ find_parent_coarray_descriptor (tree t)
 }
 
 
+static void
+copy_dimension (stmtblock_t *block, tree dest, tree src, tree dim,
+		tree element_len, tree *offset)
+{
+  tree lbound = gfc_conv_descriptor_lbound_get (src, dim);
+  tree ubound = gfc_conv_descriptor_ubound_get (src, dim);
+  tree stride;
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
+    {
+      tree stride_raw = gfc_conv_descriptor_stride_get (src, dim);
+      stride = fold_build2_loc (input_location, MULT_EXPR,
+				gfc_array_index_type, stride_raw,
+				element_len);
+    }
+  else
+    {
+      tree stride_raw = gfc_conv_descriptor_stride_get (src, dim);
+      stride = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+				gfc_array_index_type, stride_raw,
+				element_len);
+    }
+  set_dimension_fields (block, dest, dim, lbound, ubound, stride, offset);
+}
+
+
+static void
+copy_dimension (stmtblock_t *block, tree dest, tree src, tree dim,
+		tree element_len, tree offset_var)
+{
+  tree offset = offset_var;
+  copy_dimension (block, dest, src, dim, element_len, &offset);
+  gfc_add_modify (block, offset_var, offset);
+}
+
+
+static bool
+is_assumed_rank (tree descriptor)
+{
+  if (GFC_TYPE_ARRAY_RANK (TREE_TYPE (descriptor)) == -1)
+    return true;
+
+  switch (GFC_TYPE_ARRAY_AKIND (TREE_TYPE (descriptor)))
+    {
+      case GFC_ARRAY_ASSUMED_RANK:
+      case GFC_ARRAY_ASSUMED_RANK_CONT:
+      case GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE:
+      case GFC_ARRAY_ASSUMED_RANK_POINTER:
+      case GFC_ARRAY_ASSUMED_RANK_POINTER_CONT:
+	return true;
+
+      default:
+	return false;
+    }
+}
+
+
 void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 {
@@ -1969,71 +2025,81 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
       element_len = fold_convert_loc (input_location, gfc_array_index_type,
 				      element_len);
 
-      tree offset = gfc_index_zero_node;
+      bool dest_assumed_rank = is_assumed_rank (dest);
+      bool src_assumed_rank = is_assumed_rank (src);
 
-      int rank;
-      if (GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest))
-	  == GFC_TYPE_ARRAY_RANK (TREE_TYPE (src)))
-	rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest));
+      if (dest_assumed_rank && src_assumed_rank)
+	{
+	  tree offset = gfc_create_var (gfc_array_index_type, "offset");
+	  gfc_add_modify (block, offset, gfc_index_zero_node);
+
+	  tree idx = gfc_create_var (integer_type_node, "idx");
+	  tree dest_rank = fold_convert (integer_type_node,
+					 gfc_conv_descriptor_rank_get (src));
+
+	  stmtblock_t body;
+	  gfc_start_block (&body);
+	  copy_dimension (&body, dest, src, idx, element_len, offset);
+
+	  gfc_simple_for_loop (block, idx, integer_zero_node, dest_rank,
+			       LT_EXPR, integer_one_node,
+			       gfc_finish_block (&body));
+
+	  gfc_conv_descriptor_offset_set (block, dest, offset);
+
+	  gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest)) == 0);
+	}
       else
 	{
-	  gcc_assert (GFC_TYPE_ARRAY_AKIND (TREE_TYPE (dest))
-		      == GFC_ARRAY_ASSUMED_RANK);
-	  rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (src));
-	}
-      for (int i = 0; i < rank; i++) 
-	{
-	  tree lbound = gfc_conv_descriptor_lbound_get (src, i);
-	  tree ubound = gfc_conv_descriptor_ubound_get (src, i);
-	  tree stride;
-	  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
-	    {
-	      tree stride_raw = gfc_conv_descriptor_stride_get (src, i);
-	      stride = fold_build2_loc (input_location, MULT_EXPR,
-					gfc_array_index_type, stride_raw,
-					element_len);
-	    }
+	  tree offset = gfc_index_zero_node;
+
+	  int rank;
+	  if (GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest))
+	      == GFC_TYPE_ARRAY_RANK (TREE_TYPE (src)))
+	    rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (dest));
 	  else
 	    {
-	      tree stride_raw = gfc_conv_descriptor_stride_get (src, i);
-	      stride = fold_build2_loc (input_location, EXACT_DIV_EXPR,
-					gfc_array_index_type, stride_raw,
-					element_len);
+	      gcc_assert (GFC_TYPE_ARRAY_AKIND (TREE_TYPE (dest))
+			  == GFC_ARRAY_ASSUMED_RANK);
+	      rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (src));
 	    }
-	  set_dimension_fields (block, dest, gfc_rank_cst[i],
-				lbound, ubound, stride, &offset);
-	}
-      gfc_conv_descriptor_offset_set (block, dest, offset);
 
-      int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest));
-      if (corank > 0)
-	{
-	  tree codims_src_descr;
-	  if (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) > 0)
-	    {
-	      gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) == corank);
-	      codims_src_descr = src;
-	    }
-	  else
-	    /* We may pointer assign a non-coarray target to a non-coarray
-	       pointer subobject of a coarray.  Get the bounds from the parent
-	       coarray in that case.  */
-	    codims_src_descr = find_parent_coarray_descriptor (dest);
+	  for (int i = 0; i < rank; i++) 
+	    copy_dimension (block, dest, src, gfc_rank_cst[i], element_len,
+			    &offset);
 
-	  int codims_src_rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (codims_src_descr));
-	  gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (codims_src_descr))
-		      == corank);
-	  for (int i = 0; i < corank; i++)
+	  gfc_conv_descriptor_offset_set (block, dest, offset);
+
+	  int corank = GFC_TYPE_ARRAY_CORANK (TREE_TYPE (dest));
+	  if (corank > 0)
 	    {
-	      int src_index = codims_src_rank + i;
-	      tree lbound = gfc_conv_descriptor_lbound_get (codims_src_descr,
-							    src_index);
-	      gfc_conv_descriptor_lbound_set (block, dest, rank + i, lbound);
-	      if (i < corank - 1)
+	      tree codims_src_descr;
+	      if (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) > 0)
 		{
-		  tree ubound = gfc_conv_descriptor_ubound_get (codims_src_descr,
+		  gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (src)) == corank);
+		  codims_src_descr = src;
+		}
+	      else
+		/* We may pointer assign a non-coarray target to a non-coarray
+		   pointer subobject of a coarray.  Get the bounds from the parent
+		   coarray in that case.  */
+		codims_src_descr = find_parent_coarray_descriptor (dest);
+
+	      int codims_src_rank = GFC_TYPE_ARRAY_RANK (TREE_TYPE (codims_src_descr));
+	      gcc_assert (GFC_TYPE_ARRAY_CORANK (TREE_TYPE (codims_src_descr))
+			  == corank);
+	      for (int i = 0; i < corank; i++)
+		{
+		  int src_index = codims_src_rank + i;
+		  tree lbound = gfc_conv_descriptor_lbound_get (codims_src_descr,
 								src_index);
-		  gfc_conv_descriptor_ubound_set (block, dest, i, ubound);
+		  gfc_conv_descriptor_lbound_set (block, dest, rank + i, lbound);
+		  if (i < corank - 1)
+		    {
+		      tree ubound = gfc_conv_descriptor_ubound_get (codims_src_descr,
+								    src_index);
+		      gfc_conv_descriptor_ubound_set (block, dest, i, ubound);
+		    }
 		}
 	    }
 	}
