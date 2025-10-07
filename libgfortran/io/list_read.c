@@ -263,7 +263,7 @@ next_char_internal (st_parameter_dt *dtp)
   if (likely (dtp->u.p.current_unit->bytes_left > 0))
     {
       if (unlikely (is_char4_unit(dtp))) /* Check for kind=4 internal unit.  */
-       length = sread (dtp->u.p.current_unit->s, &c, sizeof (gfc_char4_t));
+       length = sread (dtp->u.p.current_unit->s, &c, 1);
       else
        {
 	 char cc;
