@@ -1,3 +1,19 @@
+==================== Branch work222-float, patch #318 ====================
+
+Add define_peephole2 for back to back __bfloat16 operations.
+
+2025-10-07  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (bfloat16_binary_op_internal3): Don't set the
+	type attribute.
+	(bfloat16_binary_op_internal4): Likewise.
+	(bfloat16_binary_op_internal5): Likewise.
+	(bfloat16_binary_op_internal6): Likewise.
+	(peephole2): Eliminate xscvspdp and xscvdpspn between multiple
+	__bfloat16 operations.
+
 ==================== Branch work222-float, patch #317 ====================
 
 Do bfloat16 binary operations as combiner patterns.
