@@ -258,6 +258,10 @@ extern bool vec_const_128bit_to_bytes (rtx, machine_mode,
 extern unsigned constant_generates_lxvkq (vec_const_128bit_type *);
 extern unsigned constant_generates_xxspltiw (vec_const_128bit_type *);
 extern unsigned constant_generates_xxspltidp (vec_const_128bit_type *);
+
+/* From float16.cc.  */
+extern void bfloat16_expand_binary_op (enum rtx_code, rtx, rtx, rtx,
+				       rtx, rtx, rtx);
 #endif /* RTX_CODE */
 
 #ifdef TREE_CODE

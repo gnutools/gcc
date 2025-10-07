@@ -244,8 +244,12 @@
 }
   [(set_attr "type" "fpsimple")])
 
-;; Use DFmode to convert to/from 16-bit floating point types for
-;; scalar floating point types other than SF/DFmode.
+
+;; Convert between HFmode/BFmode and 128-bit binary floating point and
+;; decimal floating point types.  We use convert_move since some of the
+;; types might not have valid RTX expanders.  We use DFmode as the
+;; intermediate conversion destination.
+
 (define_expand "extend<FP16_HW:mode><fp16_float_convert:mode>2"
   [(set (match_operand:fp16_float_convert 0 "vsx_register_operand")
 	(float_extend:fp16_float_convert
@@ -254,10 +258,6 @@
 {
   rtx df_tmp = gen_reg_rtx (DFmode);
   emit_insn (gen_extend<FP16_HW:mode>df2 (df_tmp, operands[1]));
-
-  /* convert_move handles things like conversion to Decimal types that
-     we don't have extenddfdd2 insns, so a call is made to do the
-     conversion.  */
   convert_move (operands[0], df_tmp, 0);
   DONE;
 })
@@ -270,11 +270,7 @@
 {
   rtx df_tmp = gen_reg_rtx (DFmode);
 
-  /* convert_move handles things like conversion from Decimal types
-     that we don't have truncdddf2 insns, so a call is made for
-     the conversion.  */
   convert_move (df_tmp, operands[1], 0);
-
   emit_insn (gen_truncdf<FP16_HW:mode>2 (operands[0], df_tmp));
   DONE;
 })
@@ -329,8 +325,10 @@
   DONE;
 })
 
+
 ;; Convert the even elements of a vector 16-bit floating point to
-;; V4SFmode.
+;; V4SFmode.  Deal with little endian vs. big endian element ordering
+;; in identifying which elements are converted.
 
 (define_expand "cvt_fp16_to_v4sf_<mode>"
   [(set (match_operand:V4SF 0 "vsx_register_operand")
@@ -422,57 +420,121 @@
   "&& 1"
   [(pc)]
 {
-  rtx op0 = operands[0];
-  rtx op1 = operands[1];
-  rtx op2 = operands[2];
-  rtx tmp0 = operands[3];
-  rtx tmp1 = operands[4];
-  rtx tmp2 = operands[5];
+  bfloat16_expand_binary_op (<CODE>,
+			     operands[0],
+			     operands[1],
+			     operands[2],
+			     operands[3],
+			     operands[4],
+			     operands[5]);
+  DONE;
+}
+  [(set_attr "type" "vecperm")
+   (set_attr "length" "24,24,32")])
 
-  if (GET_CODE (tmp0) == SCRATCH)
-    tmp0 = gen_reg_rtx (V4SFmode);
+(define_insn_and_split "*<fp16_binary_name>bf3_internal1"
+  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
+	(fp16_binary_op:SF
+	 (float_extend:SF
+	  (match_operand:BF 1 "vsx_register_operand" "wa"))
+	 (float_extend:SF
+	  (match_operand:BF 2 "vsx_register_operand" "wa"))))
+   (clobber (match_scratch:V4SF 3 "=&wa"))
+   (clobber (match_scratch:V4SF 4 "=&wa"))
+   (clobber (match_scratch:V4SF 5 "=&wa"))]
+  "TARGET_BFLOAT16_HW"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_expand_binary_op (<CODE>,
+			     operands[0],
+			     operands[1],
+			     operands[2],
+			     operands[3],
+			     operands[4],
+			     operands[5]);
+  DONE;
+}
+  [(set_attr "type" "vecperm")
+   (set_attr "length" "24")])
 
-  if (GET_CODE (tmp1) == SCRATCH)
-    tmp1 = gen_reg_rtx (V4SFmode);
+(define_insn_and_split "*<fp16_binary_name>bf3_internal2"
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
+	(float_truncate:BF
+	 (fp16_binary_op:SF
+	  (float_extend:SF
+	   (match_operand:BF 1 "vsx_register_operand" "wa"))
+	  (float_extend:SF
+	   (match_operand:BF 2 "vsx_register_operand" "wa")))))
+   (clobber (match_scratch:V4SF 3 "=&wa"))
+   (clobber (match_scratch:V4SF 4 "=&wa"))
+   (clobber (match_scratch:V4SF 5 "=&wa"))]
+  "TARGET_BFLOAT16_HW"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_expand_binary_op (<CODE>,
+			     operands[0],
+			     operands[1],
+			     operands[2],
+			     operands[3],
+			     operands[4],
+			     operands[5]);
+  DONE;
+}
+  [(set_attr "type" "vecperm")
+   (set_attr "length" "24")])
 
-  if (GET_CODE (tmp2) == SCRATCH)
-    tmp2 = gen_reg_rtx (V4SFmode);
+(define_insn_and_split "*<fp16_binary_name>bf3_internal3"
+  [(set (match_operand:SF 0 "vsx_register_operand" "=wa,wa,wa")
+	(fp16_binary_op:SF
+	 (float_extend:SF
+	  (match_operand:BF 1 "vsx_register_operand" "wa,wa,wa"))
+	 (match_operand:SF 2 "input_operand" "wa,j,eP")))
+   (clobber (match_scratch:V4SF 3 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 4 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 5 "=&wa,&wa,&wa"))]
+  "TARGET_BFLOAT16_HW"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_expand_binary_op (<CODE>,
+			     operands[0],
+			     operands[1],
+			     operands[2],
+			     operands[3],
+			     operands[4],
+			     operands[5]);
+  DONE;
+}
+  [(set_attr "type" "vecperm")
+   (set_attr "length" "24,24,32")])
 
-  /* Convert operand1 and operand2 to V4SFmode format.  We use SPLAT for
-     registers to get the value into the upper 32-bits.  We can use XXSPLTW
-     to splat words instead of VSPLTIH since the XVCVBF16SPN instruction
-     ignores the odd half-words, and XXSPLTW can operate on all VSX registers
-     instead of just the Altivec registers.  Using SPLAT instead of a shift
-     also insure that other bits are not a signalling NaN.  If we are using
-     XXSPLTIW or XXSPLTIB to load the constant the other bits are duplicated.  */
-
-  /* Operand1.  */
-  emit_insn (gen_xxspltw_bf (tmp1, op1));
-  emit_insn (gen_xvcvbf16spn_bf (tmp1, tmp1));
-
-  /* Operand2.  */
-  if (REG_P (op2) || SUBREG_P (op2))
-    emit_insn (gen_xxspltw_bf (tmp2, op2));
-
-  else if (op2 == CONST0_RTX (BFmode))
-    emit_move_insn (tmp2, CONST0_RTX (V4SFmode));
-
-  else if (fp16_xxspltiw_constant (op2, BFmode))
-    {
-      rtx op2_bf = gen_lowpart (BFmode, tmp2);
-      emit_move_insn (op2_bf, op2);
-    }
-
-  else
-    gcc_unreachable ();
-
-  emit_insn (gen_xvcvbf16spn_bf (tmp2, tmp2));
-
-  /* Do the operation in V4SFmode.  */
-  emit_insn (gen_<fp16_binary_name>v4sf3 (tmp0, tmp1, tmp2));
-
-  /* Convert V4SF result back to scalar mode.  */
-  emit_insn (gen_xvcvspbf16_bf (op0, tmp0));
+(define_insn_and_split "*<fp16_binary_name>bf3_internal4"
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa,wa,wa")
+	(float_truncate:BF
+	 (fp16_binary_op:SF
+	  (float_extend:SF
+	   (match_operand:BF 1 "vsx_register_operand" "wa,wa,wa"))
+	  (match_operand:SF 2 "input_operand" "wa,j,eP"))))
+   (clobber (match_scratch:V4SF 3 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 4 "=&wa,&wa,&wa"))
+   (clobber (match_scratch:V4SF 5 "=&wa,&wa,&wa"))]
+  "TARGET_BFLOAT16_HW"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_expand_binary_op (<CODE>,
+			     operands[0],
+			     operands[1],
+			     operands[2],
+			     operands[3],
+			     operands[4],
+			     operands[5]);
   DONE;
 }
   [(set_attr "type" "vecperm")
@@ -503,7 +565,7 @@
   "xvcvbf16spn %x0,%x1"
   [(set_attr "type" "vecperm")])
 
-;; Convert a V4SFmode vector back to 16-bit floating point scalar.  We
+;; Convert a V4SFmode vector to a 16-bit floating point scalar.  We
 ;; only care about the 2nd V4SFmode element, which is the element we
 ;; converted the 16-bit scalar (4th element) to V4SFmode to do the
 ;; operation, and converted it back.
