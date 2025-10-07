@@ -7624,9 +7624,10 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 		{
 		  /* This is where we introduce a temporary to store the
 		     result of a non-lvalue array expression.  */
-		  if (expr
-		      && expr->expr_type == EXPR_FUNCTION
-		      && expr->value.function.isym != nullptr)
+		  if ((expr
+		       && expr->expr_type == EXPR_FUNCTION
+		       && expr->value.function.isym != nullptr)
+		      || (sym && sym->attr.proc == PROC_INTRINSIC))
 		    parmse.bytes_strided = 1;
 		  gfc_conv_array_parameter (&parmse, e, nodesc_arg, fsym,
 					    sym->name, NULL);
