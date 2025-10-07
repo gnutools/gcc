@@ -1,3 +1,23 @@
+==================== Branch work222-float, patch #316 ====================
+
+Add combiner support for bfloat16.
+
+2025-10-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add float16.o.
+	* config/rs6000/float16.cc: New file.
+	* config/rs6000/float16.md (various): Update comments.
+	(<fp16_binary_name>bf3): Move code to bfloat16_expand_binary_op.
+	(<fp16_binary_name>bf3_internal1): New combiner insns.
+	(<fp16_binary_name>bf3_internal2): Likewise.
+	(<fp16_binary_name>bf3_internal3): Likewise.
+	(<fp16_binary_name>bf3_internal4): Likewise.
+	* config/rs6000/rs6000-proto.h (bfloat16_expand_binary_op): New
+	declaration.
+	* config/rs6000/t-rs6000 (float16.o): New build rule.
+
 ==================== Branch work222-float, patch #315 ====================
 
 Rename attributes and add Float16 shift left.
