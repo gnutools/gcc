@@ -522,6 +522,8 @@ set_internal_unit (st_parameter_dt *dtp, gfc_unit *iunit, int kind)
       iunit->internal_unit_len =
 	init_loop_spec (dtp->internal_unit_desc, iunit->ls, &start_record);
     }
+  else if (kind != 1)
+    iunit->internal_unit_len *= kind;
 
   /* Set initial values for unit parameters.  */
   if (kind == 4)
