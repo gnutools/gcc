@@ -1323,9 +1323,23 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 		|| (sym->attr.function && sym == sym->result))
 	       && gfc_return_by_reference (sym))
 	packed = PACKED_NO;
-      else if (as->type == AS_ASSUMED_SIZE
-	       || as->type == AS_EXPLICIT)
+      else if (as->type == AS_ASSUMED_SIZE)
 	packed = PACKED_FULL;
+      else if (as->type == AS_EXPLICIT)
+	{
+	  packed = PACKED_FULL;
+	  for (int n = 0; n < as->rank; n++)
+	    {
+	      if (!(as->upper[n]
+		    && as->lower[n]
+		    && as->upper[n]->expr_type == EXPR_CONSTANT
+		    && as->lower[n]->expr_type == EXPR_CONSTANT))
+		{
+		  packed = PACKED_PARTIAL;
+		  break;
+		}
+	    }
+	}
       else
 	packed = PACKED_NO;
 
