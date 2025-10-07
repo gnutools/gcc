@@ -8204,7 +8204,9 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
       /* Set the string_length for a character array.  */
       if (expr->ts.type == BT_CHARACTER)
 	{
-	  if (deferred_array_component && !substr)
+	  if (!substr
+	      && (deferred_array_component
+		  || ss_type == GFC_SS_FUNCTION))
 	    se->string_length = ss_info->string_length;
 	  else
 	    se->string_length =  gfc_get_expr_charlen (expr);
