@@ -41,5 +41,5 @@ program main
   
 end program main
 
-! { dg-final { scan-ipa-dump "op assert_expr 1" "cp" } }
-! { dg-final { scan-tree-dump-not "versioned this loop for when certain strides are 1" "lversion" } }
+! { dg-final { scan-ipa-dump "op assert_expr 4" "cp" } }
+! { dg-final { scan-tree-dump-not "versioned this loop" "lversion" } }
