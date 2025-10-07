@@ -2137,6 +2137,7 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
       tmp = TYPE_SIZE_UNIT (gfc_get_element_type (tmp));
       span = fold_convert (gfc_array_index_type, tmp);
     }
+  span = gfc_evaluate_now (span, block);
   gfc_conv_descriptor_span_set (block, dest, span);
 
   /* Copy offset but adjust it such that it would correspond
@@ -2146,10 +2147,12 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
   /* Set the bounds as declared for the LHS and calculate strides as
      well as another offset update accordingly.  */
   tree stride;
-  if (contiguous_src)
-    stride = gfc_index_one_node;
-  else
+  if (!contiguous_src)
     stride = gfc_conv_descriptor_stride_bytes_get (src, gfc_rank_cst[0]);
+  else if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
+    stride = span;
+  else
+    stride = gfc_index_one_node;
 
   for (int dim = 0; dim < dest_rank; ++dim)
     {
