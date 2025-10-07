@@ -2202,3 +2202,11 @@
 
   return false;
 })
+
+;; Match binary operators where we convert a BFmode operand into a
+;; SFmode operand so that we can optimize the BFmode operation to do
+;; the operation in vector mode rather than convverting the BFmode to a
+;; V8BFmode vector, converting that V8BFmode vector to V4SFmode, and
+;; then converting the V4SFmode element to SFmode scalar.
+(define_predicate "bfloat16_binary_operator"
+  (match_code "plus,minus,mult,smax,smin"))

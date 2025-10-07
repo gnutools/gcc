@@ -60,13 +60,13 @@
    SFmode.  */
 	
 void
-bfloat16_expand_binary_op (enum rtx_code icode,
-			   rtx op0,
-			   rtx op1,
-			   rtx op2,
-			   rtx tmp0,
-			   rtx tmp1,
-			   rtx tmp2)
+bfloat16_binary_op_as_v4sf (enum rtx_code icode,
+			    rtx op0,
+			    rtx op1,
+			    rtx op2,
+			    rtx tmp0,
+			    rtx tmp1,
+			    rtx tmp2)
 {
   if (GET_CODE (tmp0) == SCRATCH)
     tmp0 = gen_reg_rtx (V4SFmode);
