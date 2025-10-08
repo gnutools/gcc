@@ -2241,6 +2241,9 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 	  if (TREE_CODE (tmp2) == INDIRECT_REF
 	      && DECL_P (TREE_OPERAND (tmp2, 0)))
 	    tmp2 = TREE_OPERAND (tmp2, 0);
+	  if (TREE_CODE (tmp2) == COMPONENT_REF
+	      && GFC_CLASS_TYPE_P (TREE_TYPE (TREE_OPERAND (tmp2, 0))))
+	    tmp2 = TREE_OPERAND (tmp2, 0);
 	  if (DECL_P (tmp2)
 	      && DECL_LANG_SPECIFIC (tmp2)
 	      && GFC_DECL_SAVED_DESCRIPTOR (tmp2))
