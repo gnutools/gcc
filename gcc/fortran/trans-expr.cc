@@ -6595,6 +6595,54 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 }
 
 
+static bool
+contiguous_argument (gfc_actual_arglist *arg)
+{
+  gfc_expr *expr = arg->expr;
+  gfc_dummy_arg *dummy = arg->associated_dummy;
+
+  /* False for intrinsic procedures, the library functions get array
+     descriptors as arguments.  */
+  if (expr
+      && expr->expr_type == EXPR_FUNCTION
+      && expr->value.function.isym != nullptr)
+    return false;
+
+  if (dummy->intrinsicness == GFC_INTRINSIC_DUMMY_ARG)
+    return false;
+
+  gcc_assert (dummy->intrinsicness == GFC_NON_INTRINSIC_DUMMY_ARG);
+
+  gfc_symbol *fsym = dummy->u.non_intrinsic->sym;
+  if (!fsym)
+    return true;
+
+  /* True if the dummy has the allocate or contiguous attribute.  */
+  if ((fsym->ts.type == BT_CLASS
+       && fsym->attr.class_ok
+       && (CLASS_DATA (fsym)->attr.allocatable
+	   || CLASS_DATA (fsym)->attr.contiguous))
+      || (fsym->ts.type != BT_CLASS
+	  && (fsym->attr.allocatable
+	      || fsym->attr.contiguous)))
+    return true;
+
+  /* False if the dummy is assumed-shape or assumed-rank.  */
+  if ((fsym->ts.type == BT_CLASS
+       && CLASS_DATA (fsym)->as
+       && (CLASS_DATA (fsym)->as->type == AS_ASSUMED_SHAPE
+	   || CLASS_DATA (fsym)->as->type == AS_ASSUMED_RANK))
+      || (fsym->ts.type != BT_CLASS
+	  && fsym->as
+	  && (fsym->as->type == AS_ASSUMED_SHAPE
+	      || fsym->as->type == AS_ASSUMED_RANK)))
+    return false;
+
+  /* By default, repacking is done.  */
+  return true;
+}
+
+
 /* Generate code for a procedure call.  Note can return se->post != NULL.
    If se->direct_byref is set then se->expr contains the return parameter.
    Return nonzero, if the call has alternate specifiers.
@@ -6865,6 +6913,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  /* The derived type needs to be converted to a temporary
 	     CLASS object.  */
 	  gfc_init_se (&parmse, se);
+	  if (!contiguous_argument (arg))
+	    parmse.bytes_strided = 1;
 	  gfc_conv_derived_to_class (&parmse, e, fsym, NULL_TREE,
 				     fsym->attr.optional
 				       && e->expr_type == EXPR_VARIABLE
@@ -6882,6 +6932,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	     CLASS object for the unlimited polymorphic formal.  */
 	  gfc_find_vtab (&e->ts);
 	  gfc_init_se (&parmse, se);
+	  if (!contiguous_argument (arg))
+	    parmse.bytes_strided = 1;
 	  gfc_conv_intrinsic_to_class (&parmse, e, fsym->ts);
 
 	}
@@ -6985,18 +7037,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_ss *argss;
 
 	  gfc_init_se (&parmse, NULL);
-	  if ((expr
-	       && expr->expr_type == EXPR_FUNCTION
-	       && expr->value.function.isym != nullptr)
-	      || (sym
-		  && (sym->attr.proc == PROC_INTRINSIC
-		      || sym->attr.intrinsic))
-	      || (fsym
-		  && fsym->as
-		  && (fsym->as->type == AS_ASSUMED_SHAPE
-		      || fsym->as->type == AS_ASSUMED_RANK)
-		  && !(fsym->attr.allocatable
-		       || fsym->attr.contiguous)))
+	  if (!contiguous_argument (arg))
 	    parmse.bytes_strided = 1;
 
 	  /* Check whether the expression is a scalar or not; we cannot use
