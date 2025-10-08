@@ -3942,19 +3942,21 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
-  /* -mfloat16 and -mbfloat16 needs VSX at a minimum.  */
-  if (TARGET_FLOAT16 && !TARGET_VSX)
+  /* -mfloat16 and -mbfloat16 needs power8 at a minimum in order to load up
+      16-bit values into vector registers via loads/stores from GPRs and then
+      using direct moves.  */
+  if (TARGET_FLOAT16 && !TARGET_POWER8)
     {
       rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
       if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
-	error ("%qs requires at least %qs", "-mfloat16", "-mvsx");
+	error ("%qs requires at least %qs", "-mfloat16", "-mcpu=power8");
     }
 
-  if (TARGET_BFLOAT16 && !TARGET_VSX)
+  if (TARGET_BFLOAT16 && !TARGET_POWER8)
     {
       rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
       if (rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16)
-	error ("%qs requires at least %qs", "-mbfloat16", "-mvsx");
+	error ("%qs requires at least %qs", "-mbfloat16", "-mcpu=power8");
     }
 
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow

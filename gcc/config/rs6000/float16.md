@@ -668,17 +668,17 @@
 ;; power10, since we can easily load up -0.0 via XXSPLTIW.
 
 (define_insn_and_split "neg<mode>2"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(neg:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")))
-   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(neg:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")))
+   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(xor:FP16 (match_dup 1)
-		  (match_dup 2)))]
+	(xor:FP16_HW (match_dup 1)
+		     (match_dup 2)))]
 {
   REAL_VALUE_TYPE dconst;
 
@@ -695,9 +695,9 @@
 ;; XOR used to negate a 16-bit floating point type
 
 (define_insn "*xor<mode>3"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(xor:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
-		  (match_operand:FP16 2 "register_operand" "wa,wr")))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(xor:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
+		     (match_operand:FP16_HW 2 "register_operand" "wa,wr")))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "@
    xxlxor %x0,%x1,%x2
@@ -707,17 +707,18 @@
 ;; 16-bit floating point absolute value
 
 (define_insn_and_split "abs<mode>2"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(abs:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")))
-   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(abs:FP16_HW
+	 (match_operand:FP16_HW 1 "register_operand" "wa,wr")))
+   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(and:FP16 (match_dup 1)
-		  (not:FP16 (match_dup 2))))]
+	(and:FP16_HW (match_dup 1)
+		     (not:FP16_HW (match_dup 2))))]
 {
   REAL_VALUE_TYPE dconst;
 
@@ -735,10 +736,10 @@
 ;; for absolute value.
 
 (define_insn "*andc<mode>3"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(and:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
-		  (not:FP16
-		   (match_operand:FP16 2 "register_operand" "wa,wr"))))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(and:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
+		     (not:FP16_HW
+		      (match_operand:FP16_HW 2 "register_operand" "wa,wr"))))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "@
    xxlandc %x0,%x1,%x2
@@ -748,19 +749,19 @@
 ;; 16-bit negative floating point absolute value
 
 (define_insn_and_split "*nabs<mode>2"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(neg:FP16
-	 (abs:FP16
-	  (match_operand:FP16 1 "register_operand" "wa,wr"))))
-   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(neg:FP16_HW
+	 (abs:FP16_HW
+	  (match_operand:FP16_HW 1 "register_operand" "wa,wr"))))
+   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(ior:FP16 (match_dup 1)
-		  (match_dup 2)))]
+	(ior:FP16_HW (match_dup 1)
+		     (match_dup 2)))]
 {
   REAL_VALUE_TYPE dconst;
 
@@ -778,9 +779,9 @@
 ;; for negative absolute value.
 
 (define_insn "*ior<mode>3"
-  [(set (match_operand:FP16 0 "register_operand" "=wa,?wr")
-	(ior:FP16 (match_operand:FP16 1 "register_operand" "wa,wr")
-		  (match_operand:FP16 2 "register_operand" "wa,wr")))]
+  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
+	(ior:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
+		     (match_operand:FP16_HW 2 "register_operand" "wa,wr")))]
   "TARGET_POWER10 && TARGET_PREFIXED"
   "@
    xxlor %x0,%x1,%x2
