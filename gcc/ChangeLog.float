@@ -1,3 +1,16 @@
+==================== Branch work222-float, patch #320 ====================
+
+Eliminate -mfloat16 and -mbfloat16 checks on vector types.
+
+2025-10-07  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/vsx.md (VECTOR_16BIT): Remove checks for 16-bit floating
+	point support on V8BF/V8HF modes.
+	(VSX_L): Likewise.
+	(VSX_M): Likewise.
+
 ==================== Branch work222-float, patch #319 ====================
 
 Allow -mfloat16 and -mbfloat16 on power8
