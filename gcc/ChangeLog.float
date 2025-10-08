@@ -1,3 +1,14 @@
+==================== Branch work222-float, patch #319 ====================
+
+Allow -mfloat16 and -mbfloat16 on power8
+
+2025-10-07  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (mov<mode>_internal): Require -mcpu=power9 to
+	generate lxsihzx, stxsihx, and xxspltib.
+
 ==================== Branch work222-float, patch #318 ====================
 
 Add define_peephole2 for back to back __bfloat16 operations.
