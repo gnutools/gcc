@@ -127,7 +127,9 @@
    xxspltib %x0,0
    li %0,0"
   [(set_attr "type" "vecsimple, fpload,    fpstore,   *,         load,
-                     store,     mtvsr,     mfvsr,     vecsimple, *")])
+                     store,     mtvsr,     mfvsr,     vecsimple, *")
+   (set_attr "isa"  "*,         p9v,       p9v,       *,         *,
+                     *,         p8v,       p8v,       p9v,       *")])
 
 
 ;; Convert IEEE 16-bit floating point to/from other floating point modes.
