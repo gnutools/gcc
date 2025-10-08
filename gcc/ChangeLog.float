@@ -1,3 +1,25 @@
+==================== Branch work222-float, patch #321 ====================
+
+Add power8 support for 16-bit floating point.
+
+2025-10-07  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (neg<mode>2): Require hardware support for
+	the 16-bit floating point type.
+	(xor<mode>3): Likewise.
+	(abs<mode>2): Likewise.
+	(andc<mode>3): Likewise.
+	(nabs<mode>2): Likewise.
+	(ior<mode>3): Likewise.
+	* config/rs6000/rs6000-p8swap.cc (rs6000_gen_stvx): Add support for
+	V8HFmode and V8BFmode.
+	(rs6000_gen_lvx): Likewise.
+	(replace_swapped_load_constant): Likewise.
+	* config/rs6000/rs6000.md (rs6000_option_override_internal): Make
+	-mcpu=power8 the minimum for 16-bit floating point.
+
 ==================== Branch work222-float, patch #320 ====================
 
 Eliminate -mfloat16 and -mbfloat16 checks on vector types.
