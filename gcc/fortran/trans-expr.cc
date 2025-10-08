@@ -5466,6 +5466,7 @@ gfc_conv_subref_array_arg (gfc_se *se, gfc_expr * expr, int g77,
 					      : NULL),
 				  loop.dimen);
   loop.temp_ss->info->data.temp.preserve_bounds = preserve_bounds;
+  loop.temp_ss->info->data.temp.bytes_strided = se->bytes_strided;
 
   parmse->string_length = loop.temp_ss->info->string_length;
 
@@ -6984,6 +6985,19 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	  gfc_ss *argss;
 
 	  gfc_init_se (&parmse, NULL);
+	  if ((expr
+	       && expr->expr_type == EXPR_FUNCTION
+	       && expr->value.function.isym != nullptr)
+	      || (sym
+		  && (sym->attr.proc == PROC_INTRINSIC
+		      || sym->attr.intrinsic))
+	      || (fsym
+		  && fsym->as
+		  && (fsym->as->type == AS_ASSUMED_SHAPE
+		      || fsym->as->type == AS_ASSUMED_RANK)
+		  && !(fsym->attr.allocatable
+		       || fsym->attr.contiguous)))
+	    parmse.bytes_strided = 1;
 
 	  /* Check whether the expression is a scalar or not; we cannot use
 	     e->rank as it can be nonzero for functions arguments.  */
@@ -7636,11 +7650,6 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 		{
 		  /* This is where we introduce a temporary to store the
 		     result of a non-lvalue array expression.  */
-		  if ((expr
-		       && expr->expr_type == EXPR_FUNCTION
-		       && expr->value.function.isym != nullptr)
-		      || (sym && sym->attr.proc == PROC_INTRINSIC))
-		    parmse.bytes_strided = 1;
 		  gfc_conv_array_parameter (&parmse, e, nodesc_arg, fsym,
 					    sym->name, NULL);
 		}
