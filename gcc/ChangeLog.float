@@ -1,3 +1,17 @@
+==================== Branch work222-float, patch #322 ====================
+
+Set memory modes for V8HFmode and V8BFmode
+
+2025-10-08  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (rs6000_init_hard_regno_mode_ok): Always set
+	memory modes for V8HFmode and V8BFmode.
+	(xxspltib_constant_p): Likewise.
+	(rs6000_expand_vector_init): Likewise.
+	* config/rs6000/rs6000.h (ALTIVEC_VECTOR_MODE): Likewise.
+
 ==================== Branch work222-float, patch #321 ====================
 
 Add power8 support for 16-bit floating point.
