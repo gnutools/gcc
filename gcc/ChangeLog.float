@@ -1,3 +1,27 @@
+==================== Branch work222-float, patch #323 ====================
+
+Implement __bfloat16 pack and unpack; Implement _Float16 unpack.
+
+2025-10-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (UNSPEC_XVCVSPHP_V8HF): New unspec.
+	(UNSPEC_XVCVSPBF16_V8BF): Likewise.
+	(vec_pack_trunc_v4sf): New insns.
+	(xvcvsphp_v8hf): Likewise.
+	(xvcvspbf16_v8bf): Likewise.
+	(vec_unpacks_hi_v8hf): Likewise.
+	(vec_unpacks_lo_v8hf): Likewise.
+	(xvcvhpsp_v8hf): Likewise.
+	(vec_unpacks_hi_v8bf): Likewise.
+	(vec_unpacks_lo_v8bf): Likewise.
+	(xvcvbf16spn_v8bf): Likewise.
+	* config/rs6000/vector.md (vec_pack_trunc_v4sf): Delete here, create new
+	function in float16.md that packs __bfloat16 instead of _Float16.
+	(vec_unpacks_hi_v8hf): Move to float16.md.
+	* config/rs6000/vsx.md (vsx_xvcvsphp_v8hf): Delete.
+
 ==================== Branch work222-float, patch #322 ====================
 
 Set memory modes for V8HFmode and V8BFmode
