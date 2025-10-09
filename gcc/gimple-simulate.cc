@@ -2179,7 +2179,11 @@ simul_scope::evaluate (tree expr) const
 	const char *str = TREE_STRING_POINTER (expr);
 	for (int i = 0; i < len; ++i)
 	  set_cst_array_elem_at (result, elt_type, i, str[i]);
-	set_cst_array_elem_at (result, elt_type, len, 0);
+	/* Fortran strings are not 0-terminated.
+	   Decide on the 0-termination here depending on the type size.  */
+	if (tree_fits_shwi_p (TYPE_SIZE_UNIT (expr_type))
+	    && tree_to_shwi (TYPE_SIZE_UNIT (expr_type)) > len)
+	  set_cst_array_elem_at (result, elt_type, len, 0);
 	return result;
       }
 
