@@ -2022,6 +2022,18 @@ simul_valueize (tree t)
 }
 
 
+static void
+set_cst_array_elem_at (data_value &result, tree elt_type, int index, int value)
+{
+  unsigned elt_size = get_constant_type_size (elt_type);
+
+  wide_int val = wi::uhwi (value, elt_size);
+  data_value elt_val (elt_size);
+  elt_val.set_known (val);
+  result.set_at (elt_val, index * elt_size);
+}
+
+
 /* Evaluate the expression EXPR using the values currently stored in
    accessible variables and allocated storages and return the resulting value.
    */
@@ -2154,6 +2166,20 @@ simul_scope::evaluate (tree expr) const
 	    data_value elt_val = evaluate (elt);
 	    result.set_at (elt_val, i * elt_size);
 	  }
+	return result;
+      }
+
+    case STRING_CST:
+      {
+	tree expr_type = TREE_TYPE (expr);
+	data_value result (expr_type);
+	tree elt_type = TREE_TYPE (expr_type);
+
+	int len = TREE_STRING_LENGTH (expr);
+	const char *str = TREE_STRING_POINTER (expr);
+	for (int i = 0; i < len; ++i)
+	  set_cst_array_elem_at (result, elt_type, i, str[i]);
+	set_cst_array_elem_at (result, elt_type, len, 0);
 	return result;
       }
 
