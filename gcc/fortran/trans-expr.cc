@@ -6608,6 +6608,9 @@ contiguous_argument (gfc_actual_arglist *arg)
       && expr->value.function.isym != nullptr)
     return false;
 
+  if (dummy == nullptr)
+    return true;
+
   if (dummy->intrinsicness == GFC_INTRINSIC_DUMMY_ARG)
     return false;
 
