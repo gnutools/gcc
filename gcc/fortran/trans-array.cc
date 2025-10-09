@@ -222,6 +222,25 @@ gfc_get_array_ss (gfc_ss *next, gfc_expr *expr, int dimen, gfc_ss_type type)
   for (i = 0; i < ss->dimen; i++)
     ss->dim[i] = i;
 
+  if (type == GFC_SS_FUNCTION
+      && expr->expr_type == EXPR_FUNCTION)
+    {
+      gfc_symbol * sym = expr->value.function.esym;
+      if (!sym)
+	sym = expr->symtree->n.sym;
+
+      gfc_symbol *result = sym->result;
+      if (!result)
+	result = sym;
+
+      if ((result->ts.type == BT_CLASS
+	   && result->attr.class_ok
+	   && CLASS_DATA (result)->attr.class_pointer)
+	  || (result->ts.type != BT_CLASS
+	      && result->attr.pointer))
+	ss->info->data.array.bytes_strided = 1;
+    }
+
   return ss;
 }
 
@@ -3229,7 +3248,8 @@ gfc_conv_array_stride_bytes (tree descriptor, int dim)
   tree element_type = gfc_get_element_type (type);
   tree elt_size = TYPE_SIZE_UNIT (element_type);
   if (elt_size == NULL_TREE
-      || TREE_CODE (elt_size) != INTEGER_CST)
+      || TREE_CODE (elt_size) != INTEGER_CST
+      || TREE_CODE (element_type) == POINTER_TYPE)
     {
       if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (descriptor)))
 	elt_size = gfc_conv_descriptor_elem_len_get (descriptor);
