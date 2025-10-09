@@ -2909,6 +2909,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
     {
       rs6000_vector_unit[V4SImode] = VECTOR_ALTIVEC;
       rs6000_vector_unit[V8HImode] = VECTOR_ALTIVEC;
+      rs6000_vector_unit[V8HFmode] = VECTOR_ALTIVEC;
+      rs6000_vector_unit[V8BFmode] = VECTOR_ALTIVEC;
       rs6000_vector_unit[V16QImode] = VECTOR_ALTIVEC;
       rs6000_vector_align[V4SImode] = align32;
       rs6000_vector_align[V8HImode] = align32;
@@ -2918,12 +2920,16 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_VSX;
 	  rs6000_vector_mem[V8HImode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
 	  rs6000_vector_mem[V16QImode] = VECTOR_VSX;
 	}
       else
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V8HImode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V16QImode] = VECTOR_ALTIVEC;
 	}
     }
@@ -2946,10 +2952,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
   /* _Float16 support.  */
   if (TARGET_FLOAT16)
     {
-      rs6000_vector_unit[V8HFmode] = VECTOR_VSX;
-      rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
-      rs6000_vector_align[V8HFmode] = align64;
-
       rs6000_vector_mem[HFmode] = VECTOR_VSX;
       rs6000_vector_align[HFmode] = 16;
     }
@@ -2957,10 +2959,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
   /* _bfloat16 support.  */
   if (TARGET_BFLOAT16)
     {
-      rs6000_vector_unit[V8BFmode] = VECTOR_VSX;
-      rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
-      rs6000_vector_align[V8BFmode] = align64;
-
       rs6000_vector_mem[BFmode] = VECTOR_VSX;
       rs6000_vector_align[BFmode] = 16;
     }
@@ -6652,7 +6650,7 @@ xxspltib_constant_p (rtx op,
   if (GET_CODE (op) == VEC_DUPLICATE)
     {
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
-	  && mode != V2DImode)
+	  && mode != V2DImode && mode != V8HFmode && mode != V8BFmode)
 	return false;
 
       element = XEXP (op, 0);
@@ -6668,7 +6666,7 @@ xxspltib_constant_p (rtx op,
   else if (GET_CODE (op) == CONST_VECTOR)
     {
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
-	  && mode != V2DImode)
+	  && mode != V2DImode && mode != V8HFmode && mode != V8BFmode)
 	return false;
 
       element = CONST_VECTOR_ELT (op, 0);
@@ -7176,7 +7174,9 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
-  if (TARGET_DIRECT_MOVE && (mode == V16QImode || mode == V8HImode))
+  if (TARGET_DIRECT_MOVE
+      && (mode == V16QImode || mode == V8HImode || mode == V8HFmode
+	  || mode == V8BFmode))
     {
       rtx op[16];
       /* Force the values into word_mode registers.  */
