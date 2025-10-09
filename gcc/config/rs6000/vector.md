@@ -1222,21 +1222,6 @@
   DONE;
 })
 
-(define_expand "vec_pack_trunc_v4sf"
-  [(match_operand:V8HF 0 "vfloat_operand")
-   (match_operand:V4SF 1 "vfloat_operand")
-   (match_operand:V4SF 2 "vfloat_operand")]
-  "TARGET_FLOAT16"
-{
-  rtx r1 = gen_reg_rtx (V8HFmode);
-  rtx r2 = gen_reg_rtx (V8HFmode);
-
-  emit_insn (gen_vsx_xvcvsphp_v8hf (r1, operands[1]));
-  emit_insn (gen_vsx_xvcvsphp_v8hf (r2, operands[2]));
-  rs6000_expand_extract_even (operands[0], r1, r2);
-  DONE;
-})
-
 ;; Convert single word types to double word
 (define_expand "vec_unpacks_hi_v4sf"
   [(match_operand:V2DF 0 "vfloat_operand")
@@ -1307,18 +1292,6 @@
 
   rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
   emit_insn (gen_vsx_xvcvuxwdp (operands[0], reg));
-  DONE;
-})
-
-(define_expand "vec_unpacks_hi_v8hf"
-  [(match_operand:V4SF 0 "vfloat_operand")
-   (match_operand:V8HF 1 "vfloat_operand")]
-  "TARGET_FLOAT16"
-{
-  rtx reg = gen_reg_rtx (V8HFmode);
-
-  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
-  emit_insn (gen_vsx_xvcvhpsp (operands[0], reg));
   DONE;
 })
 
