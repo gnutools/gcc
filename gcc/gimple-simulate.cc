@@ -2732,7 +2732,7 @@ simul_scope::simulate_call (gcall *g)
       unsigned HOST_WIDE_INT uhwi_len2 = wi_len2.to_uhwi ();
       data_value data_src = src.get_at (addr1.offset, uhwi_len2);
       printer.print_value_update (*this, data_target, data_src);
-      dest_val.set_at (0, uhwi_len2, src, addr1.offset);
+      dest_val.set_at (addr0.offset, uhwi_len2, src, addr1.offset);
       storage0.set (dest_val);
     }
   else if (gimple_call_builtin_p (g, BUILT_IN_MEMSET))
