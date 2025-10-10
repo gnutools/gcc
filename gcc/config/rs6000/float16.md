@@ -712,38 +712,6 @@
   [(set_attr "type" "veclogical,integer")
    (set_attr "length" "16")])
 
-
-(define_insn_and_split "neg<mode>2"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(neg:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:VFP16 2 "=&wa"))]
-  ""
-  "#"
-  "&& 1"
-  [(set (match_dup 2)
-	(match_dup 3))
-   (set (match_dup 0)
-	(xor:VFP16 (match_dup 1)
-		   (match_dup 2)))]
-{
-  if (GET_CODE (operands[2]) == SCRATCH)
-    operands[2] = gen_reg_rtx (<MODE>mode);
-
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
-  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
-  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
-
-  if (!TARGET_PREFIXED)
-    vrc = force_const_mem (<MODE>mode, vrc);
-
-  operands[3] = vrc;
-}
-  [(set_attr "type" "veclogical")
-   (set_attr "length" "16")])
-
 ;; XOR used to negate a 16-bit floating point type
 
 (define_insn "*xor<mode>3"
@@ -755,14 +723,6 @@
    xxlxor %x0,%x1,%x2
    xor %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
-
-(define_insn "*xor<mode>3"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(xor:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
-		   (match_operand:VFP16 2 "vsx_register_operand" "wa")))]
-  ""
-  "xxlxor %x0,%x1,%x2"
-  [(set_attr "type" "veclogical")])
 
 ;; 16-bit floating point absolute value
 
@@ -797,38 +757,6 @@
   [(set_attr "type" "veclogical,integer")
    (set_attr "length" "16")])
 
-(define_insn_and_split "abs<mode>2"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(abs:VFP16
-	 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:VFP16 2 "=&wa"))]
-  ""
-  "#"
-  "&& 1"
-  [(set (match_dup 2)
-	(match_dup 3))
-   (set (match_dup 0)
-	(and:VFP16 (match_dup 1)
-		   (not:VFP16 (match_dup 2))))]
-{
-  if (GET_CODE (operands[2]) == SCRATCH)
-    operands[2] = gen_reg_rtx (<MODE>mode);
-
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
-  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
-  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
-
-  if (!TARGET_PREFIXED)
-    vrc = force_const_mem (<MODE>mode, vrc);
-
-  operands[3] = vrc;
-}
-  [(set_attr "type" "veclogical")
-   (set_attr "length" "16")])
-
 ;; ANDC used to clear the sign bit of a 16-bit floating point type
 ;; for absolute value.
 
@@ -842,15 +770,6 @@
    xxlandc %x0,%x1,%x2
    andc %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
-
-(define_insn "*andc<mode>3"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(and:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
-		     (not:VFP16
-		      (match_operand:VFP16 2 "vsx_register_operand" "wa"))))]
-  ""
-  "xxlandc %x0,%x1,%x2"
-  [(set_attr "type" "veclogical")])
 
 ;; 16-bit negative floating point absolute value
 
@@ -885,39 +804,6 @@
   [(set_attr "type" "veclogical,integer")
    (set_attr "length" "16")])
 
-(define_insn_and_split "*nabs<mode>2"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(neg:VFP16
-	 (abs:VFP16
-	  (match_operand:VFP16 1 "vsx_register_operand" "wa"))))
-   (clobber (match_scratch:VFP16 2 "=&wa"))]
-  ""
-  "#"
-  "&& 1"
-  [(set (match_dup 2)
-	(match_dup 3))
-   (set (match_dup 0)
-	(ior:VFP16 (match_dup 1)
-		   (match_dup 2)))]
-{
-  if (GET_CODE (operands[2]) == SCRATCH)
-    operands[2] = gen_reg_rtx (<MODE>mode);
-
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
-  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
-  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
-
-  if (!TARGET_PREFIXED)
-    vrc = force_const_mem (<MODE>mode, vrc);
-
-  operands[3] = vrc;
-}
-  [(set_attr "type" "veclogical")
-   (set_attr "length" "16")])
-
 ;; OR used to set the sign bit of a 16-bit floating point type
 ;; for negative absolute value.
 
@@ -931,13 +817,6 @@
    or %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
 
-(define_insn "*ior<mode>3"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(ior:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
-		   (match_operand:VFP16 2 "vsx_register_operand" "wa")))]
-  ""
-  "xxlor %x0,%x1,%x2"
-  [(set_attr "type" "veclogical")])
 
 ;; Vector Pack support.
 
