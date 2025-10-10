@@ -1,3 +1,31 @@
+==================== Branch work222-float, patch #324 ====================
+
+Move things around; Make unary operators work without hardware support.
+
+2025-10-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (vsx_xscvdpsp_sf): Move from vsx.md.
+	(vsx_xscvdpspn_sf): Likewise.
+	(neg<mode>2, FP16 iterator): Update code to not need specific 16-bit
+	floating point hardware support; Add vector insns.
+	(neg<mode>, VFP16 iterator): Likewise.
+	(xor<mode>, FP16 iterator): Likewise.
+	(xor<mode>, VFP16 iterator): Likewise.
+	(abs<mode>2, FP16 iterator): Likewise.
+	(abs<mode>2, VFP16 iterator): Likewise.
+	(andc<mode>2, FP16 iterator): Likewise.
+	(andc<mode>2, VFP16 iterator): Likewise.
+	(nabs<mode>2, FP16 iterator): Likewise.
+	(nabs<mode>2, VFP16 iterator): Likewise.
+	(ior<mode>2, FP16 iterator): Likewise.
+	(ior<mode>2, VFP16 iterator): Likewise.
+	(vec_pack_trunc_v4sf_v8hf): New insn.
+	(xvcvsphp_v8hf): Use vsx_register_operand instead of register_opernd.
+	* config/rs6000/vsx.md (vsx_xscvdpsp_sf): Move to float16.md.
+	(vsx_xscvdpspn_sf): Likewise.
+
 ==================== Branch work222-float, patch #323 ====================
 
 Implement __bfloat16 pack and unpack; Implement _Float16 unpack.
