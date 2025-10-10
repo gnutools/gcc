@@ -1338,7 +1338,20 @@ gfc_conv_intrinsic_caf_get (gfc_se *se, gfc_expr *expr, tree lhs,
       || GFC_ARRAY_TYPE_P (TREE_TYPE (caf_decl)))
     opt_src_desc = build_zero_cst (pvoid_type_node);
   else
-    opt_src_desc = gfc_build_addr_expr (pvoid_type_node, caf_decl);
+    {
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (caf_decl)))
+	opt_src_desc = gfc_build_addr_expr (pvoid_type_node, caf_decl);
+      else
+	{
+	  gfc_se tmp_se;
+	  gfc_init_se (&tmp_se, nullptr);
+	  tmp_se.bytes_strided = 1;
+	  gfc_conv_expr_descriptor (&tmp_se, array_expr);
+	  gfc_add_block_to_block (&se->pre, &tmp_se.pre);
+	  gfc_add_block_to_block (&se->post, &tmp_se.post);
+	  opt_src_desc = gfc_build_addr_expr (pvoid_type_node, tmp_se.expr);
+	}
+    }
 
   image_index = gfc_caf_get_image_index (&se->pre, array_expr, caf_decl);
   gfc_get_caf_token_offset (se, &token, NULL, caf_decl, NULL, array_expr);
@@ -1456,6 +1469,7 @@ conv_caf_send_to_remote (gfc_code *code)
     }
   else
     {
+      lhs_se.bytes_strided = 1;
       gfc_conv_expr_descriptor (&lhs_se, lhs_expr);
       gfc_add_block_to_block (&block, &lhs_se.pre);
       opt_lhs_desc = lhs_se.expr;
@@ -1517,6 +1531,7 @@ conv_caf_send_to_remote (gfc_code *code)
     {
       rhs_se.force_tmp = rhs_expr->shape == NULL
 			 || !gfc_is_simply_contiguous (rhs_expr, false, false);
+      rhs_se.bytes_strided = 1;
       gfc_conv_expr_descriptor (&rhs_se, rhs_expr);
       gfc_add_block_to_block (&block, &rhs_se.pre);
       opt_rhs_desc = rhs_se.expr;
@@ -1651,6 +1666,7 @@ conv_caf_sendget (gfc_code *code)
     }
   else
     {
+      lhs_se.bytes_strided = 1;
       gfc_conv_expr_descriptor (&lhs_se, lhs_expr);
       gfc_add_block_to_block (&block, &lhs_se.pre);
       opt_lhs_desc = lhs_se.expr;
@@ -1742,6 +1758,7 @@ conv_caf_sendget (gfc_code *code)
 	= (rhs_expr->shape == NULL
 	   && (!arr_ref || !gfc_full_array_ref_p (arr_ref, nullptr)))
 	  || !gfc_is_simply_contiguous (rhs_expr, false, false);
+      rhs_se.bytes_strided = 1;
       gfc_conv_expr_descriptor (&rhs_se, rhs_expr);
       gfc_add_block_to_block (&block, &rhs_se.pre);
       opt_rhs_desc = rhs_se.expr;
