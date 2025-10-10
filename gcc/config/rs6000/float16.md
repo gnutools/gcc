@@ -193,6 +193,14 @@
   [(set_attr "type" "fpsimple")
    (set_attr "length" "12")])
 
+(define_insn "vsx_xscvdpsp_sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=f,?wa")
+	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "f,wa")]
+			      UNSPEC_VSX_CVSPDP))]
+  "VECTOR_UNIT_VSX_P (DFmode)"
+  "xscvdpsp %x0,%x1"
+  [(set_attr "type" "fp")])
+
 ;; Vector shift left by 32 bits to get the 16-bit floating point value
 ;; into the upper 32 bits for the conversion.
 (define_insn "<fp16_vector8>_shift_left_32bit"
@@ -235,6 +243,13 @@
 }
   [(set_attr "type" "fpsimple")])
 
+(define_insn "vsx_xscvdpspn_sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_CVDPSPN))]
+  "TARGET_XSCVDPSPN"
+  "xscvdpspn %x0,%x1"
+  [(set_attr "type" "fp")])
 
 ;; Convert between HFmode/BFmode and 128-bit binary floating point and
 ;; decimal floating point types.  We use convert_move since some of the
@@ -666,151 +681,284 @@
   [(set_attr "type" "vecfloat")])
 
 
-;; Negate 16-bit floating point by XOR with -0.0.  We only do this on
-;; power10, since we can easily load up -0.0 via XXSPLTIW.
+;; Negate 16-bit floating point by XOR with -0.0.
 
 (define_insn_and_split "neg<mode>2"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(neg:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")))
-   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(neg:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  ""
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(xor:FP16_HW (match_dup 1)
-		     (match_dup 2)))]
+	(xor:FP16 (match_dup 1)
+		  (match_dup 2)))]
 {
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
   REAL_VALUE_TYPE dconst;
 
   gcc_assert (real_from_string (&dconst, "-0.0") == 0);
 
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+
+(define_insn_and_split "neg<mode>2"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(neg:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:VFP16 2 "=&wa"))]
+  ""
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(xor:VFP16 (match_dup 1)
+		   (match_dup 2)))]
+{
   if (GET_CODE (operands[2]) == SCRATCH)
     operands[2] = gen_reg_rtx (<MODE>mode);
 
-  operands[3] = const_double_from_real_value (dconst, <MODE>mode);
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
+  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
+  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
+
+  if (!TARGET_PREFIXED)
+    vrc = force_const_mem (<MODE>mode, vrc);
+
+  operands[3] = vrc;
 }
-  [(set_attr "type" "veclogical,integer")
+  [(set_attr "type" "veclogical")
    (set_attr "length" "16")])
 
 ;; XOR used to negate a 16-bit floating point type
 
 (define_insn "*xor<mode>3"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(xor:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
-		     (match_operand:FP16_HW 2 "register_operand" "wa,wr")))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(xor:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")
+		  (match_operand:FP16 2 "gpc_reg_operand" "wa,wr")))]
+  ""
   "@
    xxlxor %x0,%x1,%x2
    xor %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
 
+(define_insn "*xor<mode>3"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(xor:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
+		   (match_operand:VFP16 2 "vsx_register_operand" "wa")))]
+  ""
+  "xxlxor %x0,%x1,%x2"
+  [(set_attr "type" "veclogical")])
+
 ;; 16-bit floating point absolute value
 
 (define_insn_and_split "abs<mode>2"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(abs:FP16_HW
-	 (match_operand:FP16_HW 1 "register_operand" "wa,wr")))
-   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(abs:FP16
+	 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  ""
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(and:FP16_HW (match_dup 1)
-		     (not:FP16_HW (match_dup 2))))]
+	(and:FP16 (match_dup 1)
+		  (not:FP16 (match_dup 2))))]
 {
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
   REAL_VALUE_TYPE dconst;
 
   gcc_assert (real_from_string (&dconst, "-0.0") == 0);
 
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+(define_insn_and_split "abs<mode>2"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(abs:VFP16
+	 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:VFP16 2 "=&wa"))]
+  ""
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(and:VFP16 (match_dup 1)
+		   (not:VFP16 (match_dup 2))))]
+{
   if (GET_CODE (operands[2]) == SCRATCH)
     operands[2] = gen_reg_rtx (<MODE>mode);
 
-  operands[3] = const_double_from_real_value (dconst, <MODE>mode);
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
+  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
+  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
+
+  if (!TARGET_PREFIXED)
+    vrc = force_const_mem (<MODE>mode, vrc);
+
+  operands[3] = vrc;
 }
-  [(set_attr "type" "veclogical,integer")
+  [(set_attr "type" "veclogical")
    (set_attr "length" "16")])
 
 ;; ANDC used to clear the sign bit of a 16-bit floating point type
 ;; for absolute value.
 
 (define_insn "*andc<mode>3"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(and:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
-		     (not:FP16_HW
-		      (match_operand:FP16_HW 2 "register_operand" "wa,wr"))))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(and:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")
+		     (not:FP16
+		      (match_operand:FP16 2 "gpc_reg_operand" "wa,wr"))))]
+  ""
   "@
    xxlandc %x0,%x1,%x2
    andc %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
 
+(define_insn "*andc<mode>3"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(and:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
+		     (not:VFP16
+		      (match_operand:VFP16 2 "vsx_register_operand" "wa"))))]
+  ""
+  "xxlandc %x0,%x1,%x2"
+  [(set_attr "type" "veclogical")])
+
 ;; 16-bit negative floating point absolute value
 
 (define_insn_and_split "*nabs<mode>2"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(neg:FP16_HW
-	 (abs:FP16_HW
-	  (match_operand:FP16_HW 1 "register_operand" "wa,wr"))))
-   (clobber (match_scratch:FP16_HW 2 "=&wa,&r"))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(neg:FP16
+	 (abs:FP16
+	  (match_operand:FP16 1 "gpc_reg_operand" "wa,wr"))))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  ""
   "#"
   "&& 1"
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(ior:FP16_HW (match_dup 1)
-		     (match_dup 2)))]
+	(ior:FP16 (match_dup 1)
+		  (match_dup 2)))]
 {
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-
   if (GET_CODE (operands[2]) == SCRATCH)
     operands[2] = gen_reg_rtx (<MODE>mode);
 
-  operands[3] = const_double_from_real_value (dconst, <MODE>mode);
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
 }
   [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+(define_insn_and_split "*nabs<mode>2"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(neg:VFP16
+	 (abs:VFP16
+	  (match_operand:VFP16 1 "vsx_register_operand" "wa"))))
+   (clobber (match_scratch:VFP16 2 "=&wa"))]
+  ""
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(ior:VFP16 (match_dup 1)
+		   (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+  rtx nz = const_double_from_real_value (dconst, <VEC_base>mode);
+  rtvec v = gen_rtvec (8, nz, nz, nz, nz, nz, nz, nz, nz);
+  rtx vrc = gen_rtx_CONST_VECTOR (<MODE>mode, v);
+
+  if (!TARGET_PREFIXED)
+    vrc = force_const_mem (<MODE>mode, vrc);
+
+  operands[3] = vrc;
+}
+  [(set_attr "type" "veclogical")
    (set_attr "length" "16")])
 
 ;; OR used to set the sign bit of a 16-bit floating point type
 ;; for negative absolute value.
 
 (define_insn "*ior<mode>3"
-  [(set (match_operand:FP16_HW 0 "register_operand" "=wa,?wr")
-	(ior:FP16_HW (match_operand:FP16_HW 1 "register_operand" "wa,wr")
-		     (match_operand:FP16_HW 2 "register_operand" "wa,wr")))]
-  "TARGET_POWER10 && TARGET_PREFIXED"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(ior:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")
+		  (match_operand:FP16 2 "gpc_reg_operand" "wa,wr")))]
+  ""
   "@
    xxlor %x0,%x1,%x2
    or %0,%1,%2"
   [(set_attr "type" "veclogical,integer")])
 
+(define_insn "*ior<mode>3"
+  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
+	(ior:VFP16 (match_operand:VFP16 1 "vsx_register_operand" "wa")
+		   (match_operand:VFP16 2 "vsx_register_operand" "wa")))]
+  ""
+  "xxlor %x0,%x1,%x2"
+  [(set_attr "type" "veclogical")])
 
 ;; Vector Pack support.
 
-;; Unfortunately the code assumes there is only one 16-bit floating
-;; point type.  So we have to choose whether to support packing
-;; _Float16 or __bfloat16.
+;; Unfortunately the machine independent code assumes there is only one
+;; 16-bit floating point type.  So we have to choose whether to support
+;; packing _Float16 or __bfloat16.
 
-;; (define_expand "vec_pack_trunc_v4sf"
-;;   [(match_operand:V8HF 0 "vfloat_operand")
-;;    (match_operand:V4SF 1 "vfloat_operand")
-;;    (match_operand:V4SF 2 "vfloat_operand")]
-;;   "TARGET_FLOAT16_HW"
-;; {
-;;   rtx r1 = gen_reg_rtx (V8HFmode);
-;;   rtx r2 = gen_reg_rtx (V8HFmode);
-;; 
-;;   emit_insn (gen_xvcvsphp_v8hf (r1, operands[1]));
-;;   emit_insn (gen_xvcvsphp_v8hf (r2, operands[2]));
-;;   rs6000_expand_extract_even (operands[0], r1, r2);
-;;   DONE;
-;; })
+(define_expand "vec_pack_trunc_v4sf_v8hf"
+  [(match_operand:V8HF 0 "vfloat_operand")
+   (match_operand:V4SF 1 "vfloat_operand")
+   (match_operand:V4SF 2 "vfloat_operand")]
+  "TARGET_FLOAT16_HW"
+{
+  rtx r1 = gen_reg_rtx (V8HFmode);
+  rtx r2 = gen_reg_rtx (V8HFmode);
+
+  emit_insn (gen_xvcvsphp_v8hf (r1, operands[1]));
+  emit_insn (gen_xvcvsphp_v8hf (r2, operands[2]));
+  rs6000_expand_extract_even (operands[0], r1, r2);
+  DONE;
+})
 
 (define_expand "vec_pack_trunc_v4sf"
   [(match_operand:V8BF 0 "vfloat_operand")
@@ -827,43 +975,9 @@
   DONE;
 })
 
-;; (define_expand "vec_pack_trunc_v4sf"
-;;   [(match_operand 0 "vfloat_operand")
-;;    (match_operand:V4SF 1 "vfloat_operand")
-;;    (match_operand:V4SF 2 "vfloat_operand")]
-;;   "TARGET_FLOAT16_HW || TARGET_BFLOAT16_HW"
-;; {
-;;   machine_mode mode = GET_MODE (operands[0]);
-;;   rtx r1, r2;
-;; 
-;;   if (mode == V8HFmode && TARGET_FLOAT16_HW)
-;;     {
-;;       r1 = gen_reg_rtx (V8HFmode);
-;;       r2 = gen_reg_rtx (V8HFmode);
-;; 
-;;       emit_insn (gen_xvcvsphp_v8hf (r1, operands[1]));
-;;       emit_insn (gen_xvcvsphp_v8hf (r2, operands[2]));
-;;     }
-;; 
-;;   else if (mode == V8BFmode && TARGET_BFLOAT16_HW)
-;;     {
-;;       r1 = gen_reg_rtx (V8BFmode);
-;;       r2 = gen_reg_rtx (V8BFmode);
-;; 
-;;       emit_insn (gen_xvcvspbf16_v8bf (r1, operands[1]));
-;;       emit_insn (gen_xvcvspbf16_v8bf (r2, operands[2]));
-;;     }
-;; 
-;;   else
-;;     FAIL;
-;; 
-;;   rs6000_expand_extract_even (operands[0], r1, r2);
-;;   DONE;
-;; })
-
 ;; Used for vector conversion to _Float16
 (define_insn "xvcvsphp_v8hf"
-  [(set (match_operand:V8HF 0 "register_operand" "=wa")
+  [(set (match_operand:V8HF 0 "vsx_register_operand" "=wa")
 	(unspec:V8HF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_XVCVSPHP_V8HF))]
   "TARGET_P9_VECTOR"

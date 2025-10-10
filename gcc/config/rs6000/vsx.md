@@ -2388,14 +2388,6 @@
   "xscvdpsp %x0,%x1"
   [(set_attr "type" "fp")])
 
-(define_insn "vsx_xscvdpsp_sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=f,?wa")
-	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "f,wa")]
-			      UNSPEC_VSX_CVSPDP))]
-  "VECTOR_UNIT_VSX_P (DFmode)"
-  "xscvdpsp %x0,%x1"
-  [(set_attr "type" "fp")])
-
 (define_insn "vsx_xvcvspdp_be"
   [(set (match_operand:V2DF 0 "vsx_register_operand" "=v,?wa")
      (float_extend:V2DF
@@ -2453,7 +2445,6 @@
   [(set_attr "type" "fp")])
 
 ;; Generate xvcvhpsp instruction
-;; Used for the built-in function
 (define_insn "vsx_xvcvhpsp"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand: V16QI 1 "vsx_register_operand" "wa")]
@@ -2463,7 +2454,6 @@
   [(set_attr "type" "vecfloat")])
 
 ;; Generate xvcvsphp
-;; Used for the built-in function
 (define_insn "vsx_xvcvsphp"
   [(set (match_operand:V4SI 0 "register_operand" "=wa")
 	(unspec:V4SI [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
@@ -2486,14 +2476,6 @@
 (define_insn "vsx_xscvdpspn"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:DF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_VSX_CVDPSPN))]
-  "TARGET_XSCVDPSPN"
-  "xscvdpspn %x0,%x1"
-  [(set_attr "type" "fp")])
-
-(define_insn "vsx_xscvdpspn_sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_CVDPSPN))]
   "TARGET_XSCVDPSPN"
   "xscvdpspn %x0,%x1"
