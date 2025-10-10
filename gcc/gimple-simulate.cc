@@ -949,10 +949,11 @@ find_mem_ref_replacement (tree * repl, unsigned * offset, simul_scope & context,
   tree var_ref = ptr_target.get_variable ();
   tree var_type = TREE_TYPE (var_ref);
 
-  if (var_type == access_type)
+  if (var_type == access_type
+      && *offset == 0
+      && ptr_address->offset == 0)
     {
       *repl = var_ref;
-      gcc_assert (*offset == 0 && ptr_address->offset == 0);
       return true;
     }
   else
