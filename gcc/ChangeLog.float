@@ -1,3 +1,18 @@
+==================== Branch work222-float, patch #325 ====================
+
+Remove vector neg/abs/nabs.
+
+2025-10-09  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (neg<mode>2, VFP16 iterator): Delete.
+	(xor<mode>3, VFP16 iterator): Likewise.
+	(abs<mode>2, VFP16 iterator): Likewise.
+	(andc<mode>, VFP16 iterator): Likewise.
+	(nabs<mode>2, VFP16 iterator): Likewise.
+	(ior<mode>3, VFP16 iterator): Likewise.
+
 ==================== Branch work222-float, patch #324 ====================
 
 Move things around; Make unary operators work without hardware support.
