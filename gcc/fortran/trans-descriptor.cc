@@ -2214,13 +2214,13 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
   int ndim = info->ref ? info->ref->u.ar.dimen : rank;
 
   /* Set the span field.  */
-  tree tmp = NULL_TREE;
+  tree span = NULL_TREE;
   if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (src)))
-    tmp = gfc_conv_descriptor_span_get (src);
+    span = gfc_conv_descriptor_span_get (src);
   else
-    tmp = gfc_get_array_span (src, src_expr);
-  if (tmp)
-    gfc_conv_descriptor_span_set (block, dest, tmp);
+    span = gfc_get_array_span (src, src_expr);
+  if (span)
+    gfc_conv_descriptor_span_set (block, dest, span);
 
   /* The following can be somewhat confusing.  We have two
      descriptors, a new one and the original array.
@@ -2269,10 +2269,15 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     dtype = gfc_get_dtype (TREE_TYPE (dest));
   gfc_conv_descriptor_dtype_set (block, dest, dtype);
 
+  if (src_expr->ts.type == BT_CLASS)
+    gfc_conv_descriptor_elem_len_set (block, dest, span);
+
   /* The 1st element in the section.  */
   tree base = gfc_index_zero_node;
   if (src_expr->ts.type == BT_CHARACTER && src_expr->rank == 0 && corank)
     base = gfc_index_one_node;
+
+  tree tmp = NULL_TREE;
 
   /* The offset from the 1st element in the section.  */
   tree offset = gfc_index_zero_node;

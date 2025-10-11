@@ -1323,6 +1323,8 @@ gfc_build_dummy_array_decl (gfc_symbol * sym, tree dummy)
 		|| (sym->attr.function && sym == sym->result))
 	       && gfc_return_by_reference (sym))
 	packed = PACKED_NO;
+      else if (sym->ts.type == BT_CLASS)
+	packed = PACKED_NO;
       else if (as->type == AS_ASSUMED_SIZE)
 	packed = PACKED_FULL;
       else if (as->type == AS_EXPLICIT)

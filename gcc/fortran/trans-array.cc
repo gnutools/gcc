@@ -6670,6 +6670,9 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 	  if (sym->ts.type == BT_CLASS)
 	    {
 	      tree class_descr = sym->backend_decl;
+	      if (DECL_LANG_SPECIFIC (class_descr)
+		  && GFC_DECL_SAVED_DESCRIPTOR (class_descr))
+		class_descr = GFC_DECL_SAVED_DESCRIPTOR (class_descr);
 	      if (POINTER_TYPE_P (TREE_TYPE (class_descr)))
 		class_descr = build_fold_indirect_ref_loc (input_location,
 							   class_descr);

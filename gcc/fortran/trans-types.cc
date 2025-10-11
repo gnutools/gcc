@@ -1628,7 +1628,7 @@ gfc_is_nodesc_array (gfc_symbol * sym)
 static tree
 gfc_build_array_type (tree type, gfc_array_spec * as,
 		      enum gfc_array_kind akind, bool restricted,
-		      bool contiguous, int codim)
+		      bool contiguous, int codim, bool class_array = false)
 {
   tree lbound[GFC_MAX_DIMENSIONS];
   tree ubound[GFC_MAX_DIMENSIONS];
@@ -1684,15 +1684,16 @@ gfc_build_array_type (tree type, gfc_array_spec * as,
 			   : GFC_ARRAY_ASSUMED_RANK;
     }
 
-  bool packed = contiguous
-		|| as->type == AS_EXPLICIT
-		|| as->type == AS_ASSUMED_SIZE
-		|| akind == GFC_ARRAY_ALLOCATABLE
-		|| akind == GFC_ARRAY_POINTER_CONT
-		|| akind == GFC_ARRAY_ASSUMED_SHAPE_CONT
-		|| akind == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
-		|| akind == GFC_ARRAY_ASSUMED_RANK_CONT
-		|| akind == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT;
+  bool packed = !class_array
+		&& (contiguous
+		    || as->type == AS_EXPLICIT
+		    || as->type == AS_ASSUMED_SIZE
+		    || akind == GFC_ARRAY_ALLOCATABLE
+		    || akind == GFC_ARRAY_POINTER_CONT
+		    || akind == GFC_ARRAY_ASSUMED_SHAPE_CONT
+		    || akind == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
+		    || akind == GFC_ARRAY_ASSUMED_RANK_CONT
+		    || akind == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT);
   return gfc_get_array_type_bounds (type, as->rank == -1
 					  ? GFC_MAX_DIMENSIONS : as->rank,
 				    corank, lbound, ubound, packed, akind,
@@ -3091,7 +3092,10 @@ gfc_get_derived_type (gfc_symbol * derived, int codimen)
 		(
 		  field_type, c->as, akind, !c->attr.target && !c->attr.pointer,
 		  c->attr.contiguous,
-		  c->attr.codimension || c->attr.pointer ? codimen : 0
+		  c->attr.codimension || c->attr.pointer ? codimen : 0,
+		  derived->attr.is_class
+		  && c == derived->components
+		  && strcmp (c->name, "_data") == 0
 		);
 	    }
 	  else
