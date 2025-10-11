@@ -2008,6 +2008,10 @@ simul_valueize (tree t)
 	case VAL_KNOWN:
 	  return val.to_tree (TREE_TYPE (t));
 
+	case VAL_ADDRESS:
+	  gcc_assert (gimple_code (def) == GIMPLE_ASSIGN);
+	  return gimple_assign_rhs1 (def);
+
 	default:
 	  gcc_unreachable ();
 	}
