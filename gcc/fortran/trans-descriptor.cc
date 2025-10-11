@@ -614,7 +614,9 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_CONT
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT
-	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT))
+	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT)
+      && !(TREE_CODE (desc) == COMPONENT_REF
+	   && GFC_CLASS_TYPE_P (TREE_TYPE (TREE_OPERAND (desc, 0)))))
     return gfc_index_one_node;
 
   return non_lvalue_loc (input_location, get_descriptor_stride (desc, dim));

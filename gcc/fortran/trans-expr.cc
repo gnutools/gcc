@@ -6620,25 +6620,20 @@ contiguous_argument (gfc_actual_arglist *arg)
   if (!fsym)
     return true;
 
+  if (fsym->ts.type == BT_CLASS)
+    return false;
+
   /* True if the dummy has the allocate or contiguous attribute.  */
-  if ((fsym->ts.type == BT_CLASS
-       && fsym->attr.class_ok
-       && (CLASS_DATA (fsym)->attr.allocatable
-	   || CLASS_DATA (fsym)->attr.contiguous))
-      || (fsym->ts.type != BT_CLASS
-	  && (fsym->attr.allocatable
-	      || fsym->attr.contiguous)))
+  if (fsym->ts.type != BT_CLASS
+      && (fsym->attr.allocatable
+	  || fsym->attr.contiguous))
     return true;
 
   /* False if the dummy is assumed-shape or assumed-rank.  */
-  if ((fsym->ts.type == BT_CLASS
-       && CLASS_DATA (fsym)->as
-       && (CLASS_DATA (fsym)->as->type == AS_ASSUMED_SHAPE
-	   || CLASS_DATA (fsym)->as->type == AS_ASSUMED_RANK))
-      || (fsym->ts.type != BT_CLASS
-	  && fsym->as
-	  && (fsym->as->type == AS_ASSUMED_SHAPE
-	      || fsym->as->type == AS_ASSUMED_RANK)))
+  if (fsym->ts.type != BT_CLASS
+      && fsym->as
+      && (fsym->as->type == AS_ASSUMED_SHAPE
+	  || fsym->as->type == AS_ASSUMED_RANK))
     return false;
 
   /* By default, repacking is done.  */

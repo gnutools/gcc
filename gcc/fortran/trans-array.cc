@@ -4357,13 +4357,16 @@ gfc_trans_preloop_setup (gfc_loopinfo * loop, int dim, int flag,
 	{
 	  gcc_assert (0 == ploop->order[0]);
 
-	  stride = gfc_conv_array_stride (info->descriptor,
-					  innermost_ss (ss)->dim[0]);
+	  if (!ss->is_alloc_lhs)
+	    {
+	      stride = gfc_conv_array_stride (info->descriptor,
+					      innermost_ss (ss)->dim[0]);
 
-	  /* Calculate the stride of the innermost loop.  Hopefully this will
-	     allow the backend optimizers to do their stuff more effectively.
-	   */
-	  info->stride0 = gfc_evaluate_now (stride, pblock);
+	      /* Calculate the stride of the innermost loop.  Hopefully this will
+		 allow the backend optimizers to do their stuff more effectively.
+	       */
+	      info->stride0 = gfc_evaluate_now (stride, pblock);
+	    }
 
 	  /* For the outermost loop calculate the offset due to any
 	     elemental dimensions.  It will have been initialized with the
@@ -10884,6 +10887,9 @@ gfc_update_reallocated_descriptor (stmtblock_t *block, gfc_loopinfo *loop)
 	}
 
 #undef SAVE_VALUE
+
+      info->stride0 = gfc_conv_array_stride (info->descriptor,
+					     innermost_ss (s)->dim[0]);
     }
 }
 
