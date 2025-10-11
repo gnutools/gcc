@@ -2958,8 +2958,6 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
 				       tree desc, tree desc2, tree elemsize2,
 				       tree class_expr2, bool coarray)
 {
-  gcc_assert (!GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)));
-
   gfc_array_spec *as;
   /* Get arrayspec if expr is a full array.  */
   if (expr2 && expr2->expr_type == EXPR_FUNCTION
@@ -2983,7 +2981,12 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
      to the corresponding element of LBOUND(expr)."
      Reuse size1 to keep a dimension-by-dimension track of the
      stride of the new array.  */
-  tree size1 = gfc_index_one_node;
+  tree size1;
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (desc)))
+    size1 = elemsize2;
+  else
+    size1 = gfc_index_one_node;
+
   tree offset = gfc_index_zero_node;
 
   for (int n = 0; n < expr2->rank; n++)
