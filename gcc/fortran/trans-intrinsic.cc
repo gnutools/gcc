@@ -1211,6 +1211,57 @@ conv_stat_and_team (stmtblock_t *block, gfc_expr *expr, tree *stat, tree *team,
     *team_no = null_pointer_node;
 }
 
+
+static bool
+contiguous_coarray (gfc_expr *expr)
+{
+  gfc_ref *ref;
+
+  gcc_assert (expr && expr->expr_type == EXPR_VARIABLE);
+
+  if (expr->symtree->n.sym->ts.type == BT_CLASS
+      && CLASS_DATA (expr->symtree->n.sym)->attr.codimension)
+    return false;
+
+  else if (expr->symtree->n.sym->attr.codimension)
+    {
+      gfc_symbol *sym = expr->symtree->n.sym;
+      if (sym->attr.pointer)
+	return false;
+
+      if (sym->as
+	  && (sym->as->type == AS_ASSUMED_SHAPE
+	      || sym->as->type == AS_ASSUMED_RANK))
+	return false;
+
+      if (!(sym->assoc
+	    && !sym->assoc->dangling))
+	return false;
+
+      if (!sym->assoc->variable)
+	return true;
+
+      return contiguous_coarray (sym->assoc->target);
+    }
+
+  /* The following code assumes that the coarray is a component reachable via
+     only scalar components/variables; the Fortran standard guarantees this.  */
+
+  for (ref = expr->ref; ref; ref = ref->next)
+    if (ref->type == REF_COMPONENT)
+      {
+	gfc_component *comp = ref->u.c.component;
+	if (comp->ts.type == BT_CLASS
+	    && CLASS_DATA (comp)->attr.codimension)
+	  return false;
+
+	if (comp->attr.codimension)
+	  return !comp->attr.pointer;
+      }
+
+  gcc_unreachable ();
+}
+
 /* Get data from a remote coarray.  */
 
 static void
@@ -1345,6 +1396,7 @@ gfc_conv_intrinsic_caf_get (gfc_se *se, gfc_expr *expr, tree lhs,
 	{
 	  gfc_se tmp_se;
 	  gfc_init_se (&tmp_se, nullptr);
+	  tmp_se.bytes_strided = !contiguous_coarray (array_expr);
 	  gfc_conv_expr_descriptor (&tmp_se, array_expr);
 	  gfc_add_block_to_block (&se->pre, &tmp_se.pre);
 	  gfc_add_block_to_block (&se->post, &tmp_se.post);
