@@ -2425,7 +2425,11 @@ contiguous_attr (const symbol_attribute & attr)
 static bool
 is_contiguous (gfc_symbol *sym)
 {
-  if (contiguous_attr (gfc_symbol_attr (sym)))
+  symbol_attribute sym_attr = gfc_symbol_attr (sym);
+  if (sym_attr.pointer)
+    return false;
+
+  if (contiguous_attr (sym_attr))
     return true;
 
   if (!(sym->assoc
