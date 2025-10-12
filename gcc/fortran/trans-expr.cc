@@ -6604,9 +6604,13 @@ contiguous_argument (gfc_actual_arglist *arg)
   /* False for intrinsic procedures, the library functions get array
      descriptors as arguments.  */
   if (expr
-      && expr->expr_type == EXPR_FUNCTION
-      && expr->value.function.isym != nullptr)
-    return false;
+      && expr->expr_type == EXPR_FUNCTION)
+    if (gfc_intrinsic_sym *isym = expr->value.function.isym)
+      {
+	if (isym->id == GFC_ISYM_CAF_GET)
+	  return true;
+	return false;
+      }
 
   if (dummy == nullptr)
     return true;

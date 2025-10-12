@@ -1345,7 +1345,6 @@ gfc_conv_intrinsic_caf_get (gfc_se *se, gfc_expr *expr, tree lhs,
 	{
 	  gfc_se tmp_se;
 	  gfc_init_se (&tmp_se, nullptr);
-	  tmp_se.bytes_strided = 1;
 	  gfc_conv_expr_descriptor (&tmp_se, array_expr);
 	  gfc_add_block_to_block (&se->pre, &tmp_se.pre);
 	  gfc_add_block_to_block (&se->post, &tmp_se.post);
