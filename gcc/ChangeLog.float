@@ -1,3 +1,24 @@
+==================== Branch work222-float, patch #328 ====================
+
+Spacing changes.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (bfloat16_binary_op_internal1): Spacing.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_fma_op_internal1): Likewise.
+	(bfloat16_fma_op_internal2): Likewise.
+	(bfloat16_fms_op_internal1): Likewise.
+	(bfloat16_fms_op_internal2): Likewise.
+	(bfloat16_nfma_op_internal1): Likewise.
+	(bfloat16_nfma_op_internal2): Likewise.
+	(bfloat16_nfma_op_internal3): Likewise.
+	(bfloat16_nfms_op_internal1): Likewise.
+	(bfloat16_nfms_op_internal2): Likewise.
+	(bfloat16_nfms_op_internal3): Likewise.
+
 ==================== Branch work222-float, patch #327 ====================
 
 Add bfloat16 fma optimizations and rework bfloat16 binary optimizations.
