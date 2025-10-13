@@ -1,3 +1,29 @@
+==================== Branch work222-float, patch #326 ====================
+
+Rework bfloat16 to v4sf optimization.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4s): Rewrite
+	bfloat16_binary_op_as_v4sf so it will be able to handle FMA operations
+	in the future.
+	* config/rs6000/float16.md (bfloat16_binary_op_internal1): Likewise.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_binary_op_internal3): Likewise.
+	(bfloat16_binary_op_internal4): Likewise.
+	(bfloat16_binary_op_internal5): Likewise.
+	(bfloat16_binary_op_internal6): Likewise.
+	* config/rs6000/rs6000-protos.h (enum bfloat16_operation): New
+	enumeration.
+	(bfloat16_binary_op_as_v4sf): Delete.
+	(bfloat16_operation_as_v4sf): New declaration.
+	* config/rs6000/vsx.md (vsx_fmav4sf4): Add generator.
+	(vsx_fms<mode>4): Likewise.
+	(vsx_nfma<mode>4): Likewise.
+	(vsx_nfmsv4sf4): Likewise.
+
 ==================== Branch work222-float, patch #325 ====================
 
 Remove vector neg/abs/nabs.
