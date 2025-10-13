@@ -8740,6 +8740,7 @@ gfc_conv_array_parameter (gfc_se *se, gfc_expr *expr, bool g77,
     {
       gcc_assert (se->expr);
       ctree = se->expr;
+      se->expr = gfc_class_data_get (se->expr);
     }
   else
     ctree = NULL_TREE;
