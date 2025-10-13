@@ -1234,8 +1234,10 @@ contiguous_coarray (gfc_expr *expr)
 	      || sym->as->type == AS_ASSUMED_RANK))
 	return false;
 
-      if (!(sym->assoc
-	    && !sym->assoc->dangling))
+      if (!sym->assoc)
+	return true;
+
+      if (sym->assoc->dangling)
 	return false;
 
       if (!sym->assoc->variable)
