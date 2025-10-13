@@ -13339,7 +13339,11 @@ conv_intrinsic_move_alloc (gfc_code *code)
     }
 
   /* Copy the array descriptor data.  */
-  gfc_add_modify_loc (input_location, &block, to_se.expr, from_se.expr);
+  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (to_se.expr))
+      && GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (from_se.expr)))
+    gfc_copy_descriptor (&block, to_se.expr, from_se.expr);
+  else
+    gfc_add_modify_loc (input_location, &block, to_se.expr, from_se.expr);
 
   /* Set "from" to NULL.  */
   tmp = gfc_conv_descriptor_data_get (from_se.expr);
