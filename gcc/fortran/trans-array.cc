@@ -5951,7 +5951,8 @@ gfc_set_delta (gfc_loopinfo *loop)
 	      /* Calculate the offset relative to the loop variable.
 		 First multiply by the stride.  */
 	      tmp = loop->from[n];
-	      if (!integer_onep (info->stride[dim]))
+	      if (ss_type == GFC_SS_SECTION
+		  && !integer_onep (info->stride[dim]))
 		tmp = fold_build2_loc (input_location, MULT_EXPR,
 				       gfc_array_index_type,
 				       tmp, info->stride[dim]);
