@@ -2098,7 +2098,7 @@
 ;; vmaddfp and vnmsubfp can have different behaviors than the VSX instructions
 ;; in some corner cases due to VSCR[NJ] being set or if the addend is +0.0
 ;; instead of -0.0.
-(define_insn "*vsx_fmav4sf4"
+(define_insn "vsx_fmav4sf4"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa,wa")
 	(fma:V4SF
 	  (match_operand:V4SF 1 "vsx_register_operand" "%wa,wa")
@@ -2122,7 +2122,7 @@
    xvmaddmdp %x0,%x1,%x3"
   [(set_attr "type" "vecdouble")])
 
-(define_insn "*vsx_fms<mode>4"
+(define_insn "vsx_fms<mode>4"
   [(set (match_operand:VSX_F 0 "vsx_register_operand" "=wa,wa")
 	(fma:VSX_F
 	  (match_operand:VSX_F 1 "vsx_register_operand" "%wa,wa")
@@ -2135,7 +2135,7 @@
    xvmsubm<sd>p %x0,%x1,%x3"
   [(set_attr "type" "<VStype_mul>")])
 
-(define_insn "*vsx_nfma<mode>4"
+(define_insn "vsx_nfma<mode>4"
   [(set (match_operand:VSX_F 0 "vsx_register_operand" "=wa,wa")
 	(neg:VSX_F
 	 (fma:VSX_F
@@ -2148,7 +2148,7 @@
    xvnmaddm<sd>p %x0,%x1,%x3"
   [(set_attr "type" "<VStype_mul>")])
 
-(define_insn "*vsx_nfmsv4sf4"
+(define_insn "vsx_nfmsv4sf4"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa,wa")
 	(neg:V4SF
 	 (fma:V4SF

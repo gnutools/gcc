@@ -450,22 +450,18 @@
 	 [(float_extend:SF
 	   (match_operand:BF 2 "vsx_register_operand" "wa"))
 	  (float_extend:SF
-	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))
-   (clobber (match_scratch:V4SF 4 "=&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa"))]
-  "TARGET_BFLOAT16_HW"
+	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 
@@ -476,22 +472,18 @@
 	  [(float_extend:SF
 	    (match_operand:BF 2 "vsx_register_operand" "wa"))
 	   (float_extend:SF
-	    (match_operand:BF 3 "vsx_register_operand" "wa"))])))
-   (clobber (match_scratch:V4SF 4 "=&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa"))]
-  "TARGET_BFLOAT16_HW"
+	    (match_operand:BF 3 "vsx_register_operand" "wa"))])))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 
@@ -500,22 +492,18 @@
 	(match_operator:SF 1 "bfloat16_binary_operator"
 	 [(float_extend:SF
 	   (match_operand:BF 2 "vsx_register_operand" "wa,wa,wa"))
-	  (match_operand:SF 3 "input_operand" "wa,j,eP")]))
-   (clobber (match_scratch:V4SF 4 "=&wa,&wa,&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa,&wa,&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa,&wa,&wa"))]
-  "TARGET_BFLOAT16_HW"
+	  (match_operand:SF 3 "input_operand" "wa,j,eP")]))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 
@@ -525,22 +513,18 @@
 	 (match_operator:SF 1 "bfloat16_binary_operator"
 	  [(float_extend:SF
 	    (match_operand:BF 2 "vsx_register_operand" "wa,wa,wa"))
-	   (match_operand:SF 3 "input_operand" "wa,j,eP")])))
-   (clobber (match_scratch:V4SF 4 "=&wa,&wa,&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa,&wa,&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa,&wa,&wa"))]
-  "TARGET_BFLOAT16_HW"
+	   (match_operand:SF 3 "input_operand" "wa,j,eP")])))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 
@@ -549,22 +533,18 @@
 	(match_operator:SF 1 "bfloat16_binary_operator"
 	 [(match_operand:SF 2 "vsx_register_operand" "wa")
 	  (float_extend:SF
-	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))
-   (clobber (match_scratch:V4SF 4 "=&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa"))]
-  "TARGET_BFLOAT16_HW"
+	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 
@@ -574,22 +554,18 @@
 	 (match_operator:SF 1 "bfloat16_binary_operator"
 	  [(match_operand:SF 3 "vsx_register_operand" "wa")
 	   (float_extend:SF
-	    (match_operand:BF 2 "vsx_register_operand" "wa"))])))
-   (clobber (match_scratch:V4SF 4 "=&wa"))
-   (clobber (match_scratch:V4SF 5 "=&wa"))
-   (clobber (match_scratch:V4SF 6 "=&wa"))]
-  "TARGET_BFLOAT16_HW"
+	    (match_operand:BF 2 "vsx_register_operand" "wa"))])))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_binary_op_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
 			      operands[0],
 			      operands[2],
 			      operands[3],
-			      operands[4],
-			      operands[5],
-			      operands[6]);
+			      NULL_RTX,
+			      BF16_BINARY);
   DONE;
 })
 

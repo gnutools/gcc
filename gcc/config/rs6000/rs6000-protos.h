@@ -260,8 +260,17 @@ extern unsigned constant_generates_xxspltiw (vec_const_128bit_type *);
 extern unsigned constant_generates_xxspltidp (vec_const_128bit_type *);
 
 /* From float16.cc.  */
-extern void bfloat16_binary_op_as_v4sf (enum rtx_code, rtx, rtx, rtx,
-					rtx, rtx, rtx);
+/* Optimize bfloat16 operations.  */
+enum bfloat16_operation {
+  BF16_BINARY,				/* Bfloat16 binary op.  */
+  BF16_FMA,				/* (a * b) + c.  */
+  BF16_FMS,				/* (a * b) - c.  */
+  BF16_NFMA,				/* - ((a * b) + c).  */
+  BF16_NFMS				/* - ((a * b) - c).  */
+};
+
+extern void bfloat16_operation_as_v4sf (enum rtx_code, rtx, rtx, rtx, rtx,
+					enum bfloat16_operation);
 #endif /* RTX_CODE */
 
 #ifdef TREE_CODE
