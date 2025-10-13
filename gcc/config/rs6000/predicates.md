@@ -2210,3 +2210,50 @@
 ;; then converting the V4SFmode element to SFmode scalar.
 (define_predicate "bfloat16_binary_operator"
   (match_code "plus,minus,mult,smax,smin"))
+
+;; Match bfloat16/float operands that can be optimized to do the
+;; operation in V4SFmode.
+(define_predicate "bfloat16_v4sf_operand"
+  (match_code "reg,subreg,const_double,float_extend,float_truncate")
+{
+  if (mode != BFmode && mode != SFmode)
+    return false;
+
+  if (REG_P (op) || SUBREG_P (op))
+    return register_operand (op, mode);
+
+  if (CONST_DOUBLE_P (op))
+    return true;
+
+  if (GET_CODE (op) == FLOAT_EXTEND
+      && mode == SFmode
+      && GET_MODE (XEXP (op, 0)) == BFmode)
+    return true;
+
+  if (GET_CODE (op) == FLOAT_TRUNCATE
+      && mode == BFmode
+      && GET_MODE (XEXP (op, 0)) == SFmode)
+    return true;
+
+  return false;
+})
+
+;; Match an operand that originally was an BFmode value to prevent
+;; operations involing only SFmode values from being converted to
+;; BFmode.
+(define_predicate "bfloat16_bf_operand"
+  (match_code "reg,subreg,const_double,float_extend")
+{
+  if (mode == BFmode || GET_MODE (op) == BFmode)
+    return true;
+
+  if (mode != SFmode)
+    return false;
+
+  if (GET_MODE (op) == SFmode
+      && GET_CODE (op) == FLOAT_EXTEND
+      && GET_MODE (XEXP (op, 0)) == BFmode)
+    return true;
+
+  return false;
+})

@@ -69,7 +69,7 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
   gcc_assert (can_create_pseudo_p ());
 
   rtx result_v4sf = gen_reg_rtx (V4SFmode);
-  rtx ops_bf[3];
+  rtx ops_orig[3] = { op1, op2, op3 };
   rtx ops_v4sf[3];
   size_t n_opts;
 
@@ -77,8 +77,6 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
     {
     case BF16_BINARY:
       n_opts = 2;
-      ops_bf[0] = op1;
-      ops_bf[1] = op2;
       gcc_assert (op3 == NULL_RTX);
       break;
 
@@ -88,9 +86,6 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
     case BF16_NFMS:
       gcc_assert (icode == FMA);
       n_opts = 3;
-      ops_bf[0] = op1;
-      ops_bf[1] = op2;
-      ops_bf[3] = op3;
       break;
 
     default:
@@ -99,10 +94,14 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
 
   for (size_t i = 0; i < n_opts; i++)
     {
-      rtx op = ops_bf[i];
+      rtx op = ops_orig[i];
       rtx tmp = ops_v4sf[i] = gen_reg_rtx (V4SFmode);
 
       gcc_assert (op != NULL_RTX);
+
+      /* Remove truncation/extend added.  */
+      if (GET_CODE (op) == FLOAT_EXTEND || GET_CODE (op) == FLOAT_TRUNCATE)
+	op = XEXP (op, 0);
 
       /* Convert operands to V4SFmode format.  We use SPLAT for registers to
 	 get the value into the upper 32-bits.  We can use XXSPLTW to splat
@@ -113,15 +112,14 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
 	 XXSPLTIW or XXSPLTIB to load the constant the other bits are
 	 duplicated.  */
 
-      if (GET_MODE (op) == BFmode)
+      if (op == CONST0_RTX (SFmode) || op == CONST0_RTX (BFmode))
+	emit_move_insn (tmp, CONST0_RTX (V4SFmode));
+
+      else if (GET_MODE (op) == BFmode)
 	{
-	  emit_insn (gen_xxspltw_bf (tmp, op));
+	  emit_insn (gen_xxspltw_bf (tmp, force_reg (BFmode, op)));
 	  emit_insn (gen_xvcvbf16spn_bf (tmp, tmp));
 	}
-
-      else if (op == CONST0_RTX (SFmode)
-	       || op == CONST0_RTX (BFmode))
-	emit_move_insn (tmp, CONST0_RTX (V4SFmode));
 
       else if (GET_MODE (op) == SFmode)
 	{
@@ -146,37 +144,27 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
     }
 
   /* Do the operation in V4SFmode.  */
-  switch (subtype)
+  if (subtype == BF16_BINARY)
+    emit_insn (gen_rtx_SET (result_v4sf,
+			    gen_rtx_fmt_ee (icode, V4SFmode,
+					    ops_v4sf[0],
+					    ops_v4sf[1])));
+
+  else		/* FMA/FMS/NFMA/NFMS operation.  */
     {
-    case BF16_BINARY:
-      emit_insn (gen_rtx_SET (result_v4sf,
-			      gen_rtx_fmt_ee (icode, V4SFmode,
-					      ops_v4sf[0],
-					      ops_v4sf[1])));
-      break;
+      rtx op1 = ops_v4sf[0];
+      rtx op2 = ops_v4sf[1];
+      rtx op3 = ops_v4sf[2];
 
-    case BF16_FMA:
-      emit_insn (gen_vsx_fmav4sf4 (result_v4sf, ops_v4sf[0], ops_v4sf[1],
-				   ops_v4sf[2]));
-      break;
+      if (subtype == BF16_FMS || subtype == BF16_NFMS)
+	op3 = gen_rtx_NEG (V4SFmode, op3);
 
-    case BF16_FMS:
-      emit_insn (gen_vsx_fmsv4sf4 (result_v4sf, ops_v4sf[0], ops_v4sf[1],
-				   ops_v4sf[2]));
-      break;
+      rtx op_fma = gen_rtx_FMA (V4SFmode, op1, op2, op3);
 
-    case BF16_NFMA:
-      emit_insn (gen_vsx_nfmav4sf4 (result_v4sf, ops_v4sf[0], ops_v4sf[1],
-				    ops_v4sf[2]));
-      break;
+      if (subtype == BF16_NFMA || subtype == BF16_NFMS)
+	op_fma = gen_rtx_NEG (V4SFmode, op_fma);
 
-    case BF16_NFMS:
-      emit_insn (gen_vsx_nfmsv4sf4 (result_v4sf, ops_v4sf[0], ops_v4sf[1],
-				    ops_v4sf[2]));
-      break;
-
-    default:
-      gcc_unreachable ();
+      emit_insn (gen_rtx_SET (result_v4sf, op_fma));
     }
 
   /* Convert V4SF result back to scalar mode.  */

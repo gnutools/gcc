@@ -445,13 +445,13 @@
 ;; SFmode.
 
 (define_insn_and_split "*bfloat16_binary_op_internal1"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
+  [(set (match_operand:SF 0 "vsx_register_operand")
 	(match_operator:SF 1 "bfloat16_binary_operator"
-	 [(float_extend:SF
-	   (match_operand:BF 2 "vsx_register_operand" "wa"))
-	  (float_extend:SF
-	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+			   [(match_operand:SF 2 "bfloat16_v4sf_operand")
+			    (match_operand:SF 3 "bfloat16_v4sf_operand")]))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[2], SFmode)
+       || bfloat16_bf_operand (operands[3], SFmode))"
   "#"
   "&& 1"
   [(pc)]
@@ -466,106 +466,271 @@
 })
 
 (define_insn_and_split "*bfloat16_binary_op_internal2"
+  [(set (match_operand:BF 0 "vsx_register_operand")
+	(float_truncate:BF
+	 (match_operator:SF 1 "bfloat16_binary_operator"
+			    [(match_operand:SF 2 "bfloat16_v4sf_operand")
+			     (match_operand:SF 3 "bfloat16_v4sf_operand")])))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[2], SFmode)
+       || bfloat16_bf_operand (operands[3], SFmode))"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+			      operands[0],
+			      operands[2],
+			      operands[3],
+			      NULL_RTX,
+			      BF16_BINARY);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_fma_internal1"
+  [(set (match_operand:SF 0 "vsx_register_operand")
+	(fma:SF
+	 (match_operand:SF 1 "bfloat16_v4sf_operand")
+	 (match_operand:SF 2 "bfloat16_v4sf_operand")
+	 (match_operand:SF 3 "bfloat16_v4sf_operand")))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (FMA,
+			      operands[0],
+			      operands[1],
+			      operands[2],
+			      operands[3],
+			      BF16_FMA);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_fma_internal2"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
 	(float_truncate:BF
-	 (match_operator:SF 1 "bfloat16_binary_operator"
-	  [(float_extend:SF
-	    (match_operand:BF 2 "vsx_register_operand" "wa"))
-	   (float_extend:SF
-	    (match_operand:BF 3 "vsx_register_operand" "wa"))])))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+	 (fma:SF
+	  (match_operand:SF 1 "bfloat16_v4sf_operand")
+	  (match_operand:SF 2 "bfloat16_v4sf_operand")
+	  (match_operand:SF 3 "bfloat16_v4sf_operand"))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (FMA,
 			      operands[0],
+			      operands[1],
 			      operands[2],
 			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+			      BF16_FMA);
   DONE;
 })
 
-(define_insn_and_split "*bfloat16_binary_op_internal3"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa,wa,wa")
-	(match_operator:SF 1 "bfloat16_binary_operator"
-	 [(float_extend:SF
-	   (match_operand:BF 2 "vsx_register_operand" "wa,wa,wa"))
-	  (match_operand:SF 3 "input_operand" "wa,j,eP")]))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+(define_insn_and_split "*bfloat16_fms_internal1"
+  [(set (match_operand:SF 0 "vsx_register_operand")
+	(fma:SF
+	 (match_operand:SF 1 "bfloat16_v4sf_operand")
+	 (match_operand:SF 2 "bfloat16_v4sf_operand")
+	 (neg:SF
+	  (match_operand:SF 3 "bfloat16_v4sf_operand"))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (FMA,
 			      operands[0],
+			      operands[1],
 			      operands[2],
 			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+			      BF16_FMS);
   DONE;
 })
 
-(define_insn_and_split "*bfloat16_binary_op_internal4"
-  [(set (match_operand:BF 0 "vsx_register_operand" "=wa,&wa,&wa")
+(define_insn_and_split "*bfloat16_fms_interna2"
+  [(set (match_operand:BF 0 "vsx_register_operand")
 	(float_truncate:BF
-	 (match_operator:SF 1 "bfloat16_binary_operator"
-	  [(float_extend:SF
-	    (match_operand:BF 2 "vsx_register_operand" "wa,wa,wa"))
-	   (match_operand:SF 3 "input_operand" "wa,j,eP")])))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+	 (fma:SF
+	  (match_operand:SF 1 "bfloat16_v4sf_operand")
+	  (match_operand:SF 2 "bfloat16_v4sf_operand")
+	  (neg:SF
+	   (match_operand:SF 3 "bfloat16_v4sf_operand")))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (FMA,
 			      operands[0],
+			      operands[1],
 			      operands[2],
 			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+			      BF16_FMS);
   DONE;
 })
 
-(define_insn_and_split "*bfloat16_binary_op_internal5"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
-	(match_operator:SF 1 "bfloat16_binary_operator"
-	 [(match_operand:SF 2 "vsx_register_operand" "wa")
-	  (float_extend:SF
-	   (match_operand:BF 3 "vsx_register_operand" "wa"))]))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+(define_insn_and_split "*bfloat16_nfma_internal1"
+  [(set (match_operand:SF 0 "vsx_register_operand")
+	(neg:SF
+	 (fma:SF
+	  (match_operand:SF 1 "bfloat16_v4sf_operand")
+	  (match_operand:SF 2 "bfloat16_v4sf_operand")
+	  (match_operand:SF 3 "bfloat16_v4sf_operand"))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (FMA,
 			      operands[0],
+			      operands[1],
 			      operands[2],
 			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+			      BF16_NFMA);
   DONE;
 })
 
-(define_insn_and_split "*bfloat16_binary_op_internal6"
+(define_insn_and_split "*bfloat16_nfma_internal2"
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
 	(float_truncate:BF
-	 (match_operator:SF 1 "bfloat16_binary_operator"
-	  [(match_operand:SF 3 "vsx_register_operand" "wa")
-	   (float_extend:SF
-	    (match_operand:BF 2 "vsx_register_operand" "wa"))])))]
-  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()"
+	 (neg:SF
+	  (fma:SF
+	   (match_operand:SF 1 "bfloat16_v4sf_operand")
+	   (match_operand:SF 2 "bfloat16_v4sf_operand")
+	   (match_operand:SF 3 "bfloat16_v4sf_operand")))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
   "#"
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
+  bfloat16_operation_as_v4sf (FMA,
 			      operands[0],
+			      operands[1],
 			      operands[2],
 			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+			      BF16_NFMA);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_nfma_internal3"
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
+	(neg:BF
+	 (float_truncate:BF
+	  (fma:SF
+	   (match_operand:SF 1 "bfloat16_v4sf_operand")
+	   (match_operand:SF 2 "bfloat16_v4sf_operand")
+	   (match_operand:SF 3 "bfloat16_v4sf_operand")))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (FMA,
+			      operands[0],
+			      operands[1],
+			      operands[2],
+			      operands[3],
+			      BF16_NFMA);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_nfms_internal1"
+  [(set (match_operand:SF 0 "vsx_register_operand")
+	(neg:SF
+	 (fma:SF
+	  (match_operand:SF 1 "bfloat16_v4sf_operand")
+	  (match_operand:SF 2 "bfloat16_v4sf_operand")
+	  (neg:SF
+	   (match_operand:SF 3 "bfloat16_v4sf_operand")))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (FMA,
+			      operands[0],
+			      operands[1],
+			      operands[2],
+			      operands[3],
+			      BF16_NFMS);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_nfms_internal2"
+  [(set (match_operand:BF 0 "vsx_register_operand")
+	(float_truncate:BF
+	 (neg:SF
+	  (fma:SF
+	   (match_operand:SF 1 "bfloat16_v4sf_operand")
+	   (match_operand:SF 2 "bfloat16_v4sf_operand")
+	   (neg:SF
+	    (match_operand:SF 3 "bfloat16_v4sf_operand"))))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (FMA,
+			      operands[0],
+			      operands[1],
+			      operands[2],
+			      operands[3],
+			      BF16_NFMS);
+  DONE;
+})
+
+(define_insn_and_split "*bfloat16_nfms_internal3"
+  [(set (match_operand:BF 0 "vsx_register_operand")
+	(neg:BF
+	 (float_truncate:BF
+	  (fma:SF
+	   (match_operand:SF 1 "bfloat16_v4sf_operand")
+	   (match_operand:SF 2 "bfloat16_v4sf_operand")
+	   (neg:SF
+	    (match_operand:SF 3 "bfloat16_v4sf_operand"))))))]
+  "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
+   && (bfloat16_bf_operand (operands[1], SFmode)
+       + bfloat16_bf_operand (operands[2], SFmode)
+       + bfloat16_bf_operand (operands[3], SFmode) >= 2)"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  bfloat16_operation_as_v4sf (FMA,
+			      operands[0],
+			      operands[1],
+			      operands[2],
+			      operands[3],
+			      BF16_NFMS);
   DONE;
 })
 
