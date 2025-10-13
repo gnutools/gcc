@@ -456,12 +456,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
-			      operands[0],
-			      operands[2],
-			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]), operands[0], operands[2],
+			      operands[3], NULL_RTX, BF16_BINARY);
   DONE;
 })
 
@@ -478,12 +474,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (GET_CODE (operands[1]),
-			      operands[0],
-			      operands[2],
-			      operands[3],
-			      NULL_RTX,
-			      BF16_BINARY);
+  bfloat16_operation_as_v4sf (GET_CODE (operands[1]), operands[0], operands[2],
+			      operands[3], NULL_RTX, BF16_BINARY);
   DONE;
 })
 
@@ -501,12 +493,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_FMA);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_FMA);
   DONE;
 })
 
@@ -525,12 +513,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_FMA);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_FMA);
   DONE;
 })
 
@@ -549,12 +533,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_FMS);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_FMS);
   DONE;
 })
 
@@ -574,12 +554,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_FMS);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_FMS);
   DONE;
 })
 
@@ -598,12 +574,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMA);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMA);
   DONE;
 })
 
@@ -623,12 +595,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMA);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMA);
   DONE;
 })
 
@@ -648,12 +616,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMA);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMA);
   DONE;
 })
 
@@ -673,12 +637,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMS);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMS);
   DONE;
 })
 
@@ -699,12 +659,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMS);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMS);
   DONE;
 })
 
@@ -725,12 +681,8 @@
   "&& 1"
   [(pc)]
 {
-  bfloat16_operation_as_v4sf (FMA,
-			      operands[0],
-			      operands[1],
-			      operands[2],
-			      operands[3],
-			      BF16_NFMS);
+  bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
+			      operands[3], BF16_NFMS);
   DONE;
 })
 
