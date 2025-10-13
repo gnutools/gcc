@@ -1,3 +1,36 @@
+==================== Branch work222-float, patch #327 ====================
+
+Add bfloat16 fma optimizations and rework bfloat16 binary optimizations.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): Iterate code.
+	* config/rs6000/float16.md (bfloat16_binary_op_internal1): Rework
+	bfloat16 optimization code.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_binary_op_internal3): Likewise.
+	(bfloat16_binary_op_internal4): Likewise.
+	(bfloat16_binary_op_internal5): Likewise.
+	(bfloat16_fma_internal1): Likewise.
+	(bfloat16_fma_internal2): Likewise.
+	(bfloat16_fms_internal1): Likewise.
+	(bfloat16_fms_interna2): Likewise.
+	(bfloat16_nfma_internal1): Likewise.
+	(bfloat16_nfma_internal2): Likewise.
+	(bfloat16_nfma_internal3): Likewise.
+	(bfloat16_nfms_internal1): Likewise.
+	(bfloat16_nfms_internal2): Likewise.
+	(bfloat16_nfms_internal3): Likewise.
+	* config/rs6000/predicates.md (bfloat16_v4sf_operand): New predicate.
+	(bfloat16_bf_operand): Likewise.
+	* config/rs6000/vsx.md (vsx_fmav4sf4): Remove generator, added in the
+	last change.
+	(vsx_fms<mode>4): Likewise.
+	(vsx_nfma<mode>4): Likewise.
+	(vsx_nfmsv4sf4): Likewise.
+
 ==================== Branch work222-float, patch #326 ====================
 
 Rework bfloat16 to v4sf optimization.
