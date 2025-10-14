@@ -2010,8 +2010,13 @@ is_assumed_rank (tree descriptor)
 void
 gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 {
-  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
-      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+  tree dest_type = TREE_TYPE (dest);
+  tree src_type = TREE_TYPE (src);
+
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (dest_type)
+      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (src_type)
+      && TYPE_MAIN_VARIANT (dest_type)
+	 == TYPE_MAIN_VARIANT (src_type))
     gfc_add_modify (block, dest, src);
   else
     {
