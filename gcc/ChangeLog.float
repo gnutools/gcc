@@ -1,3 +1,14 @@
+==================== Branch work222-float, patch #330 ====================
+
+Add patterns for v8hf vectorization.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (altivec_vsplth_internal_v8h): New insn.
+	(altivec_lvehf): Likewise.
+
 ==================== Branch work222-float, patch #329 ====================
 
 Upgrade float16 vector optimizations.
