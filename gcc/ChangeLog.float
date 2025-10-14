@@ -1,3 +1,15 @@
+==================== Branch work222-float, patch #331 ====================
+
+Fix -Ofast issue with BF optimization.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/predicates.md (bfloat16_v4sf_operand): Add checks to
+	make sure float_extend and float_truncate have a register as an
+	argument.
+
 ==================== Branch work222-float, patch #330 ====================
 
 Add patterns for v8hf vectorization.
