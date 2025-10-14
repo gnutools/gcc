@@ -6803,7 +6803,10 @@ gfc_trans_array_bounds (tree type, gfc_symbol * sym, tree * poffset,
 	  tmp = fold_build3_loc (input_location, COND_EXPR,
 				 gfc_array_index_type, cond,
 				 size, gfc_index_zero_node);
-	  gfc_add_modify (pblock, size, tmp);
+	  if (TREE_CODE (size) == VAR_DECL)
+	    gfc_add_modify (pblock, size, tmp);
+	  else
+	    gcc_assert (TREE_CODE (size) == INTEGER_CST);
 	}
 
       prev_stride = stride;
