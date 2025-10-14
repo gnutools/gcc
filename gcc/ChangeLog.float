@@ -1,3 +1,47 @@
+==================== Branch work222-float, patch #329 ====================
+
+Upgrade float16 vector optimizations.
+
+2025-10-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (bfloat16_operation_as_v4sf): Upgrade float16
+	vector optimizations.
+	(float16_vectorization): New function for _Float16 vectorization
+	support.
+	* config/rs6000/float16.md (FLOAT16_UNARY_OP): New code iterator.
+	(FLOAT16_BINARY_OP): Likewise.
+	(float16_names): New code attribute.
+	(bfloat16_binary_op_internal1): Upgrade float16 optimizations and change
+	bfloat16 optimization names.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_fma_op_internal1): Likewise.
+	(bfloat16_fma_op_internal2): Likewise.
+	(bfloat16_fms_op_internal1): Likewise.
+	(bfloat16_fms_op_internal2): Likewise.
+	(bfloat16_nfma_op_internal1): Likewise.
+	(bfloat16_nfma_op_internal2): Likewise.
+	(bfloat16_nfma_op_internal3): Likewise.
+	(bfloat16_nfms_op_internal1): Likewise.
+	(bfloat16_nfms_op_internal2): Likewise.
+	(bfloat16_nfms_op_internal3): Likewise.
+	(<float16_names>v8hf, FLOAT16_UNARY_OP iterator): Likewise.
+	(<float16_names>v8hf, FLOAT16_BINARY_OP iterator): Likewise.
+	(neg_<float16_names>v8hf3): Likewise.
+	(abs_<float16_names>v8hf3): Likewise.
+	(fmav8hf3): Likewise.
+	(fmsv8hf3): Likewise.
+	(nfmav8hf3): Likewise.
+	(nfmsv8hf3): Likewise.
+	* config/rs6000/predicates.md (fp16_binary_operator): Rename from
+	bfloat16_binary_operator.
+	(enum fp16_operation): Rename from enum bfloat16_operation.
+	* config/rs6000/rs6000-protos.h (float16_vectorization): New
+	declaration.
+
+
 ==================== Branch work222-float, patch #328 ====================
 
 Spacing changes.
