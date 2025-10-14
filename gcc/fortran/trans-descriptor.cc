@@ -2018,8 +2018,10 @@ gfc_copy_descriptor (stmtblock_t *block, tree dest, tree src)
 
   if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (dest_type)
       == GFC_BYTES_STRIDES_ARRAY_TYPE_P (src_type)
-      && TYPE_MAIN_VARIANT (dest_type)
-	 == TYPE_MAIN_VARIANT (src_type))
+      && (TYPE_CANONICAL (dest_type)
+	  == TYPE_CANONICAL (src_type)
+	  || TYPE_MAIN_VARIANT (dest_type)
+	     == TYPE_MAIN_VARIANT (src_type)))
     gfc_add_modify (block, dest, src);
   else
     {
