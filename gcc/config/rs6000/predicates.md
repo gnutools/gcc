@@ -2225,15 +2225,21 @@
   if (CONST_DOUBLE_P (op))
     return true;
 
-  if (GET_CODE (op) == FLOAT_EXTEND
-      && mode == SFmode
-      && GET_MODE (XEXP (op, 0)) == BFmode)
-    return true;
+  if (GET_CODE (op) == FLOAT_EXTEND)
+    {
+      rtx op_arg = XEXP (op, 0);
+      return (mode == SFmode
+	      && GET_MODE (op_arg) == BFmode
+	      && (REG_P (op_arg) || SUBREG_P (op_arg)));
+    }
 
-  if (GET_CODE (op) == FLOAT_TRUNCATE
-      && mode == BFmode
-      && GET_MODE (XEXP (op, 0)) == SFmode)
-    return true;
+  if (GET_CODE (op) == FLOAT_TRUNCATE)
+    {
+      rtx op_arg = XEXP (op, 0);
+      return (mode == BFmode
+	      && GET_MODE (op_arg) == SFmode
+	      && (REG_P (op_arg) || SUBREG_P (op_arg)));
+    }
 
   return false;
 })
