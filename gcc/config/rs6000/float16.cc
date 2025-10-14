@@ -42,7 +42,7 @@
 #include "common/common-target.h"
 #include "rs6000-internal.h"
 
-/* Expand a bfloat16 scalar floating point operation:
+/* Expand a bfloat16 floating point operation:
 
    ICODE:   Operation to perform.
    RESULT:  Result of the operation.
@@ -64,7 +64,7 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
 			    rtx op1,
 			    rtx op2,
 			    rtx op3,
-			    enum fp16_operation subtype)
+			    enum bfloat16_operation subtype)
 {
   gcc_assert (can_create_pseudo_p ());
 
@@ -75,22 +75,19 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
 
   switch (subtype)
     {
-    case FP16_BINARY:
+    case BF16_BINARY:
       n_opts = 2;
       gcc_assert (op3 == NULL_RTX);
       break;
 
-    case FP16_FMA:
-    case FP16_FMS:
-    case FP16_NFMA:
-    case FP16_NFMS:
+    case BF16_FMA:
+    case BF16_FMS:
+    case BF16_NFMA:
+    case BF16_NFMS:
       gcc_assert (icode == FMA);
       n_opts = 3;
       break;
 
-    case FP16_UNARY:
-    case FP16_ABS_BINARY:
-    case FP16_NEG_BINARY:
     default:
       gcc_unreachable ();
     }
@@ -147,41 +144,27 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
     }
 
   /* Do the operation in V4SFmode.  */
-  switch (subtype)
+  if (subtype == BF16_BINARY)
+    emit_insn (gen_rtx_SET (result_v4sf,
+			    gen_rtx_fmt_ee (icode, V4SFmode,
+					    ops_v4sf[0],
+					    ops_v4sf[1])));
+
+  else		/* FMA/FMS/NFMA/NFMS operation.  */
     {
-    case FP16_BINARY:
-      emit_insn (gen_rtx_SET (result_v4sf,
-			      gen_rtx_fmt_ee (icode, V4SFmode,
-					      ops_v4sf[0],
-					      ops_v4sf[1])));
-      break;
+      rtx op1 = ops_v4sf[0];
+      rtx op2 = ops_v4sf[1];
+      rtx op3 = ops_v4sf[2];
 
-    case FP16_FMA:
-    case FP16_FMS:
-    case FP16_NFMA:
-    case FP16_NFMS:
-      {
-	rtx op1 = ops_v4sf[0];
-	rtx op2 = ops_v4sf[1];
-	rtx op3 = ops_v4sf[2];
+      if (subtype == BF16_FMS || subtype == BF16_NFMS)
+	op3 = gen_rtx_NEG (V4SFmode, op3);
 
-	if (subtype == FP16_FMS || subtype == FP16_NFMS)
-	  op3 = gen_rtx_NEG (V4SFmode, op3);
+      rtx op_fma = gen_rtx_FMA (V4SFmode, op1, op2, op3);
 
-	rtx op_fma = gen_rtx_FMA (V4SFmode, op1, op2, op3);
+      if (subtype == BF16_NFMA || subtype == BF16_NFMS)
+	op_fma = gen_rtx_NEG (V4SFmode, op_fma);
 
-	if (subtype == FP16_NFMA || subtype == FP16_NFMS)
-	  op_fma = gen_rtx_NEG (V4SFmode, op_fma);
-
-	emit_insn (gen_rtx_SET (result_v4sf, op_fma));
-      }
-      break;
-
-    case FP16_UNARY:
-    case FP16_ABS_BINARY:
-    case FP16_NEG_BINARY:
-    default:
-      gcc_unreachable ();
+      emit_insn (gen_rtx_SET (result_v4sf, op_fma));
     }
 
   /* Convert V4SF result back to scalar mode.  */
@@ -197,154 +180,3 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
   else
     gcc_unreachable ();
 }
-
-
-/* Expand a _Float16 vector operation:
-
-   ICODE:   Operation to perform.
-   RESULT:  Result of the operation.
-   OP1:     Input operand1.
-   OP2:     Input operand2.
-   OP3:     Input operand3 or NULL_RTX.
-   SUBTYPE: Describe the operation.  */
-	
-void
-float16_vectorization (enum rtx_code icode,
-		       rtx result,
-		       rtx op1,
-		       rtx op2,
-		       rtx op3,
-		       enum fp16_operation subtype)
-{
-  gcc_assert (can_create_pseudo_p ());
-
-  enum rtx_code unary_op = UNKNOWN;
-  rtx op_orig[3] = { op1, op2, op3 };
-  rtx op_hi[3];
-  rtx op_lo[3];
-  rtx result_hi;
-  rtx result_lo;
-  size_t n_opts;
-
-  switch (subtype)
-    {
-    case FP16_UNARY:
-      n_opts = 1;
-      break;
-
-    case FP16_BINARY:
-      n_opts = 2;
-      break;
-
-    case FP16_ABS_BINARY:
-      unary_op = ABS;
-      n_opts = 2;
-      break;
-
-    case FP16_NEG_BINARY:
-      unary_op = NEG;
-      n_opts = 2;
-      break;
-
-    case FP16_FMA:
-    case FP16_FMS:
-    case FP16_NFMA:
-    case FP16_NFMS:
-      n_opts = 3;
-      break;
-
-    default:
-      gcc_unreachable ();
-    }
-
-  /* Allocate 2 temporaries for the results and the input operands.  */
-  result_hi = gen_reg_rtx (V4SFmode);
-  result_lo = gen_reg_rtx (V4SFmode);
-
-  for (size_t i = 0; i < n_opts; i++)
-    {
-      gcc_assert (op_orig[i] != NULL_RTX);
-      op_hi[i] = gen_reg_rtx (V4SFmode);	/* high register.  */
-      op_lo[i] = gen_reg_rtx (V4SFmode);	/* low register.  */
-
-      emit_insn (gen_vec_unpacks_hi_v8hf (op_hi[i], op_orig[i]));
-      emit_insn (gen_vec_unpacks_lo_v8hf (op_lo[i], op_orig[i]));
-    }
-
-  /* Do 2 sets of V4SFmode operations.  */
-  switch (subtype)
-    {
-    case FP16_UNARY:
-      emit_insn (gen_rtx_SET (result_hi,
-			      gen_rtx_fmt_e (icode, V4SFmode, op_hi[0])));
-
-      emit_insn (gen_rtx_SET (result_lo,
-			      gen_rtx_fmt_e (icode, V4SFmode, op_lo[0])));
-      break;
-
-    case FP16_BINARY:
-    case FP16_ABS_BINARY:
-    case FP16_NEG_BINARY:
-      emit_insn (gen_rtx_SET (result_hi,
-			      gen_rtx_fmt_ee (icode, V4SFmode,
-					      op_hi[0],
-					      op_hi[1])));
-
-      emit_insn (gen_rtx_SET (result_lo,
-			      gen_rtx_fmt_ee (icode, V4SFmode,
-					      op_lo[0],
-					      op_lo[1])));
-      break;
-
-    case FP16_FMA:
-    case FP16_FMS:
-    case FP16_NFMA:
-    case FP16_NFMS:
-      {
-	rtx op1_hi = op_hi[0];
-	rtx op2_hi = op_hi[1];
-	rtx op3_hi = op_hi[2];
-
-	rtx op1_lo = op_lo[0];
-	rtx op2_lo = op_lo[1];
-	rtx op3_lo = op_lo[2];
-
-	if (subtype == FP16_FMS || subtype == FP16_NFMS)
-	  {
-	    op3_hi = gen_rtx_NEG (V4SFmode, op3_hi);
-	    op3_lo = gen_rtx_NEG (V4SFmode, op3_lo);
-	  }
-
-	rtx op_fma_hi = gen_rtx_FMA (V4SFmode, op1_hi, op2_hi, op3_hi);
-	rtx op_fma_lo = gen_rtx_FMA (V4SFmode, op1_lo, op2_lo, op3_lo);
-
-	if (subtype == FP16_NFMA || subtype == FP16_NFMS)
-	  {
-	    op_fma_hi = gen_rtx_NEG (V4SFmode, op_fma_hi);
-	    op_fma_lo = gen_rtx_NEG (V4SFmode, op_fma_lo);
-	  }
-
-	emit_insn (gen_rtx_SET (result_hi, op_fma_hi));
-	emit_insn (gen_rtx_SET (result_lo, op_fma_lo));
-      }
-      break;
-
-    default:
-      gcc_unreachable ();
-    }
-
-  /* Add any unary operator modifications.  */
-  if (unary_op != UNKNOWN)
-    {
-      emit_insn (gen_rtx_SET (result_hi,
-			      gen_rtx_fmt_e (unary_op, V4SFmode, result_hi)));
-
-      emit_insn (gen_rtx_SET (result_lo,
-			      gen_rtx_fmt_e (unary_op, V4SFmode, result_lo)));
-    }
-
-  /* Combine the 2 V4SFmode operations into one V8HFmode vector.  */
-  emit_insn (gen_vec_pack_trunc_v4sf_v8hf (result, result_hi, result_lo));
-  return;
-}
-

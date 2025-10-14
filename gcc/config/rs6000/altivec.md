@@ -2402,22 +2402,6 @@
 }
   [(set_attr "type" "vecperm")])
 
-
-(define_insn "*altivec_vsplth_internal_v8hx"
-  [(set (match_operand:V8HF 0 "register_operand" "=v")
-	(vec_duplicate:V8HF
-	 (vec_select:HF (match_operand:V8HF 1 "register_operand" "v")
-			(parallel
-			 [(match_operand:QI 2 "const_0_to_7_operand" "")]))))]
-  "TARGET_ALTIVEC"
-{
-  if (!BYTES_BIG_ENDIAN)
-    operands[2] = GEN_INT (7 - INTVAL (operands[2]));
-
-  return "vsplth %0,%1,%2";
-}
-  [(set_attr "type" "vecperm")])
-
 (define_insn "altivec_vsplth_direct"
   [(set (match_operand:V8HI 0 "register_operand" "=v")
         (unspec:V8HI [(match_operand:V8HI 1 "register_operand" "v")
@@ -3144,15 +3128,6 @@
      (unspec [(const_int 0)] UNSPEC_LVE)])]
   "TARGET_ALTIVEC"
   "lvewx %0,%y1"
-  [(set_attr "type" "vecload")])
-
-(define_insn "*altivec_lvehf"
-  [(parallel
-    [(set (match_operand:V8HF 0 "register_operand" "=v")
-	  (match_operand:V8HF 1 "memory_operand" "Z"))
-     (unspec [(const_int 0)] UNSPEC_LVE)])]
-  "TARGET_ALTIVEC"
-  "lvehx %0,%y1"
   [(set_attr "type" "vecload")])
 
 (define_insn "altivec_lvxl_<mode>"

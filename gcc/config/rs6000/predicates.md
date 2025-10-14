@@ -2208,7 +2208,7 @@
 ;; the operation in vector mode rather than convverting the BFmode to a
 ;; V8BFmode vector, converting that V8BFmode vector to V4SFmode, and
 ;; then converting the V4SFmode element to SFmode scalar.
-(define_predicate "fp16_binary_operator"
+(define_predicate "bfloat16_binary_operator"
   (match_code "plus,minus,mult,smax,smin"))
 
 ;; Match bfloat16/float operands that can be optimized to do the
