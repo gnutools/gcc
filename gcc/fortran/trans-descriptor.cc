@@ -1957,10 +1957,13 @@ copy_dimension (stmtblock_t *block, tree dest, tree src, tree dim,
 {
   tree lbound = gfc_conv_descriptor_lbound_get (src, dim);
   tree ubound = gfc_conv_descriptor_ubound_get (src, dim);
+  tree stride_raw = gfc_conv_descriptor_stride_get (src, dim);
   tree stride;
-  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
+  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest))
+      == GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
+    stride = stride_raw;
+  else if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
     {
-      tree stride_raw = gfc_conv_descriptor_stride_get (src, dim);
       stride = fold_build2_loc (input_location, MULT_EXPR,
 				gfc_array_index_type, stride_raw,
 				element_len);
