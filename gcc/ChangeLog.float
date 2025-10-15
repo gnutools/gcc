@@ -1,3 +1,15 @@
+==================== Branch work222-float, patch #334 ====================
+
+Warn if __bfloat16 or _Float16 are passed or returned.
+
+2025-10-15  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-call.cc (init_cumulative_args): Warn if
+	__bfloat16 or _Float16 types are returned.
+	(rs6000_function_arg): Warn if __bfloat16 or _Float16 types are passed.
+
 ==================== Branch work222-float, patch #333 ====================
 
 Delete _Float16 -Ofast vectorization support.
