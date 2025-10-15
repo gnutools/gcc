@@ -8350,14 +8350,13 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	    }
 	}
 
-      if (expr->ts.type == BT_CHARACTER
-	  && VAR_P (TYPE_SIZE_UNIT (gfc_get_element_type (TREE_TYPE (parm)))))
-	{
-	  tree elem_len = TYPE_SIZE_UNIT (gfc_get_element_type (TREE_TYPE (parm)));
-	  gfc_add_modify (&loop.pre, elem_len,
-			  fold_convert (TREE_TYPE (elem_len),
-			  gfc_get_array_span (desc, expr)));
-	}
+      if (expr->ts.type == BT_CHARACTER)
+	if (tree elt_type = gfc_get_element_type (TREE_TYPE (parm)))
+	  if (tree elem_len = TYPE_SIZE_UNIT (elt_type))
+	    if (VAR_P (elem_len))
+	      gfc_add_modify (&loop.pre, elem_len,
+			      fold_convert (TREE_TYPE (elem_len),
+			      gfc_get_array_span (desc, expr)));
 
       if (info
 	  && info->ref
