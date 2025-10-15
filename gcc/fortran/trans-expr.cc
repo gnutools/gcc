@@ -6611,7 +6611,12 @@ contiguous_argument (gfc_actual_arglist *arg)
       {
 	if (isym->id == GFC_ISYM_CAF_GET)
 	  return true;
-	return false;
+	
+	gfc_expr *noncopying_arg = gfc_get_noncopying_intrinsic_argument (expr);
+	if (noncopying_arg)
+	  expr = noncopying_arg;
+	else
+	  return false;
       }
 
   if (dummy == nullptr)
