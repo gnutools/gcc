@@ -603,6 +603,28 @@ get_descriptor_stride (tree desc, tree dim)
   return get_descr_dim_comp (desc, dim, STRIDE_SUBFIELD, gfc_array_index_type);
 }
 
+static bool
+is_class_type (tree desc)
+{
+  STRIP_NOPS (desc);
+
+  if (TREE_CODE (desc) == COMPONENT_REF
+      && GFC_CLASS_TYPE_P (TREE_TYPE (TREE_OPERAND (desc, 0))))
+    return true;
+
+  if (DECL_P (desc)
+      && DECL_LANG_SPECIFIC (desc))
+    if (tree saved_desc = GFC_DECL_SAVED_DESCRIPTOR (desc))
+      {
+	if (GFC_CLASS_TYPE_P (TREE_TYPE (saved_desc)))
+	  saved_desc = gfc_class_data_get (saved_desc);
+
+	return is_class_type (saved_desc);
+      }
+
+  return false;
+}
+
 tree
 gfc_conv_descriptor_stride_get (tree desc, tree dim)
 {
@@ -615,8 +637,7 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_ALLOCATABLE
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_ASSUMED_RANK_POINTER_CONT
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT)
-      && !(TREE_CODE (desc) == COMPONENT_REF
-	   && GFC_CLASS_TYPE_P (TREE_TYPE (TREE_OPERAND (desc, 0)))))
+      && !(is_class_type (desc)))
     return gfc_index_one_node;
 
   return non_lvalue_loc (input_location, get_descriptor_stride (desc, dim));
