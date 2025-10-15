@@ -62,6 +62,22 @@
 				(V8BF "V4BF")
 				(V8HF "V4HF")])
 
+;; Unary operators for float16 vectorization.
+(define_code_iterator FLOAT16_UNARY_OP [abs neg])
+
+;; Binary operators for float16 vectorization.
+(define_code_iterator FLOAT16_BINARY_OP [plus minus mult smax smin])
+
+;; Standard names for the unary/binary/ternary operators
+(define_code_attr float16_names [(abs   "abs")
+				 (fma   "fma")
+				 (plus  "add")
+				 (minus "sub")
+				 (mult  "mul")
+				 (neg   "neg")
+				 (smax  "smax")
+				 (smin  "smin")])
+
 ;; UNSPEC constants
 (define_c_enum "unspec"
   [UNSPEC_FP16_SHIFT_LEFT_32BIT
@@ -132,6 +148,15 @@
                      store,     mtvsr,     mfvsr,     vecsimple, *")
    (set_attr "isa"  "*,         p9v,       p9v,       *,         *,
                      *,         p8v,       p8v,       p9v,       *")])
+
+;; Vector duplicate
+(define_insn "*vecdup<mode>"
+  [(set (match_operand:<FP16_VECTOR8> 0 "altivec_register_operand" "=v")
+	(vec_duplicate:<FP16_VECTOR8>
+	 (match_operand:FP16 1 "altivec_register_operand" "v")))]
+  ""
+  "vsplth %0,%1,3"
+  [(set_attr "type" "vecperm")])
 
 
 ;; Convert IEEE 16-bit floating point to/from other floating point modes.
@@ -446,7 +471,7 @@
 
 (define_insn_and_split "*bfloat16_binary_op_internal1"
   [(set (match_operand:SF 0 "vsx_register_operand")
-	(match_operator:SF 1 "bfloat16_binary_operator"
+	(match_operator:SF 1 "fp16_binary_operator"
 			   [(match_operand:SF 2 "bfloat16_v4sf_operand")
 			    (match_operand:SF 3 "bfloat16_v4sf_operand")]))]
   "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
@@ -457,14 +482,14 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (GET_CODE (operands[1]), operands[0], operands[2],
-			      operands[3], NULL_RTX, BF16_BINARY);
+			      operands[3], NULL_RTX, FP16_BINARY);
   DONE;
 })
 
 (define_insn_and_split "*bfloat16_binary_op_internal2"
   [(set (match_operand:BF 0 "vsx_register_operand")
 	(float_truncate:BF
-	 (match_operator:SF 1 "bfloat16_binary_operator"
+	 (match_operator:SF 1 "fp16_binary_operator"
 			    [(match_operand:SF 2 "bfloat16_v4sf_operand")
 			     (match_operand:SF 3 "bfloat16_v4sf_operand")])))]
   "TARGET_BFLOAT16_HW && can_create_pseudo_p ()
@@ -475,7 +500,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (GET_CODE (operands[1]), operands[0], operands[2],
-			      operands[3], NULL_RTX, BF16_BINARY);
+			      operands[3], NULL_RTX, FP16_BINARY);
   DONE;
 })
 
@@ -494,7 +519,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_FMA);
+			      operands[3], FP16_FMA);
   DONE;
 })
 
@@ -514,7 +539,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_FMA);
+			      operands[3], FP16_FMA);
   DONE;
 })
 
@@ -534,7 +559,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_FMS);
+			      operands[3], FP16_FMS);
   DONE;
 })
 
@@ -555,7 +580,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_FMS);
+			      operands[3], FP16_FMS);
   DONE;
 })
 
@@ -575,7 +600,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMA);
+			      operands[3], FP16_NFMA);
   DONE;
 })
 
@@ -596,7 +621,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMA);
+			      operands[3], FP16_NFMA);
   DONE;
 })
 
@@ -617,7 +642,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMA);
+			      operands[3], FP16_NFMA);
   DONE;
 })
 
@@ -638,7 +663,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMS);
+			      operands[3], FP16_NFMS);
   DONE;
 })
 
@@ -660,7 +685,7 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMS);
+			      operands[3], FP16_NFMS);
   DONE;
 })
 
@@ -682,10 +707,151 @@
   [(pc)]
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
-			      operands[3], BF16_NFMS);
+			      operands[3], FP16_NFMS);
   DONE;
 })
 
+
+;; Add vectorization support for _Float16.  Unfortunately, since there
+;; can only be one vec_pack_trunc_v4sf, we choose to support automatic
+;; vectorization for BFmode.  The following insns define vectorization
+;; for HFmode.
+
+;; Unary operators being vectorized.
+(define_insn_and_split "<float16_names>v8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(FLOAT16_UNARY_OP:V8HF
+	 (match_operand:V8HF 1 "vsx_register_operand")))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (<CODE>, operands[0], operands[1], NULL_RTX, NULL_RTX,
+			 FP16_UNARY);
+  DONE;
+})
+
+;; Binary operators being vectorized.
+(define_insn_and_split "<float16_names>v8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(FLOAT16_BINARY_OP:V8HF
+	 (match_operand:V8HF 1 "vsx_register_operand")
+	 (match_operand:V8HF 2 "vsx_register_operand")))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
+			 NULL_RTX, FP16_BINARY);
+  DONE;
+})
+
+;; Negative of binary operators being vectorized.
+(define_insn_and_split "*neg_<float16_names>v8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(neg:V8HF
+	 (FLOAT16_BINARY_OP:V8HF
+	  (match_operand:V8HF 1 "vsx_register_operand")
+	  (match_operand:V8HF 2 "vsx_register_operand"))))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
+			 NULL_RTX, FP16_NEG_BINARY);
+  DONE;
+})
+
+;; Absolute value of binary operators being vectorized.
+(define_insn_and_split "*abs_<float16_names>v8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(abs:V8HF
+	 (FLOAT16_BINARY_OP:V8HF
+	  (match_operand:V8HF 1 "vsx_register_operand")
+	  (match_operand:V8HF 2 "vsx_register_operand"))))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
+			 NULL_RTX, FP16_ABS_BINARY);
+  DONE;
+})
+
+;; FMA operations being vectorized.
+(define_insn_and_split "fmav8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(fma:V8HF
+	 (match_operand:V8HF 1 "vsx_register_operand")
+	 (match_operand:V8HF 2 "vsx_register_operand")
+	 (match_operand:V8HF 3 "vsx_register_operand")))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (FMA, operands[0], operands[1], operands[2],
+			 operands[3], FP16_FMA);
+  DONE;
+})
+
+(define_insn_and_split "*fmsv8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(fma:V8HF
+	 (match_operand:V8HF 1 "vsx_register_operand")
+	 (match_operand:V8HF 2 "vsx_register_operand")
+	 (neg:V8HF
+	  (match_operand:V8HF 3 "vsx_register_operand"))))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (FMA, operands[0], operands[1], operands[2],
+			 operands[3], FP16_FMS);
+  DONE;
+})
+
+(define_insn_and_split "*nfmav8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(neg:V8HF
+	 (fma:V8HF
+	  (match_operand:V8HF 1 "vsx_register_operand")
+	  (match_operand:V8HF 2 "vsx_register_operand")
+	  (match_operand:V8HF 3 "vsx_register_operand"))))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (FMA, operands[0], operands[1], operands[2],
+			 operands[3], FP16_NFMA);
+  DONE;
+})
+
+(define_insn_and_split "*nfmsv8hf3"
+  [(set (match_operand:V8HF 0 "vsx_register_operand")
+	(neg:V8HF
+	 (fma:V8HF
+	  (match_operand:V8HF 1 "vsx_register_operand")
+	  (match_operand:V8HF 2 "vsx_register_operand")
+	  (neg:V8HF
+	   (match_operand:V8HF 3 "vsx_register_operand")))))]
+  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  float16_vectorization (FMA, operands[0], operands[1], operands[2],
+			 operands[3], FP16_NFMS);
+  DONE;
+})
+
+
 ;; If we do multiple __bfloat16 operations, between the first and
 ;; second operation, GCC will want to convert the first operation from
 ;; V4SFmode to SFmode and then reconvert it back to V4SFmode.  On the

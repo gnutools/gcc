@@ -7111,6 +7111,15 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
+  /* Special case splats of 16-bit floating point.  */
+  if (all_same && FP16_VECTOR_MODE_P (mode))
+    {
+      rtx op0 = force_reg (GET_MODE_INNER (mode), XVECEXP (vals, 0, 0));
+      rtx dup = gen_rtx_VEC_DUPLICATE (mode, op0);
+      emit_insn (gen_rtx_SET (target, dup));
+      return;
+    }
+						     
   /* Special case initializing vector short/char that are splats if we are on
      64-bit systems with direct move.  */
   if (all_same && TARGET_DIRECT_MOVE_64BIT

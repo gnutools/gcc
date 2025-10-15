@@ -358,6 +358,11 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
   (((MODE) == HFmode && TARGET_FLOAT16_HW)				\
    || ((MODE) == BFmode && TARGET_BFLOAT16_HW))
 
+/* Is this a valid 16-bit vector floating point mode?  */
+#define FP16_VECTOR_MODE_P(MODE)					\
+  (((MODE) == V8HFmode && TARGET_FLOAT16)				\
+   || ((MODE) == V8BFmode && TARGET_BFLOAT16))
+
 /* Return true for floating point that does not use a vector register.  */
 #define SCALAR_FLOAT_MODE_NOT_VECTOR_P(MODE)				\
   (SCALAR_FLOAT_MODE_P (MODE) && !FLOAT128_VECTOR_P (MODE))
