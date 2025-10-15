@@ -3978,6 +3978,7 @@ build_array_ref (gfc_se *se, tree array, tree ref_base, gfc_expr *expr,
 	gcc_assert (TREE_CODE (ptr_type) == POINTER_TYPE);
 	if (TREE_CODE (TREE_TYPE (ptr_type)) == ARRAY_TYPE)
 	  ptr_type = build_pointer_type (TREE_TYPE (TREE_TYPE (ptr_type)));
+	ptr = fold_convert_loc (input_location, ptr_type, ptr);
 	tree p = fold_build2_loc (input_location, POINTER_PLUS_EXPR,
 				  ptr_type, ptr, offset);
 	se->expr = build_fold_indirect_ref_loc (input_location, p);
