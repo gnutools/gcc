@@ -1270,7 +1270,16 @@ contiguous_array (gfc_expr *expr)
 {
   gfc_ref *ref;
 
-  gcc_assert (expr && expr->expr_type == EXPR_VARIABLE);
+  gcc_assert (expr);
+
+  if (expr->expr_type == EXPR_FUNCTION
+      && expr->value.function.esym
+      && expr->value.function.esym->result
+      && expr->value.function.esym->result->attr.pointer)
+    return false;
+
+  if (expr->expr_type != EXPR_VARIABLE)
+    return true;
 
   bool contiguous = true;
   if (expr->symtree->n.sym->ts.type == BT_CLASS
