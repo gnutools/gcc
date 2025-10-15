@@ -1264,6 +1264,70 @@ contiguous_coarray (gfc_expr *expr)
   gcc_unreachable ();
 }
 
+
+static bool
+contiguous_array (gfc_expr *expr)
+{
+  gfc_ref *ref;
+
+  gcc_assert (expr && expr->expr_type == EXPR_VARIABLE);
+
+  bool contiguous = true;
+  if (expr->symtree->n.sym->ts.type == BT_CLASS
+      && CLASS_DATA (expr->symtree->n.sym)->attr.dimension)
+    contiguous = false;
+  else if (expr->symtree->n.sym->attr.dimension)
+    {
+      gfc_symbol *sym = expr->symtree->n.sym;
+      if (sym->attr.pointer)
+	contiguous = false;
+
+      else if (sym->as
+	       && (sym->as->type == AS_ASSUMED_SHAPE
+		   || sym->as->type == AS_ASSUMED_RANK))
+	contiguous = false;
+
+      else if (!sym->assoc)
+	contiguous = true;
+
+      else if (sym->assoc->dangling)
+	contiguous = false;
+
+      else if (!sym->assoc->variable)
+	contiguous = true;
+
+      else
+	contiguous = contiguous_coarray (sym->assoc->target);
+    }
+
+  bool seen_array = false;
+  for (ref = expr->ref; ref; ref = ref->next)
+    {
+      if (ref->type == REF_ARRAY
+	  && ref->u.ar.type != AR_ELEMENT)
+	seen_array = true;
+
+      if (seen_array
+	  && (ref->type == REF_COMPONENT
+	      || ref->type == REF_SUBSTRING))
+	return false;
+
+      if (ref->type == REF_COMPONENT)
+	{
+	  gfc_component *comp = ref->u.c.component;
+	  if (comp->ts.type == BT_CLASS
+	      && CLASS_DATA (comp)->attr.dimension)
+	    contiguous = false;
+
+	  else if (comp->attr.codimension)
+	    contiguous = !comp->attr.pointer;
+	}
+    }
+
+  return contiguous;
+}
+
+
 /* Get data from a remote coarray.  */
 
 static void
@@ -1584,7 +1648,7 @@ conv_caf_send_to_remote (gfc_code *code)
     {
       rhs_se.force_tmp = rhs_expr->shape == NULL
 			 || !gfc_is_simply_contiguous (rhs_expr, false, false);
-      rhs_se.bytes_strided = 1;
+      rhs_se.bytes_strided = !contiguous_array (rhs_expr);
       gfc_conv_expr_descriptor (&rhs_se, rhs_expr);
       gfc_add_block_to_block (&block, &rhs_se.pre);
       opt_rhs_desc = rhs_se.expr;
