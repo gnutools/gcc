@@ -1,3 +1,31 @@
+==================== Branch work222-float, patch #333 ====================
+
+Delete _Float16 -Ofast vectorization support.
+
+2025-10-15  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): Delete fp16
+	operation cases only used by _Float16 vectorization.
+	(float16_vectorization): Delete function.
+	* config/rs6000/float16.md (VFP16): Delete.
+	(FLOAT16_UNARY_OP): Likewise.
+	(FLOAT16_BINARY_OP): Likewise.
+	(float16_names): Likewise.
+	(<float16_names>v8hf3, FLOAT16_UNARY_OP iterator): Likewise.
+	(<float16_names>v8hf3, FLOAT16_BINARY_OP iterator): Likewise.
+	(neg_<float16_names>v8hf3): Likewise.
+	(abs_<float16_names>v8hf): Likewise.
+	(fmav8hf3): Likewise.
+	(fmsv8hf3): Likewise.
+	(nfmav8hf3): Likewise.
+	(nfmsv8hf3): Likewise.
+	* config/rs6000/rs6000-protos.h (FP16_UNARY): Likewise.
+	(FP16_ABS_BINAR): Likewise.
+	(FP16_NEG_BINARY): Likewise.
+	(float16_vectorization): Likewise.
+
 ==================== Branch work222-float, patch #332 ====================
 
 Upgrade float16 vector optimizations.
