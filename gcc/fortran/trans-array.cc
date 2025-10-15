@@ -7172,7 +7172,8 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 		       && sym->ts.u.cl->backend_decl
 		       && TREE_CODE (sym->ts.u.cl->backend_decl)
 			  == INTEGER_CST))
-	      || TREE_CODE (TYPE_SIZE_UNIT (elem_type)) != INTEGER_CST)
+	      || !(TYPE_SIZE_UNIT (elem_type)
+		   && TREE_CODE (TYPE_SIZE_UNIT (elem_type)) == INTEGER_CST))
 	    default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
 	  else
 	    default_stride = TYPE_SIZE_UNIT (elem_type);
