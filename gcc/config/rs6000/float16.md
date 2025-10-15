@@ -25,9 +25,6 @@
 (define_mode_iterator FP16 [(BF "TARGET_BFLOAT16")
 			    (HF "TARGET_FLOAT16")])
 
-(define_mode_iterator VFP16 [(V8BF "TARGET_BFLOAT16")
-			     (V8HF "TARGET_FLOAT16")])
-
 ;; Mode iterator for 16-bit floating point modes on machines with
 ;; hardware support both as a scalar and as a vector.
 (define_mode_iterator FP16_HW [(BF "TARGET_BFLOAT16_HW")
@@ -61,22 +58,6 @@
 				(HF   "V4HF")
 				(V8BF "V4BF")
 				(V8HF "V4HF")])
-
-;; Unary operators for float16 vectorization.
-(define_code_iterator FLOAT16_UNARY_OP [abs neg])
-
-;; Binary operators for float16 vectorization.
-(define_code_iterator FLOAT16_BINARY_OP [plus minus mult smax smin])
-
-;; Standard names for the unary/binary/ternary operators
-(define_code_attr float16_names [(abs   "abs")
-				 (fma   "fma")
-				 (plus  "add")
-				 (minus "sub")
-				 (mult  "mul")
-				 (neg   "neg")
-				 (smax  "smax")
-				 (smin  "smin")])
 
 ;; UNSPEC constants
 (define_c_enum "unspec"
@@ -708,146 +689,6 @@
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
 			      operands[3], FP16_NFMS);
-  DONE;
-})
-
-
-;; Add vectorization support for _Float16.  Unfortunately, since there
-;; can only be one vec_pack_trunc_v4sf, we choose to support automatic
-;; vectorization for BFmode.  The following insns define vectorization
-;; for HFmode.
-
-;; Unary operators being vectorized.
-(define_insn_and_split "<float16_names>v8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(FLOAT16_UNARY_OP:V8HF
-	 (match_operand:V8HF 1 "vsx_register_operand")))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (<CODE>, operands[0], operands[1], NULL_RTX, NULL_RTX,
-			 FP16_UNARY);
-  DONE;
-})
-
-;; Binary operators being vectorized.
-(define_insn_and_split "<float16_names>v8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(FLOAT16_BINARY_OP:V8HF
-	 (match_operand:V8HF 1 "vsx_register_operand")
-	 (match_operand:V8HF 2 "vsx_register_operand")))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
-			 NULL_RTX, FP16_BINARY);
-  DONE;
-})
-
-;; Negative of binary operators being vectorized.
-(define_insn_and_split "*neg_<float16_names>v8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(neg:V8HF
-	 (FLOAT16_BINARY_OP:V8HF
-	  (match_operand:V8HF 1 "vsx_register_operand")
-	  (match_operand:V8HF 2 "vsx_register_operand"))))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
-			 NULL_RTX, FP16_NEG_BINARY);
-  DONE;
-})
-
-;; Absolute value of binary operators being vectorized.
-(define_insn_and_split "*abs_<float16_names>v8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(abs:V8HF
-	 (FLOAT16_BINARY_OP:V8HF
-	  (match_operand:V8HF 1 "vsx_register_operand")
-	  (match_operand:V8HF 2 "vsx_register_operand"))))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (<CODE>, operands[0], operands[1], operands[2],
-			 NULL_RTX, FP16_ABS_BINARY);
-  DONE;
-})
-
-;; FMA operations being vectorized.
-(define_insn_and_split "fmav8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(fma:V8HF
-	 (match_operand:V8HF 1 "vsx_register_operand")
-	 (match_operand:V8HF 2 "vsx_register_operand")
-	 (match_operand:V8HF 3 "vsx_register_operand")))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (FMA, operands[0], operands[1], operands[2],
-			 operands[3], FP16_FMA);
-  DONE;
-})
-
-(define_insn_and_split "*fmsv8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(fma:V8HF
-	 (match_operand:V8HF 1 "vsx_register_operand")
-	 (match_operand:V8HF 2 "vsx_register_operand")
-	 (neg:V8HF
-	  (match_operand:V8HF 3 "vsx_register_operand"))))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (FMA, operands[0], operands[1], operands[2],
-			 operands[3], FP16_FMS);
-  DONE;
-})
-
-(define_insn_and_split "*nfmav8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(neg:V8HF
-	 (fma:V8HF
-	  (match_operand:V8HF 1 "vsx_register_operand")
-	  (match_operand:V8HF 2 "vsx_register_operand")
-	  (match_operand:V8HF 3 "vsx_register_operand"))))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (FMA, operands[0], operands[1], operands[2],
-			 operands[3], FP16_NFMA);
-  DONE;
-})
-
-(define_insn_and_split "*nfmsv8hf3"
-  [(set (match_operand:V8HF 0 "vsx_register_operand")
-	(neg:V8HF
-	 (fma:V8HF
-	  (match_operand:V8HF 1 "vsx_register_operand")
-	  (match_operand:V8HF 2 "vsx_register_operand")
-	  (neg:V8HF
-	   (match_operand:V8HF 3 "vsx_register_operand")))))]
-  "TARGET_FLOAT16_HW && can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  float16_vectorization (FMA, operands[0], operands[1], operands[2],
-			 operands[3], FP16_NFMS);
   DONE;
 })
 
