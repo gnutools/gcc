@@ -1025,9 +1025,15 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
   if (eltype && GFC_CLASS_TYPE_P (eltype))
     eltype = gfc_get_element_type (TREE_TYPE (TYPE_FIELDS (eltype)));
 
-  if (class_expr == NULL_TREE)
+  if (class_expr == NULL_TREE
+      && TYPE_SIZE_UNIT (eltype) != NULL_TREE)
     elemsize = fold_convert (gfc_array_index_type,
 			     TYPE_SIZE_UNIT (eltype));
+  else if (class_expr == NULL_TREE)
+    {
+      gcc_assert (callee_alloc);
+      elemsize = NULL_TREE;
+    }
   else
     {
       /* Unlimited polymorphic entities are initialised with NULL vptr. They

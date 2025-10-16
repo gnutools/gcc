@@ -2921,7 +2921,8 @@ gfc_set_temporary_descriptor (stmtblock_t *block, tree descr, tree class_src,
 				ubound[n], stride[n], &offset);
       }
 
-  gfc_conv_descriptor_span_set (block, descr, elemsize);
+  if (elemsize != NULL_TREE)
+    gfc_conv_descriptor_span_set (block, descr, elemsize);
 
   gfc_conv_descriptor_offset_set (block, descr, offset);
 
