@@ -59,6 +59,19 @@
 				(V8BF "V4BF")
 				(V8HF "V4HF")])
 
+;; Binary operators for bfloat16/float16 vectorization.
+(define_code_iterator FP16_BINARY_OP [plus minus mult smax smin])
+
+;; Standard names for the unary/binary/ternary operators
+(define_code_attr fp16_names [(abs   "abs")
+			      (fma   "fma")
+			      (plus  "add")
+			      (minus "sub")
+			      (mult  "mul")
+			      (neg   "neg")
+			      (smax  "smax")
+			      (smin  "smin")])
+
 ;; UNSPEC constants
 (define_c_enum "unspec"
   [UNSPEC_FP16_SHIFT_LEFT_32BIT
@@ -689,6 +702,23 @@
 {
   bfloat16_operation_as_v4sf (FMA, operands[0], operands[1], operands[2],
 			      operands[3], FP16_NFMS);
+  DONE;
+})
+
+;; Add vectorization support for 16-bit floating point.
+;; Binary operators being vectorized.
+(define_insn_and_split "<fp16_names><mode>3"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(FP16_BINARY_OP:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2], NULL_RTX,
+		      FP16_BINARY);
   DONE;
 })
 
