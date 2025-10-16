@@ -797,14 +797,61 @@ get_attr_constructor (bool bytes_counted_strides)
    unknown cases abort.  */
 
 tree
+get_dtype_rank_type_size (int rank, bt n, bool bytes_counted_strides,
+			      tree size)
+{
+  tree dtype;
+  tree field;
+  vec<constructor_elt, va_gc> *v = NULL;
+
+  tree dtype_type_node = get_dtype_type_node ();
+  if (size)
+    {
+      STRIP_NOPS (size);
+      size = fold_convert (size_type_node, size);
+      field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+				 GFC_DTYPE_ELEM_LEN);
+      CONSTRUCTOR_APPEND_ELT (v, field,
+			      fold_convert (TREE_TYPE (field), size));
+    }
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_VERSION);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_zero_cst (TREE_TYPE (field)));
+
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_RANK);
+  if (rank >= 0)
+    CONSTRUCTOR_APPEND_ELT (v, field,
+			    build_int_cst (TREE_TYPE (field), rank));
+
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_TYPE);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  build_int_cst (TREE_TYPE (field), n));
+
+  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
+			     GFC_DTYPE_ATTR);
+  CONSTRUCTOR_APPEND_ELT (v, field,
+			  get_attr_constructor (bytes_counted_strides));
+
+  dtype = build_constructor (dtype_type_node, v);
+
+  return dtype;
+}
+
+
+/* Return the DTYPE for an array.  This describes the type and type parameters
+   of the array.  */
+/* TODO: Only call this when the value is actually used, and make all the
+   unknown cases abort.  */
+
+tree
 gfc_get_dtype_rank_type_slen (int rank, tree etype, bool bytes_counted_strides,
 			      tree length)
 {
   tree ptype;
-  int n;
-  tree dtype;
-  tree field;
-  vec<constructor_elt, va_gc> *v = NULL;
+  bt n;
 
   ptype = etype;
   while (TREE_CODE (etype) == POINTER_TYPE
@@ -877,40 +924,7 @@ gfc_get_dtype_rank_type_slen (int rank, tree etype, bool bytes_counted_strides,
       break;
     }
 
-  tree dtype_type_node = get_dtype_type_node ();
-  if (size)
-    {
-      STRIP_NOPS (size);
-      size = fold_convert (size_type_node, size);
-      field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-				 GFC_DTYPE_ELEM_LEN);
-      CONSTRUCTOR_APPEND_ELT (v, field,
-			      fold_convert (TREE_TYPE (field), size));
-    }
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_VERSION);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  build_zero_cst (TREE_TYPE (field)));
-
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_RANK);
-  if (rank >= 0)
-    CONSTRUCTOR_APPEND_ELT (v, field,
-			    build_int_cst (TREE_TYPE (field), rank));
-
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_TYPE);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  build_int_cst (TREE_TYPE (field), n));
-
-  field = gfc_advance_chain (TYPE_FIELDS (dtype_type_node),
-			     GFC_DTYPE_ATTR);
-  CONSTRUCTOR_APPEND_ELT (v, field,
-			  get_attr_constructor (bytes_counted_strides));
-
-  dtype = build_constructor (dtype_type_node, v);
-
-  return dtype;
+  return get_dtype_rank_type_size (rank, n, bytes_counted_strides, size);
 }
 
 
@@ -3289,9 +3303,21 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
       && expr->ts.deferred
       && VAR_P (expr->ts.u.cl->backend_decl))
     {
-      type = gfc_typenode_for_spec (&expr->ts);
-      tree dtype = gfc_get_dtype_rank_type (rank, type, bytes_counted_strides);
+      tree dtype;
+      if (expr3_elem_size
+	  && TREE_CODE (expr3_elem_size) == INTEGER_CST)
+	dtype = get_dtype_rank_type_size (rank, BT_CHARACTER,
+					  bytes_counted_strides,
+					  expr3_elem_size);
+      else
+	{
+	  type = gfc_typenode_for_spec (&expr->ts);
+	  dtype = gfc_get_dtype_rank_type (rank, type, bytes_counted_strides);
+	}
       gfc_conv_descriptor_dtype_set (pblock, descriptor, dtype);
+      if (expr3_elem_size
+	  && TREE_CODE (expr3_elem_size) != INTEGER_CST)
+	gfc_conv_descriptor_elem_len_set (pblock, descriptor, expr3_elem_size);
     }
   else if (expr->ts.type == BT_CHARACTER
 	   && expr->ts.deferred
