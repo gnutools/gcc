@@ -801,6 +801,7 @@ create_var (gfc_expr * e, const char *vname)
 	     allocatable.  */
 	  symbol->as->type = AS_DEFERRED;
 	  symbol->attr.allocatable = 1;
+	  symbol->ts.deferred = true;
 	}
       else
 	{
@@ -823,7 +824,7 @@ create_var (gfc_expr * e, const char *vname)
 	}
     }
 
-  deferred = 0;
+  deferred = false;
   if (e->ts.type == BT_CHARACTER)
     {
       gfc_expr *length;
@@ -840,11 +841,11 @@ create_var (gfc_expr * e, const char *vname)
 	{
 	  symbol->attr.allocatable = 1;
 	  symbol->ts.u.cl->length = NULL;
-	  symbol->ts.deferred = 1;
 	  deferred = 1;
 	}
     }
 
+  symbol->ts.deferred = deferred;
   symbol->attr.flavor = FL_VARIABLE;
   symbol->attr.referenced = 1;
   symbol->attr.dimension = e->rank > 0;
