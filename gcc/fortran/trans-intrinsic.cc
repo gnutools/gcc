@@ -9903,7 +9903,10 @@ gfc_conv_intrinsic_loc (gfc_se * se, gfc_expr * expr)
       gfc_conv_expr_reference (se, arg_expr);
     }
   else
-    gfc_conv_array_parameter (se, arg_expr, true, NULL, NULL, NULL);
+    {
+      se->bytes_strided = true;
+      gfc_conv_array_parameter (se, arg_expr, true, NULL, NULL, NULL);
+    }
   se->expr = convert (gfc_get_int_type (gfc_index_integer_kind), se->expr);
 
   /* Create a temporary variable for loc return value.  Without this,

@@ -2343,10 +2343,19 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     gfc_conv_descriptor_elem_len_set (block, dest, span);
   else if (src_expr->rank != -1
 	   && src_expr->ts.type == BT_CHARACTER
-	   && src_expr->ts.deferred
 	   && !element_size_known (dest))
     {
-      tree elem_len = gfc_conv_descriptor_elem_len_get (src);
+      tree src_desc = src;
+      if (TREE_CODE (src_desc) == INDIRECT_REF
+	  && DECL_P (TREE_OPERAND (src_desc, 0)))
+	src_desc = TREE_OPERAND (src_desc, 0);
+      if (DECL_P (src_desc)
+	  && DECL_LANG_SPECIFIC (src_desc)
+	  && GFC_DECL_SAVED_DESCRIPTOR (src_desc))
+	src_desc = GFC_DECL_SAVED_DESCRIPTOR (src_desc);
+      if (POINTER_TYPE_P (TREE_TYPE (src_desc)))
+	src_desc = build_fold_indirect_ref_loc (input_location, src_desc);
+      tree elem_len = gfc_conv_descriptor_elem_len_get (src_desc);
       gfc_conv_descriptor_elem_len_set (block, dest, elem_len);
     }
 
