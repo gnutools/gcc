@@ -2247,6 +2247,20 @@ gfc_conv_remap_descriptor (stmtblock_t *block, tree dest, int dest_rank,
 }
 
 
+static bool
+element_size_known (tree desc)
+{
+  tree type = TREE_TYPE (desc);
+  gcc_assert (GFC_DESCRIPTOR_TYPE_P (type)
+	      || GFC_ARRAY_TYPE_P (type));
+
+  tree elt_type = gfc_get_element_type (TREE_TYPE (desc));
+  tree size = TYPE_SIZE_UNIT (elt_type);
+
+  return size && TREE_CODE (size) == INTEGER_CST;
+}
+
+
 void
 gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 		    int rank, int corank, gfc_ss *ss, gfc_array_info *info,
@@ -2312,12 +2326,29 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 	tmp2 = build_fold_indirect_ref_loc (input_location, tmp2);
       dtype = gfc_conv_descriptor_dtype_get (tmp2);
     }
+  else if (src_expr->rank != -1
+	   && src_expr->ts.type == BT_CHARACTER
+	   && src_expr->ts.deferred
+	   && !element_size_known (dest))
+    {
+      bool bytes_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest));
+      dtype = get_dtype_rank_type_size (src_expr->rank, BT_CHARACTER,
+					bytes_strides, NULL_TREE);
+    }
   else
     dtype = gfc_get_dtype (TREE_TYPE (dest));
   gfc_conv_descriptor_dtype_set (block, dest, dtype);
 
   if (src_expr->ts.type == BT_CLASS)
     gfc_conv_descriptor_elem_len_set (block, dest, span);
+  else if (src_expr->rank != -1
+	   && src_expr->ts.type == BT_CHARACTER
+	   && src_expr->ts.deferred
+	   && !element_size_known (dest))
+    {
+      tree elem_len = gfc_conv_descriptor_elem_len_get (src);
+      gfc_conv_descriptor_elem_len_set (block, dest, elem_len);
+    }
 
   /* The 1st element in the section.  */
   tree base = gfc_index_zero_node;
@@ -2398,20 +2429,6 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
 
       set_dimension_fields (block, dest, gfc_rank_cst[dim], from, to, stride,
 			    &offset);
-    }
-
-  /* For deferred-length character we need to take the dynamic length
-     into account for the dataptr offset.  */
-  if (src_expr->ts.type == BT_CHARACTER
-      && src_expr->ts.deferred
-      && src_expr->ts.u.cl->backend_decl
-      && VAR_P (src_expr->ts.u.cl->backend_decl)
-      && !GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (src)))
-    {
-      tree base_type = TREE_TYPE (base);
-      base = fold_build2_loc (input_location, MULT_EXPR, base_type, base,
-			      fold_convert (base_type,
-					    src_expr->ts.u.cl->backend_decl));
     }
 
   for (int n = rank; n < rank + corank; n++)
