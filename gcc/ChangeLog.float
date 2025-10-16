@@ -1,3 +1,17 @@
+==================== Branch work222-float, patch #335 ====================
+
+Add vectorized 16-bit floating point binary operation support.
+
+2025-10-16  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (fp16_vectorization): New function.
+	* config/rs6000/float16.md (FP16_BINARY_OP): New code iterator.
+	(fp16_names): New code attribute.
+	(<fp16_names><mode>3): New insns.
+	* config/rs6000/rs6000-protos.h (fp16_vectorization): New declaration.
+
 ==================== Branch work222-float, patch #334 ====================
 
 Warn if __bfloat16 or _Float16 are passed or returned.
