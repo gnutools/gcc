@@ -3101,6 +3101,7 @@ gfc_set_descriptor_for_assign_realloc (stmtblock_t *block, gfc_loopinfo *loop,
       tree tmp = gfc_get_dtype_rank_type (expr1->rank, type,
 					  bytes_counted_strides);
       gfc_conv_descriptor_dtype_set (block, desc, tmp);
+      gfc_conv_descriptor_elem_len_set (block, desc, elemsize2);
     }
   else if (expr1->ts.type == BT_CLASS)
     {

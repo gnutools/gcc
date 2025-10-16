@@ -57,7 +57,8 @@ gfc_get_character_len (tree type)
 	      && TYPE_STRING_FLAG (type));
 
   len = TYPE_MAX_VALUE (TYPE_DOMAIN (type));
-  len = (len) ? (len) : (integer_zero_node);
+  if (!len)
+    return NULL_TREE;
   return fold_convert (gfc_charlen_type_node, len);
 }
 
