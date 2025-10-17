@@ -255,8 +255,8 @@ fp16_vectorization (enum rtx_code icode,
 
       else if (result_mode == V8BFmode)
 	{
-	  emit_insn (gen_vec_unpacks_hi_v8hf (op_hi[i], op_orig[i]));
-	  emit_insn (gen_vec_unpacks_lo_v8hf (op_lo[i], op_orig[i]));
+	  emit_insn (gen_vec_unpacks_hi_v8bf (op_hi[i], op_orig[i]));
+	  emit_insn (gen_vec_unpacks_lo_v8bf (op_lo[i], op_orig[i]));
 	}
 
       else

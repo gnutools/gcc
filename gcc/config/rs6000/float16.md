@@ -1030,7 +1030,7 @@
   DONE;
 })
 
-;; Used for vector conversion from __bfloat16
+;; Used for vector conversion from _Float16
 (define_insn "xvcvhpsp_v8hf"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:V8HF 1 "vsx_register_operand" "wa")]
