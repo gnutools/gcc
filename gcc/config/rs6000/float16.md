@@ -735,9 +735,8 @@
   for (size_t i = 0; i < 8; i++)
   RTVEC_ELT (v, i) = neg0;
 
-  rtx vneg0 = gen_rtx_CONST_VECTOR (<MODE>mode, v);
-  if (!TARGET_PREFIXED)
-    vneg0 = force_const_mem (<MODE>mode, vneg0);
+  rtx vneg0 = force_const_mem (<MODE>mode,
+			       gen_rtx_CONST_VECTOR (<MODE>mode, v));
 
   operands[3] = vneg0;
 }
@@ -783,9 +782,8 @@
   for (size_t i = 0; i < 8; i++)
   RTVEC_ELT (v, i) = neg0;
 
-  rtx vneg0 = gen_rtx_CONST_VECTOR (<MODE>mode, v);
-  if (!TARGET_PREFIXED)
-    vneg0 = force_const_mem (<MODE>mode, vneg0);
+  rtx vneg0 = force_const_mem (<MODE>mode,
+			       gen_rtx_CONST_VECTOR (<MODE>mode, v));
 
   operands[3] = vneg0;
 }
