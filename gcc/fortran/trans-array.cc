@@ -7160,6 +7160,7 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 
   /* The naming of stmt_unpacked and stmt_packed may be counter-intuitive
      here, however I think it does the right thing.  */
+  tree elem_len = NULL_TREE;
   if (no_repack)
     {
       /* Set the first stride.  */
@@ -7182,12 +7183,12 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 			  == INTEGER_CST))
 	      || !(TYPE_SIZE_UNIT (elem_type)
 		   && TREE_CODE (TYPE_SIZE_UNIT (elem_type)) == INTEGER_CST))
-	    default_stride = gfc_conv_descriptor_elem_len_get (dumdesc);
+	    elem_len = gfc_conv_descriptor_elem_len_get (dumdesc);
 	  else
-	    default_stride = TYPE_SIZE_UNIT (elem_type);
-	  default_stride = fold_convert_loc (input_location,
-					     gfc_array_index_type,
-					     default_stride);
+	    elem_len = TYPE_SIZE_UNIT (elem_type);
+	  elem_len = fold_convert_loc (input_location,
+				       gfc_array_index_type, elem_len);
+	  default_stride = elem_len;
 	}
       else
 	default_stride = gfc_index_one_node;
@@ -7329,14 +7330,14 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
       /* The size of this dimension, and the stride of the next.  */
       if (n + 1 < as->rank)
 	{
-	  stride = GFC_TYPE_ARRAY_STRIDE (type, n + 1);
+	  tree next_stride = GFC_TYPE_ARRAY_STRIDE (type, n + 1);
 
 	  if (no_repack || partial != NULL_TREE)
 	    stmt_unpacked =
 	      gfc_conv_descriptor_stride_get (dumdesc, gfc_rank_cst[n+1]);
 
 	  /* Figure out the stride if not a known constant.  */
-	  if (!INTEGER_CST_P (stride))
+	  if (!INTEGER_CST_P (next_stride))
 	    {
 	      if (no_repack)
 		stmt_packed = NULL_TREE;
@@ -7348,9 +7349,9 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 					 gfc_index_one_node, lbound);
 		  tmp = fold_build2_loc (input_location, PLUS_EXPR,
 					 gfc_array_index_type, ubound, tmp);
-		  size = fold_build2_loc (input_location, MULT_EXPR,
-					  gfc_array_index_type, size, tmp);
-		  stmt_packed = size;
+		  stride = fold_build2_loc (input_location, MULT_EXPR,
+					  gfc_array_index_type, stride, tmp);
+		  stmt_packed = stride;
 		}
 
 	      /* Assign the stride.  */
@@ -7360,14 +7361,16 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 				       stmt_unpacked, stmt_packed);
 	      else
 		tmp = (stmt_packed != NULL_TREE) ? stmt_packed : stmt_unpacked;
-	      gfc_add_modify (&init, stride, tmp);
+	      gfc_add_modify (&init, next_stride, tmp);
 	    }
+
+	  stride = next_stride;
 	}
       else
 	{
-	  stride = GFC_TYPE_ARRAY_SIZE (type);
+	  tree next_size = GFC_TYPE_ARRAY_SIZE (type);
 
-	  if (stride && !INTEGER_CST_P (stride))
+	  if (next_size && !INTEGER_CST_P (next_size))
 	    {
 	      /* Calculate size = stride * (ubound + 1 - lbound).  */
 	      tmp = fold_build2_loc (input_location, MINUS_EXPR,
@@ -7376,11 +7379,15 @@ gfc_trans_dummy_array_bias (gfc_symbol * sym, tree tmpdesc,
 	      tmp = fold_build2_loc (input_location, PLUS_EXPR,
 				     gfc_array_index_type,
 				     ubound, tmp);
-	      tmp = fold_build2_loc (input_location, MULT_EXPR,
-				     gfc_array_index_type,
-				     GFC_TYPE_ARRAY_STRIDE (type, n), tmp);
-	      gfc_add_modify (&init, stride, tmp);
+	      size = fold_build2_loc (input_location, MULT_EXPR,
+				      gfc_array_index_type,
+				      GFC_TYPE_ARRAY_STRIDE (type, n), tmp);
 	    }
+	  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (type))
+	    size = fold_build2_loc (input_location, EXACT_DIV_EXPR,
+				    gfc_array_index_type,
+				    size, elem_len);
+	  gfc_add_modify (&init, next_size, size);
 	}
     }
 
@@ -9408,6 +9415,31 @@ gfc_caf_is_dealloc_only (int caf_mode)
 }
 
 
+static tree
+get_array_span (tree array)
+{
+  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (array)))
+    return gfc_conv_descriptor_span_get (array);
+
+  tree decl = array;
+  if (TREE_CODE (decl) == INDIRECT_REF
+      && DECL_P (TREE_OPERAND (decl, 0)))
+    decl = TREE_OPERAND (decl, 0);
+
+  if (DECL_P (decl)
+      && DECL_LANG_SPECIFIC (decl))
+    if (tree saved_descr = GFC_DECL_SAVED_DESCRIPTOR (decl))
+      {
+	tree orig_array = saved_descr;
+	if (POINTER_TYPE_P (TREE_TYPE (orig_array)))
+	  orig_array = build_fold_indirect_ref_loc (input_location, orig_array);
+	return get_array_span (orig_array);
+      }
+
+  return TYPE_SIZE_UNIT (gfc_get_element_type (TREE_TYPE (array)));
+}
+
+
 /* Recursively traverse an object of derived type, generating code to
    deallocate, nullify or copy allocatable components.  This is the work horse
    function for the functions named in this enum.  */
@@ -9500,17 +9532,29 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl, tree dest,
       /* Build the body of the loop.  */
       gfc_init_block (&loopbody);
 
+      tree decl_idx = index;
+      if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (decl)))
+	decl_idx = fold_build2_loc (input_location, MULT_EXPR,
+				    gfc_array_index_type, decl_idx,
+				    get_array_span (decl));
+
       gfc_se vse;
       gfc_init_se (&vse, nullptr);
-      build_array_ref (&vse, decl, nullptr, nullptr, index);
+      build_array_ref (&vse, decl, nullptr, nullptr, decl_idx);
       vref = vse.expr;
       gfc_add_block_to_block (&loopbody, &vse.pre);
 
       if (purpose == COPY_ALLOC_COMP || purpose == COPY_ONLY_ALLOC_COMP)
 	{
+	  tree dest_idx = index;
+	  if (GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest)))
+	    dest_idx = fold_build2_loc (input_location, MULT_EXPR,
+					gfc_array_index_type, dest_idx,
+					get_array_span (dest));
+
 	  gfc_se dse;
 	  gfc_init_se (&dse, nullptr);
-	  build_array_ref (&dse, dest, nullptr, nullptr, index);
+	  build_array_ref (&dse, dest, nullptr, nullptr, dest_idx);
 	  dref = dse.expr;
 	  gfc_add_block_to_block (&loopbody, &dse.pre);
 	  tmp = structure_alloc_comps (der_type, vref, dref, rank,
