@@ -1401,8 +1401,7 @@ gfc_typenode_for_spec (gfc_typespec * spec, int codim)
       break;
 
     case BT_CHARACTER:
-      basetype = gfc_get_character_type (spec->kind,
-					 spec->deferred ? nullptr : spec->u.cl);
+      basetype = gfc_get_character_type (spec->kind, spec->u.cl);
       break;
 
     case BT_HOLLERITH:
