@@ -247,16 +247,23 @@ fp16_vectorization (enum rtx_code icode,
       op_hi[i] = gen_reg_rtx (V4SFmode);	/* high register.  */
       op_lo[i] = gen_reg_rtx (V4SFmode);	/* low register.  */
 
+      rtx interleave_hi = gen_reg_rtx (result_mode);
+      rtx interleave_lo = gen_reg_rtx (result_mode);
+      rtx orig = op_orig[i];
+
+      rs6000_expand_interleave (interleave_hi, orig, orig, !BYTES_BIG_ENDIAN);
+      rs6000_expand_interleave (interleave_lo, orig, orig,  BYTES_BIG_ENDIAN);
+
       if (result_mode == V8HFmode)
 	{
-	  emit_insn (gen_vec_unpacks_hi_v8hf (op_hi[i], op_orig[i]));
-	  emit_insn (gen_vec_unpacks_lo_v8hf (op_lo[i], op_orig[i]));
+	  emit_insn (gen_xvcvhpsp_v8hf (op_hi[i], interleave_hi));
+	  emit_insn (gen_xvcvhpsp_v8hf (op_lo[i], interleave_lo));
 	}
 
       else if (result_mode == V8BFmode)
 	{
-	  emit_insn (gen_vec_unpacks_hi_v8bf (op_hi[i], op_orig[i]));
-	  emit_insn (gen_vec_unpacks_lo_v8bf (op_lo[i], op_orig[i]));
+	  emit_insn (gen_xvcvbf16spn_v8bf (op_hi[i], interleave_hi));
+	  emit_insn (gen_xvcvbf16spn_v8bf (op_lo[i], interleave_lo));
 	}
 
       else
