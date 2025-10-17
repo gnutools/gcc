@@ -11117,14 +11117,19 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
 	      tmp = tmpse.expr;
 	      expr2->ts.u.cl->backend_decl = gfc_evaluate_now (tmp, &fblock);
 	    }
-	  tmp = fold_convert (TREE_TYPE (expr1->ts.u.cl->backend_decl), tmp);
 	}
 
       if (expr1->ts.u.cl->backend_decl
 	  && VAR_P (expr1->ts.u.cl->backend_decl))
-	gfc_add_modify (&fblock, expr1->ts.u.cl->backend_decl, tmp);
+	{
+	  tmp = fold_convert (TREE_TYPE (expr1->ts.u.cl->backend_decl), tmp);
+	  gfc_add_modify (&fblock, expr1->ts.u.cl->backend_decl, tmp);
+	}
       else
-	gfc_add_modify (&fblock, lss->info->string_length, tmp);
+	{
+	  tmp = fold_convert (TREE_TYPE (lss->info->string_length), tmp);
+	  gfc_add_modify (&fblock, lss->info->string_length, tmp);
+	}
 
       if (expr1->ts.kind > 1)
 	tmp = fold_build2_loc (input_location, MULT_EXPR,
