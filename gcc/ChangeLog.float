@@ -1,4 +1,16 @@
-==================== Branch work222-float, patch #338 ====================
+==================== Branch work222-float, patch #340 ====================
+
+Fix loading up negative 0 vector 16-bit floating point.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (neg<mode>2, VFP16_HW iterator): Force -0.0
+	vector constant to memory.
+	(abs<mode>2, VFP16_HW iterator): Likewise.
+
+==================== Branch work222-float, patch #339 ====================
 
 Add unary, fma 16-bit floating point vector optimization.
 
