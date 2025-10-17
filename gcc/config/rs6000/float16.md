@@ -1013,7 +1013,7 @@
 {
   rtx reg = gen_reg_rtx (V8HFmode);
 
-  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
+  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
   emit_insn (gen_xvcvhpsp_v8hf (operands[0], reg));
   DONE;
 })
@@ -1025,7 +1025,7 @@
 {
   rtx reg = gen_reg_rtx (V8HFmode);
 
-  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
+  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
   emit_insn (gen_xvcvhpsp_v8hf (operands[0], reg));
   DONE;
 })
@@ -1047,7 +1047,7 @@
 {
   rtx reg = gen_reg_rtx (V8BFmode);
 
-  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
+  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
   emit_insn (gen_xvcvbf16spn_v8bf (operands[0], reg));
   DONE;
 })
@@ -1059,7 +1059,7 @@
 {
   rtx reg = gen_reg_rtx (V8BFmode);
 
-  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
+  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
   emit_insn (gen_xvcvbf16spn_v8bf (operands[0], reg));
   DONE;
 })
