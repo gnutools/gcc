@@ -1,3 +1,16 @@
+==================== Branch work222-float, patch #337 ====================
+
+Fix 16-bit floating point ordering.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/ffloat16.md (vec_unpacks_hi_v8hf): Fix ordering issue.
+	(vec_unpacks_lo_v8hf): Likewise.
+	(vec_unpacks_hi_v8bf): Likewise.
+	(vec_unpacks_lo_v8bf): Likewise.
+
 ==================== Branch work222-float, patch #336 ====================
 
 Fix typo in vectorizing __bfloat16.
