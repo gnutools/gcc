@@ -1,3 +1,38 @@
+==================== Branch work222-float, patch #338 ====================
+
+Add unary, fma 16-bit floating point vector optimization.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): Add support for
+	vectorizing unary and fma 16-bit floating point.
+	(fp16_vectorization): Likewise.
+	* config/rs6000/float16.md (neg<mode>2, VFP16_HW iterator): Likewise.
+	(xor<mode>2, VFP16_HW iterator): Likewise.
+	(abs<mode>2, VFP16_HW iterator): Likewise.
+	(andc<mode>2, VFP16_HW iterator): Likewise.
+	(neg_<fp16_names><mode>2): Likewise.
+	(abs_<fp16_names><mode>2): Likewise.
+	(fma<fp16_names><mode>4): Likewise.
+	(fms<fp16_names><mode>4): Likewise.
+	(nfma<fp16_names><mode>4): Likewise.
+	(nfms<fp16_names><mode>4): Likewise.
+	* config/rs6000/rs6000-protos.h (FP16_ABS_BINARY): Likewise.
+	(FP16_NEG_BINARY,): Likewise.
+
+==================== Branch work222-float, patch #338 ====================
+
+Fix 16-bit floating point vector ordering.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cd (fp16_vectorization): Fix 16-bit floating
+	point ordering.
+
 ==================== Branch work222-float, patch #337 was reverted ====================
 
 ==================== Branch work222-float, patch #336 ====================
