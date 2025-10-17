@@ -2328,12 +2328,11 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     }
   else if (src_expr->rank != -1
 	   && src_expr->ts.type == BT_CHARACTER
-	   && src_expr->ts.deferred
 	   && !element_size_known (dest))
     {
       bool bytes_strides = GFC_BYTES_STRIDES_ARRAY_TYPE_P (TREE_TYPE (dest));
       dtype = get_dtype_rank_type_size (src_expr->rank, BT_CHARACTER,
-					bytes_strides, NULL_TREE);
+					bytes_strides, ss->info->string_length);
     }
   else
     dtype = gfc_get_dtype (TREE_TYPE (dest));
@@ -2343,6 +2342,7 @@ gfc_set_descriptor (stmtblock_t *block, tree dest, tree src, gfc_expr *src_expr,
     gfc_conv_descriptor_elem_len_set (block, dest, span);
   else if (src_expr->rank != -1
 	   && src_expr->ts.type == BT_CHARACTER
+	   && ss->info->string_length == NULL_TREE
 	   && !element_size_known (dest))
     {
       tree src_desc = src;
