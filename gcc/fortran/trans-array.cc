@@ -6262,6 +6262,7 @@ gfc_array_allocate (gfc_se * se, gfc_expr * expr, tree status, tree errmsg,
 
   if (expr->ts.type == BT_CHARACTER
       && TREE_CODE (se->string_length) == COMPONENT_REF
+      && expr->ts.u.cl->backend_decl
       && expr->ts.u.cl->backend_decl != se->string_length
       && VAR_P (expr->ts.u.cl->backend_decl))
     gfc_add_modify (&se->pre, expr->ts.u.cl->backend_decl,

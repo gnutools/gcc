@@ -3329,6 +3329,7 @@ gfc_descriptor_init_count (tree descriptor, int rank, int corank,
      it initialized.  */
   if (expr->ts.type == BT_CHARACTER
       && expr->ts.deferred
+      && expr->ts.u.cl->backend_decl
       && VAR_P (expr->ts.u.cl->backend_decl))
     {
       tree dtype;
