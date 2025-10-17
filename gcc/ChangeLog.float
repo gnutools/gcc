@@ -1,3 +1,15 @@
+==================== Branch work222-float, patch #336 ====================
+
+Fix typo in vectorizing __bfloat16.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (fp16_vectorization):  Fix typo in
+	vectorizing __bfloat16.
+	* config/rs6000/float16.md (xvcvhpsp_v8hf): Fix comment.
+
 ==================== Branch work222-float, patch #335 ====================
 
 Add vectorized 16-bit floating point binary operation support.
