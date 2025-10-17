@@ -706,6 +706,104 @@
 })
 
 ;; Add vectorization support for 16-bit floating point.
+
+;; Negate vector bfloat16/float16
+(define_insn_and_split "neg<mode>2"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand" "=wa")
+	(neg:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:VFP16_HW 2 "=&wa"))]
+  ""
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(xor:VFP16_HW (match_dup 1)
+		      (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  rtx neg0 = const_double_from_real_value (dconst, <VEC_base>mode);
+  rtvec v = rtvec_alloc (8);
+
+  for (size_t i = 0; i < 8; i++)
+  RTVEC_ELT (v, i) = neg0;
+
+  rtx vneg0 = gen_rtx_CONST_VECTOR (<MODE>mode, v);
+  if (!TARGET_PREFIXED)
+    vneg0 = force_const_mem (<MODE>mode, vneg0);
+
+  operands[3] = vneg0;
+}
+  [(set_attr "type" "veclogical")
+   (set_attr "length" "16")])
+
+;; XOR used to negate a 16-bit floating point type
+
+(define_insn "*xor<mode>3"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand" "=wa")
+	(xor:VFP16_HW (match_operand:VFP16_HW 1 "vsx_register_operand" "wa")
+		      (match_operand:VFP16_HW 2 "vsx_register_operand" "wa")))]
+  ""
+  "xxlxor %x0,%x1,%x2"
+  [(set_attr "type" "veclogical")])
+
+;; 16-bit floating point vector absolute value
+
+(define_insn_and_split "abs<mode>2"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand" "=wa")
+	(abs:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand" "wa")))
+   (clobber (match_scratch:VFP16_HW 2 "=&wa"))]
+  ""
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(and:VFP16_HW (match_dup 1)
+		      (not:VFP16_HW (match_dup 2))))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  rtx neg0 = const_double_from_real_value (dconst, <VEC_base>mode);
+  rtvec v = rtvec_alloc (8);
+
+  for (size_t i = 0; i < 8; i++)
+  RTVEC_ELT (v, i) = neg0;
+
+  rtx vneg0 = gen_rtx_CONST_VECTOR (<MODE>mode, v);
+  if (!TARGET_PREFIXED)
+    vneg0 = force_const_mem (<MODE>mode, vneg0);
+
+  operands[3] = vneg0;
+}
+  [(set_attr "type" "veclogical")
+   (set_attr "length" "16")])
+
+;; ANDC used to clear the sign bit of a 16-bit floating point type
+;; for absolute value.
+
+(define_insn "*andc<mode>3"
+  [(set (match_operand:VFP16_HW 0 "gpc_reg_operand" "=wa")
+	(and:VFP16_HW (match_operand:VFP16_HW 1 "gpc_reg_operand" "wa")
+		      (not:VFP16_HW
+		       (match_operand:VFP16_HW 2 "gpc_reg_operand" "wa"))))]
+  ""
+  "xxlandc %x0,%x1,%x2"
+  [(set_attr "type" "veclogical")])
+
 ;; Binary operators being vectorized.
 (define_insn_and_split "<fp16_names><mode>3"
   [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
@@ -721,6 +819,110 @@
 		      FP16_BINARY);
   DONE;
 })
+
+;; Negative of binary operators being vectorized.
+(define_insn_and_split "*neg_<fp16_names><mode>3"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(neg:VFP16_HW
+	 (FP16_BINARY_OP:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2],
+		      NULL_RTX, FP16_NEG_BINARY);
+  DONE;
+})
+
+;; Absolute value of binary operators being vectorized.
+(define_insn_and_split "*abs_<fp16_names><mode>3"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(abs:VFP16_HW
+	 (FP16_BINARY_OP:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2],
+		      NULL_RTX, FP16_ABS_BINARY);
+  DONE;
+})
+
+;; FMA operations being vectorized.
+(define_insn_and_split "fma<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(fma:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")
+	 (match_operand:VFP16_HW 3 "vsx_register_operand")))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_FMA);
+  DONE;
+})
+
+(define_insn_and_split "*fms<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(fma:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")
+	 (neg:VFP16_HW
+	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_FMS);
+  DONE;
+})
+
+(define_insn_and_split "*nfma<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(neg:VFP16_HW
+	 (fma:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand")
+	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_NFMA);
+  DONE;
+})
+
+(define_insn_and_split "*nfms<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(neg:VFP16_HW
+	 (fma:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand")
+	  (neg:VFP16_HW
+	   (match_operand:VFP16_HW 3 "vsx_register_operand")))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_NFMS);
+  DONE;
+})
+
 
 
 ;; If we do multiple __bfloat16 operations, between the first and
