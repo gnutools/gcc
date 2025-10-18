@@ -1,3 +1,16 @@
+==================== Branch work222-float, patch #341 ====================
+
+Do not issue psabi warning for 16-bit floating point library calls.
+
+2025-10-17  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-call.c (init_cumulative_args): Do not issue the
+	psabi warning for passing and returning 16-bit floating point calls on
+	library functions.
+	(rs6000_function_arg): Likewise.
+
 ==================== Branch work222-float, patch #340 ====================
 
 Fix loading up negative 0 vector 16-bit floating point.
