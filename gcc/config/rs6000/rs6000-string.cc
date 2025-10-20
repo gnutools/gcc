@@ -539,7 +539,7 @@ do_load_mask_compare (const machine_mode load_mode, rtx diff, rtx cmp_rem, rtx d
       emit_insn (gen_lshrsi3 (d2, d2, shift_amount));
     }
 
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     {
       /* Generate a compare, and convert with a setb later.  */
       rtx cmp = gen_rtx_COMPARE (CCUNSmode, d1, d2);
@@ -605,7 +605,7 @@ do_overlap_load_compare (machine_mode load_mode, bool isConst,
   do_load_for_compare_from_addr (load_mode, d1, addr1, orig_src1);
   do_load_for_compare_from_addr (load_mode, d2, addr2, orig_src2);
 
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     {
       /* Generate a compare, and convert with a setb later.  */
       rtx cmp = gen_rtx_COMPARE (CCUNSmode, d1, d2);
@@ -1185,7 +1185,7 @@ expand_compare_loop (rtx operands[])
   rtx dcond = NULL_RTX; /* Used for when we jump to diff_label.  */
   /* For p9 we need to have just one of these as multiple places define
      it and it gets used by the setb at the end.  */
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     dcond = gen_reg_rtx (CCUNSmode);
 
   if (!bytes_is_const || bytes >= loop_bytes)
@@ -1227,7 +1227,7 @@ expand_compare_loop (rtx operands[])
 				     src2_ix2, orig_src2);
       do_add3 (iv2, iv2, GEN_INT (loop_bytes));
 
-      if (TARGET_P9_MISC)
+      if (TARGET_POWER9)
 	{
 	  /* Generate a compare, and convert with a setb later.  */
 	  rtx cmp = gen_rtx_COMPARE (CCUNSmode, d1_1, d2_1);
@@ -1245,7 +1245,7 @@ expand_compare_loop (rtx operands[])
       do_ifelse (GET_MODE (dcond), NE, NULL_RTX, NULL_RTX,
 		 dcond, diff_label, profile_probability::unlikely ());
 
-      if (TARGET_P9_MISC)
+      if (TARGET_POWER9)
 	{
 	  /* Generate a compare, and convert with a setb later.  */
 	  rtx cmp = gen_rtx_COMPARE (CCUNSmode, d1_2, d2_2);
@@ -1279,7 +1279,7 @@ expand_compare_loop (rtx operands[])
   /* If diff is nonzero, branch to difference handling
      code.  If we exit here with a nonzero diff, it is
      because the second word differed.  */
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     do_ifelse (CCUNSmode, NE, NULL_RTX, NULL_RTX, dcond,
 	       diff_label, profile_probability::unlikely ());
   else
@@ -1351,7 +1351,7 @@ expand_compare_loop (rtx operands[])
 					 src2_addr, orig_src2);
 
 	  /* Compare the word, see if we need to do the last partial.  */
-	  if (TARGET_P9_MISC)
+	  if (TARGET_POWER9)
 	    {
 	      /* Generate a compare, and convert with a setb later.  */
 	      rtx cmp = gen_rtx_COMPARE (CCUNSmode, d1_1, d2_1);
@@ -1567,7 +1567,7 @@ expand_compare_loop (rtx operands[])
      cmpld A,B
      setb r */
 
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     emit_insn (gen_setb_unsigned (target, dcond));
   else
     {
@@ -1874,7 +1874,7 @@ expand_block_compare_gpr(unsigned HOST_WIDE_INT bytes, unsigned int base_align,
 
 	      /* Compare to zero and branch to convert_label if not zero.  */
 	      rtx cvt_ref = gen_rtx_LABEL_REF (VOIDmode, convert_label);
-	      if (TARGET_P9_MISC)
+	      if (TARGET_POWER9)
 		{
 		/* Generate a compare, and convert with a setb later.
 		   Use cond that is passed in because the caller needs
@@ -1909,7 +1909,7 @@ expand_block_compare_gpr(unsigned HOST_WIDE_INT bytes, unsigned int base_align,
 	    {
 	      /* Just do the subtract/compare.  Since this is the last block
 		 the convert code will be generated immediately following.  */
-	      if (TARGET_P9_MISC)
+	      if (TARGET_POWER9)
 		{
 		  rtx cmp = gen_rtx_COMPARE (CCUNSmode, tmp_reg_src1,
 					     tmp_reg_src2);
@@ -1957,7 +1957,7 @@ expand_block_compare (rtx operands[])
      but setb works well on P9.  */
   if (TARGET_32BIT
       && TARGET_POWERPC64
-      && !TARGET_P9_MISC)
+      && !TARGET_POWER9)
     return false;
 
   /* Allow this param to shut off all expansion.  */
@@ -1997,7 +1997,7 @@ expand_block_compare (rtx operands[])
   /* P7/P8 code uses cond for subfc. but P9 uses
      it for cmpld which needs CCUNSmode.  */
   rtx cond = NULL;
-  if (TARGET_P9_MISC)
+  if (TARGET_POWER9)
     cond = gen_reg_rtx (CCUNSmode);
 
   /* Is it OK to use vec/vsx for this.  TARGET_VSX means we have at
@@ -2069,7 +2069,7 @@ expand_block_compare (rtx operands[])
 	{
 	  if (convert_label)
 	    emit_label (convert_label);
-	  if (TARGET_P9_MISC)
+	  if (TARGET_POWER9)
 	    emit_insn (gen_setb_unsigned (target, cond));
 	  else
 	    generate_6432_conversion(target, sub_result);

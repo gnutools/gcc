@@ -3895,7 +3895,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* For the newer switches (vsx, dfp, etc.) set some of the older options,
      unless the user explicitly used the -mno-<option> to disable the code.  */
-  if (TARGET_P9_VECTOR || TARGET_MODULO || TARGET_P9_MISC)
+  if (TARGET_P9_VECTOR || TARGET_MODULO || TARGET_POWER9)
     rs6000_isa_flags |= (ISA_3_0_MASKS_SERVER & ~ignore_masks);
   else if (TARGET_P9_MINMAX)
     {
@@ -24495,7 +24495,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "power8-fusion-sign",	OPTION_MASK_P8_FUSION_SIGN,	false, true  },
   { "power8-vector",		OPTION_MASK_P8_VECTOR,		false, true  },
   { "power9-minmax",		OPTION_MASK_P9_MINMAX,		false, true  },
-  { "power9-misc",		OPTION_MASK_P9_MISC,		false, true  },
   { "power9-vector",		OPTION_MASK_P9_VECTOR,		false, true  },
   { "power10-fusion",		OPTION_MASK_P10_FUSION,		false, true  },
   { "powerpc-gfxopt",		OPTION_MASK_PPC_GFXOPT,		false, true  },
