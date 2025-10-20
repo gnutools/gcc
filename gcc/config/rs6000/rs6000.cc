@@ -1067,7 +1067,7 @@ struct processor_costs power9_cost = {
   COSTS_N_INSNS (3),	/* SF->DF convert */
 };
 
-/* Instruction costs on Power10/Power11 processors.  */
+/* Instruction costs on Power10/Power11/Future processors.  */
 static const
 struct processor_costs power10_cost = {
   COSTS_N_INSNS (2),	/* mulsi */
@@ -5926,6 +5926,8 @@ rs6000_machine_from_flags (void)
   flags &= ~(OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT | OPTION_MASK_ISEL
 	     | OPTION_MASK_ALTIVEC);
 
+  if ((rs6000_cpu_option_flags & CPU_OPTION_FUTURE_MASK) != 0)
+    return "future";
   if ((rs6000_cpu_option_flags & CPU_OPTION_POWER11_MASK) != 0)
     return "power11";
   if ((rs6000_cpu_option_flags & CPU_OPTION_POWER10_MASK) != 0)
@@ -24547,6 +24549,7 @@ static struct rs6000_cpu_opt_mask const rs6000_cpu_opt_masks[] =
   { "power9",	CPU_OPTION_POWER9_MASK	},
   { "power10",	CPU_OPTION_POWER10_MASK	},
   { "power11",	CPU_OPTION_POWER11_MASK	},
+  { "future",	CPU_OPTION_FUTURE_MASK	},
 };
 
 /* Option variables that we want to support inside attribute((target)) and

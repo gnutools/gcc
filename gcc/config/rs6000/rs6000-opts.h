@@ -71,6 +71,9 @@ enum processor_type
    PROCESSOR_TITAN
 };
 
+/* Do not define a separate PROCESSOR_FUTURE at the current time.  Just
+   schedule -mtune=future the same as -mtune=power11.  */
+#define PROCESSOR_FUTURE	PROCESSOR_POWER11
 
 /* Types of costly dependences.  */
 enum rs6000_dependence_cost
