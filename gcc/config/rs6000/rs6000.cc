@@ -5926,17 +5926,17 @@ rs6000_machine_from_flags (void)
   flags &= ~(OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT | OPTION_MASK_ISEL
 	     | OPTION_MASK_ALTIVEC);
 
-  if ((flags & (POWER11_MASKS_SERVER & ~ISA_3_1_MASKS_SERVER)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER11_MASK) != 0)
     return "power11";
-  if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER10_MASK) != 0)
     return "power10";
-  if ((flags & (ISA_3_0_MASKS_SERVER & ~ISA_2_7_MASKS_SERVER)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER9_MASK) != 0)
     return "power9";
-  if ((flags & (ISA_2_7_MASKS_SERVER & ~ISA_2_6_MASKS_SERVER)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER8_MASK) != 0)
     return "power8";
-  if ((flags & (ISA_2_6_MASKS_SERVER & ~ISA_2_5_MASKS_SERVER)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER7_MASK) != 0)
     return "power7";
-  if ((flags & (ISA_2_5_MASKS_SERVER & ~ISA_2_4_MASKS)) != 0)
+  if ((rs6000_cpu_option_flags & CPU_OPTION_POWER6_MASK) != 0)
     return "power6";
   if ((flags & (ISA_2_4_MASKS & ~ISA_2_1_MASKS)) != 0)
     return "power5";
