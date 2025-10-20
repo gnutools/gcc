@@ -1948,8 +1948,8 @@ expand_block_compare_gpr(unsigned HOST_WIDE_INT bytes, unsigned int base_align,
 bool
 expand_block_compare (rtx operands[])
 {
-  /* TARGET_POPCNTD is already guarded at expand cmpmemsi.  */
-  gcc_assert (TARGET_POPCNTD);
+  /* TARGET_POWER7 is already guarded at expand cmpmemsi.  */
+  gcc_assert (TARGET_POWER7);
 
   /* For P8, this case is complicated to handle because the subtract
      with carry instructions do not generate the 64-bit carry and so
