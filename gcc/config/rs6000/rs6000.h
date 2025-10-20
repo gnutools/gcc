@@ -558,6 +558,8 @@ extern int rs6000_vector_align[];
 
 /* ISA bits that are set via -mcpu=<xxx>, but that do not have an associated
    switch with the option.  */
+#define TARGET_POWER8							\
+  ((rs6000_cpu_option_flags & CPU_OPTION_POWER8_MASK) != 0)
 #define TARGET_POWER9							\
   ((rs6000_cpu_option_flags & CPU_OPTION_POWER9_MASK) != 0)
 #define TARGET_POWER10							\
