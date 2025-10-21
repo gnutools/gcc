@@ -137,6 +137,8 @@
 ;   endian   Needs special handling for endianness
 ;   ibmld    Restrict usage to the case when TFmode is IBM-128
 ;   ibm128   Restrict usage to the case where __ibm128 is supported or if ibmld
+;   future   Restrict usage to future instructions
+;   dm       Restrict usage to dense math
 ;
 ; Each attribute corresponds to extra processing required when
 ; the built-in is expanded.  All such special processing should
@@ -3924,3 +3926,11 @@
 
   void __builtin_vsx_stxvp (v256, unsigned long, const v256 *);
     STXVP nothing {mma,pair}
+
+[future]
+  const signed int __builtin_saturate_subtract32 (signed int, signed int);
+  SAT_SUBSI sat_subsi3 {}
+
+[future-64]
+  const signed long __builtin_saturate_subtract64 (signed long,  signed long);
+  SAT_SUBDI sat_subdi3 {}

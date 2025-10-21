@@ -139,6 +139,17 @@ rs6000_invalid_builtin (enum rs6000_gen_builtins fncode)
     case ENB_MMA:
       error ("%qs requires the %qs option", name, "-mmma");
       break;
+    case ENB_FUTURE:
+      error ("%qs requires the %qs option", name, "-mcpu=future");
+      break;
+    case ENB_FUTURE_64:
+      error ("%qs requires the %qs option and either the %qs or %qs option",
+	     name, "-mcpu=future", "-m64", "-mpowerpc64");
+      break;
+    case ENB_DM:
+      error ("%qs requires the %qs or %qs options", name, "-mcpu=future",
+	     "-mdense-math");
+      break;
     default:
     case ENB_ALWAYS:
       gcc_unreachable ();
@@ -194,6 +205,12 @@ rs6000_builtin_is_supported (enum rs6000_gen_builtins fncode)
       return TARGET_HTM;
     case ENB_MMA:
       return TARGET_MMA;
+    case ENB_FUTURE:
+      return TARGET_FUTURE;
+    case ENB_FUTURE_64:
+      return TARGET_FUTURE && TARGET_POWERPC64;
+    case ENB_DM:
+      return TARGET_DENSE_MATH;
     default:
       gcc_unreachable ();
     }
