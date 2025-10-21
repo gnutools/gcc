@@ -123,7 +123,8 @@
 
 /* At the moment, do not define any addition -m<xxx> arguments for -mcpu=future
    support.  */
-#define FUTURE_MASKS_SERVER	POWER11_MASKS_SERVER
+#define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
+				 | OPTION_MASK_DENSE_MATH)
 
 /* Flags that need to be turned off if -mno-vsx.  */
 #define OTHER_VSX_VECTOR_MASKS	(OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
@@ -155,6 +156,7 @@
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
+				 | OPTION_MASK_DENSE_MATH		\
 				 | OPTION_MASK_DFP			\
 				 | OPTION_MASK_DLMZB			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
