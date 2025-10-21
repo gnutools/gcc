@@ -12094,8 +12094,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
   /* Set the lhs descriptor and scalarizer offsets.  For rank > 1,
      the array offset is saved and the info.offset is used for a
      running offset.  Use the saved_offset instead.  */
-  tmp = gfc_conv_descriptor_offset (desc);
-  gfc_add_modify (&fblock, tmp, offset);
+  gfc_conv_descriptor_offset_set (&fblock, desc, offset);
 
   /* Take into account _len of unlimited polymorphic entities, so that span
      for array descriptors and allocation sizes are computed correctly.  */
