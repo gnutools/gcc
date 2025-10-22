@@ -100,16 +100,16 @@
 (define_insn "*mov<mode>_xxspltiw"
   [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,wa,?r,?r")
 	(match_operand:FP16 1 "fp16_xxspltiw_constant" "j,eP,j,eP"))]
-  ""
+  "TARGET_PREFIXED || operands[1] == CONST0_RTX (<MODE>mode)"
 {
   rtx op1 = operands[1];
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op1);
   long real_words[1];
 
   if (op1 == CONST0_RTX (<MODE>mode))
-    return (vsx_register_operand (operands[0], <MODE>mode)
-	    ? "xxspltib %x0,0"
-	    : "li %0,0");
+    return (!vsx_register_operand (operands[0], <MODE>mode)
+	    ? "li %0,0"
+	    : "xxlxor %x0,%x0,%x0");
 
   real_to_target (real_words, rtype, <MODE>mode);
   operands[2] = GEN_INT (real_words[0]);
@@ -117,8 +117,8 @@
 	  ? "xxspltiw %x0,%2"
 	  : "pli %0,%2");
 }
-  [(set_attr "type" "vecsimple,vecsimple,*,*")
-   (set_attr "prefixed" "no,yes,no,yes")])
+  [(set_attr "type"     "veclogical, vecsimple, *,  *")
+   (set_attr "prefixed" "no,         yes,       no, yes")])
 
 (define_insn "*mov<mode>_internal"
   [(set (match_operand:FP16 0 "nonimmediate_operand"
@@ -139,12 +139,12 @@
    sth%U0%X0 %1,%0
    mfvsrwz %0,%x1
    mtvsrwz %x0,%1
-   xxspltib %x0,0
+   xxlxor %x0,%x0,%x0
    li %0,0"
-  [(set_attr "type" "vecsimple, fpload,    fpstore,   *,         load,
-                     store,     mtvsr,     mfvsr,     vecsimple, *")
-   (set_attr "isa"  "*,         p9v,       p9v,       *,         *,
-                     *,         p8v,       p8v,       p9v,       *")])
+  [(set_attr "type" "vecsimple, fpload,    fpstore,   *,          load,
+                     store,     mtvsr,     mfvsr,     veclogical, *")
+   (set_attr "isa"  "*,         p9v,       p9v,       *,          *,
+                     *,         p8v,       p8v,       p9v,        *")])
 
 ;; Vector duplicate
 (define_insn "*vecdup<mode>_reg"
@@ -159,11 +159,11 @@
   [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa,wa")
 	(vec_duplicate:<FP16_VECTOR8>
 	 (match_operand:FP16 1 "fp16_xxspltiw_constant" "j,eP")))]
-  ""
+  "TARGET_PREFIXED || operands[1] == CONST0_RTX (<MODE>mode)"
 {
   rtx op1 = operands[1];
   if (op1 == CONST0_RTX (<MODE>mode))
-    return "xxspltib %x0,0";
+    return "xxlxor %x0,%x0,%x0";
 
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op1);
   long real_words[1];
@@ -172,9 +172,8 @@
   operands[2] = GEN_INT (real_words[0]);
   return "xxspltiw %x0,2";
 }
-  [(set_attr "type" "vecperm")
+  [(set_attr "type" "veclogical,vecperm")
    (set_attr "prefixed" "*,yes")])
-
 
 ;; Convert IEEE 16-bit floating point to/from other floating point modes.
 
