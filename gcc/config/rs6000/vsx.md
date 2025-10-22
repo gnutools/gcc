@@ -2489,14 +2489,6 @@
   "xscvspdpn %x0,%x1"
   [(set_attr "type" "fp")])
 
-(define_insn "vsx_xscvspdpn_sf"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
-	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		   UNSPEC_VSX_CVSPDPN))]
-  "TARGET_XSCVSPDPN"
-  "xscvspdpn %x0,%x1"
-  [(set_attr "type" "fp")])
-
 (define_insn "vsx_xscvdpspn_scalar"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]

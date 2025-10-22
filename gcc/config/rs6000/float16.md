@@ -227,7 +227,7 @@
 
   /* XSCVSPNDP -- convert single V4SFmode element to DFmode.  */
   emit_insn (GET_MODE (op0) == SFmode
-	     ? gen_vsx_xscvspdpn_sf (op0, op2_v4sf)
+	     ? gen_xscvspdpn_sf (op0, op2_v4sf)
 	     : gen_vsx_xscvspdpn (op0, op2_v4sf));
 
   DONE;
@@ -235,12 +235,24 @@
   [(set_attr "type" "fpsimple")
    (set_attr "length" "12")])
 
-(define_insn "vsx_xscvdpsp_sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=f,?wa")
-	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "f,wa")]
+;; Convert a SFmode scalar represented as DFmode to elements 0 and 1 of
+;; V4SFmode.
+(define_insn "xscvdpspn_sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
 			      UNSPEC_VSX_CVSPDP))]
-  "VECTOR_UNIT_VSX_P (DFmode)"
-  "xscvdpsp %x0,%x1"
+  "VECTOR_UNIT_VSX_P (SFmode)"
+  "xscvdpspn %x0,%x1"
+  [(set_attr "type" "fp")])
+
+;; Convert element 0 of a V4SFmode to scalar SFmode (which on the
+;; PowerPC uses the DFmode encoding).
+(define_insn "xscvspdpn_sf"
+  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
+	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		   UNSPEC_VSX_CVSPDPN))]
+  "TARGET_XSCVSPDPN"
+  "xscvspdpn %x0,%x1"
   [(set_attr "type" "fp")])
 
 ;; Vector shift left by 32 bits to get the 16-bit floating point value
@@ -277,7 +289,7 @@
     op2 = gen_reg_rtx (V4SFmode);
 
   emit_insn (GET_MODE (op1) == SFmode
-	     ? gen_vsx_xscvdpspn_sf (op2, op1)
+	     ? gen_xscvdpspn_sf (op2, op1)
 	     : gen_vsx_xscvdpspn (op2, op1));
 
   emit_insn (gen_xvcvspbf16_bf (op0, op2));
