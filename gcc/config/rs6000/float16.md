@@ -36,15 +36,6 @@
 (define_mode_attr fp16_vector8 [(BF "v8bf")
 				(HF "v8hf")])
 
-;; Mode iterator for 16-bit floating point modes on machines with
-;; hardware support both as a scalar and as a vector.
-(define_mode_iterator FP16_HW [(HF "TARGET_FLOAT16_HW")])
-
-(define_mode_iterator VFP16_HW [(V8HF "TARGET_FLOAT16_HW")])
-
-;; Mode iterator for floating point modes other than SF/DFmode that we
-;; convert to/from _Float16 (HFmode) via DFmode.
-(define_mode_iterator fp16_float_convert [TF KF IF SD DD TD])
 
 ;; _Float16 and __bfloat16 moves
 (define_expand "mov<mode>"
@@ -61,16 +52,16 @@
 (define_insn "*mov<mode>_xxspltiw"
   [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,wa,?r,?r")
 	(match_operand:FP16 1 "fp16_xxspltiw_constant" "j,eP,j,eP"))]
-  "TARGET_PREFIXED || operands[1] == CONST0_RTX (<MODE>mode)"
+  ""
 {
   rtx op1 = operands[1];
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op1);
   long real_words[1];
 
   if (op1 == CONST0_RTX (<MODE>mode))
-    return (!vsx_register_operand (operands[0], <MODE>mode)
-	    ? "li %0,0"
-	    : "xxlxor %x0,%x0,%x0");
+    return (vsx_register_operand (operands[0], <MODE>mode)
+	    ? "xxspltib %x0,0"
+	    : "li %0,0");
 
   real_to_target (real_words, rtype, <MODE>mode);
   operands[2] = GEN_INT (real_words[0]);
@@ -78,8 +69,8 @@
 	  ? "xxspltiw %x0,%2"
 	  : "pli %0,%2");
 }
-  [(set_attr "type"     "veclogical, vecsimple, *,  *")
-   (set_attr "prefixed" "no,         yes,       no, yes")])
+  [(set_attr "type" "vecsimple,vecsimple,*,*")
+   (set_attr "prefixed" "no,yes,no,yes")])
 
 (define_insn "*mov<mode>_internal"
   [(set (match_operand:FP16 0 "nonimmediate_operand"
@@ -100,12 +91,12 @@
    sth%U0%X0 %1,%0
    mfvsrwz %0,%x1
    mtvsrwz %x0,%1
-   xxlxor %x0,%x0,%x0
+   xxspltib %x0,0
    li %0,0"
-  [(set_attr "type" "vecsimple, fpload,    fpstore,   *,          load,
-                     store,     mtvsr,     mfvsr,     veclogical, *")
-   (set_attr "isa"  "*,         p9v,       p9v,       *,          *,
-                     *,         p8v,       p8v,       p9v,        *")])
+  [(set_attr "type" "vecsimple, fpload,    fpstore,   *,         load,
+                     store,     mtvsr,     mfvsr,     vecsimple, *")
+   (set_attr "isa"  "*,         p9v,       p9v,       *,         *,
+                     *,         p8v,       p8v,       p9v,       *")])
 
 ;; Vector duplicate
 (define_insn "*vecdup<mode>_reg"
@@ -120,11 +111,11 @@
   [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa,wa")
 	(vec_duplicate:<FP16_VECTOR8>
 	 (match_operand:FP16 1 "fp16_xxspltiw_constant" "j,eP")))]
-  "TARGET_PREFIXED || operands[1] == CONST0_RTX (<MODE>mode)"
+  ""
 {
   rtx op1 = operands[1];
   if (op1 == CONST0_RTX (<MODE>mode))
-    return "xxlxor %x0,%x0,%x0";
+    return "xxspltib %x0,0";
 
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op1);
   long real_words[1];
@@ -133,106 +124,5 @@
   operands[2] = GEN_INT (real_words[0]);
   return "xxspltiw %x0,2";
 }
-  [(set_attr "type" "veclogical,vecperm")
+  [(set_attr "type" "vecperm")
    (set_attr "prefixed" "*,yes")])
-
-
-
-;; Convert IEEE 16-bit floating point to/from other floating point modes.
-
-(define_insn "extendhf<mode>2"
-  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
-	(float_extend:SFDF
-	 (match_operand:HF 1 "vsx_register_operand" "wa")))]
-  "TARGET_FLOAT16_HW"
-  "xscvhpdp %x0,%x1"
-  [(set_attr "type" "fpsimple")])
-
-(define_insn "trunc<mode>hf2"
-  [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
-	(float_truncate:HF
-	 (match_operand:SFDF 1 "vsx_register_operand" "wa")))]
-  "TARGET_FLOAT16_HW"
-  "xscvdphp %x0,%x1"
-  [(set_attr "type" "fpsimple")])
-
-
-;; Convert between HFmode and 128-bit binary floating point and
-;; decimal floating point types.  We use convert_move since some of the
-;; types might not have valid RTX expanders.  We use DFmode as the
-;; intermediate conversion destination.
-
-(define_expand "extend<FP16_HW:mode><fp16_float_convert:mode>2"
-  [(set (match_operand:fp16_float_convert 0 "vsx_register_operand")
-	(float_extend:fp16_float_convert
-	 (match_operand:FP16_HW 1 "vsx_register_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-  emit_insn (gen_extend<FP16_HW:mode>df2 (df_tmp, operands[1]));
-  convert_move (operands[0], df_tmp, 0);
-  DONE;
-})
-
-(define_expand "trunc<fp16_float_convert:mode><FP16_HW:mode>2"
-  [(set (match_operand:FP16_HW 0 "vsx_register_operand")
-	(float_truncate:FP16_HW
-	 (match_operand:fp16_float_convert 1 "vsx_register_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-
-  convert_move (df_tmp, operands[1], 0);
-  emit_insn (gen_truncdf<FP16_HW:mode>2 (operands[0], df_tmp));
-  DONE;
-})
-
-;; Convert integers to 16-bit floating point modes.
-(define_expand "float<GPR:mode><FP16_HW:mode>2"
-  [(set (match_operand:FP16_HW 0 "vsx_register_operand")
-	(float:FP16_HW
-	 (match_operand:GPR 1 "nonimmediate_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-  emit_insn (gen_float<GPR:mode>df2 (df_tmp, operands[1]));
-  emit_insn (gen_truncdf<FP16_HW:mode>2 (operands[0], df_tmp));
-  DONE;
-})
-
-(define_expand "floatuns<GPR:mode><FP16_HW:mode>2"
-  [(set (match_operand:FP16_HW 0 "vsx_register_operand")
-	(unsigned_float:FP16_HW
-	 (match_operand:GPR 1 "nonimmediate_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-  emit_insn (gen_floatuns<GPR:mode>df2 (df_tmp, operands[1]));
-  emit_insn (gen_truncdf<FP16_HW:mode>2 (operands[0], df_tmp));
-  DONE;
-})
-
-;; Convert 16-bit floating point modes to integers
-(define_expand "fix_trunc<FP16_HW:mode><GPR:mode>2"
-  [(set (match_operand:GPR 0 "vsx_register_operand")
-	(fix:GPR
-	 (match_operand:FP16_HW 1 "vsx_register_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-  emit_insn (gen_extend<FP16_HW:mode>df2 (df_tmp, operands[1]));
-  emit_insn (gen_fix_truncdf<GPR:mode>2 (operands[0], df_tmp));
-  DONE;
-})
-
-(define_expand "fixuns_trunc<FP16_HW:mode><GPR:mode>2"
-  [(set (match_operand:GPR 0 "vsx_register_operand")
-	(unsigned_fix:GPR
-	 (match_operand:FP16_HW 1 "vsx_register_operand")))]
-  ""
-{
-  rtx df_tmp = gen_reg_rtx (DFmode);
-  emit_insn (gen_extend<FP16_HW:mode>df2 (df_tmp, operands[1]));
-  emit_insn (gen_fixuns_truncdf<GPR:mode>2 (operands[0], df_tmp));
-  DONE;
-})
