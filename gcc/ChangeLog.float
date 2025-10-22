@@ -1,5 +1,21 @@
 ==================== Branch work223-float, patch #302 ====================
 
+Move stuff from vsx.md to float16.md.
+
+2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (extendbf<mode>2): Rename vsx_xscvspdpn_sf to
+	xscvspdpn_sf and move it from vsx.md to float16.md.  Rename
+	vsx_xscvdpspn_sf to xscvdpspn_sf.
+	(xscvdpspn_sf): Likewise.
+	(xscvspdpn_sf): Likewise.
+	(trunc<mode>bf2): Likewise.
+	* config/rs6000/vsx.md (vsx_xscvspdpn_sf): Likewise.
+
+==================== Branch work223-float, patch #302 ====================
+
 Add HF/BF emulation functions to libgcc.
 
 2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
