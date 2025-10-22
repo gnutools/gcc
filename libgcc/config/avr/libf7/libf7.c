@@ -207,7 +207,6 @@ f7_t* f7_set_s32 (f7_t *cc, int32_t i32)
   cc->flags = flags;
   return cc;
 }
-ALIAS (f7_set_s32, f7_floatsidf)
 #endif // F7MOD_set_s32_
 
 
@@ -219,7 +218,6 @@ f7_t* f7_set_u32 (f7_t *cc, uint32_t u32)
   cc->expo = 31;
   return f7_normalize_asm (cc);
 }
-ALIAS (f7_set_u32, f7_floatunsidf)
 #endif // F7MOD_set_u32_
 
 
@@ -916,6 +914,21 @@ void f7_sub (f7_t *cc, const f7_t *aa, const f7_t *bb)
   f7_addsub (cc, aa, bb, true);
 }
 #endif // F7MOD_sub_
+
+
+#ifdef F7MOD_fdim_
+F7_WEAK
+void f7_fdim (f7_t *cc, const f7_t *aa, const f7_t *bb)
+{
+  int8_t cmp = f7_cmp_unordered (aa, bb, true /*with_sign*/);
+  if (cmp == INT8_MIN)
+    return f7_set_nan (cc);
+  if (cmp < 0)
+    return f7_clr (cc);
+
+  f7_sub (cc, aa, bb);
+}
+#endif // F7MOD_fdim_
 
 
 #ifdef F7MOD_addsub_

@@ -823,7 +823,6 @@
     UNSPEC_UZP2Q	; Used in aarch64-sve.md.
     UNSPEC_ZIP1Q	; Used in aarch64-sve.md.
     UNSPEC_ZIP2Q	; Used in aarch64-sve.md.
-    UNSPEC_TRN1_CONV	; Used in aarch64-sve.md.
     UNSPEC_COND_CMPEQ_WIDE ; Used in aarch64-sve.md.
     UNSPEC_COND_CMPGE_WIDE ; Used in aarch64-sve.md.
     UNSPEC_COND_CMPGT_WIDE ; Used in aarch64-sve.md.
@@ -1052,6 +1051,9 @@
     UNSPEC_BFCVTN2     ; Used in aarch64-simd.md.
     UNSPEC_BFCVT       ; Used in aarch64-simd.md.
     UNSPEC_FCVTXN	; Used in aarch64-simd.md.
+
+    ;; All used in aarch64-sve.md
+    UNSPEC_PERMUTE_PRED
 
     ;; All used in aarch64-sve2.md
     UNSPEC_FCVTN
@@ -1939,7 +1941,8 @@
 			   (SI   "si")])
 
 ;; Like ve_mode but for the half-width modes.
-(define_mode_attr vn_mode [(V8HI  "qi") (V4SI  "hi") (V2DI  "si")])
+(define_mode_attr vn_mode [(V8HI  "qi") (V4SI  "hi") (V2DI  "si") (DI "si")
+			   (SI "hi") (HI "qi")])
 
 ;; Vm for lane instructions is restricted to FP_LO_REGS.
 (define_mode_attr vwx [(V4HI "x") (V8HI "x") (HI "x")

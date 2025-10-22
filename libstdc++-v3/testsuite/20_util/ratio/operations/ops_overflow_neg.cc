@@ -1,6 +1,6 @@
 // { dg-do compile { target c++11 } }
 // { dg-require-cstdint "" }
-
+// { dg-additional-options "-Wsystem-headers" }
 // 2008-07-03 Chris Fairles <chris.fairles@gmail.com>
 
 // Copyright (C) 2008-2024 Free Software Foundation, Inc.
@@ -48,5 +48,6 @@ test02()
 // { dg-error "overflow in multiplication" "" { target *-*-* } 105 }
 // { dg-error "overflow in constant expression" "" { target *-*-* } 0 }
 // { dg-error "narrowing conversion" "" { target *-*-* } 0 }
+// { dg-error "overflow in expression" "" { target *-*-* } 112 }
 // { dg-prune-output "out of range" }
 // { dg-prune-output "not usable in a constant expression" }
