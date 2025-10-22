@@ -23114,7 +23114,7 @@ rs6000_load_constant_and_splat (machine_mode mode, REAL_VALUE_TYPE dconst)
 {
   rtx reg;
 
-  if (mode == SFmode || mode == DFmode || FP16_HW_SCALAR_MODE_P (mode))
+  if (mode == SFmode || mode == DFmode || FP16_SCALAR_MODE_P (mode))
     {
       rtx d = const_double_from_real_value (dconst, mode);
       reg = force_reg (mode, d);
