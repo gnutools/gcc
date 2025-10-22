@@ -1,3 +1,19 @@
+2025-10-20  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/107536
+	* exp_ch2.adb (Expand_Renaming): Mark the entity as referenced.
+
+2025-10-05  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/118343
+	* Makefile.rtl (LLVM_BUILD): Delete.
+
+2025-09-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/117517
+	* sem_attr.adb (Resolve_Attribute) <Attribute_Reduce>: Try to
+	resolve the reducer first.  Fix casing of error message.
+
 2025-09-22  Eric Botcazou  <ebotcazou@adacore.com>
 
 	PR ada/121968
