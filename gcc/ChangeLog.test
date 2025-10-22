@@ -2,7 +2,7 @@
 
 Add scalar _Float16 converts.
 
-2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -24,7 +24,7 @@ gcc/
 
 Add HF/BF emulation functions to libgcc.
 
-2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
 
 libgcc/
 
@@ -75,7 +75,7 @@ libgcc/
 
 Add initial _Float16 and __bfloat16 support.
 
-2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
