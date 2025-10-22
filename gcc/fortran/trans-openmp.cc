@@ -196,7 +196,7 @@ gfc_omp_array_size (tree decl, gimple_seq *pre_p)
   size = fold_convert (size_type_node, size);
   tree elemsz = gfc_get_element_type (TREE_TYPE (decl));
   if (TREE_CODE (elemsz) == ARRAY_TYPE && TYPE_STRING_FLAG (elemsz))
-    elemsz = gfc_conv_descriptor_elem_len (decl);
+    elemsz = gfc_conv_descriptor_elem_len_get (decl);
   else
     elemsz = TYPE_SIZE_UNIT (elemsz);
   size = fold_build2 (MULT_EXPR, size_type_node, size, elemsz);
@@ -2206,7 +2206,7 @@ gfc_omp_deep_mapping_item (bool is_cnt, bool do_copy, bool do_alloc_check,
 	  /* TODO: Optimization: Shouldn't this be an expr. const, except for
 	     deferred-length strings. (Cf. also below).  */
 	  elem_len = (poly ? gfc_class_vtab_size_get (class_decl)
-			   : gfc_conv_descriptor_elem_len (decl));
+			   : gfc_conv_descriptor_elem_len_get (decl));
 	  tmp = (POINTER_TYPE_P (TREE_TYPE (decl))
 		 ? build_fold_indirect_ref (decl) : decl);
 	  size = gfc_omp_get_array_size (loc, tmp, seq);
@@ -2251,7 +2251,7 @@ gfc_omp_deep_mapping_item (bool is_cnt, bool do_copy, bool do_alloc_check,
 	{
 	  if (elem_len == NULL_TREE)
 	    {
-	      elem_len = gfc_conv_descriptor_elem_len (decl);
+	      elem_len = gfc_conv_descriptor_elem_len_get (decl);
 	      size = fold_convert (size_type_node,
 				   gfc_omp_get_array_size (loc, decl, seq));
 	    }

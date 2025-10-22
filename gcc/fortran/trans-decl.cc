@@ -7334,8 +7334,8 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
   if (sym->ts.type == BT_ASSUMED)
     {
       /* For type(*), take elem_len + dtype.type from the actual argument.  */
-      gfc_add_modify (&block, gfc_conv_descriptor_elem_len (gfc_desc),
-		      gfc_get_cfi_desc_elem_len (cfi));
+      gfc_conv_descriptor_elem_len_set (&block, gfc_desc,
+					gfc_get_cfi_desc_elem_len (cfi));
       tree cond;
       tree ctype = gfc_get_cfi_desc_type (cfi);
       ctype = fold_build2_loc (input_location, BIT_AND_EXPR, TREE_TYPE (ctype),
@@ -7565,7 +7565,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
       /* memcpy (lhs + idx*elem_len, rhs + shift, elem_len)  */
       tree elem_len;
       if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
-	elem_len = gfc_conv_descriptor_elem_len (gfc_desc);
+	elem_len = gfc_conv_descriptor_elem_len_get (gfc_desc);
       else
 	elem_len = gfc_get_cfi_desc_elem_len (cfi);
       lhs = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
@@ -7603,7 +7603,7 @@ gfc_conv_cfi_to_gfc (stmtblock_t *init, stmtblock_t *finally,
   /* if do_copy_inout:  gfc->dspan = gfc->dtype.elem_len
      We use gfc instead of cfi on the RHS as this might be a constant.  */
   tmp = fold_convert (gfc_array_index_type,
-		      gfc_conv_descriptor_elem_len (gfc_desc));
+		      gfc_conv_descriptor_elem_len_get (gfc_desc));
   if (!do_copy_inout)
     {
       /* gfc->dspan = ((cfi->dim[0].sm % gfc->elem_len)
@@ -7807,7 +7807,7 @@ done:
 	  /* memcpy (lhs + shift, rhs + idx*elem_len, elem_len) */
 	  tree elem_len;
 	  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (gfc_desc)))
-	    elem_len = gfc_conv_descriptor_elem_len (gfc_desc);
+	    elem_len = gfc_conv_descriptor_elem_len_get (gfc_desc);
 	  else
 	    elem_len = gfc_get_cfi_desc_elem_len (cfi);
 	  rhs = fold_build2_loc (input_location, MULT_EXPR, size_type_node,
