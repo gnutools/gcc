@@ -102,6 +102,7 @@
 /* Add ISEL back into ISA 3.0, since it is supposed to be a win.  Do not add
    FLOAT128_HW here until we are ready to make -mfloat128 on by default.  */
 #define ISA_3_0_MASKS_SERVER	((ISA_2_7_MASKS_SERVER			\
+				  /* | OPTION_MASK_FLOAT16 */		\
 				  | OPTION_MASK_ISEL			\
 				  | OPTION_MASK_MODULO			\
 				  | OPTION_MASK_P9_MINMAX		\
@@ -113,6 +114,7 @@
    performance was degraded by it.  */
 #define OTHER_POWER10_MASKS	(OPTION_MASK_MMA			\
 				 | OPTION_MASK_PCREL			\
+				 /* | OPTION_MASK_BFLOAT16 */		\
 				 /* | OPTION_MASK_PCREL_OPT */		\
 				 | OPTION_MASK_PREFIXED)
 
@@ -153,6 +155,7 @@
 
 /* Mask of all options to set the default isa flags based on -mcpu=<xxx>.  */
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
+				 | OPTION_MASK_BFLOAT16			\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_DFP			\
@@ -163,6 +166,7 @@
 				 | OPTION_MASK_FPRND			\
 				 | OPTION_MASK_P10_FUSION		\
 				 | OPTION_MASK_HTM			\
+				 | OPTION_MASK_FLOAT16			\
 				 | OPTION_MASK_ISEL			\
 				 | OPTION_MASK_MFCRF			\
 				 | OPTION_MASK_MMA			\
