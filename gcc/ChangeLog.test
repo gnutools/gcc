@@ -1,3 +1,25 @@
+==================== Branch work223-test, patch #402 ====================
+
+Add scalar _Float16 converts.
+
+2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (FP16_HW): New mode iterator.
+	(VFP16_HW): Likewise.
+	(fp16_float_convert): Likewise.
+	(extendhf<mode>2): Add support converting between HFmode and other
+	floating point scalars if we are on power9 or later.
+	(trunc<mode>hf2): Likewise.
+	(extend<FP16_HW:mode><fp16_float_convert:mode>): Likewise.
+	(trunc<fp16_float_convert:mode><FP16_HW:mode>2): Likewise.
+	(float<GPR:mode><FP16_HW:mode>2): Add support converting between HFmode
+	to and from integers.
+	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
+	(fix_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+
 ==================== Branch work223-test, patch #401 ====================
 
 Add HF/BF emulation functions to libgcc.
