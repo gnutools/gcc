@@ -1,3 +1,54 @@
+==================== Branch work223, patch #302 ====================
+
+Add HF/BF emulation functions to libgcc.
+
+2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+
+libgcc/
+
+	* config.host (powerpc*-*-linux*): Add HF/BF emulation functions to
+	PowerPC libgcc.
+	* config/rs6000/sfp-machine.h (_FP_NANFRAC_H): New macro.
+	(_FP_NANFRAC_B): Likewise.
+	(_FP_NANSIGN_H): Likewise.
+	(_FP_NANSIGN_B): Likewise.
+	(DFtype2): Add HF/BF emulation function declarations.
+	(SFtype2): Likewise.
+	(DItype2): Likewise.
+	(UDItype2): Likewise.
+	(SItype2): Likewise.
+	(USItype2): Likewise.
+	(HFtype2): Likewise.
+	(__eqhf2): Likewise.
+	(__extendhfdf2): Likewise.
+	(__extendhfsf2): Likewise.
+	(__fixhfdi): Likewise.
+	(__fixhfsi): Likewise.
+	(__fixunshfdi): Likewise.
+	(__fixunshfsi): Likewise.
+	(__floatdihf): Likewise.
+	(__floatsihf): Likewise.
+	(__floatundihf): Likewise.
+	(__floatunsihf): Likewise.
+	(__truncdfhf2): Likewise.
+	(__truncsfhf2): Likewise.
+	(BFtype2): Likewise.
+	(__extendbfsf2): Likewise.
+	(__floatdibf): Likewise.
+	(__floatsibf): Likewise.
+	(__floatundibf): Likewise.
+	(__floatunsibf): Likewise.
+	(__truncdfbf2): Likewise.
+	(__truncsfbf2): Likewise.
+	(__truncbfhf2): Likewise.
+	(__trunchfbf2): Likewise.
+	* config/rs6000/t-bfloat16: New file.
+	* config/rs6000/t-both-fp16: Likewise.
+	* config/rs6000/t-float16: Likewise.
+	* configure.ac (powerpc*-*-linux*): Check if the PowerPC compiler
+	supports _Float16 and __bfloat16 types.
+	* configure: Regenerate.
+
 ==================== Branch work223, baseline ====================
 
 2025-10-20   Michael Meissner  <meissner@linux.ibm.com>
