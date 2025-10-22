@@ -2386,7 +2386,7 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
     {
       tree span = gfc_conv_descriptor_span_get (desc);
       tmp = fold_convert (TREE_TYPE (span),
-			  gfc_conv_descriptor_elem_len (desc));
+			  gfc_conv_descriptor_elem_len_get (desc));
       cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
 			      span, tmp);
       se->expr = fold_build2_loc (input_location, TRUTH_ANDIF_EXPR,
@@ -8352,7 +8352,6 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
   tree lower;
   tree upper;
   tree byte_size;
-  tree field;
   int n;
 
   gfc_init_se (&argse, NULL);
@@ -8376,11 +8375,7 @@ gfc_conv_intrinsic_sizeof (gfc_se *se, gfc_expr *expr)
       if (POINTER_TYPE_P (TREE_TYPE (tmp)))
 	tmp = build_fold_indirect_ref_loc (input_location, tmp);
 
-      tmp = gfc_conv_descriptor_dtype (tmp);
-      field = gfc_advance_chain (TYPE_FIELDS (get_dtype_type_node ()),
-				 GFC_DTYPE_ELEM_LEN);
-      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
-			     tmp, field, NULL_TREE);
+      tmp = gfc_conv_descriptor_elem_len_get (tmp);
 
       byte_size = fold_convert (gfc_array_index_type, tmp);
     }
