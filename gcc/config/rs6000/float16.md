@@ -25,9 +25,6 @@
 (define_mode_iterator FP16 [(BF "TARGET_BFLOAT16")
 			    (HF "TARGET_FLOAT16")])
 
-(define_mode_iterator VFP16 [(V8BF "TARGET_BFLOAT16")
-			     (V8HF "TARGET_FLOAT16_HW")])
-
 ;; Mode attribute giving the vector mode for a 16-bit floating point
 ;; scalar in both upper and lower case.
 (define_mode_attr FP16_VECTOR8 [(BF "V8BF")
@@ -125,3 +122,21 @@
 }
   [(set_attr "type" "veclogical,vecperm")
    (set_attr "prefixed" "*,yes")])
+
+;; Convert IEEE 16-bit floating point to/from SFmode and DFmode.
+
+(define_insn "extendhf<mode>2"
+  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+	(float_extend:SFDF
+	 (match_operand:HF 1 "vsx_register_operand" "wa")))]
+  "TARGET_FLOAT16_HW"
+  "xscvhpdp %x0,%x1"
+  [(set_attr "type" "fpsimple")])
+
+(define_insn "trunc<mode>hf2"
+  [(set (match_operand:HF 0 "vsx_register_operand" "=wa")
+	(float_truncate:HF
+	 (match_operand:SFDF 1 "vsx_register_operand" "wa")))]
+  "TARGET_FLOAT16_HW"
+  "xscvdphp %x0,%x1"
+  [(set_attr "type" "fpsimple")])
