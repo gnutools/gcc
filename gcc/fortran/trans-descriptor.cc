@@ -488,13 +488,20 @@ gfc_conv_descriptor_subfield (tree desc, tree dim, unsigned field_idx)
 			  tmp, field, NULL_TREE);
 }
 
+
+/* Return a reference to the stride for the (zero-based) dimension DIM of the
+   array descriptor DESC.  */
+
 static tree
-gfc_conv_descriptor_stride (tree desc, tree dim)
+conv_descriptor_stride (tree desc, tree dim)
 {
   tree field = gfc_conv_descriptor_subfield (desc, dim, STRIDE_SUBFIELD);
   gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
   return field;
 }
+
+/* Return the value of the stride for the (zero-based) dimension DIM of the
+   array represented by descriptor DESC.  */
 
 tree
 gfc_conv_descriptor_stride_get (tree desc, tree dim)
@@ -510,58 +517,81 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT))
     return gfc_index_one_node;
 
-  return gfc_conv_descriptor_stride (desc, dim);
+  return conv_descriptor_stride (desc, dim);
 }
+
+/* Add code to BLOCK setting to VALUE the stride for the (zero-based) dimension
+   DIM of the array descriptor DESC.  */
 
 void
 gfc_conv_descriptor_stride_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  tree t = gfc_conv_descriptor_stride (desc, dim);
+  tree t = conv_descriptor_stride (desc, dim);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
+
+/* Return a reference to the lower bound for the (zero-based) dimension DIM of
+   the array descriptor DESC.  */
+
 static tree
-gfc_conv_descriptor_lbound (tree desc, tree dim)
+conv_descriptor_lbound (tree desc, tree dim)
 {
   tree field = gfc_conv_descriptor_subfield (desc, dim, LBOUND_SUBFIELD);
   gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
   return field;
 }
 
+/* Return the value of the lower bound for the (zero-based) dimension DIM of the
+   array represented by descriptor DESC.  */
+
 tree
 gfc_conv_descriptor_lbound_get (tree desc, tree dim)
 {
-  return gfc_conv_descriptor_lbound (desc, dim);
+  return conv_descriptor_lbound (desc, dim);
 }
+
+/* Add code to BLOCK setting to VALUE the lower bound for the (zero-based)
+   dimension DIM of the array descriptor DESC.  */
 
 void
 gfc_conv_descriptor_lbound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  tree t = gfc_conv_descriptor_lbound (desc, dim);
+  tree t = conv_descriptor_lbound (desc, dim);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
+
+/* Return a reference to the upper bound for the (zero-based) dimension DIM of
+   the array descriptor DESC.  */
+
 static tree
-gfc_conv_descriptor_ubound (tree desc, tree dim)
+conv_descriptor_ubound (tree desc, tree dim)
 {
   tree field = gfc_conv_descriptor_subfield (desc, dim, UBOUND_SUBFIELD);
   gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
   return field;
 }
 
+/* Return the value of the upper bound for the (zero-based) dimension DIM of the
+   array represented by descriptor DESC.  */
+
 tree
 gfc_conv_descriptor_ubound_get (tree desc, tree dim)
 {
-  return gfc_conv_descriptor_ubound (desc, dim);
+  return conv_descriptor_ubound (desc, dim);
 }
+
+/* Add code to BLOCK setting to VALUE the upper bound for the (zero-based)
+   dimension DIM of the array descriptor DESC.  */
 
 void
 gfc_conv_descriptor_ubound_set (stmtblock_t *block, tree desc,
 				tree dim, tree value)
 {
-  tree t = gfc_conv_descriptor_ubound (desc, dim);
+  tree t = conv_descriptor_ubound (desc, dim);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
