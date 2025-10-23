@@ -263,8 +263,6 @@ extern unsigned constant_generates_xxspltidp (vec_const_128bit_type *);
 /* Optimize bfloat16 and float16 operations.  */
 enum fp16_operation {
   FP16_BINARY,				/* Bfloat16/float16 binary op.  */
-  FP16_ABS_BINARY,			/* abs (binary op).  */
-  FP16_NEG_BINARY,			/* - (binary op).  */
   FP16_FMA,				/* (a * b) + c.  */
   FP16_FMS,				/* (a * b) - c.  */
   FP16_NFMA,				/* - ((a * b) + c).  */

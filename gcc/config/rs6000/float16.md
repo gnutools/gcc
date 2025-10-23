@@ -775,69 +775,6 @@
 
 ;; Add vectorization support for 16-bit floating point.
 
-;; Negate vector bfloat16/float16
-(define_insn_and_split "neg<mode>2"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(neg:VFP16
-	 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:VFP16 2 "=&wa"))]
-  ""
-  "#"
-  "&& 1"
-  [(set (match_dup 2)
-	(vec_duplicate:VFP16 (match_dup 3)))
-   (set (match_dup 0)
-	(xor:VFP16 (match_dup 1)
-		   (match_dup 2)))]
-{
-  if (GET_CODE (operands[2]) == SCRATCH)
-    operands[2] = gen_reg_rtx (<MODE>mode);
-
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-
-  rtx neg0 = const_double_from_real_value (dconst, <VEC_base>mode);
-  if (!TARGET_POWER10 || !TARGET_PREFIXED)
-    neg0 = force_reg (<VEC_base>mode, neg0);
-
-  operands[3] = neg0;
-}
-  [(set_attr "type" "veclogical")
-   (set_attr "length" "16")])
-
-;; 16-bit floating point vector absolute value
-
-(define_insn_and_split "abs<mode>2"
-  [(set (match_operand:VFP16 0 "vsx_register_operand" "=wa")
-	(abs:VFP16
-	 (match_operand:VFP16 1 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:VFP16 2 "=&wa"))]
-  ""
-  "#"
-  "&& 1"
-  [(set (match_dup 2)
-	(vec_duplicate:VFP16 (match_dup 3)))
-   (set (match_dup 0)
-	(and:VFP16 (match_dup 1)
-		   (not:VFP16 (match_dup 2))))]
-{
-  if (GET_CODE (operands[2]) == SCRATCH)
-    operands[2] = gen_reg_rtx (<MODE>mode);
-
-  REAL_VALUE_TYPE dconst;
-
-  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
-
-  rtx neg0 = const_double_from_real_value (dconst, <VEC_base>mode);
-  if (!TARGET_POWER10 || !TARGET_PREFIXED)
-    neg0 = force_reg (<VEC_base>mode, neg0);
-
-  operands[3] = neg0;
-}
-  [(set_attr "type" "veclogical")
-   (set_attr "length" "16")])
-
 ;; Binary operators being vectorized.
 (define_insn_and_split "<fp16_names><mode>3"
   [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
@@ -851,40 +788,6 @@
 {
   fp16_vectorization (<CODE>, operands[0], operands[1], operands[2], NULL_RTX,
 		      FP16_BINARY);
-  DONE;
-})
-
-;; Negative of binary operators being vectorized.
-(define_insn_and_split "*neg_<fp16_names><mode>3"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(neg:VFP16_HW
-	 (FP16_BINARY_OP:VFP16_HW
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (match_operand:VFP16_HW 2 "vsx_register_operand"))))]
-  "can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2],
-		      NULL_RTX, FP16_NEG_BINARY);
-  DONE;
-})
-
-;; Absolute value of binary operators being vectorized.
-(define_insn_and_split "*abs_<fp16_names><mode>3"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(abs:VFP16_HW
-	 (FP16_BINARY_OP:VFP16_HW
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (match_operand:VFP16_HW 2 "vsx_register_operand"))))]
-  "can_create_pseudo_p ()"
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2],
-		      NULL_RTX, FP16_ABS_BINARY);
   DONE;
 })
 

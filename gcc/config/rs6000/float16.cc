@@ -88,8 +88,6 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
       n_opts = 3;
       break;
 
-    case FP16_ABS_BINARY:
-    case FP16_NEG_BINARY:
     default:
       gcc_unreachable ();
     }
@@ -176,8 +174,6 @@ bfloat16_operation_as_v4sf (enum rtx_code icode,
       }
       break;
 
-    case FP16_ABS_BINARY:
-    case FP16_NEG_BINARY:
     default:
       gcc_unreachable ();
     }
@@ -216,7 +212,6 @@ fp16_vectorization (enum rtx_code icode,
 {
   gcc_assert (can_create_pseudo_p ());
 
-  enum rtx_code unary_op = UNKNOWN;
   machine_mode result_mode = GET_MODE (result);
   rtx op_orig[3] = { op1, op2, op3 };
   rtx op_hi[3];
@@ -229,16 +224,6 @@ fp16_vectorization (enum rtx_code icode,
     {
     case FP16_BINARY:
       n_opts = 2;
-      break;
-
-    case FP16_NEG_BINARY:
-      n_opts = 2;
-      unary_op = NEG;
-      break;
-
-    case FP16_ABS_BINARY:
-      n_opts = 2;
-      unary_op = ABS;
       break;
 
     case FP16_FMA:
@@ -289,8 +274,6 @@ fp16_vectorization (enum rtx_code icode,
   switch (subtype)
     {
     case FP16_BINARY:
-    case FP16_NEG_BINARY:
-    case FP16_ABS_BINARY:
       emit_insn (gen_rtx_SET (result_hi,
 			      gen_rtx_fmt_ee (icode, V4SFmode,
 					      op_hi[0],
@@ -337,16 +320,6 @@ fp16_vectorization (enum rtx_code icode,
 
     default:
       gcc_unreachable ();
-    }
-
-  /* Add any unary operator modifications.  */
-  if (unary_op != UNKNOWN)
-    {
-      emit_insn (gen_rtx_SET (result_hi,
-			      gen_rtx_fmt_e (unary_op, V4SFmode, result_hi)));
-
-      emit_insn (gen_rtx_SET (result_lo,
-			      gen_rtx_fmt_e (unary_op, V4SFmode, result_lo)));
     }
 
   /* Combine the 2 V4SFmode operations into one V8HFmode/V8BFmode vector.  */
