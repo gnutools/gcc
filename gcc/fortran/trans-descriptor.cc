@@ -105,11 +105,12 @@ tree
 gfc_conv_descriptor_data_get (tree desc)
 {
   tree type = TREE_TYPE (desc);
-  if (TREE_CODE (type) == REFERENCE_TYPE)
-    gcc_unreachable ();
+  gcc_assert (TREE_CODE (type) != REFERENCE_TYPE);
 
   tree field = conv_descriptor_data (desc);
-  return fold_convert (GFC_TYPE_ARRAY_DATAPTR_TYPE (type), field);
+  tree target_type = GFC_TYPE_ARRAY_DATAPTR_TYPE (type);
+  tree t = fold_convert (target_type, field);
+  return non_lvalue_loc (input_location, t);
 }
 
 /* This provides WRITE access to the data field.  */
@@ -133,7 +134,7 @@ conv_descriptor_offset (tree desc)
 tree
 gfc_conv_descriptor_offset_get (tree desc)
 {
-  return conv_descriptor_offset (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_offset (desc));
 }
 
 void
@@ -159,7 +160,7 @@ conv_descriptor_dtype (tree desc)
 tree
 gfc_conv_descriptor_dtype_get (tree desc)
 {
-  return conv_descriptor_dtype (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_dtype (desc));
 }
 
 /* Add code to BLOCK setting to VALUE the dtype field of the array descriptor
@@ -186,7 +187,7 @@ conv_descriptor_span (tree desc)
 tree
 gfc_conv_descriptor_span_get (tree desc)
 {
-  return conv_descriptor_span (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_span (desc));
 }
 
 void
@@ -218,7 +219,7 @@ conv_descriptor_rank (tree desc)
 tree
 gfc_conv_descriptor_rank_get (tree desc)
 {
-  return conv_descriptor_rank (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_rank (desc));
 }
 
 /* Add code to BLOCK setting to VALUE the rank of the array descriptor DESC.  */
@@ -262,7 +263,7 @@ conv_descriptor_version (tree desc)
 tree
 gfc_conv_descriptor_version_get (tree desc)
 {
-  return conv_descriptor_version (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_version (desc));
 }
 
 /* Add code to BLOCK setting to VALUE the descriptor DESC's format version.  */
@@ -299,7 +300,7 @@ conv_descriptor_elem_len (tree desc)
 tree
 gfc_conv_descriptor_elem_len_get (tree desc)
 {
-  return conv_descriptor_elem_len (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_elem_len (desc));
 }
 
 /* Add code to BLOCK setting to VALUE the descriptor DESC's size (in bytes) of
@@ -336,7 +337,7 @@ conv_descriptor_type (tree desc)
 tree
 gfc_conv_descriptor_type_get (tree desc)
 {
-  return conv_descriptor_type (desc);
+  return non_lvalue_loc (input_location, conv_descriptor_type (desc));
 }
 
 /* Add code to BLOCK setting to VALUE the type discriminator of the array
@@ -426,7 +427,7 @@ conv_descriptor_dimension (tree desc, tree dim)
 tree
 gfc_conv_descriptor_dimension_get (tree desc, tree dim)
 {
-  return conv_descriptor_dimension (desc, dim);
+  return non_lvalue_loc (input_location, conv_descriptor_dimension (desc, dim));
 }
 
 /* Return the value of the array access information of the (zero-based)
@@ -526,7 +527,7 @@ gfc_conv_descriptor_stride_get (tree desc, tree dim)
 	  || GFC_TYPE_ARRAY_AKIND (type) == GFC_ARRAY_POINTER_CONT))
     return gfc_index_one_node;
 
-  return conv_descriptor_stride (desc, dim);
+  return non_lvalue_loc (input_location, conv_descriptor_stride (desc, dim));
 }
 
 /* Add code to BLOCK setting to VALUE the stride for the (zero-based) dimension
@@ -558,7 +559,7 @@ conv_descriptor_lbound (tree desc, tree dim)
 tree
 gfc_conv_descriptor_lbound_get (tree desc, tree dim)
 {
-  return conv_descriptor_lbound (desc, dim);
+  return non_lvalue_loc (input_location, conv_descriptor_lbound (desc, dim));
 }
 
 /* Add code to BLOCK setting to VALUE the lower bound for the (zero-based)
@@ -590,7 +591,7 @@ conv_descriptor_ubound (tree desc, tree dim)
 tree
 gfc_conv_descriptor_ubound_get (tree desc, tree dim)
 {
-  return conv_descriptor_ubound (desc, dim);
+  return non_lvalue_loc (input_location, conv_descriptor_ubound (desc, dim));
 }
 
 /* Add code to BLOCK setting to VALUE the upper bound for the (zero-based)

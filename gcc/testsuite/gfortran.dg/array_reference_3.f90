@@ -65,7 +65,7 @@ contains
     call ccfis(x)
     if (any(x /= 13)) stop 13
     ! The cfi descriptor’s dim array is referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "cfi_descriptor->dim\\\[idx.\\d+\\\]\\.ubound = _cfi_descriptor->dim\\\[idx.\\d+\\\]\\.extent \\+ \\(cfi_descriptor->dim\\\[idx.\\d+\\\]\\.lbound \\+ -1\\);" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {cfi_descriptor->dim\[idx.\d+\]\.ubound = _cfi_descriptor->dim\[idx.\d+\]\.extent \+ \((?:NON_LVALUE_EXPR <)?cfi_descriptor->dim\[idx.\d+\]\.lbound>? \+ -1\);} 1 "original" } }
   end subroutine check_cfi_dim
   subroutine css(c) bind(c)
     character :: c
@@ -87,7 +87,7 @@ contains
     ptr_x(4) = 16
     if (any(ptr_x /= (/ 0, 0, 0, 16, 0, 0, 0 /))) stop 16
     ! pointers are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(integer\\(kind=4\\) \\*\\) \\(ptr_x\\.data \\+ \\(sizetype\\) \\(\\(ptr_x\\.offset \\+ ptr_x\\.dim\\\[0\\\]\\.stride \\* 4\\) \\* ptr_x\\.span\\)\\) = 16;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(integer\(kind=4\) \*\) \(ptr_x\.data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?ptr_x\.offset>? \+ (?:NON_LVALUE_EXPR <)?ptr_x\.dim\[0\]\.stride>? \* 4\) \* (?:NON_LVALUE_EXPR <)?ptr_x\.span>?\)\) = 16;} 1 "original" } }
   end subroutine check_ptr_elem
   subroutine check_ptr_scalarized
     integer, target :: y(8)
@@ -97,7 +97,7 @@ contains
     ptr_y = 17
     if (any(ptr_y /= 17)) stop 17
     ! pointers are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) D.\\d+ \\+ \\(sizetype\\) \\(\\(S.\\d+ \\* D.\\d+ \\+ D.\\d+\\) \\* ptr_y\\.span\\)\\) = 17;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) D.\d+ \+ \(sizetype\) \(\(S.\d+ \* D.\d+ [+-] D.\d+\) \* (?:NON_LVALUE_EXPR <)?ptr_y\.span>?\)\) = 17;} 1 "original" } }
   end subroutine check_ptr_scalarized
   subroutine check_explicit_shape_elem
     integer :: explicit_shape_x(9)
@@ -129,7 +129,7 @@ contains
     allocatable_x(2) = 20
     if (any(allocatable_x /= (/ 0, 20, 0, 0 /))) stop 20
     ! Allocatable arrays are referenced with array indexing.
-    ! { dg-final { scan-tree-dump-times "\\(\\*\\(integer\\(kind=4\\)\\\[0:\\\] \\* restrict\\) allocatable_x\\.data\\)\\\[allocatable_x\\.offset \\+ 2\\\] = 20;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(integer\(kind=4\)\[0:\] \* restrict\) allocatable_x\.data\)\[(?:NON_LVALUE_EXPR <)?allocatable_x\.offset>? \+ 2\] = 20;} 1 "original" } }
   end subroutine check_allocatable_array_elem
   subroutine check_allocatable_array_scalarized
     integer, allocatable :: allocatable_y(:)
@@ -152,7 +152,7 @@ contains
     call cares(x)
     if (any(x /= (/ 0, 0, 22, 0, 0, 0 /))) stop 22
     ! Assumed rank arrays are referenced with pointer arithmetic.
-    ! { dg-final { scan-tree-dump-times "\\*\\(\\(integer\\(kind=4\\) \\*\\) __tmp_INTEGER_4_rank_1\\.data \\+ \\(sizetype\\) \\(\\(__tmp_INTEGER_4_rank_1\\.offset \\+ __tmp_INTEGER_4_rank_1\\.dim\\\[0\\\]\\.stride \\* 3\\) \\* 4\\)\\) = 22;" 1 "original" } }
+    ! { dg-final { scan-tree-dump-times {\*\(\(integer\(kind=4\) \*\) __tmp_INTEGER_4_rank_1\.data \+ \(sizetype\) \(\((?:NON_LVALUE_EXPR <)?__tmp_INTEGER_4_rank_1\.offset>? \+ (?:NON_LVALUE_EXPR <)?__tmp_INTEGER_4_rank_1\.dim\[0\]\.stride>? \* 3\) \* 4\)\) = 22;} 1 "original" } }
   end subroutine check_assumed_rank_elem
   subroutine carss(assumed_rank_y)
     integer :: assumed_rank_y(..)
