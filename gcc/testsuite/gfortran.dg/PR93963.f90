@@ -194,4 +194,4 @@ end program selr_p
 
 ! Special code for assumed rank - but only if not allocatable/pointer
 ! Thus, expect it only once for subroutine rank_o but not for rank_a or rank_p
-! { dg-final { scan-tree-dump-times "ubound != -1" 1 "original" } }
+! { dg-final { scan-tree-dump-times {(?:NON_LVALUE_EXPR <)?ubound>? != -1} 1 "original" } }
