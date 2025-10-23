@@ -1,3 +1,36 @@
+==================== Branch work223-test, patch #403 ====================
+
+Add hardware support for __bfloat16 on power10.
+
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (FP16_HW): Update to include __bfloat16 on
+	power10 systems.
+	(VFP16_HW): Likewise.
+	(cvt_fp16_to_v4sf_insn): New mode attribute.
+	(FP16_VECTOR4): Likewise.
+	(UNSPEC_FP16_SHIFT_LEFT_32BIT): New UNSPEC.
+	(UNSPEC_CVT_FP16_TO_V4SF): Likewise.
+	(UNSPEC_XXSPLTW_FP16): Likewise.
+	(UNSPEC_XVCVSPBF16_BF): Likewise.
+	(extendbf<mode>2): New insns to convert __bfloat16 to SFmode/DFmode.
+	(xscvdpspn_sf): New insn.
+	(xscvspdpn_sf): Likewise.
+	(<fp16_vector8>_shift_left_32bi): Likewise.
+	(trunc<mode>bf2): New insns to convert SFmode/DFmode to __bfloat16.
+	(vsx_xscvdpspn_sf): New insn.
+	(cvt_fp16_to_v4sf_<mode>): Likewise.
+	(cvt_fp16_to_v4sf_<mode>_le): Likewise.
+	(cvt_fp16_to_v4sf_<mode>_be): Likewise.
+	(dup_<mode>_to_v4sf): Likewise.
+	(xxspltw_<mode): Likewise.
+	(xvcvbf16spn_bf): Likewise.
+	(xvcvspbf16_bf): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW): New macro.
+	(FP16_HW_SCALAR_MODE_P): Add hardware support for __bfloat16 on power10.
+
 ==================== Branch work223-test, patch #402 ====================
 
 Add scalar _Float16 converts.
