@@ -1,3 +1,41 @@
+==================== Branch work223-float, patch #305 ====================
+
+Fix thinko in V8BFmode and V8HFmode constants.
+
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (constant_fp_to_128bit_vector): Get the right
+	encoding for V8BFmode and V8HFmode constants.
+
+==================== Branch work223-float, patch #304 ====================
+
+Rearrange code to make patch submission easier.
+
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (VFP16): Use TARGET_FLOAT16 and not
+	TARGET_FLOAT16_HW.
+	(cvt_fp16_to_v4sf_<mode>): Rearrange insns.
+	(cvt_fp16_to_v4sf_<mode>_le): Likewise.
+	(cvt_fp16_to_v4sf_<mode>_b): Likewise.
+	(dup_<mode>_to_v4s): Likewise.
+	(xxspltw_<mode>): Likewise.
+	(xvcvbf16spn_bf): Likewise.
+	(xvcvspbf16_bf): Likewise.
+
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (mov<mode>_xxspltiw): Add condition.  Use
+	xxlxor to clear register, not xxsplitb for power8.
+	(mov<mode>_internal): Likewise.
+	(vecdup<mode>_const): Likewise.
+
 ==================== Branch work223-float, patch #303 ====================
 
 Move stuff from vsx.md to float16.md.
