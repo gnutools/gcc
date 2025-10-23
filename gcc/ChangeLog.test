@@ -1,37 +1,37 @@
-==================== Branch work223-test, patch #403 ====================
+==================== Branch work223-test, patch #413 ====================
 
-Add hardware support for __bfloat16 on power10.
+Add scalar __bfloat16 converts.
 
 2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
-	* config/rs6000/float16.md (FP16_HW): Update to include __bfloat16 on
-	power10 systems.
-	(VFP16_HW): Likewise.
+	* config/rs6000/float16.md (FP16_HW): Add BFmode.
+	(VFP16_HW): New mode iterator.
 	(cvt_fp16_to_v4sf_insn): New mode attribute.
 	(FP16_VECTOR4): Likewise.
-	(UNSPEC_FP16_SHIFT_LEFT_32BIT): New UNSPEC.
+	(UNSPEC_FP16_SHIFT_LEFT_32BIT): New unspec constant.
 	(UNSPEC_CVT_FP16_TO_V4SF): Likewise.
 	(UNSPEC_XXSPLTW_FP16): Likewise.
 	(UNSPEC_XVCVSPBF16_BF): Likewise.
-	(extendbf<mode>2): New insns to convert __bfloat16 to SFmode/DFmode.
-	(xscvdpspn_sf): New insn.
+	(extendbf<mode>2): New insns to convert between BFmode and
+	SFmode/DFmode.
+	(xscvdpspn_sf): Likewise.
 	(xscvspdpn_sf): Likewise.
-	(<fp16_vector8>_shift_left_32bi): Likewise.
-	(trunc<mode>bf2): New insns to convert SFmode/DFmode to __bfloat16.
-	(vsx_xscvdpspn_sf): New insn.
-	(cvt_fp16_to_v4sf_<mode>): Likewise.
+	(<fp16_vector8>_shift_left_32bit): Likewise.
+	(trunc<mode>bf): Likewise.
+	(vsx_xscvdpspn_sf): Likewise.
+	(cvt_fp16_to_v4sf_<mode): Likewise.
 	(cvt_fp16_to_v4sf_<mode>_le): Likewise.
 	(cvt_fp16_to_v4sf_<mode>_be): Likewise.
-	(dup_<mode>_to_v4sf): Likewise.
-	(xxspltw_<mode): Likewise.
+	(dup_<mode>_to_v4s): Likewise.
+	(xxspltw_<mode>): Likewise.
 	(xvcvbf16spn_bf): Likewise.
 	(xvcvspbf16_bf): Likewise.
 	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW): New macro.
-	(FP16_HW_SCALAR_MODE_P): Add hardware support for __bfloat16 on power10.
+	(FP16_HW_SCALAR_MODE_P): Add BFmode on power10.
 
-==================== Branch work223-test, patch #402 ====================
+==================== Branch work223-test, patch #412 ====================
 
 Add scalar _Float16 converts.
 
@@ -40,20 +40,13 @@ Add scalar _Float16 converts.
 gcc/
 
 	* config/rs6000/float16.md (FP16_HW): New mode iterator.
-	(VFP16_HW): Likewise.
-	(fp16_float_convert): Likewise.
-	(extendhf<mode>2): Add support converting between HFmode and other
-	floating point scalars if we are on power9 or later.
+	(extendhf<mode>2): Add support converting between HFmode and
+	SFmode/DFmoded if we are on power9 or later.
 	(trunc<mode>hf2): Likewise.
-	(extend<FP16_HW:mode><fp16_float_convert:mode>): Likewise.
-	(trunc<fp16_float_convert:mode><FP16_HW:mode>2): Likewise.
-	(float<GPR:mode><FP16_HW:mode>2): Add support converting between HFmode
-	to and from integers.
-	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
-	(fix_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
-	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+	* config/rs6000/rs6000.h (TARGET_FLOAT16_HW): New macro.
+	(FP16_HW_SCALAR_MODE_P): Likewise.
 
-==================== Branch work223-test, patch #401 ====================
+==================== Branch work223-test, patch #411 ====================
 
 Add HF/BF emulation functions to libgcc.
 
@@ -104,7 +97,7 @@ libgcc/
 	supports _Float16 and __bfloat16 types.
 	* configure: Regenerate.
 
-==================== Branch work223-test, patch #400 ====================
+==================== Branch work223-test, patch #410 ====================
 
 Add initial _Float16 and __bfloat16 support.
 
@@ -231,6 +224,11 @@ gcc/
 	(vsx_stxvd2x8_le_<MODE>): Likewise.
 	(vsx_extract_<mode>_store_p9): Likewise.
 	(vsx_extract_<mode>_p8): Likewise.
+
+==================== Branch work223-test, patch #403 was reverted ====================
+==================== Branch work223-test, patch #402 was reverted ====================
+==================== Branch work223-test, patch #401 was reverted ====================
+==================== Branch work223-test, patch #400 was reverted ====================
 
 ==================== Branch work223-test, baseline ====================
 
