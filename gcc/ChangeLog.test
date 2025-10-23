@@ -2,7 +2,7 @@
 
 Add conversions between 16-bit floating point and other scalar modes.
 
-2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -19,9 +19,9 @@ gcc/
 
 ==================== Branch work223-test, patch #413 ====================
 
-Add scalar __bfloat16 converts.
+Add conversions between __bfloat16 and float/double.
 
-2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -52,9 +52,9 @@ gcc/
 
 ==================== Branch work223-test, patch #412 ====================
 
-Add scalar _Float16 converts.
+Add conversions between _Float16 and float/double.
 
-2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -69,7 +69,7 @@ gcc/
 
 Add HF/BF emulation functions to libgcc.
 
-2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 libgcc/
 
@@ -120,7 +120,7 @@ libgcc/
 
 Add initial _Float16 and __bfloat16 support.
 
-2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
