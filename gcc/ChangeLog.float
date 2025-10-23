@@ -1,5 +1,22 @@
 ==================== Branch work223-float, patch #305 ====================
 
+Remove V8BFmode and V8HFmode vector unary operations.
+
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): Remove vector
+	unary operations.
+	(fp16_vectorization): Likewise.
+	(neg<mode>2): Likewise.
+	* config/rs6000/float16.md (abs<mode>2, VFP16 iterator): Likewise.
+	(neg_<fp16_names><mode>3, VFP16 iterator): Likewise.
+	(abs_<fp16_names><mode>3): Likewise.
+	(enum fp16_operation): Likewise.
+
+==================== Branch work223-float, patch #305 ====================
+
 Fix thinko in V8BFmode and V8HFmode constants.
 
 2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
