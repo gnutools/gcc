@@ -344,6 +344,7 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
    || (!TARGET_FLOAT128_TYPE && FLOAT128_IEEE_P (MODE)))
 
 /* Do we have conversion support in hardware for the 16-bit floating point?  */
+#define TARGET_BFLOAT16_HW	(TARGET_BFLOAT16 && TARGET_POWER10)
 #define TARGET_FLOAT16_HW	(TARGET_FLOAT16 && TARGET_POWER9)
 
 /* Is this a valid 16-bit scalar floating point mode?  */
@@ -354,7 +355,8 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 /* Is this a valid 16-bit scalar floating point mode that has hardware
    conversions?  */
 #define FP16_HW_SCALAR_MODE_P(MODE)					\
-  ((MODE) == HFmode && TARGET_FLOAT16_HW)
+  (((MODE) == HFmode && TARGET_FLOAT16_HW)				\
+   || ((MODE) == BFmode && TARGET_BFLOAT16_HW))
 
 /* Is this a valid 16-bit vector floating point mode?  */
 #define FP16_VECTOR_MODE_P(MODE)					\
