@@ -26,7 +26,7 @@
 			    (HF "TARGET_FLOAT16")])
 
 (define_mode_iterator VFP16 [(V8BF "TARGET_BFLOAT16")
-			     (V8HF "TARGET_FLOAT16_HW")])
+			     (V8HF "TARGET_FLOAT16")])
 
 ;; Mode iterator for 16-bit floating point modes on machines with
 ;; hardware support both as a scalar and as a vector.
@@ -83,7 +83,6 @@
    UNSPEC_XVCVSPBF16_BF
    UNSPEC_XVCVSPHP_V8HF
    UNSPEC_XVCVSPBF16_V8BF])
-
 
 ;; _Float16 and __bfloat16 moves
 (define_expand "mov<mode>"
@@ -192,7 +191,6 @@
   "TARGET_FLOAT16_HW"
   "xscvdphp %x0,%x1"
   [(set_attr "type" "fpsimple")])
-
 
 ;; Convert BFmode to SFmode/DFmode.
 ;; 3 instructions are generated:
@@ -304,6 +302,115 @@
   "xscvdpspn %x0,%x1"
   [(set_attr "type" "fp")])
 
+;; Convert the even elements of a vector 16-bit floating point to
+;; V4SFmode.  Deal with little endian vs. big endian element ordering
+;; in identifying which elements are converted.
+
+(define_expand "cvt_fp16_to_v4sf_<mode>"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(match_dup 2)
+		     (match_dup 3)
+		     (match_dup 4)
+		     (match_dup 5)]))))]
+  ""
+{
+  int endian_adjust = WORDS_BIG_ENDIAN ? 0 : 1;
+  operands[2] = GEN_INT (0 + endian_adjust);
+  operands[3] = GEN_INT (2 + endian_adjust);
+  operands[4] = GEN_INT (4 + endian_adjust);
+  operands[5] = GEN_INT (6 + endian_adjust);
+})
+
+(define_insn "*cvt_fp16_to_v4sf_<mode>_le"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(const_int 1)
+		     (const_int 3)
+		     (const_int 5)
+		     (const_int 7)]))))]
+  "!WORDS_BIG_ENDIAN"
+  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+(define_insn "*cvt_fp16_to_v4sf_<mode>_be"
+  [(set (match_operand:V4SF 0 "vsx_register_operand")
+	(float_extend:V4SF
+	 (vec_select:<FP16_VECTOR4>
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (parallel [(const_int 0)
+		     (const_int 2)
+		     (const_int 4)
+		     (const_int 6)]))))]
+  "WORDS_BIG_ENDIAN"
+  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+;; Duplicate and convert a 16-bit floating point scalar to V4SFmode.
+
+(define_insn_and_split "*dup_<mode>_to_v4sf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(vec_duplicate:V4SF
+	 (float_extend:SF
+	  (match_operand:FP16_HW 1 "vsx_register_operand" "wa"))))]
+  ""
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  rtx op0 = operands[0];
+  rtx op1 = operands[1];
+  rtx op0_vfp16 = gen_lowpart (<FP16_VECTOR8>mode, op0);
+
+  emit_insn (gen_xxspltw_<mode> (op0, op1));
+  emit_insn (gen_cvt_fp16_to_v4sf_<fp16_vector8> (op0, op0_vfp16));
+  DONE;
+}
+  [(set_attr "length" "8")
+   (set_attr "type" "vecperm")])
+
+;; Duplicate a HF/BF value so it can be used for xvcvhpspn/xvcvbf16spn.
+;; Because xvcvhpspn/xvcvbf16spn only uses the even elements, we can
+;; use xxspltw instead of vspltw.  This has the advantage that the
+;; register allocator can use any of the 64 VSX registers instead of
+;; being limited to the 32 Altivec registers that VSPLTH would require.
+
+(define_insn "xxspltw_<mode>"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
+		     UNSPEC_XXSPLTW_FP16))]
+  ""
+  "xxspltw %x0,%x1,1"
+  [(set_attr "type" "vecperm")])
+
+;; Convert a bfloat16 floating point scalar that has been splatted to
+;; V4SFmode.
+
+(define_insn "xvcvbf16spn_bf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_CVT_FP16_TO_V4SF))]
+  "TARGET_BFLOAT16_HW"
+  "xvcvbf16spn %x0,%x1"
+  [(set_attr "type" "vecperm")])
+
+;; Convert a V4SFmode vector to a 16-bit floating point scalar.  We
+;; only care about the 2nd V4SFmode element, which is the element we
+;; converted the 16-bit scalar (4th element) to V4SFmode to do the
+;; operation, and converted it back.
+
+(define_insn "xvcvspbf16_bf"
+  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
+	(unspec:BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		   UNSPEC_XVCVSPBF16_BF))]
+  "TARGET_BFLOAT16_HW"
+  "xvcvspbf16 %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
 ;; Convert between HFmode/BFmode and 128-bit binary floating point and
 ;; decimal floating point types.  We use convert_move since some of the
 ;; types might not have valid RTX expanders.  We use DFmode as the
@@ -383,79 +490,6 @@
   emit_insn (gen_fixuns_truncdf<GPR:mode>2 (operands[0], df_tmp));
   DONE;
 })
-
-
-;; Convert the even elements of a vector 16-bit floating point to
-;; V4SFmode.  Deal with little endian vs. big endian element ordering
-;; in identifying which elements are converted.
-
-(define_expand "cvt_fp16_to_v4sf_<mode>"
-  [(set (match_operand:V4SF 0 "vsx_register_operand")
-	(float_extend:V4SF
-	 (vec_select:<FP16_VECTOR4>
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (parallel [(match_dup 2)
-		     (match_dup 3)
-		     (match_dup 4)
-		     (match_dup 5)]))))]
-  ""
-{
-  int endian_adjust = WORDS_BIG_ENDIAN ? 0 : 1;
-  operands[2] = GEN_INT (0 + endian_adjust);
-  operands[3] = GEN_INT (2 + endian_adjust);
-  operands[4] = GEN_INT (4 + endian_adjust);
-  operands[5] = GEN_INT (6 + endian_adjust);
-})
-
-(define_insn "*cvt_fp16_to_v4sf_<mode>_le"
-  [(set (match_operand:V4SF 0 "vsx_register_operand")
-	(float_extend:V4SF
-	 (vec_select:<FP16_VECTOR4>
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (parallel [(const_int 1)
-		     (const_int 3)
-		     (const_int 5)
-		     (const_int 7)]))))]
-  "!WORDS_BIG_ENDIAN"
-  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
-(define_insn "*cvt_fp16_to_v4sf_<mode>_be"
-  [(set (match_operand:V4SF 0 "vsx_register_operand")
-	(float_extend:V4SF
-	 (vec_select:<FP16_VECTOR4>
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (parallel [(const_int 0)
-		     (const_int 2)
-		     (const_int 4)
-		     (const_int 6)]))))]
-  "WORDS_BIG_ENDIAN"
-  "<cvt_fp16_to_v4sf_insn> %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
-;; Duplicate and convert a 16-bit floating point scalar to V4SFmode.
-
-(define_insn_and_split "*dup_<mode>_to_v4sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(vec_duplicate:V4SF
-	 (float_extend:SF
-	  (match_operand:FP16_HW 1 "vsx_register_operand" "wa"))))]
-  ""
-  "#"
-  "&& 1"
-  [(pc)]
-{
-  rtx op0 = operands[0];
-  rtx op1 = operands[1];
-  rtx op0_vfp16 = gen_lowpart (<FP16_VECTOR8>mode, op0);
-
-  emit_insn (gen_xxspltw_<mode> (op0, op1));
-  emit_insn (gen_cvt_fp16_to_v4sf_<fp16_vector8> (op0, op0_vfp16));
-  DONE;
-}
-  [(set_attr "length" "8")
-   (set_attr "type" "vecperm")])
-
 
 ;; Optimize __bfloat16 binary operations.  Unlike _Float16 where we
 ;; have instructions to convert between HFmode and SFmode as scalar
@@ -922,8 +956,6 @@
 		      operands[3], FP16_NFMS);
   DONE;
 })
-
-
 
 ;; If we do multiple __bfloat16 operations, between the first and
 ;; second operation, GCC will want to convert the first operation from
@@ -972,46 +1004,6 @@
   "REGNO (operands[1]) == REGNO (operands[2])
    || peep2_reg_dead_p (1, operands[1])"
   [(set (match_dup 2) (match_dup 1))])
-
-
-;; Duplicate a HF/BF value so it can be used for xvcvhpspn/xvcvbf16spn.
-;; Because xvcvhpspn/xvcvbf16spn only uses the even elements, we can
-;; use xxspltw instead of vspltw.  This has the advantage that the
-;; register allocator can use any of the 64 VSX registers instead of
-;; being limited to the 32 Altivec registers that VSPLTH would require.
-
-(define_insn "xxspltw_<mode>"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
-		     UNSPEC_XXSPLTW_FP16))]
-  ""
-  "xxspltw %x0,%x1,1"
-  [(set_attr "type" "vecperm")])
-
-;; Convert a bfloat16 floating point scalar that has been splatted to
-;; V4SFmode.
-
-(define_insn "xvcvbf16spn_bf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		     UNSPEC_CVT_FP16_TO_V4SF))]
-  "TARGET_BFLOAT16_HW"
-  "xvcvbf16spn %x0,%x1"
-  [(set_attr "type" "vecperm")])
-
-;; Convert a V4SFmode vector to a 16-bit floating point scalar.  We
-;; only care about the 2nd V4SFmode element, which is the element we
-;; converted the 16-bit scalar (4th element) to V4SFmode to do the
-;; operation, and converted it back.
-
-(define_insn "xvcvspbf16_bf"
-  [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
-	(unspec:BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		   UNSPEC_XVCVSPBF16_BF))]
-  "TARGET_BFLOAT16_HW"
-  "xvcvspbf16 %x0,%x1"
-  [(set_attr "type" "vecfloat")])
-
 
 ;; Negate 16-bit floating point by XOR with -0.0.
 
@@ -1109,7 +1101,6 @@
 }
   [(set_attr "type" "veclogical,integer")
    (set_attr "length" "16")])
-
 
 ;; Vector Pack support.
 
