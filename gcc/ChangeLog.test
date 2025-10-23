@@ -1,3 +1,22 @@
+==================== Branch work223-test, patch #414 ====================
+
+Add conversions between 16-bit floating point and other scalar modes.
+
+2025-10-22  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (fp16_float_convert): New mode iterator.
+	(extend<FP16_HW:mode><fp16_float_convert:mode>2): New insns to convert
+	between the 2 16-bit floating point modes and other floating point
+	scalars other than SFmode/DFmode by converting first to DFmode.
+	(trunc<fp16_float_convert:mode><FP16_HW:mode>2): Likewise.
+	(float<GPR:mode><FP16_HW:mode>2): New insns to convert beween the 2
+	16-bit floating point modes and signed/unsigned integers.
+	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
+	(fix_trunc<FP16_HW:mode><GPR:mode>): Likewise.
+	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+
 ==================== Branch work223-test, patch #413 ====================
 
 Add scalar __bfloat16 converts.
