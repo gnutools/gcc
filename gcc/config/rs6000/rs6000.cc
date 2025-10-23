@@ -29122,19 +29122,13 @@ constant_fp_to_128bit_vector (rtx op,
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op);
   long real_words[VECTOR_128BIT_WORDS];
 
-  /* For IEEE 16-bit, the constant doesn't fill the whole 32-bit word, so
-     deal with it here.  */
+  /* For 16-bit floating point, the constant doesn't fill the whole 32-bit
+     word.  Deal with it here, storing the bytes in big endian fashion.  */
   if (FP16_SCALAR_MODE_P (mode))
     {
       real_to_target (real_words, rtype, mode);
-      unsigned char hi = (unsigned char) (real_words[0] >> 8);
-      unsigned char lo = (unsigned char) real_words[0];
-
-      if (!BYTES_BIG_ENDIAN)
-	std::swap (hi, lo);
-
-      info->bytes[0] = hi;
-      info->bytes[1] = lo;
+      info->bytes[byte_num] = (unsigned char) (real_words[0] >> 8);
+      info->bytes[byte_num+1] = (unsigned char) (real_words[0]);
     }
 
   else
