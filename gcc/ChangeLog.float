@@ -1,50 +1,13 @@
-==================== Branch work223-float, patch #311 ====================
+==================== Branch work223-float, patch #312 ====================
 
-Add early clobber.
-
-2025-10-24  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/float16.md (extendbf<mode>): Add early clobber.
-	(trunc<mode>bf2): Likewise.
-
-==================== Branch work223-float, patch #310 ====================
-
-Update bfloat16 conversions.
-
-2025-10-24  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/float16.md (extendbf<mode>2): Update bfloat16
-	conversions.
-	(shift_left_bf): Likewise.
-	(trunc<mode>bf2): Likewise.
-	(shift_right_bf): Likewise.
-
-==================== Branch work223-float, patch #309 ====================
-
-Don't use vector bf16 to vector sf conversions for __bfloat16.
+Add -mno-bfloat16-combine option.
 
 2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
-	* config/rs6000/float16.md (UNSPEC_FP16_SHIFT_LEFT_32BIT): Delete.
-	(UNSPEC_VSLD_BF): New UNSPEC.
-	(UNSPEC_VSRD_BF): Likewise.
-	(extendbf<mode>2): Don't use vector bf16 to vector sf conversions for
-	__bfloat16.
-	(shift_left_bf): Likewise.
-	(xscvspdpn_sf): Likewise.
-	(xscvspdpn_<mode>_bf): Likewise.
-	(<fp16_vector8>_shift_left_32bit): Likewise.
-	(trunc<mode>bf2): Likewise.
-	(vsx_xscvdpspn_sf): Likewise.
-	(shift_right_bf): Likewise.
-	(xscvdpspn_bf_<mode>): Likewise.
-	(bfloat16_binary_op_internal1): Turn off using combine by default.
+	* config/rs6000/float16.md (bfloat16_binary_op_internal1): Add
+	-mbfloat16-combine option.
 	(bfloat16_binary_op_internal2): Likewise.
 	(bfloat16_fma_op_internal1): Likewise.
 	(bfloat16_fma_op_internal2): Likewise.
@@ -55,6 +18,10 @@ gcc/
 	(bfloat16_nfms_op_internal1): Likewise.
 	(bfloat16_nfms_op_internal2): Likewise.
 	* config/rs6000/rs6000.opt (-mbfloat16-combine): New option.
+
+==================== Branch work223-float, patch #311 was reverted ====================
+==================== Branch work223-float, patch #310 was reverted ====================
+==================== Branch work223-float, patch #309 was reverted ====================
 
 ==================== Branch work223-float, patch #308 ====================
 
