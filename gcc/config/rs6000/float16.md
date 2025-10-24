@@ -174,6 +174,106 @@
   [(set_attr "type" "veclogical,vecperm")
    (set_attr "prefixed" "*,yes")])
 
+;; Add logical operations for 16-bit floating point types that are
+;; used for things like negate, abs, and extracting exponents.
+(define_expand "and<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(and:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  ""
+  "")
+
+(define_expand "ior<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (ior:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  ""
+  "")
+
+(define_expand "xor<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (xor:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  ""
+  "")
+
+(define_expand "nor<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(and:FP16
+	 (not:FP16 (match_operand:FP16 1 "gpc_reg_operand"))
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))))]
+  ""
+  "")
+
+(define_expand "andn<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (and:FP16
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))
+	 (match_operand:FP16 1 "gpc_reg_operand")))]
+  ""
+  "")
+
+(define_expand "eqv<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(not:FP16
+	 (xor:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		   (match_operand:FP16 2 "gpc_reg_operand"))))]
+  ""
+  "")
+
+;; Rewrite nand into canonical form
+(define_expand "nand<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(ior:FP16
+	 (not:FP16 (match_operand:FP16 1 "gpc_reg_operand"))
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))))]
+  ""
+  "")
+
+;; The canonical form is to have the negated element first, so we need to
+;; reverse arguments.
+(define_expand "iorn<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(ior:FP16
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))
+	 (match_operand:FP16 1 "gpc_reg_operand")))]
+  ""
+  "")
+
+(define_insn "*bool<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(match_operand:FP16 1 "gpc_reg_operand" "wa,r")
+	  (match_operand:FP16 2 "gpc_reg_operand" "wa,r")]))]
+  ""
+  "@
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+(define_insn "*boolc<mode>3"
+  [(set (match_operand:GPR 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:GPR 3 "boolean_operator"
+	 [(not:GPR (match_operand:GPR 2 "gpc_reg_operand" "wa,r"))
+	  (match_operand:GPR 1 "gpc_reg_operand" "wa,r")]))]
+  ""
+  "@
+   xxl%q3 %x0,%x1,%x0
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+(define_insn "*boolcc<mode>3"
+  [(set (match_operand:GPR 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:GPR 3 "boolean_operator"
+	 [(not:GPR (match_operand:GPR 1 "gpc_reg_operand" "wa,r"))
+	  (not:GPR (match_operand:GPR 2 "gpc_reg_operand" "wa,r"))]))]
+  ""
+  "@
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+
 ;; Convert IEEE 16-bit floating point to/from other floating point modes.
 
 (define_insn "extendhf<mode>2"
