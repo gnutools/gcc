@@ -302,8 +302,8 @@
   [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
 	(float_extend:SFDF
 	 (match_operand:BF 1 "vsx_register_operand" "v")))
-   (clobber (match_scratch:DI 2 "=v"))
-   (clobber (match_scratch:DI 3 "=v"))]
+   (clobber (match_scratch:DI 2 "=&v"))
+   (clobber (match_scratch:DI 3 "=&v"))]
   "TARGET_BFLOAT16_HW"
   "#"
   "&& 1"
@@ -368,8 +368,8 @@
   [(set (match_operand:BF 0 "vsx_register_operand" "=wa")
 	(float_truncate:BF
 	 (match_operand:SFDF 1 "vsx_register_operand" "wa")))
-   (clobber (match_scratch:DI 2 "=v"))
-   (clobber (match_scratch:DI 3 "=v"))]
+   (clobber (match_scratch:DI 2 "=&v"))
+   (clobber (match_scratch:DI 3 "=&v"))]
   "TARGET_BFLOAT16_HW"
   "#"
   "&& 1"
