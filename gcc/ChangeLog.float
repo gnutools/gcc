@@ -1,3 +1,22 @@
+==================== Branch work223-float, patch #313 ====================
+
+Add -mbfloat16-pack, -mbfloat16-vector, and -mfloat16-vector.
+
+2025-10-24  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (fp16_vectorization): Call
+	gen_vec_pack_trunc_v4sf_v8bf instead of gen_vec_pack_trunc_v4sf.
+	* config/rs6000/float16.md (VFP16_HW): Add support for -mbfloat16-pack,
+	-mbfloat16-vector, and -mfloat16-vector.
+	(vec_pack_trunc_v4sf_v8bf): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW_VECTOR): Likewise.
+	(TARGET_FLOAT16_HW_VECTOR): Likewise.
+	* config/rs6000/rs6000.opt (mfloat16-vector): Likewise.
+	(mbfloat16-pack): Likewise.
+	(mbfloat16-vector): Likewise.
+
 ==================== Branch work223-float, patch #312 ====================
 
 Add -mno-bfloat16-combine option.
