@@ -642,6 +642,10 @@ mfloat16
 Target Mask(FLOAT16) Var(rs6000_isa_flags)
 Enable or disable _Float16 support.
 
+mfloat16-vector
+Target Undocumented Var(TARGET_FLOAT16_VECTOR) Init(1) Save
+Enable or disable _Float16 vectorization optimizations
+
 mfloat16-gpr-args
 Target Undocumented Var(TARGET_FLOAT16_GPR_ARGS) Init(0) Save
 Pass and return _Float16 and __bfloat16 in GPR registers.
@@ -653,6 +657,14 @@ Enable or disable __bfloat16 support.
 mbfloat16-combine
 Target Undocumented Var(TARGET_BFLOAT16_COMBINE) Init(1) Save
 Enable or disable __bfloat16 combine optimizations
+
+mbfloat16-pack
+Target Undocumented Var(TARGET_BFLOAT16_PACK) Init(1) Save
+Enable or disable __bfloat16 vector pack optimizations
+
+mbfloat16-vector
+Target Undocumented Var(TARGET_BFLOAT16_VECTOR) Init(1) Save
+Enable or disable __bfloat16 vectorization optimizations
 
 ; Documented parameters
 

@@ -327,7 +327,7 @@ fp16_vectorization (enum rtx_code icode,
     emit_insn (gen_vec_pack_trunc_v4sf_v8hf (result, result_hi, result_lo));
 
   else if (result_mode == V8BFmode)
-    emit_insn (gen_vec_pack_trunc_v4sf (result, result_hi, result_lo));
+    emit_insn (gen_vec_pack_trunc_v4sf_v8bf (result, result_hi, result_lo));
 
   else
     gcc_unreachable ();

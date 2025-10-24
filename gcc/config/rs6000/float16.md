@@ -33,8 +33,8 @@
 (define_mode_iterator FP16_HW [(BF "TARGET_BFLOAT16_HW")
 			       (HF "TARGET_FLOAT16_HW")])
 
-(define_mode_iterator VFP16_HW [(V8BF "TARGET_BFLOAT16_HW")
-				(V8HF "TARGET_FLOAT16_HW")])
+(define_mode_iterator VFP16_HW [(V8BF "TARGET_BFLOAT16_HW_VECTOR")
+				(V8HF "TARGET_FLOAT16_HW_VECTOR")])
 
 ;; Mode iterator for floating point modes other than SF/DFmode that we
 ;; convert to/from _Float16 (HFmode) via DFmode.
@@ -1107,10 +1107,6 @@
 
 ;; Vector Pack support.
 
-;; Unfortunately the machine independent code assumes there is only one
-;; 16-bit floating point type.  So we have to choose whether to support
-;; packing _Float16 or __bfloat16.
-
 (define_expand "vec_pack_trunc_v4sf_v8hf"
   [(match_operand:V8HF 0 "vfloat_operand")
    (match_operand:V4SF 1 "vfloat_operand")
@@ -1126,11 +1122,31 @@
   DONE;
 })
 
-(define_expand "vec_pack_trunc_v4sf"
+(define_expand "vec_pack_trunc_v4sf_v8bf"
   [(match_operand:V8BF 0 "vfloat_operand")
    (match_operand:V4SF 1 "vfloat_operand")
    (match_operand:V4SF 2 "vfloat_operand")]
   "TARGET_BFLOAT16_HW"
+{
+  rtx r1 = gen_reg_rtx (V8BFmode);
+  rtx r2 = gen_reg_rtx (V8BFmode);
+
+  emit_insn (gen_xvcvspbf16_v8bf (r1, operands[1]));
+  emit_insn (gen_xvcvspbf16_v8bf (r2, operands[2]));
+  rs6000_expand_extract_even (operands[0], r1, r2);
+  DONE;
+})
+
+;; Unfortunately the machine independent code assumes there is only one
+;; 16-bit floating point type.  This means we have to choose whether to
+;; support packing _Float16 or __bfloat16.  It looks like __bfloat16 is
+;; more popular, so we choose __bfloat16 to be the default.
+
+(define_expand "vec_pack_trunc_v4sf"
+  [(match_operand:V8BF 0 "vfloat_operand")
+   (match_operand:V4SF 1 "vfloat_operand")
+   (match_operand:V4SF 2 "vfloat_operand")]
+  "TARGET_BFLOAT16_HW && TARGET_BFLOAT16_PACK"
 {
   rtx r1 = gen_reg_rtx (V8BFmode);
   rtx r2 = gen_reg_rtx (V8BFmode);
@@ -1150,7 +1166,7 @@
   "xvcvsphp %x0,%x1"
 [(set_attr "type" "vecfloat")])
 
-;; Used for vector conversion to __bloat16
+;; Used for vector conversion to __bfloat16
 (define_insn "xvcvspbf16_v8bf"
   [(set (match_operand:V8BF 0 "vsx_register_operand" "=wa")
 	(unspec:V8BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
