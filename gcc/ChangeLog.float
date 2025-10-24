@@ -1,3 +1,14 @@
+==================== Branch work223-float, patch #308 ====================
+
+Do not allow non-zero 16-bit floating point constants in easy_altivec_constant.
+
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (easy_altivec_constant): Do not allow non-zero
+	16-bit floating point constants.
+
 ==================== Branch work223-float, patch #307 ====================
 
 Move BFmode and HFmode logical operations to float16.md.
