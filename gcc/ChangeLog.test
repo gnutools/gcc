@@ -1,3 +1,31 @@
+==================== Branch work223-test, patch #415 ====================
+
+Move BFmode and HFmode logical operations to float16.md.
+
+2025-10-23  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (and<mode>3): Move BFmode/HFmode logical
+	operations here from rs6000.md.
+	(ior<mode>): Likewise.
+	(xor<mode>3): Likewise.
+	(nor<mode>3): Likewise.
+	(andn<mode>3): Likewise.
+	(eqv<mode>3): Likewise.
+	(nand<mode>3): Likewise.
+	(iorn<mode>3): Likewise.
+	(bool<mode>3): Likewise.
+	(boolc<mode>3): Likewise.
+	(boolcc<mode>): Likewise.
+	* config/rs6000/rs6000.md (BOOL_128): Likewise.
+	(BOOL_REGS_OUTPUT): Likewise.
+	(BOOL_REGS_OP1): Likewise.
+	(BOOL_REGS_OP2): Likewise.
+	(BOOL_REGS_UNARY): Likewise.
+	* config/rs6000/rs6000.cc (easy_altivec_constant): Do not allow non-zero
+	16-bit floating point constants.
+
 ==================== Branch work223-test, patch #414 ====================
 
 Add conversions between 16-bit floating point and other scalar modes.
