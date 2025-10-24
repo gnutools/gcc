@@ -650,10 +650,6 @@ mbfloat16
 Target Mask(BFLOAT16) Var(rs6000_isa_flags)
 Enable or disable __bfloat16 support.
 
-mbfloat16-combine
-Target Undocumented Var(TARGET_BFLOAT16_COMBINE) Init(0) Save
-Enable or disable __bfloat16 combine optimizations
-
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=
