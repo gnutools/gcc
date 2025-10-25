@@ -1,3 +1,19 @@
+==================== Branch work223-float, patch #314 ====================
+
+Fix issues with -mno-bfloat16-pack.
+
+2025-10-24  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (VFP16_HW2): Fix issues with
+	-mno-bfloat16-pack.
+	(<fp16_names><mode>3): Likewise.
+	(fma<mode>): Likewise.
+	(fms<mode>4): Likewise.
+	(nfma<mode>4): Likewise.
+	(nfms<mode>4): Likewise.
+
 ==================== Branch work223-float, patch #313 ====================
 
 Add -mbfloat16-pack, -mbfloat16-vector, and -mfloat16-vector.
