@@ -81,7 +81,7 @@
 
 ;; UNSPEC constants
 (define_c_enum "unspec"
-  [UNSPEC_FP16_SHIFT_LEFT_32BIT
+  [UNSPEC_VSLD_BF
    UNSPEC_CVT_FP16_TO_V4SF
    UNSPEC_XXSPLTW_FP16
    UNSPEC_XVCVSPBF16_BF
@@ -298,14 +298,27 @@
 
 ;; Convert BFmode to SFmode/DFmode.
 ;; 3 instructions are generated:
-;;	VSPLTH		-- duplicate BFmode into all elements
-;;	XVCVBF16SPN	-- convert even BFmode elements to SFmode
+;;	PLXSD		-- load up shift amount
+;;	VSLD		-- shift BF left 48 bits
 ;;	XSCVSPNDP	-- convert memory format of SFmode to DFmode.
-(define_insn_and_split "extendbf<mode>2"
+
+(define_expand "extendbf<mode>2"
+  [(parallel [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+		   (float_extend:SFDF
+		    (match_operand:BF 1 "altivec_register_operand" "v")))
+	      (use (match_dup 2))
+	      (clobber (match_scratch:DI 3 "=&v"))])]
+  "TARGET_BFLOAT16_HW"
+{
+  operands[2] = force_reg (DImode, GEN_INT (48));
+})
+
+(define_insn_and_split "*extendbf<mode>2_internal"
   [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
 	(float_extend:SFDF
-	 (match_operand:BF 1 "vsx_register_operand" "v")))
-   (clobber (match_scratch:V8BF 2 "=v"))]
+	 (match_operand:BF 1 "altivec_register_operand" "v")))
+   (use (match_operand:DI 2 "altivec_register_operand" "v"))
+   (clobber (match_scratch:DI 3 "=&v"))]
   "TARGET_BFLOAT16_HW"
   "#"
   "&& 1"
@@ -313,59 +326,47 @@
 {
   rtx op0 = operands[0];
   rtx op1 = operands[1];
-  rtx op2_v8bf = operands[2];
+  rtx op2 = operands[2];
+  rtx op3 = operands[2];
 
-  if (GET_CODE (op2_v8bf) == SCRATCH)
-    op2_v8bf = gen_reg_rtx (V8BFmode);
+  if (GET_CODE (op3) == SCRATCH)
+    op3 = gen_reg_rtx (DImode);
 
-  rtx op2_v4sf = gen_lowpart (V4SFmode, op2_v8bf);
+  /* Shift BFmode into the upper 16 bits.  */
+  emit_insn (gen_shift_left_bf (op3, op1, op2));
 
-  /* XXSLDWI -- shift BFmode element into the upper 32 bits.  */
-  emit_insn (gen_v8bf_shift_left_32bit (op2_v8bf, op1));
+  /* XXSLDWI -- shift BFmode element into the upper 16 bits.  */
+  emit_insn (gen_shift_left_bf (op3, op1, op2));
 
-  /* XVCVBF16SPN -- convert even V8BFmode elements to V4SFmode.  */
-  emit_insn (gen_cvt_fp16_to_v4sf_v8bf (op2_v4sf, op2_v8bf));
-
-  /* XSCVSPNDP -- convert single V4SFmode element to DFmode.  */
+  /* XSCVSPDPN -- convert single V4SFmode element to DFmode.  */
   emit_insn (GET_MODE (op0) == SFmode
-	     ? gen_xscvspdpn_sf (op0, op2_v4sf)
-	     : gen_vsx_xscvspdpn (op0, op2_v4sf));
+	     ? gen_xscvspdpn_sf (op0, op3)
+	     : gen_xscvspdpn_df (op0, op3));
 
   DONE;
 }
   [(set_attr "type" "fpsimple")
    (set_attr "length" "12")])
 
-;; Convert a SFmode scalar represented as DFmode to elements 0 and 1 of
-;; V4SFmode.
-(define_insn "xscvdpspn_sf"
-  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
-	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
-			      UNSPEC_VSX_CVSPDP))]
-  "VECTOR_UNIT_VSX_P (SFmode)"
-  "xscvdpspn %x0,%x1"
-  [(set_attr "type" "fp")])
+;; Shift BFmode left
+(define_insn "shift_left_bf"
+  [(set (match_operand:DI 0 "altivec_register_operand" "=v")
+	(unspec:DI [(match_operand:BF 1 "altivec_register_operand" "v")
+		    (match_operand:DI 2 "altivec_register_operand" "v")]
+		   UNSPEC_VSLD_BF))]
+  "TARGET_BFLOAT16"
+  "vsld %0,%1,%2"
+  [(set_attr "type" "vecsimple")])
 
 ;; Convert element 0 of a V4SFmode to scalar SFmode (which on the
 ;; PowerPC uses the DFmode encoding).
-(define_insn "xscvspdpn_sf"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
-	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		   UNSPEC_VSX_CVSPDPN))]
-  "TARGET_XSCVSPDPN"
+(define_insn "xscvspdpn_<mode>"
+  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+	(unspec:SFDF [(match_operand:DI 1 "vsx_register_operand" "wa")]
+		     UNSPEC_VSX_CVSPDPN))]
+  "TARGET_BFLOAT16"
   "xscvspdpn %x0,%x1"
   [(set_attr "type" "fp")])
-
-;; Vector shift left by 32 bits to get the 16-bit floating point value
-;; into the upper 32 bits for the conversion.
-(define_insn "<fp16_vector8>_shift_left_32bit"
-  [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa")
-        (unspec:<FP16_VECTOR8>
-	 [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
-	 UNSPEC_FP16_SHIFT_LEFT_32BIT))]
-  ""
-  "xxsldwi %x0,%x1,%x1,1"
-  [(set_attr "type" "vecperm")])
 
 ;; Convert SFmode/DFmode to BFmode.
 ;; 2 instructions are generated:
@@ -398,7 +399,7 @@
 }
   [(set_attr "type" "fpsimple")])
 
-(define_insn "vsx_xscvdpspn_sf"
+(define_insn "xscvdpspn_sf"
   [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
 	(unspec:V4SF [(match_operand:SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_VSX_CVDPSPN))]
