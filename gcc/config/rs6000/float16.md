@@ -33,8 +33,12 @@
 (define_mode_iterator FP16_HW [(BF "TARGET_BFLOAT16_HW")
 			       (HF "TARGET_FLOAT16_HW")])
 
-(define_mode_iterator VFP16_HW [(V8BF "TARGET_BFLOAT16_HW_VECTOR")
-				(V8HF "TARGET_FLOAT16_HW_VECTOR")])
+(define_mode_iterator VFP16_HW [(V8BF "TARGET_BFLOAT16_HW")
+				(V8HF "TARGET_FLOAT16_HW")])
+
+
+(define_mode_iterator VFP16_HW2 [(V8BF "TARGET_BFLOAT16_HW_VECTOR")
+				 (V8HF "TARGET_FLOAT16_HW_VECTOR")])
 
 ;; Mode iterator for floating point modes other than SF/DFmode that we
 ;; convert to/from _Float16 (HFmode) via DFmode.
@@ -877,10 +881,10 @@
 
 ;; Binary operators being vectorized.
 (define_insn_and_split "<fp16_names><mode>3"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(FP16_BINARY_OP:VFP16_HW
-	 (match_operand:VFP16_HW 1 "vsx_register_operand")
-	 (match_operand:VFP16_HW 2 "vsx_register_operand")))]
+  [(set (match_operand:VFP16_HW2 0 "vsx_register_operand")
+	(FP16_BINARY_OP:VFP16_HW2
+	 (match_operand:VFP16_HW2 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW2 2 "vsx_register_operand")))]
   "can_create_pseudo_p ()"
   "#"
   "&& 1"
@@ -893,11 +897,11 @@
 
 ;; FMA operations being vectorized.
 (define_insn_and_split "fma<mode>4"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(fma:VFP16_HW
-	 (match_operand:VFP16_HW 1 "vsx_register_operand")
-	 (match_operand:VFP16_HW 2 "vsx_register_operand")
-	 (match_operand:VFP16_HW 3 "vsx_register_operand")))]
+  [(set (match_operand:VFP16_HW2 0 "vsx_register_operand")
+	(fma:VFP16_HW2
+	 (match_operand:VFP16_HW2 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW2 2 "vsx_register_operand")
+	 (match_operand:VFP16_HW2 3 "vsx_register_operand")))]
   "can_create_pseudo_p ()"
   "#"
   "&& 1"
@@ -909,12 +913,12 @@
 })
 
 (define_insn_and_split "*fms<mode>4"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(fma:VFP16_HW
-	 (match_operand:VFP16_HW 1 "vsx_register_operand")
-	 (match_operand:VFP16_HW 2 "vsx_register_operand")
-	 (neg:VFP16_HW
-	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  [(set (match_operand:VFP16_HW2 0 "vsx_register_operand")
+	(fma:VFP16_HW2
+	 (match_operand:VFP16_HW2 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW2 2 "vsx_register_operand")
+	 (neg:VFP16_HW2
+	  (match_operand:VFP16_HW2 3 "vsx_register_operand"))))]
   "can_create_pseudo_p ()"
   "#"
   "&& 1"
@@ -926,12 +930,12 @@
 })
 
 (define_insn_and_split "*nfma<mode>4"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(neg:VFP16_HW
-	 (fma:VFP16_HW
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (match_operand:VFP16_HW 2 "vsx_register_operand")
-	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  [(set (match_operand:VFP16_HW2 0 "vsx_register_operand")
+	(neg:VFP16_HW2
+	 (fma:VFP16_HW2
+	  (match_operand:VFP16_HW2 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW2 2 "vsx_register_operand")
+	  (match_operand:VFP16_HW2 3 "vsx_register_operand"))))]
   "can_create_pseudo_p ()"
   "#"
   "&& 1"
@@ -943,13 +947,13 @@
 })
 
 (define_insn_and_split "*nfms<mode>4"
-  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
-	(neg:VFP16_HW
-	 (fma:VFP16_HW
-	  (match_operand:VFP16_HW 1 "vsx_register_operand")
-	  (match_operand:VFP16_HW 2 "vsx_register_operand")
-	  (neg:VFP16_HW
-	   (match_operand:VFP16_HW 3 "vsx_register_operand")))))]
+  [(set (match_operand:VFP16_HW2 0 "vsx_register_operand")
+	(neg:VFP16_HW2
+	 (fma:VFP16_HW2
+	  (match_operand:VFP16_HW2 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW2 2 "vsx_register_operand")
+	  (neg:VFP16_HW2
+	   (match_operand:VFP16_HW2 3 "vsx_register_operand")))))]
   "can_create_pseudo_p ()"
   "#"
   "&& 1"
