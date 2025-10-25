@@ -1,21 +1,4 @@
-==================== Branch work223-float, patch #315 ====================
-
-Just use VSLD to convert bfloat16 to SF/DF.
-
-2025-10-25  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/float16.md (UNSPEC_FP16_SHIFT_LEFT_32BIT): Delete.
-	(UNSPEC_VSLD_BF): New unspec.
-	(extendbf<mode>2): Rewrite to avoid doing xscvspdpnp.
-	(extendbf<mode>2_internal): Likewise.
-	(xscvdpspn_sf): Likewise.
-	(shift_left_bf): Likewise.
-	(xscvspdpn_<mode>): Likewise.
-	("<fp16_vector8>_shift_left_32bit): Likewise.
-	(xscvdpspn_sf): Likewise.
-	* config/rs6000/rs6000.md (-mbfloat16-combine): Default to 0.
+==================== Branch work223-float, patch #315 was reverted ====================
 
 ==================== Branch work223-float, patch #314 ====================
 
