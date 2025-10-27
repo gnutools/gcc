@@ -6517,9 +6517,12 @@ easy_altivec_constant (rtx op, machine_mode mode)
   else if (mode != GET_MODE (op))
     return 0;
 
-  /* V2DI/V2DF was added with VSX.  Only allow 0 and all 1's as easy
-     constants.  */
-  if (mode == V2DFmode)
+  /* V2DI/V2DF was added with VSX.  Only allow 0 and all 1's as easy constants.
+     Likewise, don't handle 16-bit floating point constants here, unless they
+     are 0.0.  */
+  if (mode == V2DFmode
+      || FP16_SCALAR_MODE_P (mode)
+      || FP16_VECTOR_MODE_P (mode))
     return zero_constant (op, mode) ? 8 : 0;
 
   else if (mode == V2DImode)
