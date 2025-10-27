@@ -1896,7 +1896,8 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
 
       if (ALTIVEC_REGNO_P (regno))
 	{
-	  if (GET_MODE_SIZE (mode) < 16 && !reg_addr[mode].scalar_in_vmx_p)
+	  if (GET_MODE_SIZE (mode) < 16 && !reg_addr[mode].scalar_in_vmx_p
+	      && !FP16_SCALAR_MODE_P (mode))
 	    return 0;
 
 	  return ALTIVEC_REGNO_P (last_regno);
@@ -1986,7 +1987,8 @@ static bool
 rs6000_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 {
   if (mode1 == PTImode || mode1 == OOmode || mode1 == XOmode
-      || mode2 == PTImode || mode2 == OOmode || mode2 == XOmode)
+      || mode2 == PTImode || mode2 == OOmode || mode2 == XOmode
+      || FP16_SCALAR_MODE_P (mode1) || FP16_SCALAR_MODE_P (mode2))
     return mode1 == mode2;
 
   if (ALTIVEC_OR_VSX_VECTOR_MODE (mode1))
@@ -2252,6 +2254,8 @@ rs6000_debug_reg_global (void)
     DImode,
     TImode,
     PTImode,
+    BFmode,
+    HFmode,
     SFmode,
     DFmode,
     TFmode,
@@ -2272,6 +2276,8 @@ rs6000_debug_reg_global (void)
     V8SImode,
     V4DImode,
     V2TImode,
+    V8BFmode,
+    V8HFmode,
     V4SFmode,
     V2DFmode,
     V8SFmode,
@@ -2630,8 +2636,14 @@ rs6000_setup_reg_addr_masks (void)
 
       /* SDmode is special in that we want to access it only via REG+REG
 	 addressing on power7 and above, since we want to use the LFIWZX and
-	 STFIWZX instructions to load it.  */
-      bool indexed_only_p = (m == SDmode && TARGET_NO_SDMODE_STACK);
+	 STFIWZX instructions to load it.
+
+	 Never allow offset addressing for 16-bit floating point modes, since
+	 it is expected that 16-bit floating point should always go into the
+	 vector registers and we only have indexed and indirect 16-bit loads to
+	 VSR registers.  */
+      bool indexed_only_p = ((m == SDmode && TARGET_NO_SDMODE_STACK)
+			     || FP16_SCALAR_MODE_P (m));
 
       any_addr_mask = 0;
       for (rc = FIRST_RELOAD_REG_CLASS; rc <= LAST_RELOAD_REG_CLASS; rc++)
@@ -2680,6 +2692,7 @@ rs6000_setup_reg_addr_masks (void)
 		  && !complex_p
 		  && (m != E_DFmode || !TARGET_VSX)
 		  && (m != E_SFmode || !TARGET_P8_VECTOR)
+		  && !FP16_SCALAR_MODE_P (m)
 		  && !small_int_vsx_p)
 		{
 		  addr_mask |= RELOAD_REG_PRE_INCDEC;
@@ -2896,18 +2909,24 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[V16QImode] = VECTOR_ALTIVEC;
       rs6000_vector_align[V4SImode] = align32;
       rs6000_vector_align[V8HImode] = align32;
+      rs6000_vector_align[V8HFmode] = align32;
+      rs6000_vector_align[V8BFmode] = align32;
       rs6000_vector_align[V16QImode] = align32;
 
       if (TARGET_VSX)
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_VSX;
 	  rs6000_vector_mem[V8HImode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
 	  rs6000_vector_mem[V16QImode] = VECTOR_VSX;
 	}
       else
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V8HImode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V16QImode] = VECTOR_ALTIVEC;
 	}
     }
@@ -2925,6 +2944,20 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[V1TImode]
 	= (TARGET_P8_VECTOR) ? VECTOR_P8_VECTOR : VECTOR_NONE;
       rs6000_vector_align[V1TImode] = 128;
+    }
+
+  /* _Float16 support.  */
+  if (TARGET_FLOAT16)
+    {
+      rs6000_vector_mem[HFmode] = VECTOR_VSX;
+      rs6000_vector_align[HFmode] = 16;
+    }
+
+  /* _bfloat16 support.  */
+  if (TARGET_BFLOAT16)
+    {
+      rs6000_vector_mem[BFmode] = VECTOR_VSX;
+      rs6000_vector_align[BFmode] = 16;
     }
 
   /* DFmode, see if we want to use the VSX unit.  Memory is handled
@@ -3008,6 +3041,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V16QImode].reload_load  = CODE_FOR_reload_v16qi_di_load;
 	  reg_addr[V8HImode].reload_store  = CODE_FOR_reload_v8hi_di_store;
 	  reg_addr[V8HImode].reload_load   = CODE_FOR_reload_v8hi_di_load;
+	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_di_store;
+	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_di_load;
+	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_di_store;
+	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_di_load;
 	  reg_addr[V4SImode].reload_store  = CODE_FOR_reload_v4si_di_store;
 	  reg_addr[V4SImode].reload_load   = CODE_FOR_reload_v4si_di_load;
 	  reg_addr[V2DImode].reload_store  = CODE_FOR_reload_v2di_di_store;
@@ -3037,6 +3074,18 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_di_load;
 	    }
 
+	  if (TARGET_FLOAT16)
+	    {
+	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_di_store;
+	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
+	    }
+
+	  if (TARGET_BFLOAT16)
+	    {
+	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_di_store;
+	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_di_load;
+	    }
+
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
 	     available.  */
 	  if (TARGET_NO_SDMODE_STACK)
@@ -3059,6 +3108,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv2di;
 	      reg_addr[V4SFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4sf;
 	      reg_addr[V4SImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4si;
+	      reg_addr[V8BFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8bf;
+	      reg_addr[V8HFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hf;
 	      reg_addr[V8HImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hi;
 	      reg_addr[V16QImode].reload_gpr_vsx = CODE_FOR_reload_gpr_from_vsxv16qi;
 	      reg_addr[SFmode].reload_gpr_vsx    = CODE_FOR_reload_gpr_from_vsxsf;
@@ -3069,6 +3120,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv2di;
 	      reg_addr[V4SFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4sf;
 	      reg_addr[V4SImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4si;
+	      reg_addr[V8BFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8bf;
+	      reg_addr[V8HFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hf;
 	      reg_addr[V8HImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hi;
 	      reg_addr[V16QImode].reload_vsx_gpr = CODE_FOR_reload_vsx_from_gprv16qi;
 	      reg_addr[SFmode].reload_vsx_gpr    = CODE_FOR_reload_vsx_from_gprsf;
@@ -3106,6 +3159,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V2DImode].reload_load   = CODE_FOR_reload_v2di_si_load;
 	  reg_addr[V1TImode].reload_store  = CODE_FOR_reload_v1ti_si_store;
 	  reg_addr[V1TImode].reload_load   = CODE_FOR_reload_v1ti_si_load;
+	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_si_store;
+	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_si_load;
+	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_si_store;
+	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_si_load;
 	  reg_addr[V4SFmode].reload_store  = CODE_FOR_reload_v4sf_si_store;
 	  reg_addr[V4SFmode].reload_load   = CODE_FOR_reload_v4sf_si_load;
 	  reg_addr[V2DFmode].reload_store  = CODE_FOR_reload_v2df_si_store;
@@ -3127,6 +3184,18 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	    {
 	      reg_addr[TFmode].reload_store = CODE_FOR_reload_tf_si_store;
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_si_load;
+	    }
+
+	  if (TARGET_FLOAT16)
+	    {
+	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_si_store;
+	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
+	    }
+
+	  if (TARGET_BFLOAT16)
+	    {
+	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_si_store;
+	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_si_load;
 	    }
 
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
@@ -3866,6 +3935,23 @@ rs6000_option_override_internal (bool global_init_p)
 	  rs6000_isa_flags &= ~OPTION_MASK_VSX;
 	  rs6000_isa_flags_explicit |= OPTION_MASK_VSX;
 	}
+    }
+
+  /* -mfloat16 and -mbfloat16 needs power8 at a minimum in order to load up
+      16-bit values into vector registers via loads/stores from GPRs and then
+      using direct moves.  */
+  if (TARGET_FLOAT16 && !TARGET_POWER8)
+    {
+      rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
+      if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
+	error ("%qs requires at least %qs", "-mfloat16", "-mcpu=power8");
+    }
+
+  if (TARGET_BFLOAT16 && !TARGET_POWER8)
+    {
+      rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
+      if (rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16)
+	error ("%qs requires at least %qs", "-mbfloat16", "-mcpu=power8");
     }
 
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
@@ -6559,11 +6645,16 @@ xxspltib_constant_p (rtx op,
   /* Handle (vec_duplicate <constant>).  */
   if (GET_CODE (op) == VEC_DUPLICATE)
     {
+      element = XEXP (op, 0);
+
+      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
+      if (mode == V8BFmode || mode == V8HFmode)
+	return element == CONST0_RTX (GET_MODE_INNER (mode));
+
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
 
-      element = XEXP (op, 0);
       if (!CONST_INT_P (element))
 	return false;
 
@@ -6575,6 +6666,20 @@ xxspltib_constant_p (rtx op,
   /* Handle (const_vector [...]).  */
   else if (GET_CODE (op) == CONST_VECTOR)
     {
+      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
+      if (mode == V8BFmode || mode == V8HFmode)
+	{
+	  if (op == CONST0_RTX (mode))
+	    return true;
+
+	  rtx zero = CONST0_RTX (GET_MODE_INNER (mode));
+	  for (i = 0; i < nunits; i++)
+	    if (CONST_VECTOR_ELT (op, i) != zero)
+	      return false;
+
+	  return true;
+	}
+
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
@@ -6791,6 +6896,8 @@ output_vec_const_move (rtx *operands)
 	  return "vspltisw %0,%1";
 
 	case E_V8HImode:
+	case E_V8HFmode:
+	case E_V8BFmode:
 	  return "vspltish %0,%1";
 
 	case E_V16QImode:
@@ -7019,6 +7126,15 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
+  /* Special case splats of 16-bit floating point.  */
+  if (all_same && FP16_VECTOR_MODE_P (mode))
+    {
+      rtx op0 = force_reg (GET_MODE_INNER (mode), XVECEXP (vals, 0, 0));
+      rtx dup = gen_rtx_VEC_DUPLICATE (mode, op0);
+      emit_insn (gen_rtx_SET (target, dup));
+      return;
+    }
+						     
   /* Special case initializing vector short/char that are splats if we are on
      64-bit systems with direct move.  */
   if (all_same && TARGET_DIRECT_MOVE_64BIT
@@ -7082,7 +7198,9 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
-  if (TARGET_DIRECT_MOVE && (mode == V16QImode || mode == V8HImode))
+  if (TARGET_DIRECT_MOVE
+      && (mode == V16QImode || mode == V8HImode || mode == V8HFmode
+	  || mode == V8BFmode))
     {
       rtx op[16];
       /* Force the values into word_mode registers.  */
@@ -8657,6 +8775,8 @@ reg_offset_addressing_ok_p (machine_mode mode)
     {
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -8674,6 +8794,13 @@ reg_offset_addressing_ok_p (machine_mode mode)
       if (VECTOR_MEM_ALTIVEC_OR_VSX_P (mode))
 	return mode_supports_dq_form (mode);
       break;
+
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+    case E_BFmode:
+    case E_HFmode:
+      return false;
 
       /* The vector pair/quad types support offset addressing if the
 	 underlying vectors support offset addressing.  */
@@ -8965,6 +9092,13 @@ rs6000_legitimate_offset_address_p (machine_mode mode, rtx x,
   extra = 0;
   switch (mode)
     {
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+    case E_BFmode:
+    case E_HFmode:
+      return false;
+
     case E_DFmode:
     case E_DDmode:
     case E_DImode:
@@ -9066,6 +9200,11 @@ macho_lo_sum_memory_operand (rtx x, machine_mode mode)
 static bool
 legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
 {
+      /* For 16-bit floating point types, do not allow offset addressing, since
+	 it is assumed that most of the use will be in vector registers, and we
+	 only have reg+reg addressing for 16-bit modes.  */
+  if (FP16_SCALAR_MODE_P (mode))
+    return false;
   if (GET_CODE (x) != LO_SUM)
     return false;
   if (!REG_P (XEXP (x, 0)))
@@ -10762,6 +10901,8 @@ rs6000_const_vec (machine_mode mode)
       subparts = 4;
       break;
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
       subparts = 8;
       break;
     case E_V16QImode:
@@ -11217,6 +11358,8 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
 
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -12658,6 +12801,9 @@ rs6000_secondary_reload_simple_move (enum rs6000_reg_type to_type,
       && ((to_type == GPR_REG_TYPE && from_type == VSX_REG_TYPE)
 	  || (to_type == VSX_REG_TYPE && from_type == GPR_REG_TYPE)))
     {
+      if (FP16_SCALAR_MODE_P (mode))
+	return true;
+
       if (TARGET_POWERPC64)
 	{
 	  /* ISA 2.07: MTVSRD or MVFVSRD.  */
@@ -13445,6 +13591,11 @@ rs6000_preferred_reload_class (rtx x, enum reg_class rclass)
 	  || mode_supports_dq_form (mode))
 	return rclass;
 
+      /* IEEE 16-bit and bfloat16 don't support offset addressing, but they can
+	 go in any floating point/vector register.  */
+      if (FP16_SCALAR_MODE_P (mode))
+	return rclass;
+
       /* If this is a scalar floating point value and we don't have D-form
 	 addressing, prefer the traditional floating point registers so that we
 	 can use D-form (register+offset) addressing.  */
@@ -13673,6 +13824,9 @@ rs6000_can_change_mode_class (machine_mode from,
 {
   unsigned from_size = GET_MODE_SIZE (from);
   unsigned to_size = GET_MODE_SIZE (to);
+
+  if (FP16_SCALAR_MODE_P (from) || FP16_SCALAR_MODE_P (to))
+    return from_size == to_size;
 
   if (from_size != to_size)
     {
@@ -22960,7 +23114,7 @@ rs6000_load_constant_and_splat (machine_mode mode, REAL_VALUE_TYPE dconst)
 {
   rtx reg;
 
-  if (mode == SFmode || mode == DFmode)
+  if (mode == SFmode || mode == DFmode || FP16_SCALAR_MODE_P (mode))
     {
       rtx d = const_double_from_real_value (dconst, mode);
       reg = force_reg (mode, d);
@@ -24287,6 +24441,8 @@ rs6000_scalar_mode_supported_p (scalar_mode mode)
     return default_decimal_float_supported_p ();
   else if (TARGET_FLOAT128_TYPE && (mode == KFmode || mode == IFmode))
     return true;
+  else if (FP16_SCALAR_MODE_P (mode))
+    return true;
   else
     return default_scalar_mode_supported_p (mode);
 }
@@ -24338,6 +24494,9 @@ rs6000_floatn_mode (int n, bool extended)
     {
       switch (n)
 	{
+	case 16:
+	  return TARGET_FLOAT16 ? SFmode : opt_scalar_float_mode ();
+
 	case 32:
 	  return DFmode;
 
@@ -24359,6 +24518,9 @@ rs6000_floatn_mode (int n, bool extended)
     {
       switch (n)
 	{
+	case 16:
+	  return TARGET_FLOAT16 ? HFmode : opt_scalar_float_mode ();
+
 	case 32:
 	  return SFmode;
 
@@ -24463,6 +24625,7 @@ struct rs6000_opt_mask {
 static struct rs6000_opt_mask const rs6000_opt_masks[] =
 {
   { "altivec",			OPTION_MASK_ALTIVEC,		false, true  },
+  { "bfloat16",			OPTION_MASK_BFLOAT16,		false, true  },
   { "block-ops-unaligned-vsx",	OPTION_MASK_BLOCK_OPS_UNALIGNED_VSX,
 								false, true  },
   { "block-ops-vector-pair",	OPTION_MASK_BLOCK_OPS_VECTOR_PAIR,
@@ -24478,6 +24641,7 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "fprnd",			OPTION_MASK_FPRND,		false, true  },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
+  { "float16",			OPTION_MASK_FLOAT16,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
   { "mfcrf",			OPTION_MASK_MFCRF,		false, true  },
   { "mfpgpr",			0,				false, true  },
@@ -28956,24 +29120,37 @@ constant_fp_to_128bit_vector (rtx op,
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op);
   long real_words[VECTOR_128BIT_WORDS];
 
-  /* Make sure we don't overflow the real_words array and that it is
-     filled completely.  */
-  gcc_assert (num_words <= VECTOR_128BIT_WORDS && (bitsize % 32) == 0);
-
-  real_to_target (real_words, rtype, mode);
-
-  /* Iterate over each 32-bit word in the floating point constant.  The
-     real_to_target function puts out words in target endian fashion.  We need
-     to arrange the order so that the bytes are written in big endian order.  */
-  for (unsigned num = 0; num < num_words; num++)
+  /* For 16-bit floating point, the constant doesn't fill the whole 32-bit
+     word.  Deal with it here, storing the bytes in big endian fashion.  */
+  if (FP16_SCALAR_MODE_P (mode))
     {
-      unsigned endian_num = (BYTES_BIG_ENDIAN
-			     ? num
-			     : num_words - 1 - num);
+      real_to_target (real_words, rtype, mode);
+      info->bytes[byte_num] = (unsigned char) (real_words[0] >> 8);
+      info->bytes[byte_num+1] = (unsigned char) (real_words[0]);
+    }
 
-      unsigned uvalue = real_words[endian_num];
-      for (int shift = 32 - 8; shift >= 0; shift -= 8)
-	info->bytes[byte_num++] = (uvalue >> shift) & 0xff;
+  else
+    {
+      /* Make sure we don't overflow the real_words array and that it is filled
+	 completely.  */
+      gcc_assert (num_words <= VECTOR_128BIT_WORDS && (bitsize % 32) == 0);
+
+      real_to_target (real_words, rtype, mode);
+
+      /* Iterate over each 32-bit word in the floating point constant.  The
+	 real_to_target function puts out words in target endian fashion.  We
+	 need to arrange the order so that the bytes are written in big endian
+	 order.  */
+      for (unsigned num = 0; num < num_words; num++)
+	{
+	  unsigned endian_num = (BYTES_BIG_ENDIAN
+				 ? num
+				 : num_words - 1 - num);
+
+	  unsigned uvalue = real_words[endian_num];
+	  for (int shift = 32 - 8; shift >= 0; shift -= 8)
+	    info->bytes[byte_num++] = (uvalue >> shift) & 0xff;
+	}
     }
 
   /* Mark that this constant involves floating point.  */
@@ -29012,6 +29189,7 @@ vec_const_128bit_to_bytes (rtx op,
     return false;
 
   /* Set up the bits.  */
+  info->mode = mode;
   switch (GET_CODE (op))
     {
       /* Integer constants, default to double word.  */
@@ -29238,6 +29416,10 @@ constant_generates_xxspltiw (vec_const_128bit_type *vsx_const)
 {
   if (!TARGET_SPLAT_WORD_CONSTANT || !TARGET_PREFIXED || !TARGET_VSX)
     return 0;
+
+  /* HFmode/BFmode constants can always use XXSPLTIW.  */
+  if (FP16_SCALAR_MODE_P (vsx_const->mode))
+    return 1;
 
   if (!vsx_const->all_words_same)
     return 0;
