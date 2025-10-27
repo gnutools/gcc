@@ -88,6 +88,15 @@
 /* For now, don't provide an embedded version of ISA 2.07.  Do not set power8
    fusion here, instead set it in rs6000.cc if we are tuning for a power8
    system.  */
+
+/* In the future consider adding OPTION_MASK_BFLOAT16 and OPTION_MASK_FLOAT16
+   when the 16-bit floating support is less experimental.  ISA 2.7 (power8) is
+   the minimum ISA that can support 16-bit point floating point because we need
+   direct move to load 16-bit values into floating point/vector registers from
+   GPRs.  ISA 3.0 (power9) adds the ability to load/store 16-bit values
+   directly to floating point/vector registers, and hardware instructions to
+   convert between _Float16 and float.  ISA 3.1 (power10) adds instructions to
+   convert between __bfloat16 and float vector types.  */
 #define ISA_2_7_MASKS_SERVER	(ISA_2_6_MASKS_SERVER			\
 				 | OPTION_MASK_P8_VECTOR		\
 				 | OPTION_MASK_CRYPTO			\
@@ -102,7 +111,6 @@
 /* Add ISEL back into ISA 3.0, since it is supposed to be a win.  Do not add
    FLOAT128_HW here until we are ready to make -mfloat128 on by default.  */
 #define ISA_3_0_MASKS_SERVER	((ISA_2_7_MASKS_SERVER			\
-				  /* | OPTION_MASK_FLOAT16 */		\
 				  | OPTION_MASK_ISEL			\
 				  | OPTION_MASK_MODULO			\
 				  | OPTION_MASK_P9_MINMAX		\
@@ -114,7 +122,6 @@
    performance was degraded by it.  */
 #define OTHER_POWER10_MASKS	(OPTION_MASK_MMA			\
 				 | OPTION_MASK_PCREL			\
-				 /* | OPTION_MASK_BFLOAT16 */		\
 				 /* | OPTION_MASK_PCREL_OPT */		\
 				 | OPTION_MASK_PREFIXED)
 
@@ -154,8 +161,12 @@
 #endif
 
 /* Mask of all options to set the default isa flags based on -mcpu=<xxx>.  */
+
+/* In the future if 16-bit floating point is enabled by default for ISA 2.7
+   (power8), add OPTION_MASK_FLOAT16 and OPTION_MASK_BFLOAT16 to
+   POWERPC_MASKS.  */
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
-				 | OPTION_MASK_BFLOAT16			\
+				 /* | OPTION_MASK_BFLOAT16 */		\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_DFP			\
@@ -163,6 +174,7 @@
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
+				 /* | OPTION_MASK_FLOAT16 */		\
 				 | OPTION_MASK_FPRND			\
 				 | OPTION_MASK_P10_FUSION		\
 				 | OPTION_MASK_HTM			\
