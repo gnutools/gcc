@@ -601,11 +601,6 @@
   if (TARGET_VSX && op == CONST0_RTX (mode))
     return 1;
 
-  /* Power9 needs to load HFmode constants from memory, Power10 can use
-     XXSPLTIW.  */
-  if (mode == HFmode && !TARGET_POWER10)
-    return 0;
-
   /* Constants that can be generated with ISA 3.1 instructions are easy.  */
   vec_const_128bit_type vsx_const;
   if (TARGET_POWER10 && vec_const_128bit_to_bytes (op, mode, &vsx_const))
@@ -2171,24 +2166,3 @@
   (and (match_code "subreg")
        (match_test "subreg_lowpart_offset (mode, GET_MODE (SUBREG_REG (op)))
 		    == SUBREG_BYTE (op)")))
-
-;; Return 1 if this is a 16-bit floating point constant that can be
-;; loaded with XXSPLTIW or is 0.0 that can be loaded with XXSPLTIB.
-(define_predicate "fp16_xxspltiw_constant"
-  (match_code "const_double")
-{
-  if (!FP16_SCALAR_MODE_P (mode))
-    return false;
-
-  if (op == CONST0_RTX (mode))
-    return true;
-
-  if (!TARGET_PREFIXED)
-    return false;
-
-  vec_const_128bit_type vsx_const;
-  if (!vec_const_128bit_to_bytes (op, mode, &vsx_const))
-    return false;
-
-  return constant_generates_xxspltiw (&vsx_const);
-})
