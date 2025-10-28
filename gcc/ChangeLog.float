@@ -1,3 +1,52 @@
+==================== Branch work223-float, patch #318 ====================
+
+Use TARGET_FLOAT16_HW as a condition instead of TARGET_P9_VECTOR.
+
+2025-10-27  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (xvcvsphp_v8hf): Use TARGET_FLOAT16_HW as a
+	condition instead of TARGET_P9_VECTOR.
+
+==================== Branch work223-float, patch #317 ====================
+
+Reaarange code to match future patch submission.
+
+2025-10-27  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (neg<mode>2): Move code around to match
+	future patch submission.
+	(abs<mode>2): Likewise.
+	(nabs<mode>2): Likewise.
+	(and<mode>3): Likewise.
+	(ior<mode>3): Likewise.
+	(xor<mode>3): Likewise.
+	(nor<mode>3): Likewise.
+	(andn<mode>3): Likewise.
+	(eqv<mode>3): Likewise.
+	(nand<mode>3"): Likewise.
+	(iorn<mode>3): Likewise.
+	(bool<mode>3): Likewise.
+	(boolc<mode>3): Likewise.
+	(boolcc<mode>3): Likewise.
+
+==================== Branch work223-float, patch #316 ====================
+
+Update comments about making -mbfloat16 and -mfloat16 default.
+
+2025-10-27  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (ISA_2_7_MASKS_SERVER): Update comments
+	about making -mbfloat16 and -mfloat16 default.
+	(ISA_3_0_MASKS_SERVER): Likewise.
+	(OTHER_POWER10_MASKS): Likewise.
+	(POWERPC_MASKS): Likewise.
+
 ==================== Branch work223-float, patch #315 was reverted ====================
 
 ==================== Branch work223-float, patch #314 ====================
