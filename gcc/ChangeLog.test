@@ -1,3 +1,40 @@
+==================== Branch work223-test, patch #426 ====================
+
+Add 16-bit floating point vectorization.
+
+2025-10-27  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add float16.o.
+	* config/rs6000/float16.cc: New file to add 16-bit floating point
+	vectorization.
+	* config/rs6000/float16.md: (FP16_BINARY_OP): New mode iterator.
+	(fp16_names): New mode attribute.
+	(UNSPEC_XVCVSPHP_V8HF): New unspec.
+	(UNSPEC_XVCVSPBF16_V8BF): Likewise.
+	(<fp16_names><mode>): New insns to support vectorization of 16-bit
+	floating point.
+	(fma<mode>4): Likewise.
+	(fms<mode>4): Likewise.
+	(nfma<mode>): Likewise.
+	(nfms<mode>4): Likewise.
+	(vec_pack_trunc_v4sf_v8hf): Likewise.
+	(vec_pack_trunc_v4sf_v8bf): Likewise.
+	(vec_pack_trunc_v4sf): Likewise.
+	(xvcvsphp_v8hf): Likewise.
+	(xvcvspbf16_v8bf): Likewise.
+	(vec_unpacks_hi_v8hf): Likewise.
+	(vec_unpacks_lo_v8hf): Likewise.
+	(xvcvhpsp_v8hf): Likewise.
+	(vec_unpacks_hi_v8bf): Likewise.
+	(vec_unpacks_lo_v8bf): Likewise.
+	(xvcvbf16spn_v8bf): Likewise.
+	* config/rs6000/rs6000-protos.h (enum fp16_operation): New enumeration
+	for vectorizing 16-bit floating point.
+	(fp16_vectorization): New declaration.
+	* config/rs6000/t-rs6000 (float16.o): Add build rules.
+
 ==================== Branch work223-test, patch #425 ====================
 
 Add BF/HF neg, abs operands and logical insns.
