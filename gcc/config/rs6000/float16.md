@@ -1171,7 +1171,7 @@
   [(set (match_operand:V8HF 0 "vsx_register_operand" "=wa")
 	(unspec:V8HF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
 		     UNSPEC_XVCVSPHP_V8HF))]
-  "TARGET_P9_VECTOR"
+  "TARGET_FLOAT16_HW"
   "xvcvsphp %x0,%x1"
 [(set_attr "type" "vecfloat")])
 
