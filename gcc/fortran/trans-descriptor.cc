@@ -98,8 +98,8 @@ gfc_conv_descriptor_data_set (stmtblock_t *block, tree desc, tree value)
 }
 
 
-tree
-gfc_conv_descriptor_offset (tree desc)
+static tree
+conv_descriptor_offset (tree desc)
 {
   tree field = gfc_get_descriptor_field (desc, OFFSET_FIELD);
   gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
@@ -109,13 +109,13 @@ gfc_conv_descriptor_offset (tree desc)
 tree
 gfc_conv_descriptor_offset_get (tree desc)
 {
-  return gfc_conv_descriptor_offset (desc);
+  return conv_descriptor_offset (desc);
 }
 
 void
 gfc_conv_descriptor_offset_set (stmtblock_t *block, tree desc, tree value)
 {
-  tree t = gfc_conv_descriptor_offset (desc);
+  tree t = conv_descriptor_offset (desc);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
