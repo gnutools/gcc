@@ -1,3 +1,14 @@
+==================== Branch work223-float, patch #321 ====================
+
+Fix HFmode and BFmode logical operations.
+
+2025-11-01  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (boolc<mode>3): Use FP16 mode, not GPR.
+	(boolcc<mode>3): Likewise.
+
 ==================== Branch work223-float, patch #320 ====================
 
 Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
