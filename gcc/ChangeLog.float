@@ -1,13 +1,15 @@
 ==================== Branch work223-float, patch #320 ====================
 
-Add --with-powerpc-16bit-floating-point.
+Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
 
 2025-10-31  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
 	* config.gcc (powerpc*-*-*): Add support for the configuration option
-	--with-powerpc-16bit-floating-point.
+	--with-powerpc-float16 and --with-powerpc-float16-disable-warning.
+	* config/rs6000/rs6000-call.cc (init_cumulative_args): Likewise.
+	(rs6000_function_arg): Likewise.
 	* config/rs6000/rs6000-cpus.def (TARGET_16BIT_FLOATING_POINT): Likewise.
 	(ISA_2_7_MASKS_SERVER): Likewise.
 	(POWERPC_MASKS): Likewise.
