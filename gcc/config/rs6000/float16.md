@@ -675,22 +675,33 @@
 
 ;; ANDC, IORC, and EQV insns.
 (define_insn "*boolc<mode>3"
-  [(set (match_operand:GPR 0 "gpc_reg_operand" "=wa,r")
-	(match_operator:GPR 3 "boolean_operator"
-	 [(not:GPR (match_operand:GPR 2 "gpc_reg_operand" "wa,r"))
-	  (match_operand:GPR 1 "gpc_reg_operand" "wa,r")]))]
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))
+	  (match_operand:FP16 1 "gpc_reg_operand" "wa,r")]))]
   ""
   "@
-   xxl%q3 %x0,%x1,%x0
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+(define_insn "*boolc<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(match_operand:FP16 1 "gpc_reg_operand" "wa,r")
+	  (not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))]))]
+  ""
+  "@
+   xxl%q3 %x0,%x1,%x2
    %q3 %0,%1,%2"
   [(set_attr "type" "veclogical,logical")])
 
 ;; NOR and NAND insns.
 (define_insn "*boolcc<mode>3"
-  [(set (match_operand:GPR 0 "gpc_reg_operand" "=wa,r")
-	(match_operator:GPR 3 "boolean_operator"
-	 [(not:GPR (match_operand:GPR 1 "gpc_reg_operand" "wa,r"))
-	  (not:GPR (match_operand:GPR 2 "gpc_reg_operand" "wa,r"))]))]
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(not:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,r"))
+	  (not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))]))]
   ""
   "@
    xxl%q3 %x0,%x1,%x2
