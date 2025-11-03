@@ -763,11 +763,15 @@ rs6000_init_builtins (void)
   /* __bfloat16 support.  */
   if (TARGET_BFLOAT16)
     {
-      bfloat16_type_node = make_node (REAL_TYPE);
-      TYPE_PRECISION (bfloat16_type_node) = 16;
-      SET_TYPE_MODE (bfloat16_type_node, BFmode);
-      layout_type (bfloat16_type_node);
-      t = build_qualified_type (bfloat16_type_node, TYPE_QUAL_CONST);
+      if (!bfloat16_type_node)
+	{
+	  bfloat16_type_node = make_node (REAL_TYPE);
+	  TYPE_PRECISION (bfloat16_type_node) = 16;
+	  SET_TYPE_MODE (bfloat16_type_node, BFmode);
+	  layout_type (bfloat16_type_node);
+	  t = build_qualified_type (bfloat16_type_node, TYPE_QUAL_CONST);
+	}
+
       lang_hooks.types.register_builtin_type (bfloat16_type_node,
 					      "__bfloat16");
     }

@@ -50,6 +50,7 @@ FLOAT_MODE (HF, 2, ieee_half_format);
 
 /* Explicit bfloat16 floating point.  */
 FLOAT_MODE (BF, 2, arm_bfloat_half_format);
+ADJUST_FLOAT_FORMAT (BF, &arm_bfloat_half_format);
 
 /* Add any extra modes needed to represent the condition code.
 
