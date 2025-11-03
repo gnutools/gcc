@@ -343,26 +343,6 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
    || ((MODE) == TDmode)						\
    || (!TARGET_FLOAT128_TYPE && FLOAT128_IEEE_P (MODE)))
 
-/* Do we have conversion support in hardware for the 16-bit floating point?  */
-#define TARGET_BFLOAT16_HW	(TARGET_BFLOAT16 && TARGET_POWER10)
-#define TARGET_FLOAT16_HW	(TARGET_FLOAT16 && TARGET_POWER9)
-
-/* Is this a valid 16-bit scalar floating point mode?  */
-#define FP16_SCALAR_MODE_P(MODE)					\
-  (((MODE) == HFmode && TARGET_FLOAT16)					\
-   || ((MODE) == BFmode && TARGET_BFLOAT16))
-
-/* Is this a valid 16-bit scalar floating point mode that has hardware
-   conversions?  */
-#define FP16_HW_SCALAR_MODE_P(MODE)					\
-  (((MODE) == HFmode && TARGET_FLOAT16_HW)				\
-   || ((MODE) == BFmode && TARGET_BFLOAT16_HW))
-
-/* Is this a valid 16-bit vector floating point mode?  */
-#define FP16_VECTOR_MODE_P(MODE)					\
-  (((MODE) == V8HFmode && TARGET_FLOAT16)				\
-   || ((MODE) == V8BFmode && TARGET_BFLOAT16))
-
 /* Return true for floating point that does not use a vector register.  */
 #define SCALAR_FLOAT_MODE_NOT_VECTOR_P(MODE)				\
   (SCALAR_FLOAT_MODE_P (MODE) && !FLOAT128_VECTOR_P (MODE))
@@ -1011,8 +991,6 @@ enum data_align { align_abi, align_opt, align_both };
 #define ALTIVEC_VECTOR_MODE(MODE)					\
   ((MODE) == V16QImode							\
    || (MODE) == V8HImode						\
-   || (MODE) == V8HFmode						\
-   || (MODE) == V8BFmode						\
    || (MODE) == V4SFmode						\
    || (MODE) == V4SImode						\
    || VECTOR_ALIGNMENT_P (MODE))
