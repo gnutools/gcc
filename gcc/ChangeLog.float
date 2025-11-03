@@ -1,3 +1,16 @@
+==================== Branch work223-float, patch #322 ====================
+
+Add changes from future patch submission.
+
+2025-11-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-builtin.cc (rs6000_init_builtins): Only
+	initialize bfloat16_type_node only if it hasn't already been
+	initialized.
+	* config/rs6000/rs6000-modes.def (BFmode): Use ADJUST_FLOAT_FORMAT.
+
 ==================== Branch work223-float, patch #321 ====================
 
 Fix HFmode and BFmode logical operations.
