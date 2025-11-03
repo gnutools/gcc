@@ -2272,6 +2272,8 @@ rs6000_debug_reg_global (void)
     V8SImode,
     V4DImode,
     V2TImode,
+    V8BFmode,
+    V8HFmode,
     V4SFmode,
     V2DFmode,
     V8SFmode,
@@ -2896,18 +2898,24 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[V16QImode] = VECTOR_ALTIVEC;
       rs6000_vector_align[V4SImode] = align32;
       rs6000_vector_align[V8HImode] = align32;
+      rs6000_vector_align[V8HFmode] = align32;
+      rs6000_vector_align[V8BFmode] = align32;
       rs6000_vector_align[V16QImode] = align32;
 
       if (TARGET_VSX)
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_VSX;
 	  rs6000_vector_mem[V8HImode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
 	  rs6000_vector_mem[V16QImode] = VECTOR_VSX;
 	}
       else
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V8HImode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8HFmode] = VECTOR_ALTIVEC;
+	  rs6000_vector_mem[V8BFmode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V16QImode] = VECTOR_ALTIVEC;
 	}
     }
@@ -3008,6 +3016,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V16QImode].reload_load  = CODE_FOR_reload_v16qi_di_load;
 	  reg_addr[V8HImode].reload_store  = CODE_FOR_reload_v8hi_di_store;
 	  reg_addr[V8HImode].reload_load   = CODE_FOR_reload_v8hi_di_load;
+	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_di_store;
+	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_di_load;
+	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_di_store;
+	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_di_load;
 	  reg_addr[V4SImode].reload_store  = CODE_FOR_reload_v4si_di_store;
 	  reg_addr[V4SImode].reload_load   = CODE_FOR_reload_v4si_di_load;
 	  reg_addr[V2DImode].reload_store  = CODE_FOR_reload_v2di_di_store;
@@ -3059,6 +3071,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv2di;
 	      reg_addr[V4SFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4sf;
 	      reg_addr[V4SImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4si;
+	      reg_addr[V8BFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8bf;
+	      reg_addr[V8HFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hf;
 	      reg_addr[V8HImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hi;
 	      reg_addr[V16QImode].reload_gpr_vsx = CODE_FOR_reload_gpr_from_vsxv16qi;
 	      reg_addr[SFmode].reload_gpr_vsx    = CODE_FOR_reload_gpr_from_vsxsf;
@@ -3069,6 +3083,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv2di;
 	      reg_addr[V4SFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4sf;
 	      reg_addr[V4SImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4si;
+	      reg_addr[V8BFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8bf;
+	      reg_addr[V8HFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hf;
 	      reg_addr[V8HImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hi;
 	      reg_addr[V16QImode].reload_vsx_gpr = CODE_FOR_reload_vsx_from_gprv16qi;
 	      reg_addr[SFmode].reload_vsx_gpr    = CODE_FOR_reload_vsx_from_gprsf;
@@ -3106,6 +3122,10 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V2DImode].reload_load   = CODE_FOR_reload_v2di_si_load;
 	  reg_addr[V1TImode].reload_store  = CODE_FOR_reload_v1ti_si_store;
 	  reg_addr[V1TImode].reload_load   = CODE_FOR_reload_v1ti_si_load;
+	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_si_store;
+	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_si_load;
+	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_si_store;
+	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_si_load;
 	  reg_addr[V4SFmode].reload_store  = CODE_FOR_reload_v4sf_si_store;
 	  reg_addr[V4SFmode].reload_load   = CODE_FOR_reload_v4sf_si_load;
 	  reg_addr[V2DFmode].reload_store  = CODE_FOR_reload_v2df_si_store;
@@ -6559,6 +6579,12 @@ xxspltib_constant_p (rtx op,
   /* Handle (vec_duplicate <constant>).  */
   if (GET_CODE (op) == VEC_DUPLICATE)
     {
+      element = XEXP (op, 0);
+
+      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
+      if (mode == V8BFmode || mode == V8HFmode)
+	return element == CONST0_RTX (GET_MODE_INNER (mode));
+
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
@@ -6575,6 +6601,20 @@ xxspltib_constant_p (rtx op,
   /* Handle (const_vector [...]).  */
   else if (GET_CODE (op) == CONST_VECTOR)
     {
+      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
+      if (mode == V8BFmode || mode == V8HFmode)
+	{
+	  if (op == CONST0_RTX (mode))
+	    return true;
+
+	  rtx zero = CONST0_RTX (GET_MODE_INNER (mode));
+	  for (i = 0; i < nunits; i++)
+	    if (CONST_VECTOR_ELT (op, i) != zero)
+	      return false;
+
+	  return true;
+	}
+
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
@@ -6791,6 +6831,8 @@ output_vec_const_move (rtx *operands)
 	  return "vspltisw %0,%1";
 
 	case E_V8HImode:
+	case E_V8HFmode:
+	case E_V8BFmode:
 	  return "vspltish %0,%1";
 
 	case E_V16QImode:
@@ -7082,7 +7124,9 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
-  if (TARGET_DIRECT_MOVE && (mode == V16QImode || mode == V8HImode))
+  if (TARGET_DIRECT_MOVE
+      && (mode == V16QImode || mode == V8HImode || mode == V8HFmode
+	  || mode == V8BFmode))
     {
       rtx op[16];
       /* Force the values into word_mode registers.  */
@@ -8657,6 +8701,8 @@ reg_offset_addressing_ok_p (machine_mode mode)
     {
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -10762,6 +10808,8 @@ rs6000_const_vec (machine_mode mode)
       subparts = 4;
       break;
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
       subparts = 8;
       break;
     case E_V16QImode:
@@ -11217,6 +11265,8 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
 
     case E_V16QImode:
     case E_V8HImode:
+    case E_V8HFmode:
+    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
