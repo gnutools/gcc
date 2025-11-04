@@ -258,6 +258,19 @@ extern bool vec_const_128bit_to_bytes (rtx, machine_mode,
 extern unsigned constant_generates_lxvkq (vec_const_128bit_type *);
 extern unsigned constant_generates_xxspltiw (vec_const_128bit_type *);
 extern unsigned constant_generates_xxspltidp (vec_const_128bit_type *);
+
+/* From float16.cc.  */
+/* Optimize bfloat16 and float16 operations.  */
+enum fp16_operation {
+  FP16_BINARY,				/* Bfloat16/float16 binary op.  */
+  FP16_FMA,				/* (a * b) + c.  */
+  FP16_FMS,				/* (a * b) - c.  */
+  FP16_NFMA,				/* - ((a * b) + c).  */
+  FP16_NFMS				/* - ((a * b) - c).  */
+};
+
+extern void fp16_vectorization (enum rtx_code, rtx, rtx, rtx, rtx,
+				enum fp16_operation);
 #endif /* RTX_CODE */
 
 #ifdef TREE_CODE
