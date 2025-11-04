@@ -1,3 +1,16 @@
+==================== Branch work223-test, patch #430 patch #441 ====================
+
+Tell user if we have hardware support for 16-bit floating point.
+
+2025-11-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros); Define
+	__BFLOAT16_HW__ if we have hardware support for __bflot16 conversions.
+	Define __FLOAT16_HW__ if we have hardware support for _Float16
+	conversions.
+
 ==================== Branch work223-test, patch #430 patch #440 ====================
 
 Add __bfloat16 optimizations.
