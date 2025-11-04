@@ -1,3 +1,15 @@
+==================== Branch work223-float, patch #323 ====================
+
+Add changes from future patch submission.
+
+2025-11-03  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): Move to be
+	after fp16_vectorization.
+	* config/rs6000/rs6000-protos.h (bfloat16_operation_as_v4sf): Likewise.
+
 ==================== Branch work223-float, patch #322 ====================
 
 Add changes from future patch submission.
