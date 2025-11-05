@@ -1,3 +1,39 @@
+==================== Branch work223-float, patch #324 ====================
+
+Eliminate -mbfloat16, just use -mfloat16.
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (FP16): Use TARGET_FLOAT16 instead of
+	TARGET_BFLOAT16.
+	(VFP16): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Likewise.
+	(rs6000_init_builtins): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_opt_masks): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW): Likewise.
+	(FP16_SCALAR_MODE_P): Likewise.
+	(FP16_VECTOR_MODE_P): Likewise.
+	* config/rs6000/rs6000.md (BOOL_128): Use TARGET_ALTIVEC for V8HFmode
+	and V8BFmode.
+	* config/rs6000/rs6000.opt (-mbfloat): Delete.
+	(-mfloat16-gpr-args): Reword.
+
+libgcc/
+
+	* config.host (powerpc*-*-linux*): Delete -mbfloat16 support, just use
+	-mfloat16.
+	* config/rs6000/t-float16: Likewise.
+	* configure.ac (powerpc*-*-linux*): Likewise.
+	* configure: Regenerate.
+	* config/rs6000/t-bfloat16: Delete.
+	* config/rs6000/t-both-fp16: Likewise.
+
 ==================== Branch work223-float, patch #323 ====================
 
 Add changes from future patch submission.
