@@ -1,3 +1,15 @@
+==================== Branch work223-float, patch #325 ====================
+
+Eliminate -mbfloat16 #2
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (TARGET_16BIT_FLOATING_POINT): Delete
+	OPTION_MASK_BFLOAT16.
+	(POWERPC_MASKS): Likewise.
+
 ==================== Branch work223-float, patch #324 ====================
 
 Eliminate -mbfloat16, just use -mfloat16.
