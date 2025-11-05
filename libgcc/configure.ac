@@ -476,15 +476,6 @@ powerpc*-*-linux*)
     [libgcc_cv_powerpc_float16=yes],
     [libgcc_cv_powerpc_float16=no])])
   CFLAGS="$saved_CFLAGS"
-
-  CFLAGS="$CFLAGS -mbfloat16 -Wno-psabi"
-  AC_CACHE_CHECK([whether the PowerPC can build __bfloat16 libraries],
-		 [libgcc_cv_powerpc_bfloat16],
-		 [AC_COMPILE_IFELSE(
-    [AC_LANG_SOURCE([__bfloat16 addbf16 (__bfloat16 a, __bfloat16 b) { return a + b; }])],
-    [libgcc_cv_powerpc_bfloat16=yes],
-    [libgcc_cv_powerpc_bfloat16=no])])
-  CFLAGS="$saved_CFLAGS"
 esac
 
 # Collect host-machine-specific information.

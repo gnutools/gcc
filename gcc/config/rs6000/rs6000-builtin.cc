@@ -493,7 +493,7 @@ const char *rs6000_type_string (tree type_node)
     return "_Float128";
   else if (type_node == float16_type_node)
     return "_Float16";
-  else if (TARGET_BFLOAT16 && type_node == bfloat16_type_node)
+  else if (TARGET_FLOAT16 && type_node == bfloat16_type_node)
     return "__bfloat16";
   else if (type_node == vector_pair_type_node)
     return "__vector_pair";
@@ -761,7 +761,7 @@ rs6000_init_builtins (void)
     ieee128_float_type_node = NULL_TREE;
 
   /* __bfloat16 support.  */
-  if (TARGET_BFLOAT16)
+  if (TARGET_FLOAT16)
     {
       if (!bfloat16_type_node)
 	{

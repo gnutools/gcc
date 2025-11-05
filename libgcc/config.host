@@ -1306,14 +1306,6 @@ powerpc*-*-linux*)
 		tmake_file="${tmake_file} rs6000/t-float16"
 	fi
 
-	if test $libgcc_cv_powerpc_bfloat16 = yes; then
-		tmake_file="${tmake_file} rs6000/t-bfloat16"
-
-		if test $libgcc_cv_powerpc_bfloat16 = yes; then
-			tmake_file="${tmake_file} rs6000/t-both-fp16"
-		fi
-	fi
-
 	extra_parts="$extra_parts ecrti.o ecrtn.o ncrti.o ncrtn.o"
 	md_unwind_header=rs6000/linux-unwind.h
 	;;

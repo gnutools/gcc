@@ -2946,17 +2946,12 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_align[V1TImode] = 128;
     }
 
-  /* _Float16 support.  */
+  /* _Float16 and __bfloat16 support.  */
   if (TARGET_FLOAT16)
     {
       rs6000_vector_mem[HFmode] = VECTOR_VSX;
-      rs6000_vector_align[HFmode] = 16;
-    }
-
-  /* _bfloat16 support.  */
-  if (TARGET_BFLOAT16)
-    {
       rs6000_vector_mem[BFmode] = VECTOR_VSX;
+      rs6000_vector_align[HFmode] = 16;
       rs6000_vector_align[BFmode] = 16;
     }
 
@@ -3077,12 +3072,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  if (TARGET_FLOAT16)
 	    {
 	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_di_store;
-	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
-	    }
-
-	  if (TARGET_BFLOAT16)
-	    {
 	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_di_store;
+	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
 	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_di_load;
 	    }
 
@@ -3189,12 +3180,8 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  if (TARGET_FLOAT16)
 	    {
 	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_si_store;
-	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
-	    }
-
-	  if (TARGET_BFLOAT16)
-	    {
 	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_si_store;
+	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
 	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_si_load;
 	    }
 
@@ -3937,21 +3924,14 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
-  /* -mfloat16 and -mbfloat16 needs power8 at a minimum in order to load up
-      16-bit values into vector registers via loads/stores from GPRs and then
-      using direct moves.  */
+  /* -mfloat16 needs power8 at a minimum in order to load up 16-bit values into
+      vector registers via loads/stores from GPRs and then using direct
+      moves.  */
   if (TARGET_FLOAT16 && !TARGET_POWER8)
     {
       rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
       if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
 	error ("%qs requires at least %qs", "-mfloat16", "-mcpu=power8");
-    }
-
-  if (TARGET_BFLOAT16 && !TARGET_POWER8)
-    {
-      rs6000_isa_flags &= ~OPTION_MASK_BFLOAT16;
-      if (rs6000_isa_flags_explicit & OPTION_MASK_BFLOAT16)
-	error ("%qs requires at least %qs", "-mbfloat16", "-mcpu=power8");
     }
 
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
@@ -24630,7 +24610,6 @@ struct rs6000_opt_mask {
 static struct rs6000_opt_mask const rs6000_opt_masks[] =
 {
   { "altivec",			OPTION_MASK_ALTIVEC,		false, true  },
-  { "bfloat16",			OPTION_MASK_BFLOAT16,		false, true  },
   { "block-ops-unaligned-vsx",	OPTION_MASK_BLOCK_OPS_UNALIGNED_VSX,
 								false, true  },
   { "block-ops-vector-pair",	OPTION_MASK_BLOCK_OPS_VECTOR_PAIR,

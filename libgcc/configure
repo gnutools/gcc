@@ -5305,27 +5305,6 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $libgcc_cv_powerpc_float16" >&5
 $as_echo "$libgcc_cv_powerpc_float16" >&6; }
   CFLAGS="$saved_CFLAGS"
-
-  CFLAGS="$CFLAGS -mbfloat16 -Wno-psabi"
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the PowerPC can build __bfloat16 libraries" >&5
-$as_echo_n "checking whether the PowerPC can build __bfloat16 libraries... " >&6; }
-if ${libgcc_cv_powerpc_bfloat16+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-__bfloat16 addbf16 (__bfloat16 a, __bfloat16 b) { return a + b; }
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  libgcc_cv_powerpc_bfloat16=yes
-else
-  libgcc_cv_powerpc_bfloat16=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $libgcc_cv_powerpc_bfloat16" >&5
-$as_echo "$libgcc_cv_powerpc_bfloat16" >&6; }
-  CFLAGS="$saved_CFLAGS"
 esac
 
 # Collect host-machine-specific information.

@@ -22,10 +22,10 @@
 
 ;; Mode iterator for 16-bit floating point modes both as a scalar and
 ;; as a vector.
-(define_mode_iterator FP16 [(BF "TARGET_BFLOAT16")
+(define_mode_iterator FP16 [(BF "TARGET_FLOAT16")
 			    (HF "TARGET_FLOAT16")])
 
-(define_mode_iterator VFP16 [(V8BF "TARGET_BFLOAT16")
+(define_mode_iterator VFP16 [(V8BF "TARGET_FLOAT16")
 			     (V8HF "TARGET_FLOAT16")])
 
 ;; Mode iterator for 16-bit floating point modes on machines with
