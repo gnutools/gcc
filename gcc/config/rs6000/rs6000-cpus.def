@@ -88,8 +88,7 @@
 /* Determine whether to enable 16-bit floating point types on power8 systems
    and above.  */
 #if POWERPC_FLOAT16_DEFAULT
-#define TARGET_16BIT_FLOATING_POINT	(OPTION_MASK_BFLOAT16		\
-					 | OPTION_MASK_FLOAT16)
+#define TARGET_16BIT_FLOATING_POINT	OPTION_MASK_FLOAT16
 
 #else
 #define TARGET_16BIT_FLOATING_POINT	0
@@ -164,7 +163,6 @@
 
 /* Mask of all options to set the default isa flags based on -mcpu=<xxx>.  */
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
-				 | OPTION_MASK_BFLOAT16			\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_DFP			\
