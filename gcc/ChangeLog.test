@@ -1,3 +1,13 @@
+==================== Branch work223-test, patch #430 patch #462 ====================
+
+Document -mfloat16.
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mfloat16.
+
 ==================== Branch work223-test, patch #430 patch #461 ====================
 
 Tell user if we have hardware support for 16-bit floating point.
