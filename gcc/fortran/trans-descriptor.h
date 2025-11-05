@@ -32,8 +32,8 @@ tree gfc_conv_descriptor_rank_get (tree);
 tree gfc_conv_descriptor_type_get (tree);
 tree gfc_conv_descriptor_span_get (tree);
 
-tree gfc_conv_descriptor_dimension_get (tree desc, tree dim);
-tree gfc_conv_descriptor_dimension_get (tree desc, int dim);
+tree gfc_conv_descriptor_dimension_get (tree, tree);
+tree gfc_conv_descriptor_dimension_get (tree, int);
 tree gfc_conv_descriptor_stride_get (tree, tree);
 tree gfc_conv_descriptor_lbound_get (tree, tree);
 tree gfc_conv_descriptor_ubound_get (tree, tree);
