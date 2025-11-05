@@ -1,3 +1,13 @@
+==================== Branch work223-float, patch #326 ====================
+
+Document -mfloat16.
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mfloat16.
+
 ==================== Branch work223-float, patch #325 ====================
 
 Eliminate -mbfloat16 #2
