@@ -1,8 +1,8 @@
 # _Float16 library support
 
 fp16_funcs	= eqhf2 extendhfdf2 extendhfsf2 \
-		  fixhfdi  fixhfsi fixunshfdi fixunshfsi \
-		  floatdihf floatsihf floatundihf floatunsihf \
+		  fixhfsi  fixhfdi fixhfti fixunshfsi fixunshfdi fixunshfti \
+		  floatsihf floatdihf floattihf floatunsihf floatundihf floatuntihf \
 		  truncdfhf2 truncsfhf2
 
 fp16_src	= $(addprefix $(srcdir)/soft-fp/,$(addsuffix .c,$(fp16_funcs)))
