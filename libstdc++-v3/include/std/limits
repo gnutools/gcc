@@ -2067,16 +2067,9 @@ __glibcxx_float_n(128)
       quiet_NaN() _GLIBCXX_USE_NOEXCEPT
       { return __gnu_cxx::__bfloat16_t(__builtin_nanf("")); }
 
-#ifdef _ARCH_PPC
-      static _GLIBCXX_CONSTEXPR __gnu_cxx::__bfloat16_t
-      signaling_NaN() _GLIBCXX_USE_NOEXCEPT
-      { return __gnu_cxx::__bfloat16_t(__builtin_nansf("")); }
-
-#else
       static _GLIBCXX_CONSTEXPR __gnu_cxx::__bfloat16_t
       signaling_NaN() _GLIBCXX_USE_NOEXCEPT
       { return __builtin_nansf16b(""); }
-#endif
 
       static _GLIBCXX_CONSTEXPR __gnu_cxx::__bfloat16_t
       denorm_min() _GLIBCXX_USE_NOEXCEPT
