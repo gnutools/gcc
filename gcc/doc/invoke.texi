@@ -1367,7 +1367,7 @@ See RS/6000 and PowerPC Options.
 -mstack-protector-guard=@var{guard} -mstack-protector-guard-reg=@var{reg}
 -mstack-protector-guard-offset=@var{offset} -mprefixed -mno-prefixed
 -mpcrel -mno-pcrel -mmma -mno-mmma -mrop-protect -mno-rop-protect
--mprivileged -mno-privileged -mfloat16 -mno-float16}
+-mprivileged -mno-privileged}
 
 @emph{RX Options} (@ref{RX Options})
 @gccoptlist{-m64bit-doubles  -m32bit-doubles  -fpu  -nofpu
@@ -33063,40 +33063,6 @@ Generate (do not generate) code that will run in privileged state.
 @itemx -mno-block-ops-unaligned-vsx
 Generate (do not generate) unaligned vsx loads and stores for
 inline expansion of @code{memcpy} and @code{memmove}.
-
-@opindex mfloat16
-@opindex mno-float16
-@item -mfloat16
-@itemx -mno-float16
-Enable (do not enable) the 16-bit floating point types,
-@code{_Float16} and @code{__bfloat16}.  If you use the
-@option{-mfloat16} option, you must use at least the
-@option{-mcpu=power8} option or later.
-
-The @code{_Float16} type uses the IEEE 754 half precision format (1
-sign bit, 5 exponent bits, and 10 explcit mantissa bits, plus an
-implicit mantissa bi).  If you use the @option{-mcpu=power9} option or
-later, the PowerPC GCC compiler will generate inline instructions for
-@code{_Float16} conversions.  If you use the @option{-Ofast
--mcpu=power9} options, the GCC compiler will automatically vectorize
-some loops using @code{_Float16} arrays.
-
-The @code{__bfloat16} type uses the Google brain 16-bit format (1 sign
-bit, 8 exponent bits, 7 explicit mantissa bits, plus an implicit
-mantissa bit).  If you use the @option{-mcpu=power10} option or later,
-the PowerPC GCC compiler will generate inline instructions for
-@code{__bfloat16} conversions.  If you use the @option{-Ofast
--mcpu=power10} options, the GCC compiler will automatically vectorize
-some loops using @code{__bfloat16} arrays.
-
-At the current time the @option{-mfloat16} option is experimental, and
-it is not enabled by default.
-
-If you pass a 16-bit floating point value to a function or have a
-function returning a 16-bit floating point value, the PowerPC GCC
-compiler will issue a warning that the calling sequence may change in
-the future.  The @option{-Wno-psabi} option will turn off this
-warning.
 
 @item --param rs6000-vect-unroll-limit=
 The vectorizer will check with target information to determine whether it
