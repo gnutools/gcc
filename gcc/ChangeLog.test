@@ -1,41 +1,8 @@
-==================== Branch work223-test, patch #430 patch #464 ====================
-
-Add conversions between _Float16 and __int128_t and __uint128_t.
-
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
-
-libgcc/
-
-	* config/rs6000/t-float16 (fp16_funcs): Add __int128_t and __uint128_t
-	conversions.
-
-==================== Branch work223-test, patch #430 patch #463 ====================
-
-Note that __bfloat16 and _Float16 are defined in libgcc.
-
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/rs6000-modes.df (BFmode): Initially define format as 0.
-	* config/rs6000/rs6000.cc (rs6000_libgcc_floating_mode_supported_p):
-	Return true for HFmode and BFmode if -mfloat16.
-
-==================== Branch work223-test, patch #430 patch #462 ====================
-
-Document -mfloat16.
-
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mfloat16.
-
-==================== Branch work223-test, patch #430 patch #461 ====================
+==================== Branch work223-test, patch #430 patch #479 ====================
 
 Tell user if we have hardware support for 16-bit floating point.
 
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -44,41 +11,11 @@ gcc/
 	Define __FLOAT16_HW__ if we have hardware support for _Float16
 	conversions.
 
-==================== Branch work223-test, patch #430 patch #460 ====================
-
-Add __bfloat16 optimizations.
-
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): New function to
-	add __bfloat16 optimizations.
-	* config/rs6000/float16.md (VFP16): New mode iterator.
-	(bfloat16_binary_op_internal1): Add optimizations for __bfloat16.
-	(bfloat16_binary_op_internal2): Likewise.
-	(bfloat16_fma_internal1): Likewise.
-	(bfloat16_fma_internal2): Likewise.
-	(bfloat16_fms_internal1): Likewise.
-	(bfloat16_fms_internal2): Likewise.
-	(bfloat16_nfma_internal1): Likewise.
-	(bfloat16_nfma_internal2): Likewise.
-	(bfloat16_nfms_internal1): Likewise.
-	(bfloat16_nfms_internal2): Likewise.
-	(bfloat16_nfms_internal3): Likewise.
-	(__bfloat16 peephole): New peephole.
-	* config/rs6000/predicates.md (fp16_reg_or_constant_operand): New
-	predicate.
-	(bfloat16_v4sf_operand): Likewise.
-	(bfloat16_bf_operand): Likewise.
-	* config/rs6000/rs60000-protos.h (bfloat16_operation_as_v4sf): New
-	declaration.
-
-==================== Branch work223-test, patch #430 patch #459 ====================
+==================== Branch work223-test, patch #430 patch #478 ====================
 
 Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
 
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -90,9 +27,7 @@ gcc/
 	(ISA_2_7_MASKS_SERVER): Likewise.
 	(POWERPC_MASKS): Likewise.
 
-==================== Branch work223-test, patch #430 patch #458 was reverted ====================
-
-==================== Branch work223-test, patch #430 patch #457 ====================
+==================== Branch work223-test, patch #430 patch #477 ====================
 
 Add 16-bit floating point vectorization.
 
@@ -129,11 +64,11 @@ gcc/
 	(fp16_vectorization): New declaration.
 	* config/rs6000/t-rs6000 (float16.o): Add build rules.
 
-==================== Branch work223-test, patch #430 patch #456 ====================
+==================== Branch work223-test, patch #430 patch #476 ====================
 
 Add BF/HF neg, abs operands and logical insns.
 
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -154,11 +89,11 @@ gcc/
 	(boolc<mode>3): Likewise.
 	(boolcc<mode>): Likewise.
 
-==================== Branch work223-test, patch #430 patch #455 ====================
+==================== Branch work223-test, patch #430 patch #475 ====================
 
 Add conversions between 16-bit floating point and other scalar modes.
 
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -173,7 +108,7 @@ gcc/
 	(fix_trunc<FP16_HW:mode><GPR:mode>): Likewise.
 	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
 
-==================== Branch work223-test, patch #430 patch #454 ====================
+==================== Branch work223-test, patch #430 patch #474 ====================
 
 Add conversions between __bfloat16 and float/double.
 
@@ -197,7 +132,7 @@ To convert a scalar float/double to __bfloat16, GCC will generate:
 	xscvdpsp   0,0          Convert float scalar to float memory format
 	xvcvspbf16 0,0          Convert vector float to vector __bfloat16
 
-2025-11-04  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -224,14 +159,14 @@ gcc/
 	(xvcvbf16spn_bf): Likewise.
 	(xvcvspbf16_bf): Likewise.
 
-==================== Branch work223-test, patch #430 patch #453 ====================
+==================== Branch work223-test, patch #430 patch #473 ====================
 
 Add conversions between _Float16 and float/double.
 
 This patch adds support to generate xscvhpdp and xscvdphp on Power9 systems and
 later, to convert between _Float16 and float scalar values.
 
-2025-11-04  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -240,14 +175,14 @@ gcc/
 	SFmode/DFmoded if we are on power9 or later.
 	(trunc<mode>hf2): Likewise.
 
-==================== Branch work223-test, patch #430 patch #452 ====================
+==================== Branch work223-test, patch #430 patch #472 ====================
 
 Add HF/BF emulation functions to libgcc.
 
 This patch adds the necessary support in libgcc to allow using the machine
 independent 16-bit floating point support.
 
-2025-11-04  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 libgcc/
 
@@ -292,7 +227,7 @@ libgcc/
 	supports _Float16 and __bfloat16 types.
 	* configure: Regenerate.
 
-==================== Branch work223-test, patch #430 patch #451 ====================
+==================== Branch work223-test, patch #430 patch #471 ====================
 
 Add initial 16-bit floating point support.
 
@@ -308,7 +243,7 @@ usable, the next patch will also need to be installed. That patch will add
 support in libgcc for 16-bit floating point support.
 
 
-2025-11-03  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -351,6 +286,8 @@ gcc/
 	(rs6000_can_change_mode_class): Likewise.
 	(rs6000_load_constant_and_splat): Likewise.
 	(rs6000_scalar_mode_supported_p): Likewise.
+	(rs6000_libgcc_floating_mode_supported_p): Return true for HFmode and
+	BFmode if -mfloat16.
 	(rs6000_floatn_mode): Enable _Float16 if -mfloat16.
 	(rs6000_opt_masks): Add -mfloat16.
 	(constant_fp_to_128bit_vector): Add support for 16-bit floating point.
@@ -365,8 +302,9 @@ gcc/
 	(FP16_VECTOR_MODE_P): Likewise.
 	* config/rs6000/rs6000.md (wd): Add BFmode and HFmode.
 	* config/rs6000/rs6000.opt (-mloat16): New option.
+	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mfloat16.
 
-==================== Branch work223-test, patch #430 patch #450 ====================
+==================== Branch work223-test, patch #430 patch #470 ====================
 
 Add infrastructure for _Float16 and __bfloat16 types.
 
@@ -416,7 +354,7 @@ will be added in the next patch.
     V4HFmode -- 64-bit vector mode _Float16 used in some insns
 
 
-2025-11-04  Michael Meissner  <meissner@linux.ibm.com>
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -494,7 +432,22 @@ gcc/
 	(vsx_extract_<mode>_store_p9): Add V8HFmode and V8BFmode.
 	(vsx_extract_<mode>_p8): Likewise.
 
-==================== Branch work223-test, patch #430 patch #441 was reverted ====================
+==================== Branch work223-test, patch #430 patch #464 was reverted ====================
+==================== Branch work223-test, patch #430 patch #463 was reverted ====================
+==================== Branch work223-test, patch #430 patch #462 was reverted ====================
+==================== Branch work223-test, patch #430 patch #461 was reverted ====================
+==================== Branch work223-test, patch #430 patch #460 was reverted ====================
+==================== Branch work223-test, patch #430 patch #459 was reverted ====================
+==================== Branch work223-test, patch #430 patch #458 was reverted ====================
+==================== Branch work223-test, patch #430 patch #457 was reverted ====================
+==================== Branch work223-test, patch #430 patch #456 was reverted ====================
+==================== Branch work223-test, patch #430 patch #454 was reverted ====================
+==================== Branch work223-test, patch #430 patch #454 was reverted ====================
+==================== Branch work223-test, patch #430 patch #453 was reverted ====================
+==================== Branch work223-test, patch #430 patch #452 was reverted ====================
+==================== Branch work223-test, patch #430 patch #451 was reverted ====================
+==================== Branch work223-test, patch #430 patch #450 was reverted ====================
+
 ==================== Branch work223-test, patch #430 patch #440 was reverted ====================
 ==================== Branch work223-test, patch #430 patch #439 was reverted ====================
 ==================== Branch work223-test, patch #430 patch #438 was reverted ====================

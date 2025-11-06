@@ -1,8 +1,11 @@
-==================== Branch work223-test, patch #401 ====================
+==================== Branch work223-test, patch #472 ====================
 
 Add HF/BF emulation functions to libgcc.
 
-2025-10-21  Michael Meissner  <meissner@linux.ibm.com>
+This patch adds the necessary support in libgcc to allow using the machine
+independent 16-bit floating point support.
+
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
 
 libgcc/
 
@@ -42,12 +45,13 @@ libgcc/
 	(__truncsfbf2): Likewise.
 	(__truncbfhf2): Likewise.
 	(__trunchfbf2): Likewise.
-	* config/rs6000/t-bfloat16: New file.
-	* config/rs6000/t-both-fp16: Likewise.
-	* config/rs6000/t-float16: Likewise.
+	* config/rs6000/t-float16: New file.
 	* configure.ac (powerpc*-*-linux*): Check if the PowerPC compiler
 	supports _Float16 and __bfloat16 types.
 	* configure: Regenerate.
+
+==================== Branch work223-test, patch #452 was reverted ====================
+==================== Branch work223-test, patch #401 was reverted ====================
 
 ==================== Branch work223, baseline ====================
 
