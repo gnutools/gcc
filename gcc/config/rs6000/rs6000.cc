@@ -24451,6 +24451,10 @@ rs6000_libgcc_floating_mode_supported_p (scalar_float_mode mode)
     case E_KFmode:
       return TARGET_FLOAT128_TYPE && !TARGET_IEEEQUAD;
 
+    case E_BFmode:
+    case E_HFmode:
+      return TARGET_FLOAT16;
+
     default:
       return false;
     }
