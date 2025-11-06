@@ -1,13 +1,4 @@
-==================== Branch work223-float, patch #319 ====================
-
-Fix __bfloat16 signalling NaN support on PowerPC.
-
-2025-10-31  Michael Meissner  <meissner@linux.ibm.com>
-
-libstdc++-v3/
-
-	* include/limits (__bfloat16 signaling_NaN): Use __builtin_nansf and
-	convert it to __bfloat16 instead of using __builtin_nansf16b.
+==================== Branch work223-float, patch #319 was reverted ====================
 
 ==================== Branch work223, baseline ====================
 
