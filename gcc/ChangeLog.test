@@ -1,3 +1,14 @@
+==================== Branch work223-test, patch #430 patch #464 ====================
+
+Add conversions between _Float16 and __int128_t and __uint128_t.
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+libgcc/
+
+	* config/rs6000/t-float16 (fp16_funcs): Add __int128_t and __uint128_t
+	conversions.
+
 ==================== Branch work223-test, patch #430 patch #463 ====================
 
 Note that __bfloat16 and _Float16 are defined in libgcc.
