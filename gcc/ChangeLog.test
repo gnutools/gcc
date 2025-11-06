@@ -1,3 +1,15 @@
+==================== Branch work223-test, patch #430 patch #463 ====================
+
+Note that __bfloat16 and _Float16 are defined in libgcc.
+
+2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-modes.df (BFmode): Initially define format as 0.
+	* config/rs6000/rs6000.cc (rs6000_libgcc_floating_mode_supported_p):
+	Return true for HFmode and BFmode if -mfloat16.
+
 ==================== Branch work223-test, patch #430 patch #462 ====================
 
 Document -mfloat16.
@@ -67,16 +79,7 @@ gcc/
 	(ISA_2_7_MASKS_SERVER): Likewise.
 	(POWERPC_MASKS): Likewise.
 
-==================== Branch work223-test, patch #430 patch #458 ====================
-
-Fix __bfloat16 signalling NaN support on PowerPC.
-
-2025-11-05  Michael Meissner  <meissner@linux.ibm.com>
-
-libstdc++-v3/
-
-	* include/limits (__bfloat16 signaling_NaN): Use __builtin_nansf and
-	convert it to __bfloat16 instead of using __builtin_nansf16b.
+==================== Branch work223-test, patch #430 patch #458 was reverted ====================
 
 ==================== Branch work223-test, patch #430 patch #457 ====================
 
