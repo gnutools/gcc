@@ -176,7 +176,7 @@ gfc_conv_descriptor_dtype_set (stmtblock_t *block, tree desc, tree value)
 
 
 static tree
-gfc_conv_descriptor_span (tree desc)
+conv_descriptor_span (tree desc)
 {
   tree field = gfc_get_descriptor_field (desc, SPAN_FIELD);
   gcc_assert (TREE_TYPE (field) == gfc_array_index_type);
@@ -186,13 +186,13 @@ gfc_conv_descriptor_span (tree desc)
 tree
 gfc_conv_descriptor_span_get (tree desc)
 {
-  return gfc_conv_descriptor_span (desc);
+  return conv_descriptor_span (desc);
 }
 
 void
 gfc_conv_descriptor_span_set (stmtblock_t *block, tree desc, tree value)
 {
-  tree t = gfc_conv_descriptor_span (desc);
+  tree t = conv_descriptor_span (desc);
   gfc_add_modify (block, t, fold_convert (TREE_TYPE (t), value));
 }
 
