@@ -44,6 +44,13 @@ enum processor_type rs6000_cpu = PROCESSOR_PPC603
 TargetVariable
 enum processor_type rs6000_tune = PROCESSOR_PPC603
 
+;; Whether the current processor is a potential future processor
+Variable
+bool TARGET_FUTURE = false
+
+TargetSave
+bool x_TARGET_FUTURE
+
 ;; Always emit branch hint bits.
 TargetVariable
 unsigned char rs6000_always_hint
