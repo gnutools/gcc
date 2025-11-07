@@ -495,8 +495,6 @@ const char *rs6000_type_string (tree type_node)
     return "__vector_pair";
   else if (type_node == vector_quad_type_node)
     return "__vector_quad";
-  else if (type_node == dmf_type_node)
-    return "__dmf";
 
   return "unknown";
 }
@@ -782,21 +780,6 @@ rs6000_init_builtins (void)
 					  "__vector_quad");
   t = build_qualified_type (vector_quad_type_node, TYPE_QUAL_CONST);
   ptr_vector_quad_type_node = build_pointer_type (t);
-
-  /* For TDOmode (1,024 bit dense math accumulators), don't use an alignment of
-     1,024, use 512.  TDOmode loads and stores are always broken up into 2
-     vector pair loads or stores.  In addition, we don't have support for
-     aligning the stack to 1,024 bits.  */
-  dmf_type_node = make_node (OPAQUE_TYPE);
-  SET_TYPE_MODE (dmf_type_node, TDOmode);
-  TYPE_SIZE (dmf_type_node) = bitsize_int (GET_MODE_BITSIZE (TDOmode));
-  TYPE_PRECISION (dmf_type_node) = GET_MODE_BITSIZE (TDOmode);
-  TYPE_SIZE_UNIT (dmf_type_node) = size_int (GET_MODE_SIZE (TDOmode));
-  SET_TYPE_ALIGN (dmf_type_node, 512);
-  TYPE_USER_ALIGN (dmf_type_node) = 0;
-  lang_hooks.types.register_builtin_type (dmf_type_node, "__dmf");
-  t = build_qualified_type (dmf_type_node, TYPE_QUAL_CONST);
-  ptr_dmf_type_node = build_pointer_type (t);
 
   tdecl = add_builtin_type ("__bool char", bool_char_type_node);
   TYPE_NAME (bool_char_type_node) = tdecl;
@@ -1142,9 +1125,8 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi,
 	}
 
       /* If we're disassembling an accumulator into a different type, we need
-	 to emit a xxmfacc instruction now, since we cannot do it later.  If we
-	 have dense math registers, we don't need to do this.  */
-      if (fncode == RS6000_BIF_DISASSEMBLE_ACC && !TARGET_DENSE_MATH)
+	 to emit a xxmfacc instruction now, since we cannot do it later.  */
+      if (fncode == RS6000_BIF_DISASSEMBLE_ACC)
 	{
 	  new_decl = rs6000_builtin_decls[RS6000_BIF_XXMFACC_INTERNAL];
 	  new_call = gimple_build_call (new_decl, 1, src);
