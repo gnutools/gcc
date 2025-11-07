@@ -555,6 +555,16 @@ extern int rs6000_vector_align[];
 #define TARGET_DIRECT_MOVE_64BIT	(TARGET_DIRECT_MOVE		\
 					 && TARGET_POWERPC64)
 
+/* Is this a future machine with potentially new feaatures?  */
+#ifndef TARGET_FUTURE
+#ifdef GENERATOR_FILE
+#define TARGET_FUTURE false
+#else
+#define TARGET_FUTURE global_options.x_TARGET_FUTURE
+#endif
+#endif
+
+
 /* Inlining allows targets to define the meanings of bits in target_info
    field of ipa_fn_summary by itself, the used bits for rs6000 are listed
    below.  */
