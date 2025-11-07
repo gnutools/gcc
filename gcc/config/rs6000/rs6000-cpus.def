@@ -93,7 +93,8 @@
 				 | OPTION_MASK_P9_MINMAX)
 
 /* Options for -mcpu=future.  */
-#define FUTURE_MASKS_SERVER POWER11_MASKS_SERVER
+#define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
+				 | OPTION_MASK_DENSE_MATH)
 
 /* Flags that need to be turned off if -mno-altivec.  */
 #define OTHER_ALTIVEC_MASKS	(OTHER_VSX_VECTOR_MASKS			\
@@ -116,6 +117,7 @@
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
+				 | OPTION_MASK_DENSE_MATH		\
 				 | OPTION_MASK_DFP			\
 				 | OPTION_MASK_DLMZB			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
