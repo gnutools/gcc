@@ -1,3 +1,40 @@
+==================== Branch work224, patch #1 ====================
+
+Add -mcpu=future option.
+
+2025-11-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	_ARCH_FUTURE if -mcpu=future was used.
+	(rs6000_cpu_cpp_builtins): Likewise.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(future cpu): Add support for -mcpu=future.
+	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): Define to be power11.
+	* config/rs6000/rs6000-protos.h (rs6000_target_modify_macros): Add
+	-mcpu=future support.
+	(rs6000_target_modify_macros_ptr): Likewise.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (rs6000_target_modify_macros_ptr): Add
+	-mcpu=future support.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_pragma_target_parse): Likewise.
+	(rs6000_function_specific_save): Likewise.
+	(rs6000_function_specific_restore): Likewise.
+	(rs6000_function_specific_print): Likewise.
+	(rs6000_print_options_internal): Likewise.
+	(rs6000_print_isa_options): Likewise.
+	* config/rs6000/rs6000.h (TARGET_FUTURE): New macro.
+	* config/rs6000/rs6000.opt (TARGET_FUTURE): New target variable.
+	(x_TARGET_FUTURE): Likewise.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
 ==================== Branch work224, baseline ====================
 
 2025-11-06   Michael Meissner  <meissner@linux.ibm.com>
