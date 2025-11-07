@@ -1,11 +1,15 @@
-==================== Branch work224, patch #1 ====================
+==================== Branch work224, patch #2 ====================
 
 Add -mcpu=future option to the PowerPC.
 
-This patch adds support for -mcpu=future to the PowerPC.  This is a
-simplified version of the patch to add -mcpu=future support.  In
-previous versions of the patch, I attempted to fix a lot of the
-infrastructure issues I have noticed over the years.
+I originally made a more complicated patch (V5) on September 22nd, 2025 that
+tried to do infrastructure cleanup as well as adding -mcpu=future.  This patch
+is a more limited patch in that it just adds the -mcpu=future patch, and it does
+not do the other infrastructure work.
+
+I submitted the V6 patch on November 6th.  However, in that patch, I
+forgot to add code to set the .machine directive to "future" if the
+user did -mcpu=future.  This patch fixes this.
 
 This patch just adds support for -mcpu=future.  Thanks to a question
 from Surya Kumari Jangal, I figured out a new method to do this patch.
@@ -38,7 +42,11 @@ The changes in this patch include:
   * I added support so the configuration option --with-cpu=future is
     used, it will set the default cpu type.
 
-Can I check this patch into the GCC trunk?
+Can I check this patch into the GCC trunk?  I have built bootstrap
+builds on both a little endian Power10 system and a big endian Power9
+system and there were no regressions.  On the little endian Power10
+system, I built the last run using the --with-cpu=future configuration
+option.
 
 2025-11-07  Michael Meissner  <meissner@linux.ibm.com>
 
@@ -63,6 +71,7 @@ gcc/
 	-mcpu=future support.
 	(rs6000_debug_reg_global): Likewise.
 	(rs6000_option_override_internal): Likewise.
+	(rs6000_machine_from_flags): Likewise.
 	(rs6000_pragma_target_parse): Likewise.
 	(rs6000_function_specific_save): Likewise.
 	(rs6000_function_specific_restore): Likewise.
@@ -80,6 +89,8 @@ gcc/testsuite/
 
 	* gcc.target/powerpc/future-1.c: New test.
 	* gcc.target/powerpc/future-2.c: Likewise.
+
+==================== Branch work224, patch #1 was reverted ====================
 
 ==================== Branch work224, baseline ====================
 
