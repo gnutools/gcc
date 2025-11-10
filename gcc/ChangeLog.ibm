@@ -1,0 +1,802 @@
+==================== Branch ibm/gcc-16-future-float16, patch #109 ====================
+
+Tell user if we have hardware support for 16-bit floating point.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros); Define
+	__BFLOAT16_HW__ if we have hardware support for __bflot16 conversions.
+	Define __FLOAT16_HW__ if we have hardware support for _Float16
+	conversions.
+
+==================== Branch ibm/gcc-16-future-float16, patch #108 ====================
+
+Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add support for the configuration option
+	--with-powerpc-float16 and --with-powerpc-float16-disable-warning.
+	* config/rs6000/rs6000-call.cc (init_cumulative_args): Likewise.
+	(rs6000_function_arg): Likewise.
+	* config/rs6000/rs6000-cpus.def (TARGET_16BIT_FLOATING_POINT): Likewise.
+	(ISA_2_7_MASKS_SERVER): Likewise.
+	(POWERPC_MASKS): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #107 ====================
+
+Add 16-bit floating point vectorization.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add float16.o.
+	* config/rs6000/float16.cc: New file to add 16-bit floating point
+	vectorization.
+	* config/rs6000/float16.md: (FP16_BINARY_OP): New mode iterator.
+	(fp16_names): New mode attribute.
+	(UNSPEC_XVCVSPHP_V8HF): New unspec.
+	(UNSPEC_XVCVSPBF16_V8BF): Likewise.
+	(<fp16_names><mode>): New insns to support vectorization of 16-bit
+	floating point.
+	(fma<mode>4): Likewise.
+	(fms<mode>4): Likewise.
+	(nfma<mode>): Likewise.
+	(nfms<mode>4): Likewise.
+	(vec_pack_trunc_v4sf_v8hf): Likewise.
+	(vec_pack_trunc_v4sf_v8bf): Likewise.
+	(vec_pack_trunc_v4sf): Likewise.
+	(xvcvsphp_v8hf): Likewise.
+	(xvcvspbf16_v8bf): Likewise.
+	(vec_unpacks_hi_v8hf): Likewise.
+	(vec_unpacks_lo_v8hf): Likewise.
+	(xvcvhpsp_v8hf): Likewise.
+	(vec_unpacks_hi_v8bf): Likewise.
+	(vec_unpacks_lo_v8bf): Likewise.
+	(xvcvbf16spn_v8bf): Likewise.
+	* config/rs6000/rs6000-protos.h (enum fp16_operation): New enumeration
+	for vectorizing 16-bit floating point.
+	(fp16_vectorization): New declaration.
+	* config/rs6000/t-rs6000 (float16.o): Add build rules.
+
+==================== Branch ibm/gcc-16-future-float16, patch #106 ====================
+
+Add BF/HF neg, abs operands and logical insns.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (neg<mode>2): Add BFmode/HFmode negate,
+	absolute value and negative absolute value operations.  Add logical
+	insns operating on BFmode/HFmode.
+	(abs<mode>2): Likewise.
+	(nabs<mode>2): Likewise.
+	(and<mode>3): Likewise.
+	(ior<mode>): Likewise.
+	(xor<mode>3): Likewise.
+	(nor<mode>3): Likewise.
+	(andn<mode>3): Likewise.
+	(eqv<mode>3): Likewise.
+	(nand<mode>3): Likewise.
+	(iorn<mode>3): Likewise.
+	(bool<mode>3): Likewise.
+	(boolc<mode>3): Likewise.
+	(boolcc<mode>): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #105 ====================
+
+Add conversions between 16-bit floating point and other scalar modes.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (fp16_float_convert): New mode iterator.
+	(extend<FP16_HW:mode><fp16_float_convert:mode>2): New insns to convert
+	between the 2 16-bit floating point modes and other floating point
+	scalars other than SFmode/DFmode by converting first to DFmode.
+	(trunc<fp16_float_convert:mode><FP16_HW:mode>2): Likewise.
+	(float<GPR:mode><FP16_HW:mode>2): New insns to convert beween the 2
+	16-bit floating point modes and signed/unsigned integers.
+	(floatuns<GPR:mode><FP16_HW:mode>2): Likewise.
+	(fix_trunc<FP16_HW:mode><GPR:mode>): Likewise.
+	(fixuns_trunc<FP16_HW:mode><GPR:mode>2): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #104 ====================
+
+Add conversions between __bfloat16 and float/double.
+
+This patch provides conversions between __bfloat16 and float/double scalars on
+power10 and power11 systems.
+
+Unlike the support for _Float16, there is not a single instruction to convert
+between a __bfloat16 and float/double scalar value on the power10.
+
+Instead we have to use the vector conversion instructions.
+
+To convert a __bfloat16 scalar to a float/double scalar, GCC will generate:
+
+	lxsihzx     0,0,4       Load value into vector register
+	xxsldwi     0,0,0,1     Get the value into the upper 32-bits
+	xvcvbf16spn 0,0         Convert vector __bfloat16 to vector float
+	xscvspdpn   0,0         Convert memory float format to scalar
+
+To convert a scalar float/double to __bfloat16, GCC will generate:
+
+	xscvdpsp   0,0          Convert float scalar to float memory format
+	xvcvspbf16 0,0          Convert vector float to vector __bfloat16
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (FP16_HW): Add BFmode.
+	(VFP16_HW): New mode iterator.
+	(cvt_fp16_to_v4sf_insn): New mode attribute.
+	(FP16_VECTOR4): Likewise.
+	(UNSPEC_FP16_SHIFT_LEFT_32BIT): New unspec constant.
+	(UNSPEC_CVT_FP16_TO_V4SF): Likewise.
+	(UNSPEC_XXSPLTW_FP16): Likewise.
+	(UNSPEC_XVCVSPBF16_BF): Likewise.
+	(extendbf<mode>2): New insns to convert between BFmode and
+	SFmode/DFmode.
+	(xscvdpspn_sf): Likewise.
+	(xscvspdpn_sf): Likewise.
+	(<fp16_vector8>_shift_left_32bit): Likewise.
+	(trunc<mode>bf): Likewise.
+	(vsx_xscvdpspn_sf): Likewise.
+	(cvt_fp16_to_v4sf_<mode): Likewise.
+	(cvt_fp16_to_v4sf_<mode>_le): Likewise.
+	(cvt_fp16_to_v4sf_<mode>_be): Likewise.
+	(dup_<mode>_to_v4s): Likewise.
+	(xxspltw_<mode>): Likewise.
+	(xvcvbf16spn_bf): Likewise.
+	(xvcvspbf16_bf): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #103 ====================
+
+Add conversions between _Float16 and float/double.
+
+This patch adds support to generate xscvhpdp and xscvdphp on Power9 systems and
+later, to convert between _Float16 and float scalar values.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (FP16_HW): New mode iterator.
+	(extendhf<mode>2): Add support converting between HFmode and
+	SFmode/DFmoded if we are on power9 or later.
+	(trunc<mode>hf2): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #102 ====================
+
+Add HF/BF emulation functions to libgcc.
+
+This patch adds the necessary support in libgcc to allow using the machine
+independent 16-bit floating point support.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+libgcc/
+
+	* config.host (powerpc*-*-linux*): Add HF/BF emulation functions to
+	PowerPC libgcc.
+	* config/rs6000/sfp-machine.h (_FP_NANFRAC_H): New macro.
+	(_FP_NANFRAC_B): Likewise.
+	(_FP_NANSIGN_H): Likewise.
+	(_FP_NANSIGN_B): Likewise.
+	(DFtype2): Add HF/BF emulation function declarations.
+	(SFtype2): Likewise.
+	(DItype2): Likewise.
+	(UDItype2): Likewise.
+	(SItype2): Likewise.
+	(USItype2): Likewise.
+	(HFtype2): Likewise.
+	(__eqhf2): Likewise.
+	(__extendhfdf2): Likewise.
+	(__extendhfsf2): Likewise.
+	(__fixhfdi): Likewise.
+	(__fixhfsi): Likewise.
+	(__fixunshfdi): Likewise.
+	(__fixunshfsi): Likewise.
+	(__floatdihf): Likewise.
+	(__floatsihf): Likewise.
+	(__floatundihf): Likewise.
+	(__floatunsihf): Likewise.
+	(__truncdfhf2): Likewise.
+	(__truncsfhf2): Likewise.
+	(BFtype2): Likewise.
+	(__extendbfsf2): Likewise.
+	(__floatdibf): Likewise.
+	(__floatsibf): Likewise.
+	(__floatundibf): Likewise.
+	(__floatunsibf): Likewise.
+	(__truncdfbf2): Likewise.
+	(__truncsfbf2): Likewise.
+	(__truncbfhf2): Likewise.
+	(__trunchfbf2): Likewise.
+	* config/rs6000/t-float16: New file.
+	* configure.ac (powerpc*-*-linux*): Check if the PowerPC compiler
+	supports _Float16 and __bfloat16 types.
+	* configure: Regenerate.
+
+==================== Branch ibm/gcc-16-future-float16, patch #101 ====================
+
+Add initial 16-bit floating point support.
+
+This patch adds the initial support for the 16-bit floating point formats.
+_Float16 is the IEEE 754 half precision format.  __bfloat16 is the Google Brain
+16-bit format.
+
+In order to use both _Float16 and __bfloat16, the user has to use the -mfloat16
+option to enable the support.
+
+In this patch only the machine indepndent support is used.  In order to be
+usable, the next patch will also need to be installed. That patch will add
+support in libgcc for 16-bit floating point support.
+
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md: New file to add basic 16-bit floating point
+	support.
+	* config/rs6000/predicates.md (easy_fp_constant): Add support for HFmode
+	and BFmode constants.
+	(fp16_xxspltiw_constant): New predicate.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Add support for
+	16-bit floating point types.
+	(rs6000_init_builtins): Create the bfloat16_type_node.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	__FLOAT16__ and __BFLOAT16__ if 16-bit floating pont is enabled.
+	* config/rs6000/rs6000-call.cc (init_cumulative_args): Warn if a
+	function returns a 16-bit floating point value unless -Wno-psabi is
+	used.
+	(rs6000_function_arg): Warn if a 16-bit floating point value is passed
+	to a function unless -Wno-psabi is ued.
+	* config/rs6000/rs6000-protos.h (vec_const_128bit_type): Add mode field
+	to detect initializing 16-bit floating constants.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached): Add
+	support for 16-bit floating point.
+	(rs6000_modes_tieable_p): Don't allow 16-bit floating point modes to tie
+	with other modes.
+	(rs6000_debug_reg_global): Add BFmode and HFmode.
+	(rs6000_setup_reg_addr_masks): Add support for 16-bit floating point
+	types.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_option_override_internal): Add a check whether -mfloat16 can be
+	used.
+	(easy_altivec_constant): Add suport for 16-bit floating point.
+	(xxspltib_constant_p): Likewise.
+	(rs6000_expand_vector_init): Likewise.
+	(reg_offset_addressing_ok_p): Likewise.
+	(rs6000_legitimate_offset_address_p): Likewise.
+	(legitimate_lo_sum_address_p): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_can_change_mode_class): Likewise.
+	(rs6000_load_constant_and_splat): Likewise.
+	(rs6000_scalar_mode_supported_p): Likewise.
+	(rs6000_libgcc_floating_mode_supported_p): Return true for HFmode and
+	BFmode if -mfloat16.
+	(rs6000_floatn_mode): Enable _Float16 if -mfloat16.
+	(rs6000_opt_masks): Add -mfloat16.
+	(constant_fp_to_128bit_vector): Add support for 16-bit floating point.
+	(vec_const_128bit_to_bytes): Likewise.
+	(constant_generates_xxspltiw): Likewise.
+	* config/rs6000/rs6000.h (TARGET_BFLOAT16_HW): New macro.
+	(TARGET_FLOAT16_HW): Likewise.
+	(TARGET_BFLOAT16_HW_VECTOR): Likewise.
+	(TARGET_FLOAT16_HW_VECTOR): Likewise.
+	(FP16_SCALAR_MODE_P): Likewise.
+	(FP16_HW_SCALAR_MODE_P): Likewise.
+	(FP16_VECTOR_MODE_P): Likewise.
+	* config/rs6000/rs6000.md (wd): Add BFmode and HFmode.
+	* config/rs6000/rs6000.opt (-mloat16): New option.
+	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mfloat16.
+
+==================== Branch ibm/gcc-16-future-float16, patch #100 ====================
+
+Add infrastructure for _Float16 and __bfloat16 types.
+
+This patch adds the infrastructure for adding 16-bit floating point types in the
+next patch.  Two new types that will be added:
+
+_Float16 (HFmode):
+==================
+
+This is the IEEE 754-2008 16-bit floating point.  It has 1 sign bit, 5
+exponent bits, 10 explicit mantassia bits (the 11th bit is implied with
+normalization).
+
+The PowerPC ISA 3.0 (power9) has instructions to convert between the
+scalar representations of _Float16 and float types.  The PowerPC ISA
+3.1 (power10 and power11) has instructions for converting between the
+even elements of _Float16 vectors and float vectors.  In addition, the
+MMA subsystem has support for _Float16 vector processing.
+
+
+__bfloat16 (BFmode):
+====================
+
+This is the brain 16-bit floating point created by the Google Brain
+project.  It has 1 sign bit, 8 exponent bits, 7 explicit mantissa bits
+(the 8th bit is implied with normalization).  The 16 bits in the
+__bfloat16 format is the same as the upper 16 bits in the normal IEEE
+754 32-bit floating point format.
+
+he PowerPC ISA 3.1 (power10 and power11) has instructions for
+converting between the even elements of _bfloat16 vectors and float
+vectors.  In addition, the MMA subsystem has support for _bfloat16
+vector processing.
+
+
+This patch adds new modes that will be used in the future.  The
+V8HFmode and V8BFmodes are treated as normal vector modes.
+
+This patch does not add loads and stores for BFmode and HFmode.  These
+will be added in the next patch.
+
+    BFmode   -- 16-bit mode for __bfloat16 support
+    HFmode   -- 16-bit mode for _Float16 support
+    V8BFmode -- 128-bit vector mode __bfloat16
+    V8HFmode -- 128-bit vector mode _Float16
+    V4BFmode -- 64-bit vector mode __bfloat16 used in some insns
+    V4HFmode -- 64-bit vector mode _Float16 used in some insns
+
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/altivec.md (VM): Add support for V8HFmode and
+        V8BFmode.
+	(VM2): Likewise.
+	(VI_char): Likewise.
+	(VI_scalar): Likewise.
+	(VI_unit): Likewise.
+	(VP_small): Likewise.
+	(VP_small_lc): Likewise.
+	(VU_char): Likewise.
+	* config/rs6000/rs6000-modes.def (HFmode): Add new mode.
+	(BFmode): Likewise.
+	(V8BFmode): Likewise.
+	(V8HFmode): Likewise.
+	* config/rs6000/rs6000-p8swap.cc (rs6000_gen_stvx): Remove #ifdef for
+	HAVE_V8HFmode.  Add support for V8BFmode.
+	(rs6000_gen_lvx): Likewise.
+	(replace_swapped_load_constant): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Add support for
+	V8HFmode and V8BFmode.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(output_vec_const_move): Likewise.
+	(rs6000_expand_vector_init): Likewise.
+	(reg_offset_addressing_ok_p): Likewise.
+	(rs6000_const_vec): Likewise.
+	(rs6000_emit_move): Likewise.
+	* config/rs6000/rs6000.h (ALTIVEC_VECTOR_MODE): Likewise.
+	* config/rs6000/rs6000.md (FMOVE128_GPR): Likewise.
+	(wd): Likewise.
+	(du_or_d): Likewise.
+	(BOOL_128): Likewise.
+	(BOOL_REGS_OUTPUT): Likewise.
+	(BOOL_REGS_OP1): Likewise.
+	(BOOL_REGS_OP2): Likewise.
+	(BOOL_REGS_UNARY): Likewise.
+	(RELOAD): Likewise.
+	* config/rs6000/vector.md (VEC_L): Likewise.
+	(VEC_M): Likewise.
+	(VEC_E): Likewise.
+	(VEC_base): Likewise.
+	(VEC_base_l): Likewise.
+	* config/rs6000/vsx.md (VECTOR_16BIT): New mode iterator.
+	(VSX_L): Add support for V8HFmode and V8BFmode.
+	(VSX_M): Likewise.
+	(VSX_XXBR): Likewise.
+	(VSm): Likewise.
+	(VSr): Likewise.
+	(VSisa): Likewise.
+	(??r): Likewise.
+	(nW): Likewise.
+	(VSc): Likewise.
+	(VM3): Likewise.
+	(VM3_char): Likewise.
+	(vsx_le_perm_load_<mode>): Rename from vsx_le_perm_load_v8hi and add
+	V8HFmode and V8BFmode.
+	(vsx_le_perm_store_<mode>): Rename from vsx_le_perm_store_v8hi and add
+	V8HFmode and V8BFmode.
+	(splitter for vsx_le_perm_store_<mode>): Likewise.
+	(vsx_ld_elemrev_<mode>): Rename from vsx_ld_elemrev_v8hi and add
+	V8HFmode and V8BFmode support.
+	(vsx_ld_elemrev_<mode>_internal): Rename from
+	vsx_ld_elemrev_v8hi_internal and add V8HFmode and V8BFmode support.
+	(vsx_st_elemrev_<mode>): Rename from vsx_st_elemrev_v8hi and add
+	V8HFmode and V8BFmode support.
+	(vsx_st_elemrev_<mode>_internal): Rename from
+	vsx_st_elemrev_v8hi_internal and add V8HFmode and V8BFmode support.
+	(xxswapd_<mode>): Rename from xxswapd_v8hi and add V8HFmode and V8BFmode
+	support.
+	(vsx_lxvd2x8_le_<MODE>): Rename from vsx_lxvd2x8_le_V8HI and add
+	V8HFmode and V8BFmode support.
+	(vsx_stxvd2x8_le_<MODE>): Rename from vsx_stxvd2x8_le_V8HI and add
+	V8HFmode and V8BFmode support.
+	(vsx_extract_<mode>_store_p9): Add V8HFmode and V8BFmode.
+	(vsx_extract_<mode>_p8): Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, patch #5 ====================
+
+Use vector pair load/store for memcpy with -mcpu=future
+
+In the development for the power10 processor, GCC did not enable using the load
+vector pair and store vector pair instructions when optimizing things like
+memory copy.  This patch enables using those instructions if -mcpu=future is
+used.
+
+This patch assumes that the following previously posted patches have been
+installed:
+
+  * https://gcc.gnu.org/pipermail/gcc-patches/2025-November/699956.html
+  * https://gcc.gnu.org/pipermail/gcc-patches/2025-November/699977.html
+  * https://gcc.gnu.org/pipermail/gcc-patches/2025-November/699978.html
+  * https://gcc.gnu.org/pipermail/gcc-patches/2025-November/699979.html
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): Enable using load
+	vector pair and store vector pair instructions for memory copy
+	operations.
+	(POWERPC_MASKS): Make the option for enabling using load vector pair and
+	store vector pair operations set and reset when the PowerPC processor is
+	changed.
+	* gcc/config/rs6000/rs6000.cc (rs6000_machine_from_flags): Disable
+	-mblock-ops-vector-pair from influencing .machine selection.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-3.c: New test.
+
+==================== Branch ibm/gcc-16-future-float16, patch #4 ====================
+
+Add support for 1,024 bit DMF registers.
+
+This patch is a prelimianry patch to add the full 1,024 bit dense math register
+(DMRs) for -mcpu=future.  The MMA 512-bit accumulators map onto the top of the
+DMR register.
+
+This patch only adds the new 1,024 bit register support.  It does not add
+support for any instructions that need 1,024 bit registers instead of 512 bit
+registers.
+
+I used the new mode 'TDOmode' to be the opaque mode used for 1,024 bit
+registers.  The 'wD' constraint added in previous patches is used for these
+registers.  I added support to do load and store of DMRs via the VSX registers,
+since there are no load/store dense math instructions.  I added the new keyword
+'__dmf' to create 1,024 bit types that can be loaded into DMRs.  At present, I
+don't have aliases for __dmf512 and __dmf1024 that we've discussed internally.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+2025-11-10   Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/mma.md (UNSPEC_DM_INSERT512_UPPER): New unspec.
+	(UNSPEC_DM_INSERT512_LOWER): Likewise.
+	(UNSPEC_DM_EXTRACT512): Likewise.
+	(UNSPEC_DMF_RELOAD_FROM_MEMORY): Likewise.
+	(UNSPEC_DMF_RELOAD_TO_MEMORY): Likewise.
+	(movtdo): New define_expand and define_insn_and_split to implement 1,024
+	bit DMR registers.
+	(movtdo_insert512_upper): New insn.
+	(movtdo_insert512_lower): Likewise.
+	(movtdo_extract512): Likewise.
+	(reload_dmf_from_memory): Likewise.
+	(reload_dmf_to_memory): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Add DMF
+	support.
+	(rs6000_init_builtins): Add support for __dmf keyword.
+	* config/rs6000/rs6000-call.cc (rs6000_return_in_memory): Add support
+	for TDOmode.
+	(rs6000_function_arg): Likewise.
+	* config/rs6000/rs6000-modes.def (TDOmode): New mode.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_nregs_internal): Add
+	support for TDOmode.
+	(rs6000_hard_regno_mode_ok_uncached): Likewise.
+	(rs6000_hard_regno_mode_ok): Likewise.
+	(rs6000_modes_tieable_p): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Add support for TDOmode.  Setup reload
+	hooks for DMF mode.
+	(reg_offset_addressing_ok_p): Add support for TDOmode.
+	(rs6000_emit_move): Likewise.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_secondary_reload_class): Likewise.
+	(rs6000_mangle_type): Add mangling for __dmf type.
+	(rs6000_dmf_register_move_cost): Add support for TDOmode.
+	(rs6000_split_multireg_move): Likewise.
+	(rs6000_invalid_conversion): Likewise.
+	* config/rs6000/rs6000.h (VECTOR_ALIGNMENT_P): Add TDOmode.
+	(enum rs6000_builtin_type_index): Add DMF type nodes.
+	(dmf_type_node): Likewise.
+	(ptr_dmf_type_node): Likewise.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/dm-1024bit.c: New test.
+	* lib/target-supports.exp (check_effective_target_ppc_dmf_ok): New
+	target test.
+
+==================== Branch ibm/gcc-16-future-float16, patch #3 ====================
+
+Add support for dense math registers.
+
+The MMA subsystem added the notion of accumulator registers as an optional
+feature of ISA 3.1 (power10).  In ISA 3.1, these accumulators overlapped with
+the VSX registers 0..31, but logically the accumulator registers were separate
+from the FPR registers.  In ISA 3.1, it was anticipated that in future systems,
+the accumulator registers may no overlap with the FPR registers.  This patch
+adds the support for dense math registers as separate registers.
+
+This particular patch does not change the MMA support to use the accumulators
+within the dense math registers.  This patch just adds the basic support for
+having separate DMRs.  The next patch will switch the MMA support to use the
+accumulators if -mcpu=future is used.
+
+For testing purposes, I added an undocumented option '-mdense-math' to enable
+or disable the dense math support.
+
+This patch updates the wD constraint added in the previous patch.  If MMA is
+selected but dense math is not selected (i.e. -mcpu=power10), the wD constraint
+will allow access to accumulators that overlap with VSX registers 0..31.  If
+both MMA and dense math are selected (i.e. -mcpu=future), the wD constraint
+will only allow dense math registers.
+
+This patch modifies the existing %A output modifier.  If MMA is selected but
+dense math is not selected, then %A output modifier converts the VSX register
+number to the accumulator number, by dividing it by 4.  If both MMA and dense
+math are selected, then %A will map the separate DMF registers into 0..7.
+
+The intention is that user code using extended asm can be modified to run on
+both MMA without dense math and MMA with dense math:
+
+    1)	If possible, don't use extended asm, but instead use the MMA built-in
+	functions;
+
+    2)	If you do need to write extended asm, change the d constraints
+	targetting accumulators should now use wD;
+
+    3)	Only use the built-in zero, assemble and disassemble functions create
+	move data between vector quad types and dense math accumulators.
+	I.e. do not use the xxmfacc, xxmtacc, and xxsetaccz directly in the
+	extended asm code.  The reason is these instructions assume there is a
+	1-to-1 correspondence between 4 adjacent FPR registers and an
+	accumulator that overlaps with those instructions.  With accumulators
+	now being separate registers, there no longer is a 1-to-1
+	correspondence.
+
+It is possible that the mangling for DMFs and the GDB register numbers may
+produce other changes in the future.
+
+gcc/
+
+2025-11-10   Michael Meissner  <meissner@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_MMA_DMSETDMRZ): New unspec.
+	(movxo): Add comments about dense math registers.
+	(movxo_nodm): Rename from movxo and restrict the usage to machines
+	without dense math registers.
+	(movxo_dm): New insn for movxo support for machines with dense math
+	registers.
+	(mma_<acc>): Restrict usage to machines without dense math registers.
+	(mma_xxsetaccz): Add a define_expand wrapper, and add support for dense
+	math registers.
+	(mma_dmsetaccz): New insn.
+	* config/rs6000/predicates.md (dmf_operand): New predicate.
+	(accumulator_operand): Add support for dense math registers.
+	* config/rs6000/rs6000-builtin.cc (rs6000_gimple_fold_mma_builtin): Do
+	not issue a de-prime instruction when disassembling a vector quad on a
+	system with dense math registers.
+	* config/rs6000/rs6000-c.cc (rs6000_define_or_undefine_macro): Define
+	__DENSE_MATH__ if we have dense math registers.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): Add -mdense-math.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (enum rs6000_reg_type): Add DMF_REG_TYPE.
+	(enum rs6000_reload_reg_type): Add RELOAD_REG_DMF.
+	(LAST_RELOAD_REG_CLASS): Add support for DMF registers and the wD
+	constraint.
+	(reload_reg_map): Likewise.
+	(rs6000_reg_names): Likewise.
+	(alt_reg_names): Likewise.
+	(rs6000_hard_regno_nregs_internal): Likewise.
+	(rs6000_hard_regno_mode_ok_uncached): Likewise.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_setup_reg_addr_masks): Likewise.
+	(rs6000_init_hard_regno_mode_ok): Likewise.
+	(rs6000_option_override_internal): If -mdense-math, issue an error if
+	-mno-mma or not -mcpu=future.
+	(rs6000_secondary_reload_memory): Add support for DMF registers.
+	(rs6000_secondary_reload_simple_move): Likewise.
+	(rs6000_preferred_reload_class): Likewise.
+	(rs6000_secondary_reload_class): Likewise.
+	(print_operand): Make %A handle both FPRs and DMRs.
+	(rs6000_dmf_register_move_cost): New helper function.
+	(rs6000_register_move_cost): Add support for DMR registers.
+	(rs6000_memory_move_cost): Likewise.
+	(rs6000_compute_pressure_classes): Likewise.
+	(rs6000_debugger_regno): Likewise.
+	(rs6000_opt_masks): Add -mdense-math support.
+	(rs6000_split_multireg_move): Add support for DMRs.
+	* config/rs6000/rs6000.h (TARGET_MMA_NO_DENSE_MATH): New macro.
+	(UNITS_PER_DMF_WORD): Likewise.
+	(FIRST_PSEUDO_REGISTER): Update for DMRs.
+	(FIXED_REGISTERS): Add DMRs.
+	(CALL_REALLY_USED_REGISTERS): Likewise.
+	(REG_ALLOC_ORDER): Likewise.
+	(DMF_REGNO_P): New macro.
+	(enum reg_class): Add DM_REGS.
+	(REG_CLASS_NAMES): Likewise.
+	(REG_CLASS_CONTENTS): Likewise.
+	(enum r6000_reg_class_enum): Add RS6000_CONSTRAINT_wD.
+	(REGISTER_NAMES): Add DMF registers.
+	(ADDITIONAL_REGISTER_NAMES): Likewise.
+	* config/rs6000/rs6000.md (FIRST_DMF_REGNO): New constant.
+	(LAST_DMF_REGNO): Likewise.
+	* config/rs6000/rs6000.opt (-mdense-math): New option.
+
+==================== Branch ibm/gcc-16-future-float16, patch #2 ====================
+
+Add wD constraint.
+
+This patch adds a new constraint ('wD') that matches the accumulator registers
+that overlap with VSX registers 0..31 on power10.  Future patches will add the
+support for a separate accumulator register class that will be used when the
+support for dense math registes is added.
+
+2025-11-10   Michael Meissner  <meissner@linux.ibm.com>
+
+	* config/rs6000/constraints.md (wD): New constraint.
+	* config/rs6000/mma.md (mma_<acc>): Prepare for alternate accumulator
+	registers.  Use wD constraint instead of 'd' constraint.  Use
+	accumulator_operand instead of fpr_reg_operand.
+	(mma_<vv>): Likewise.
+	(mma_<avv>): Likewise.
+	(mma_<pv>): Likewise.
+	(mma_<apv>): Likewise.
+	(mma_<vvi4i4i8>): Likewise.
+	(mma_<avvi4i4i8>): Likewise.
+	(mma_<vvi4i4i2>): Likewise.
+	(mma_<avvi4i4i2>): Likewise.
+	(mma_<vvi4i4>): Likewise.
+	(mma_<avvi4i4>): Likewise.
+	(mma_<pvi4i2): Likewise.
+	(mma_<apvi4i2>): Likewise.
+	(mma_<vvi4i4i4>): Likewise.
+	(mma_<avvi4i4i4): Likewise.
+	* config/rs6000/predicates.md (accumulator_operand): New predicate.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Print the register
+	class for the 'wD' constraint.
+	(rs6000_init_hard_regno_mode_ok): Set up the 'wD' register constraint
+	class.
+	* config/rs6000/rs6000.h (enum r6000_reg_class_enum): Add element for
+	the 'wD' constraint.
+	* doc/md.texi (PowerPC constraints): Document the 'wD' constraint.
+
+==================== Branch ibm/gcc-16-future-float16, patch #1 ====================
+
+Add -mcpu=future option to the PowerPC.
+
+I originally made a more complicated patch (V5) on September 22nd, 2025 that
+tried to do infrastructure cleanup as well as adding -mcpu=future.  This patch
+is a more limited patch in that it just adds the -mcpu=future patch, and it does
+not do the other infrastructure work.
+
+I submitted the V6 patch on November 6th.  However, in that patch, I
+forgot to add code to set the .machine directive to "future" if the
+user did -mcpu=future.  This patch fixes this.
+
+This patch just adds support for -mcpu=future.  Thanks to a question
+from Surya Kumari Jangal, I figured out a new method to do this patch.
+
+In the past, we would always add a new ISA flag for the cpu
+(i.e. -mpower11).  But this means the user could potentially use
+-mfuture instead of -mcpu=future.  To discourage this, we would then
+add a warning not to use the -m<xxx> direction.
+
+This patch now uses a separate variable (TARGET_FUTURE) that is set
+separately when the cpu type is set.  This way we don't have to create
+a new dummy ISA option.
+
+The changes in this patch include:
+
+  * The TARGET_FUTURE variable is set both in the inital cpu setup.
+
+  * It is stored and restored as part of the target attribute and target
+    pragma support.
+
+  * The internal debug option -mdebug=reg now prints whether the TARGET_FUTURE
+    field is set.
+
+  * The macro _ARCH_FUTURE is defined if the user used -mcpu=future.
+
+  * I added 2 tests to make sure -mcpu=future works.
+
+  * If the user uses -mcpu=future, -mfuture is passed to the assembler.
+
+  * I added support so the configuration option --with-cpu=future is
+    used, it will set the default cpu type.
+
+Can I check this patch into the GCC trunk?  I have built bootstrap
+builds on both a little endian Power10 system and a big endian Power9
+system and there were no regressions.  On the little endian Power10
+system, I built the last run using the --with-cpu=future configuration
+option.
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add support for --with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if -mcpu=future is used.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	_ARCH_FUTURE if -mcpu=future was used.
+	(rs6000_cpu_cpp_builtins): Likewise.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(future cpu): Add support for -mcpu=future.
+	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): Define to be power11.
+	* config/rs6000/rs6000-protos.h (rs6000_target_modify_macros): Add
+	-mcpu=future support.
+	(rs6000_target_modify_macros_ptr): Likewise.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (rs6000_target_modify_macros_ptr): Add
+	-mcpu=future support.
+	(rs6000_debug_reg_global): Likewise.
+	(rs6000_option_override_internal): Likewise.
+	(rs6000_machine_from_flags): Likewise.
+	(rs6000_pragma_target_parse): Likewise.
+	(rs6000_function_specific_save): Likewise.
+	(rs6000_function_specific_restore): Likewise.
+	(rs6000_function_specific_print): Likewise.
+	(rs6000_print_options_internal): Likewise.
+	(rs6000_print_isa_options): Likewise.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if -mcpu=future is used.
+	(TARGET_FUTURE): New macro.
+	* config/rs6000/rs6000.opt (TARGET_FUTURE): New target variable.
+	(x_TARGET_FUTURE): Likewise.
+	* doc/invoke.texi (RS/6000 and PowerPC Options): Document -mcpu=future.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
+==================== Branch ibm/gcc-16-future-float16, baseline ====================
+
+2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.test: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
