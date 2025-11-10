@@ -92,8 +92,14 @@
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_P9_MINMAX)
 
-/* Options for -mcpu=future.  */
+/* Options for -mcpu=future.
+
+   During the development of the power10 support for GCC, using load/store
+   vector pair instructions for string operations was turned off by default,
+   because there was a use case that had really bad performance.  Assume this
+   will be fixed in potential future machines.  */
 #define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
+				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
 				 | OPTION_MASK_DENSE_MATH)
 
 /* Flags that need to be turned off if -mno-altivec.  */
@@ -115,6 +121,7 @@
 
 /* Mask of all options to set the default isa flags based on -mcpu=<xxx>.  */
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
+				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_DENSE_MATH		\
