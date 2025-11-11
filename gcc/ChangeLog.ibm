@@ -1,15 +1,4 @@
-==================== Branch ibm/gcc-16-future-float16, patch #109 ====================
-
-Tell user if we have hardware support for 16-bit floating point.
-
-2025-11-10  Michael Meissner  <meissner@linux.ibm.com>
-
-gcc/
-
-	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros); Define
-	__BFLOAT16_HW__ if we have hardware support for __bflot16 conversions.
-	Define __FLOAT16_HW__ if we have hardware support for _Float16
-	conversions.
+==================== Branch ibm/gcc-16-future-float16, patch #109 was reverted ====================
 
 ==================== Branch ibm/gcc-16-future-float16, patch #108 ====================
 
@@ -158,6 +147,8 @@ gcc/
 	(xxspltw_<mode>): Likewise.
 	(xvcvbf16spn_bf): Likewise.
 	(xvcvspbf16_bf): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	__BFLOAT16_HW__ if we have hardware support for __bfloat16.
 
 ==================== Branch ibm/gcc-16-future-float16, patch #103 ====================
 
@@ -174,6 +165,8 @@ gcc/
 	(extendhf<mode>2): Add support converting between HFmode and
 	SFmode/DFmoded if we are on power9 or later.
 	(trunc<mode>hf2): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	__FLOAT16_HW__ if we have hardware support for _Float16.
 
 ==================== Branch ibm/gcc-16-future-float16, patch #102 ====================
 
