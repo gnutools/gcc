@@ -6,13 +6,21 @@ Add -mcpu=future.
 
 gcc/
 
+	* config.gcc (powerpc*-*-*): Add support for -mcpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Add support for -mcpu=future.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
 	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
 	_ARCH_FUTURE if -mcpu=future.
 	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macros.
 	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
 	(future processor): Add -mcpu=future.
 	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): Define as power11.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Add support for -mcpu=future.
 	* config/rs6000/rs6000.opt (-mfuture): New option.
+	* doc/invoke.texi (IBM RS/6000 and PowerPC Options): Document
+	-mcpu=future.
 
 gcc/testsuite/
 
