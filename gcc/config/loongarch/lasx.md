@@ -792,59 +792,6 @@
   [(set_attr "type" "simd_div")
    (set_attr "mode" "<MODE>")])
 
-(define_insn "xor<mode>3"
-  [(set (match_operand:LASX 0 "register_operand" "=f,f,f")
-	(xor:LASX
-	  (match_operand:LASX 1 "register_operand" "f,f,f")
-	  (match_operand:LASX 2 "reg_or_vector_same_val_operand" "f,YC,Urv8")))]
-  "ISA_HAS_LASX"
-  "@
-   xvxor.v\t%u0,%u1,%u2
-   xvbitrevi.%v0\t%u0,%u1,%V2
-   xvxori.b\t%u0,%u1,%B2"
-  [(set_attr "type" "simd_logic,simd_bit,simd_logic")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "ior<mode>3"
-  [(set (match_operand:LASX 0 "register_operand" "=f,f,f")
-	(ior:LASX
-	  (match_operand:LASX 1 "register_operand" "f,f,f")
-	  (match_operand:LASX 2 "reg_or_vector_same_val_operand" "f,YC,Urv8")))]
-  "ISA_HAS_LASX"
-  "@
-   xvor.v\t%u0,%u1,%u2
-   xvbitseti.%v0\t%u0,%u1,%V2
-   xvori.b\t%u0,%u1,%B2"
-  [(set_attr "type" "simd_logic,simd_bit,simd_logic")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "and<mode>3"
-  [(set (match_operand:LASX 0 "register_operand" "=f,f,f")
-	(and:LASX
-	  (match_operand:LASX 1 "register_operand" "f,f,f")
-	  (match_operand:LASX 2 "reg_or_vector_same_val_operand" "f,YZ,Urv8")))]
-  "ISA_HAS_LASX"
-{
-  switch (which_alternative)
-    {
-    case 0:
-      return "xvand.v\t%u0,%u1,%u2";
-    case 1:
-      {
-	rtx elt0 = CONST_VECTOR_ELT (operands[2], 0);
-	unsigned HOST_WIDE_INT val = ~UINTVAL (elt0);
-	operands[2] = loongarch_gen_const_int_vector (<MODE>mode, val & (-val));
-	return "xvbitclri.%v0\t%u0,%u1,%V2";
-      }
-    case 2:
-      return "xvandi.b\t%u0,%u1,%B2";
-    default:
-      gcc_unreachable ();
-    }
-}
-  [(set_attr "type" "simd_logic,simd_bit,simd_logic")
-   (set_attr "mode" "<MODE>")])
-
 (define_insn "one_cmpl<mode>2"
   [(set (match_operand:ILASX 0 "register_operand" "=f")
 	(not:ILASX (match_operand:ILASX 1 "register_operand" "f")))]
@@ -990,16 +937,6 @@
 		   (match_operand:FLASX 3 "register_operand" "f")))]
   "ISA_HAS_LASX"
   "xvfmadd.<flasxfmt>\t%u0,%u1,%u2,%u3"
-  [(set_attr "type" "simd_fmadd")
-   (set_attr "mode" "<MODE>")])
-
-(define_insn "fnma<mode>4"
-  [(set (match_operand:FLASX 0 "register_operand" "=f")
-	(fma:FLASX (neg:FLASX (match_operand:FLASX 1 "register_operand" "f"))
-		   (match_operand:FLASX 2 "register_operand" "f")
-		   (match_operand:FLASX 3 "register_operand" "0")))]
-  "ISA_HAS_LASX"
-  "xvfnmsub.<flasxfmt>\t%u0,%u1,%u2,%u0"
   [(set_attr "type" "simd_fmadd")
    (set_attr "mode" "<MODE>")])
 

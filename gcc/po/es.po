@@ -17,6 +17,8 @@
 # cse                - TBD
 # demangled          - mutilado
 # dereference        - desreferencia
+# dylib              - TBD
+# exploded graph     - grafo descompuesto
 # hardware           - hardware
 # hotness            - calentura
 # immediate          - inmediato
@@ -40,10 +42,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: gcc 15.1.0\n"
+"Project-Id-Version: gcc 15.2.0\n"
 "Report-Msgid-Bugs-To: https://gcc.gnu.org/bugs/\n"
 "POT-Creation-Date: 2025-08-01 17:58+0000\n"
-"PO-Revision-Date: 2025-06-12 23:08+0200\n"
+"PO-Revision-Date: 2025-11-08 22:02+0100\n"
 "Last-Translator: Antonio Ceballos Roa <aceballos@gmail.com>\n"
 "Language-Team: Spanish <es@tp.org.es>\n"
 "Language: es\n"
@@ -110,10 +112,8 @@ msgid "call is unlikely and code size would grow"
 msgstr "la llamada es poco probable y el tamaño del código podría crecer"
 
 #: cif-code.def:88
-#, fuzzy
-#| msgid "call is unlikely and code size would grow"
 msgid "call is considered never executed and code size would grow"
-msgstr "la llamada es poco probable y el tamaño del código podría crecer"
+msgstr "la llamada se considera nunca ejecutada y el tamaño del código podría crecer"
 
 #: cif-code.def:92
 msgid "function not declared inline and code size would grow"
@@ -156,14 +156,12 @@ msgid "callee refers to comdat-local symbols"
 msgstr ""
 
 #: cif-code.def:134
-#, fuzzy
-#| msgid "function attribute mismatch"
 msgid "sanitizer function attribute mismatch"
-msgstr "no coincide el atributo de función"
+msgstr "discordancia en atributo de función sanadora"
 
 #: cif-code.def:139
 msgid "function has external linkage when the user requests only inlining static for live patching"
-msgstr ""
+msgstr "la función tiene enlazamiento externo cuando el usuario solo solicita estáticos en línea para parcheo en vivo"
 
 #: cif-code.def:144
 msgid "unreachable"
@@ -283,10 +281,8 @@ msgid "-gz is not supported in this configuration"
 msgstr "no se admite -gz en esta configuración"
 
 #: gcc.cc:865
-#, fuzzy
-#| msgid "-gz is not supported in this configuration"
 msgid "-gz=zstd is not supported in this configuration"
-msgstr "no se admite -gz en esta configuración"
+msgstr "no se admite -gz=zstd en esta configuración"
 
 #: gcc.cc:1099
 msgid "-fuse-linker-plugin is not supported in this configuration"
@@ -297,10 +293,8 @@ msgid "cannot specify -static with -fsanitize=address"
 msgstr "no se puede especificar -static con -fsanitize=address"
 
 #: gcc.cc:1117
-#, fuzzy
-#| msgid "cannot specify -static with -fsanitize=address"
 msgid "cannot specify -static with -fsanitize=hwaddress"
-msgstr "no se puede especificar -static con -fsanitize=address"
+msgstr "no se puede especificar -static con -fsanitize=hwaddress"
 
 #: gcc.cc:1119
 msgid "cannot specify -static with -fsanitize=thread"
@@ -327,10 +321,8 @@ msgid "-E or -x required when input is from standard input"
 msgstr "se requiere -E ó -x cuando la entrada es de entrada estándar"
 
 #: config/darwin.h:153
-#, fuzzy
-#| msgid " conflicting code gen style switches are used"
 msgid "conflicting code generation switches"
-msgstr " se usan interruptores de estilo de generación de código en conflicto"
+msgstr "conflicto en las opciones de generación de código"
 
 #: config/darwin.h:158
 msgid "-bundle_loader not allowed with -dynamiclib"
@@ -349,24 +341,20 @@ msgid "-private_bundle not allowed with -dynamiclib"
 msgstr "no se permite -private_bundle con -dynamiclib"
 
 #: config/darwin.h:179
-#, fuzzy
-#| msgid "-current_version only allowed with -dynamiclib"
 msgid "-compatibility_version only allowed with -dynamiclib"
-msgstr "sólo se permite -current_version con -dynamiclib"
+msgstr "-compatibility_version solo se permite con -dynamiclib"
 
 #: config/darwin.h:181
 msgid "-current_version only allowed with -dynamiclib"
-msgstr "sólo se permite -current_version con -dynamiclib"
+msgstr "-current_version solo se permite con -dynamiclib"
 
 #: config/darwin.h:183
 msgid "-install_name only allowed with -dynamiclib"
-msgstr "sólo se permite -install_name con -dynamiclib"
+msgstr "-install_name solo se permite con -dynamiclib"
 
 #: config/darwin.h:194
-#, fuzzy
-#| msgid "-bundle not allowed with -dynamiclib"
 msgid "-bundle not allowed with -shared"
-msgstr "no se permite -bundle con -dynamiclib"
+msgstr "no se permite -bundle con -shared"
 
 #: config/darwin.h:195
 msgid "-bundle not allowed with -dynamiclib"
@@ -464,16 +452,12 @@ msgid "this target is little-endian"
 msgstr "este destino es little endian"
 
 #: config/msp430/msp430.h:90
-#, fuzzy
-#| msgid "-mtoc-fusion requires medium/large code model"
 msgid "-mcode-region requires the large memory model (-mlarge)"
-msgstr "-mtoc-fusion requiere modelo de código medio/grande"
+msgstr "-mcode-region requiere el modelo de memoria grande (-mlarge)"
 
 #: config/msp430/msp430.h:92
-#, fuzzy
-#| msgid "-mtoc-fusion requires medium/large code model"
 msgid "-mdata-region requires the large memory model (-mlarge)"
-msgstr "-mtoc-fusion requiere modelo de código medio/grande"
+msgstr "-mdata-region requiere el modelo de memoria grande (-mlarge)"
 
 #: config/pa/pa-hpux11.h:134 config/pa/pa-hpux11.h:137 config/pa/pa64-hpux.h:29
 #: config/pa/pa64-hpux.h:32 config/pa/pa64-hpux.h:41 config/pa/pa64-hpux.h:44
@@ -623,10 +607,9 @@ msgid "Warn about possibly incorrect subscripts in do loops."
 msgstr "Avisa sobre la posibilidad de subíndices incorrectos en bucles do"
 
 #: fortran/lang.opt:246
-#, fuzzy, no-c-format
-#| msgid "Warn in case profiles in -fprofile-use do not match."
+#, no-c-format
 msgid "Warn when arguments of external procedures do not match."
-msgstr "Avisa en perfiles case en -fprofile-use que no coincidan."
+msgstr "Avisa cuando los argumentos de procedimientos externos no concuerdan."
 
 #: fortran/lang.opt:254
 #, no-c-format
@@ -739,10 +722,9 @@ msgid "Disable preprocessing."
 msgstr "Desactiva el preprocesamiento."
 
 #: fortran/lang.opt:386
-#, fuzzy, no-c-format
-#| msgid "Argument mismatch for the overriding procedure '%s' at %L: %s"
+#, no-c-format
 msgid "Accept argument mismatches in procedure calls."
-msgstr "La interfaz no coincide en el procedimiento '%s' que sobreescribe en %L: %s"
+msgstr "Acepta discordancia de argumentos en llamadas a procedimientos."
 
 #: fortran/lang.opt:390
 #, no-c-format
@@ -790,10 +772,9 @@ msgid "Produce a warning at runtime if a array temporary has been created for a 
 msgstr "Produce un aviso en tiempo de ejecución si se ha creado una matriz temporal para un argumento de procedimiento."
 
 #: fortran/lang.opt:437
-#, fuzzy, no-c-format
-#| msgid "-fconvert=<big-endian|little-endian|native|swap> The endianness used for unformatted files."
+#, no-c-format
 msgid "-fconvert=<big-endian|little-endian|native|swap|r16_ieee|r16_ibm>\tThe endianness used for unformatted files."
-msgstr "-fconvert=<big-endian|little-endian|native|swap> El endianness empleado en ficheros sin formato."
+msgstr "-fconvert=<big-endian|little-endian|native|swap|r16_ieee|r16_ibm>\tEl endianness empleado en ficheros sin formato."
 
 #: fortran/lang.opt:462
 #, no-c-format
@@ -806,10 +787,9 @@ msgid "Generate C prototypes from BIND(C) declarations."
 msgstr "Genera prototipos C a partir de declaraciones BIND(C)."
 
 #: fortran/lang.opt:470
-#, fuzzy, no-c-format
-#| msgid "Generate C prototypes from BIND(C) declarations."
+#, no-c-format
 msgid "Generate C prototypes from non-BIND(C) external procedure definitions."
-msgstr "Genera prototipos C a partir de declaraciones BIND(C)."
+msgstr "Genera prototipos C a partir de definiciones de procedimientos externos no BIND(C)."
 
 #: fortran/lang.opt:474
 #, no-c-format
@@ -824,7 +804,7 @@ msgstr "Trata las líneas con 'D' en la columna uno como comentarios."
 #: fortran/lang.opt:482
 #, no-c-format
 msgid "Issue debug information for compiler-generated auxiliary variables."
-msgstr ""
+msgstr "Emite información de depuración para variables auxiliares generadas por el compilador."
 
 #: fortran/lang.opt:486
 #, no-c-format
@@ -832,10 +812,9 @@ msgid "Enable all DEC language extensions."
 msgstr "Permite todas las extensiones del lenguaje DEC."
 
 #: fortran/lang.opt:490
-#, fuzzy, no-c-format
-#| msgid "Enable the use of the short load instructions."
+#, no-c-format
 msgid "Enable the use of blank format items in format strings."
-msgstr "Activa el uso de las instrucciones short load."
+msgstr "Activa el uso de elementos con formato en blanco en cadenas de formato."
 
 #: fortran/lang.opt:494
 #, no-c-format
@@ -913,10 +892,9 @@ msgid "Display the code tree after front end optimization."
 msgstr "Muestra el árbol del código después de la optimización del frente."
 
 #: fortran/lang.opt:559
-#, fuzzy, no-c-format
-#| msgid "Display the code tree after parsing."
+#, no-c-format
 msgid "Display the global symbol table after parsing."
-msgstr "Muestra el árbol del código después de analizar."
+msgstr "Muestra la table de símbolos globales después del análisis."
 
 #: fortran/lang.opt:563
 #, no-c-format
@@ -1221,10 +1199,9 @@ msgid "Statically link the GNU Fortran helper library (libgfortran)."
 msgstr "Enlaza estáticamente la biblioteca de ayuda de GNU Fortran (libgfortran)."
 
 #: fortran/lang.opt:915
-#, fuzzy, no-c-format
-#| msgid "Statically link the GNU Fortran helper library (libgfortran)."
+#, no-c-format
 msgid "Statically link the GCC Quad-Precision Math Library (libquadmath)."
-msgstr "Enlaza estáticamente la biblioteca de ayuda de GNU Fortran (libgfortran)."
+msgstr "Enlaza estáticamente la Biblioteca Matemática de Precisión Cuádruple de GCC (libquadmath)."
 
 #: fortran/lang.opt:919
 #, no-c-format
@@ -1247,15 +1224,14 @@ msgid "Conform to the ISO Fortran 2018 standard."
 msgstr "Conforma al estándar ISO Fortran 2018."
 
 #: fortran/lang.opt:935
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO Fortran 2003 standard."
+#, no-c-format
 msgid "Conform to the ISO Fortran 2023 standard."
-msgstr "Conforma al estándar ISO Fortran 2003."
+msgstr "Conforma al estándar ISO Fortran 2023."
 
 #: fortran/lang.opt:939
 #, no-c-format
 msgid "Enable experimental Fortran 202y features."
-msgstr ""
+msgstr "Activa las características experimentales de Fortan 202y."
 
 #: fortran/lang.opt:943
 #, no-c-format
@@ -1285,99 +1261,97 @@ msgstr "Avisa si el llamante de una función, marcada con atributo warn_unused_r
 #: rust/lang.opt:59 c-family/c.opt:893 common.opt:660
 #, no-c-format
 msgid "Warn for infinitely recursive calls."
-msgstr ""
+msgstr "Advierte de llamadas recursivas infinitas."
 
 #: rust/lang.opt:63
 #, no-c-format
 msgid "-frust-crate=<name>             Set the crate name for the compilation"
-msgstr ""
+msgstr "-frust-crate=<nombre>           Establece el nombre del «crate» para la compilación"
 
 #: rust/lang.opt:67
 #, no-c-format
 msgid "-frust-extern=              Specify where an external library is located"
-msgstr ""
+msgstr "-frust-extern=              Especifica dónde se ubica una biblioteca externa"
 
 #: rust/lang.opt:71
 #, no-c-format
 msgid "Dump various Rust front end internals."
-msgstr ""
+msgstr "Vuelca varios internos del «frontend» de Rust."
 
 #: rust/lang.opt:75
-#, fuzzy, no-c-format
-#| msgid "-fgo-dump-<type>\tDump Go frontend internal information."
+#, no-c-format
 msgid "-frust-dump-<type>              Dump Rust frontend internal information."
-msgstr "-fgo-dump-<tipo>\tInformación interna del frente Dump Go."
+msgstr "-frust-dump-<tipo>              Vuelca información interna del «frontend» de Rust."
 
 #: rust/lang.opt:79
 #, no-c-format
 msgid "Enable experimental compilation of Rust files at your own risk"
-msgstr ""
+msgstr "Activa la compilación experimental de ficheros de Rust bajo su propio riesgo"
 
 #: rust/lang.opt:83
 #, no-c-format
 msgid "-frust-max-recursion-depth=<integer>"
-msgstr ""
+msgstr "-frust-max-recursion-depth=<entero>"
 
 #: rust/lang.opt:87
 #, no-c-format
 msgid "-frust-crate-type=[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]     Crate type to emit"
-msgstr ""
+msgstr "-frust-crate-type=[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]     Tipo de «crate» que se emitirá"
 
 #: rust/lang.opt:115
 #, no-c-format
 msgid "-frust-mangling=[legacy|v0]     Version to use for name mangling"
-msgstr ""
+msgstr "-frust-mangling=[legacy|v0]     Versión que se utilizará para «mangling» de nombres"
 
 #: rust/lang.opt:128
 #, no-c-format
 msgid "-frust-cfg=<name>             Set a config expansion option"
-msgstr ""
+msgstr "-frust-cfg=<nombre>           Establece una opción de expansión de la configuración"
 
 #: rust/lang.opt:132
 #, no-c-format
 msgid "-frust-edition=[2015|2018|2021]             Edition to use when compiling rust code"
-msgstr ""
+msgstr "-frust-edition=[2015|2018|2021]             Edición que se utilizará cuando se compile código rust"
 
 #: rust/lang.opt:148
 #, no-c-format
 msgid "Enable embedding metadata directly into object files"
-msgstr ""
+msgstr "Activa el empotrado directo de metadatos en ficheros objeto"
 
 #: rust/lang.opt:152
 #, no-c-format
 msgid "-frust-metadata-output=<path.rox>  Path to output crate metadata"
-msgstr ""
+msgstr "-frust-metadata-output=<ruta.rox>  Ruta de los metadatos del «crate» de salida"
 
 #: rust/lang.opt:160
 #, no-c-format
 msgid "-frust-compile-until=[ast|attributecheck|expansion|astvalidation|featuregating|nameresolution|lowering|typecheck|privacy|unsafety|const|borrowcheck|compilation|end]             The pipeline will run up until this stage when compiling Rust code"
-msgstr ""
+msgstr "-frust-compile-until=[ast|attributecheck|expansion|astvalidation|featuregating|nameresolution|lowering|typecheck|privacy|unsafety|const|borrowcheck|compilation|end]             La tubería alcanzará esta etapa cuando se compile código Rust"
 
 #: rust/lang.opt:209
 #, no-c-format
 msgid "Use the temporary and experimental name resolution pipeline instead of the stable one"
-msgstr ""
+msgstr "Utiliza la tubería de resolución de nombres temporal y experimental en lugar de la estable"
 
 #: rust/lang.opt:213
 #, no-c-format
 msgid "Use the WIP borrow checker."
-msgstr ""
+msgstr "Utiliza el comprobador de préstamos WIP."
 
 #: rust/lang.opt:217
 #, no-c-format
 msgid "-frust-edition=[unwind|abort]             Panic strategy to compile crate with"
-msgstr ""
+msgstr "-frust-edition=[unwind|abort]             Estrategia de pánico con la que compilar «crate»"
 
 #: rust/lang.opt:230
 #, no-c-format
 msgid "Enable the overflow checks in code generation"
-msgstr ""
+msgstr "Activa las comprobaciones de desbordamiento en la generación de código"
 
 #: c-family/c.opt:71
-#, fuzzy, no-c-format
-#| msgid "-I <dir>\tAdd <dir> to the end of the main include path."
+#, no-c-format
 msgid "--embed-dir=<dir>\tAdd <dir> to the #embed path."
-msgstr "-I <dir>\tAgrega el <dir>ectorio al final de la ruta de inclusión principal."
+msgstr "--embed-dir=<dir>\tAgrega el <dir>ectorio a la ruta de #embed."
 
 #: c-family/c.opt:192
 #, no-c-format
@@ -1450,10 +1424,9 @@ msgid "Like -MD but ignore system header files."
 msgstr "Como -MD pero descarta los ficheros de cabecera del sistema."
 
 #: c-family/c.opt:251
-#, fuzzy, no-c-format
-#| msgid "Generate external legend information"
+#, no-c-format
 msgid "Generate C++ Module dependency information."
-msgstr "General información de leyenda externa"
+msgstr "Genera información de dependencia de módulos de C++."
 
 #: c-family/c.opt:259
 #, no-c-format
@@ -1461,32 +1434,29 @@ msgid "Generate phony targets for all headers."
 msgstr "Genera objetivos de prueba para todas las cabecerasa."
 
 #: c-family/c.opt:263
-#, fuzzy, no-c-format
-#| msgid "-MQ <target>\tAdd a MAKE-quoted target."
+#, no-c-format
 msgid "-MQ <target>\tAdd a target that may require quoting."
-msgstr "-MQ <objetivo>\tAgrega un objetivo tipo-MAKE."
+msgstr "-MQ <objetivo>\tAgrega un objetivo que puede requerir entrecomillado."
 
 #: c-family/c.opt:267
-#, fuzzy, no-c-format
-#| msgid "-MT <target>\tAdd an unquoted target."
+#, no-c-format
 msgid "-MT <target>\tAdd a target that does not require quoting."
-msgstr "-MT <objetivo>\tAgrega un objetivo no citado."
+msgstr "-MT <objetivo>\tAgrega un objetivo que no requiere entrecomillado."
 
 #: c-family/c.opt:271
 #, no-c-format
 msgid "Structured format for output dependency information.  Supported (\"p1689r5\")."
-msgstr ""
+msgstr "Formato estructurado para salida de información de dependencias.  Disponible (\"p1689r5\")."
 
 #: c-family/c.opt:275
-#, fuzzy, no-c-format
-#| msgid "Emit cross referencing information"
+#, no-c-format
 msgid "File for output dependency information."
-msgstr "Emite información de referencia cruzada"
+msgstr "Fichero para salida de información de dependencias."
 
 #: c-family/c.opt:279
 #, no-c-format
 msgid "-fdeps-target=obj.o Output file for the compile step."
-msgstr ""
+msgstr "-fdeps-target=obj.o Fichero de salida para el paso de compilación."
 
 #: c-family/c.opt:283
 #, no-c-format
@@ -1499,10 +1469,9 @@ msgid "-U<macro>\tUndefine <macro>."
 msgstr "-U<macro>\tBorra la definición de <macro>."
 
 #: c-family/c.opt:291
-#, fuzzy, no-c-format
-#| msgid "new cannot be applied to a function type"
+#, no-c-format
 msgid "Warn if the NSObject attribute is applied to a non-typedef."
-msgstr "new no se puede aplicar a un tipo de función"
+msgstr "Avisa si el atribute NSObject se aplica a algo distinto de typedef."
 
 #: c-family/c.opt:295
 #, no-c-format
@@ -1520,10 +1489,9 @@ msgid "Warn if a subobject has an abi_tag attribute that the complete object typ
 msgstr "Avisa si un subojeto tiene un atributo abi_tag que el objeto completo no tiene."
 
 #: c-family/c.opt:307
-#, fuzzy, no-c-format
-#| msgid "Warn about casting functions to incompatible types."
+#, no-c-format
 msgid "Warn about code affected by incompatible psABI changes."
-msgstr "Advierte de funciones de conversión a tipos incompatibles."
+msgstr "Advierte de código afectado por cambios de psABI incompatibles."
 
 #: c-family/c.opt:311
 #, no-c-format
@@ -1563,25 +1531,22 @@ msgstr "Avisa sobre cualquier uso de alloca."
 #: c-family/c.opt:351
 #, no-c-format
 msgid "Warn when allocating insufficient storage for the target type of the assigned pointer."
-msgstr ""
+msgstr "Avisa cuando se reserva memoria insuficiente para el tipo objetivo del puntero asignado."
 
 #: c-family/c.opt:355
-#, fuzzy, no-c-format
-#| msgid "-Walloc-size-larger-than=<bytes> Warn for calls to allocation functions that attempt to allocate objects larger than the specified number of bytes."
+#, no-c-format
 msgid "-Walloc-size-larger-than=<bytes>\tWarn for calls to allocation functions that attempt to allocate objects larger than the specified number of bytes."
-msgstr "-Walloc-size-larger-than=<bytes> Avierte de llamadas a funciones de reserva que intenten reservar objetos mayores que el número de bytes especificado."
+msgstr "-Walloc-size-larger-than=<bytes>\tAvierte de llamadas a funciones de reserva que intenten reservar objetos mayores que el número de bytes especificado."
 
 #: c-family/c.opt:360
-#, fuzzy, no-c-format
-#| msgid "-Wno-alloc-size-larger-than Disable Walloc-size-larger-than= warning.  Equivalent to Walloc-size-larger-than=<SIZE_MAX> or larger."
+#, no-c-format
 msgid "Disable Walloc-size-larger-than= warning.  Equivalent to Walloc-size-larger-than=<SIZE_MAX> or larger."
-msgstr "-Wno-alloc-size-larger-than Desactiva el aviso Walloc-size-larger-than=.  Equivalente a Walloc-size-larger-than=<MAX_TAMAÑO> o mayor."
+msgstr "Desactiva el aviso Walloc-size-larger-than=.  Equivalente a Walloc-size-larger-than=<MAX_TAMAÑO> o mayor."
 
 #: c-family/c.opt:364
-#, fuzzy, no-c-format
-#| msgid "-Walloc-zero Warn for calls to allocation functions that specify zero bytes."
+#, no-c-format
 msgid "Warn for calls to allocation functions that specify zero bytes."
-msgstr "-Walloc-zero Advierte de llamadas a funciones de reserva que especifican cero bytes."
+msgstr "Advierte de llamadas a funciones de reserva que especifican cero bytes."
 
 #: c-family/c.opt:368
 #, no-c-format
@@ -1589,27 +1554,24 @@ msgid "-Walloca-larger-than=<number>\tWarn on unbounded uses of alloca, and on b
 msgstr "-Walloca-larger-than=<número>\tAdvierte de usos no acotados de alloca y de usos acotados cuyo límite pueda ser más grande que <número> bytes."
 
 #: c-family/c.opt:374
-#, fuzzy, no-c-format
-#| msgid "-Wno-alloca-larger-than Disable Walloca-larger-than= warning.  Equivalent to Walloca-larger-than=<SIZE_MAX> or larger."
+#, no-c-format
 msgid "Disable Walloca-larger-than= warning.  Equivalent to Walloca-larger-than=<SIZE_MAX> or larger."
-msgstr "-Wno-alloca-larger-than Desactiva el aviso Walloca-larger-than=.  Equivalente a Walloca-larger-than=<MAX_TAMAÑO> o mayor."
+msgstr "Desactiva el aviso Wlloca-larger-than=.  Equivalente a Walloca-larger-than=<MAX_TAMAÑO> o mayor."
 
 #: c-family/c.opt:378
 #, no-c-format
 msgid "Warn if conversion of the result of arithmetic might change the value even though converting the operands cannot."
-msgstr ""
+msgstr "Avisa si la conversión del resultado de una operación aritmética pudiera cambiar el valor aunque la conversión de los operandos no pudiera."
 
 #: c-family/c.opt:386
-#, fuzzy, no-c-format
-#| msgid "Warn about comparison of different enum types."
+#, no-c-format
 msgid "Warn about comparisons between two operands of array type."
-msgstr "Avisar sobre comparación de tipos enum diferentes."
+msgstr "Advierte de comparaciones entre dos operandos de tipo array."
 
 #: c-family/c.opt:390 c-family/c.opt:394
-#, fuzzy, no-c-format
-#| msgid "Warn about multiple declarations of the same object."
+#, no-c-format
 msgid "Warn about mismatched declarations of array parameters and unsafe accesses to them."
-msgstr "Avisa sobre declaraciones múltiples del mismo objeto."
+msgstr "Advierte de declaraciones parámetros de array discrepantes y de accesos inseguros a los mismos."
 
 #: c-family/c.opt:398
 #, no-c-format
@@ -1647,22 +1609,19 @@ msgid "Warn when a built-in preprocessor macro is undefined or redefined."
 msgstr "Avisa cuando una macro de preprocesador interna está sin definir o redefinida."
 
 #: c-family/c.opt:449
-#, fuzzy, no-c-format
-#| msgid "Warn about features not present in ISO C11, but present in ISO C2X."
+#, no-c-format
 msgid "Warn about features not present in ISO C11, but present in ISO C23."
-msgstr "Avisa sobre características no presentes en ISO C11, pero presentes en ISO C2X."
+msgstr "Avisa sobre características no presentes en ISO C11, pero presentes en ISO C23."
 
 #: c-family/c.opt:453
-#, fuzzy, no-c-format
-#| msgid "Deprecated in favor of -Wc++11-compat"
+#, no-c-format
 msgid "Deprecated in favor of -Wc11-c23-compat."
-msgstr "Obsoleto en favor de -Wc+11-compat"
+msgstr "Obsoleto en favor de -Wc11-c23-compat."
 
 #: c-family/c.opt:457
-#, fuzzy, no-c-format
-#| msgid "Warn about features not present in ISO C11, but present in ISO C2X."
+#, no-c-format
 msgid "Warn about features not present in ISO C23, but present in ISO C2Y."
-msgstr "Avisa sobre características no presentes en ISO C11, pero presentes en ISO C2X."
+msgstr "Avisa sobre características no presentes en ISO C23, pero presentes en ISO C2Y."
 
 #: c-family/c.opt:461
 #, no-c-format
@@ -1695,61 +1654,59 @@ msgid "Warn about C++ constructs whose meaning differs between ISO C++ 2014 and 
 msgstr "Avisa sobre construcciones de C++ cuyo significado difiere entre ISO C++ 2014 e ISO C++ 2017."
 
 #: c-family/c.opt:494
-#, fuzzy, no-c-format
-#| msgid "Warn about C++ constructs whose meaning differs between ISO C++ 2014 and ISO C++ 2017."
+#, no-c-format
 msgid "Warn about C++ constructs whose meaning differs between ISO C++ 2017 and ISO C++ 2020."
-msgstr "Avisa sobre construcciones de C++ cuyo significado difiere entre ISO C++ 2014 e ISO C++ 2017."
+msgstr "Avisa sobre construcciones de C++ cuyo significado difiere entre ISO C++ 2017 e ISO C++ 2020."
 
 #: c-family/c.opt:498
 #, no-c-format
 msgid "Warn about C++11 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++11 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:502
 #, no-c-format
 msgid "Warn about C++14 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++14 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:506
 #, no-c-format
 msgid "Warn about C++17 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++17 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:510
 #, no-c-format
 msgid "Warn about C++20 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++20 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:514
 #, no-c-format
 msgid "Warn about C++23 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++23 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:518
 #, no-c-format
 msgid "Warn about C++26 constructs in code compiled with an older standard."
-msgstr ""
+msgstr "Avisa sobre construcciones de C++25 presentes en código compilado con un estándar más antiguo."
 
 #: c-family/c.opt:522
-#, fuzzy, no-c-format
-#| msgid "Warn about suspicious divisions of two sizeof expressions that don't work correctly with pointers."
+#, no-c-format
 msgid "Warn about suspicious calls to calloc-like functions where sizeof expression is the earlier size argument and not the latter."
-msgstr "Advierte de divisiones sospechosas de dos expresiones sizeof que no funcionan correctamente con punteros."
+msgstr "Advierte de llamadas sospechosas a funciones de tipo calloc cuando la expresión sizeof es el argumento del tamaño anterior y no del nuevo."
 
 #: c-family/c.opt:526
 #, no-c-format
 msgid "Warn about casts between incompatible function types."
-msgstr "Advierte de funciones de conversión entre tipos de función incompatibles."
+msgstr "Advierte de «casts» (conversiones) entre tipos de función incompatibles."
 
 #: c-family/c.opt:530
 #, no-c-format
 msgid "Warn about casts which discard qualifiers."
-msgstr "Avisa sobre conversiones que descartan calificadores."
+msgstr "Avisa sobre «casts» (conversiones) que descartan calificadores."
 
 #: c-family/c.opt:534
 #, no-c-format
 msgid "Warn about a cast to reference type that does not use a related user-defined conversion function."
-msgstr ""
+msgstr "Avisa sobre «cast» (conversión) a un tipo referencia que no utiliza una función de conversión definida por el usuario correspondiente"
 
 #: c-family/c.opt:538 c-family/c.opt:542
 #, no-c-format
@@ -1774,10 +1731,9 @@ msgstr "Avisa sobre subíndices cuyo tipo es \"char\"."
 #: c-family/c.opt:1787 c-family/c.opt:1791 c-family/c.opt:1795
 #: c-family/c.opt:1799 c-family/c.opt:1803 c-family/c.opt:1807
 #: config/i386/i386.opt:1005
-#, fuzzy, no-c-format
-#| msgid "Deprecated in GCC 9.  This switch has no effect."
+#, no-c-format
 msgid "Removed in GCC 9.  This switch has no effect."
-msgstr "Obsoleto en GCC 9.  Esta opción no tiene efecto."
+msgstr "Eliminado en GCC 9.  Esta opción no tiene ningún efecto."
 
 #: c-family/c.opt:558
 #, no-c-format
@@ -1795,10 +1751,9 @@ msgid "Warn about variables that might be changed by \"longjmp\" or \"vfork\"."
 msgstr "Avisa sobre variables que pueden cambiar por \"longjmp\" o \"vfork\"."
 
 #: c-family/c.opt:570
-#, fuzzy, no-c-format
-#| msgid "Warn about overflow in arithmetic expressions."
+#, no-c-format
 msgid "Warn about uses of a comma operator within a subscripting expression."
-msgstr "Avisa sobre desbordamiento por debajo en expresiones numéricas."
+msgstr "Avisa sobre usos de separador coma en una expresión ide subíndice."
 
 #: c-family/c.opt:574
 #, no-c-format
@@ -1826,10 +1781,9 @@ msgid "Warn for converting NULL from/to a non-pointer type."
 msgstr "Avisa cuando se convierte NULL de/a un tipo que no es puntero."
 
 #: c-family/c.opt:598
-#, fuzzy, no-c-format
-#| msgid "in template argument for type %qT "
+#, no-c-format
 msgid "Warn when performing class template argument deduction on a type with no deduction guides."
-msgstr "en el argumento de plantilla para el tipo %qT "
+msgstr "Avisa cuando se realiza una deducción de argumento de plantilla de clase sobre un tipo sin guías de deducción."
 
 #: c-family/c.opt:603
 #, no-c-format
@@ -1844,12 +1798,12 @@ msgstr "Avisa sobre else congante."
 #: c-family/c.opt:611 c-family/c.opt:615
 #, no-c-format
 msgid "Warn for uses of pointers to auto variables whose lifetime has ended."
-msgstr ""
+msgstr "Avisa sobre usos de punteros a auto variables cuya existencia ha concluido."
 
 #: c-family/c.opt:619
 #, no-c-format
 msgid "Warn when a reference is bound to a temporary whose lifetime has ended."
-msgstr ""
+msgstr "Avisa cuando una referencia está vinculada a un temporal cuya existencia ha concluido."
 
 #: c-family/c.opt:623
 #, no-c-format
@@ -1862,16 +1816,14 @@ msgid "Warn when a declaration is found after a statement."
 msgstr "Avisa cuando se encuentra una declaración después de una sentencia."
 
 #: c-family/c.opt:631
-#, fuzzy, no-c-format
-#| msgid "Warn about unprototyped function declarations."
+#, no-c-format
 msgid "Warn for missing parameter types in function declarations."
-msgstr "Avisa sobre declaraciones de función sin prototipo."
+msgstr "Avisa cuando faltan los tipos de los parámetros en declaraciones de funciones."
 
 #: c-family/c.opt:635
-#, fuzzy, no-c-format
-#| msgid "Warn when a Cell microcoded instruction is emitted."
+#, no-c-format
 msgid "Warn when an explicitly defaulted function is deleted."
-msgstr "Avisa cuando se emite una instrucción microcodificada Cell."
+msgstr "Avisa cuando se borra una función predeterminada explícitamente."
 
 #: c-family/c.opt:639
 #, no-c-format
@@ -1894,32 +1846,29 @@ msgid "Mark implicitly-declared copy operations as deprecated if the class has a
 msgstr "Marca las operaciones de copia declaradas implícitamente como obsoletas si la clase tiene una operación de copia o un destructor definidos por el usuario."
 
 #: c-family/c.opt:661
-#, fuzzy, no-c-format
-#| msgid "Warn about most implicit conversions."
+#, no-c-format
 msgid "Warn about deprecated arithmetic conversions on operands of enumeration types."
-msgstr "Avisa sobre la mayoría de las conversiones implícitas."
+msgstr "Avisa sobre conversiones aritméticas de operandos de tipos enumerados que están obsoletas."
 
 #: c-family/c.opt:665
 #, no-c-format
 msgid "Warn about deprecated arithmetic conversions on operands where one is of enumeration type and the other is of a floating-point type."
-msgstr ""
+msgstr "Avisa sobre conversiones aritméticas de operandos que están obsoletas en las que uno es de tipo enumerado y el otro de coma flotante."
 
 #: c-family/c.opt:670
 #, no-c-format
 msgid "Warn about deprecated space between \"\" and suffix in a user-defined literal operator."
-msgstr ""
+msgstr "Avisa sobre espacio obsoleto entre \"\" y el sufijo en operadores literales definidos por el usuario."
 
 #: c-family/c.opt:674
-#, fuzzy, no-c-format
-#| msgid "in a call to function %qD declared here"
+#, no-c-format
 msgid "Warn about calls with arguments to functions declared without parameters."
-msgstr "en una llamada a la función %qD declarada aquí"
+msgstr "Avisa sobre llamadas con argumentos a funciones declaradas sin parámetros."
 
 #: c-family/c.opt:678
-#, fuzzy, no-c-format
-#| msgid "Warn about semicolon after in-class function definition."
+#, no-c-format
 msgid "Warn about deprecated omission of comma before ... in varargs function declaration."
-msgstr "Advierte de punto y coma después de una definición de función dentro de una clase."
+msgstr "Advierte de la omisión obsoleta de coma antes de ... declaraciones de funciones varargs."
 
 #: c-family/c.opt:682
 #, no-c-format
@@ -1987,16 +1936,14 @@ msgid "Warn about comparison of different enum types."
 msgstr "Avisar sobre comparación de tipos enum diferentes."
 
 #: c-family/c.opt:734
-#, fuzzy, no-c-format
-#| msgid "Warn about most implicit conversions."
+#, no-c-format
 msgid "Warn about implicit conversion of enum types."
-msgstr "Avisa sobre la mayoría de las conversiones implícitas."
+msgstr "Avisa sobre conversiones implícitas de tipos enum."
 
 #: c-family/c.opt:738
-#, fuzzy, no-c-format
-#| msgid "Warn about subscripts whose type is \"char\"."
+#, no-c-format
 msgid "Warn about enum/integer type mismatches."
-msgstr "Avisa sobre subíndices cuyo tipo es \"char\"."
+msgstr "Avisa sobre discrepancias de tipo enum/entero."
 
 #: c-family/c.opt:746
 #, no-c-format
@@ -2004,10 +1951,9 @@ msgid "This switch is deprecated; use -Werror=implicit-function-declaration inst
 msgstr "Esta opción es obsoleta; utilice en su lugar -Werror=implicit-function-declaration."
 
 #: c-family/c.opt:750
-#, fuzzy, no-c-format
-#| msgid "Warn when one variable shadows another (globally)."
+#, no-c-format
 msgid "Warn when an exception handler is shadowed by another handler."
-msgstr "Avisa cuando una variable oculta otra (globalmente)."
+msgstr "Avisa cuando un manejador de excepciones queda tapado por otro manejador."
 
 #: c-family/c.opt:754
 #, no-c-format
@@ -2022,7 +1968,7 @@ msgstr "Advierte de punto y coma después de una definición de función dentro 
 #: c-family/c.opt:766
 #, no-c-format
 msgid "Warn when a structure containing a C99 flexible array member as the last field is not at the end of another structure."
-msgstr ""
+msgstr "Advierte de estructuras que contienen algún miembro de array flexible C99 como último campo y no están al final de otra estructura."
 
 #: c-family/c.opt:771
 #, no-c-format
@@ -2045,10 +1991,9 @@ msgid "Warn about format strings that contain NUL bytes."
 msgstr "Advierte de cadenas de formato que contengan bytes NUL."
 
 #: c-family/c.opt:787
-#, fuzzy, no-c-format
-#| msgid "Warn about format strings that are not literals."
+#, no-c-format
 msgid "Warn about GCC format strings with strings unsuitable for diagnostics."
-msgstr "Avisa sobre el uso de cadenas de formato que no son literales."
+msgstr "Avisa sobre cadenas de formato GCC con cadenas inadecuadas para diagnósticos."
 
 #: c-family/c.opt:791
 #, no-c-format
@@ -2106,20 +2051,19 @@ msgid "Warn when __builtin_frame_address or __builtin_return_address is used uns
 msgstr "Avisa cuando __builtin_frame_address o __builtin_return_address se usan de forma no segura."
 
 #: c-family/c.opt:842
-#, fuzzy, no-c-format
-#| msgid "label at end of compound statement"
+#, no-c-format
 msgid "Warn about labels on declarations and at the end of compound statements."
-msgstr "etiqueta al final de una declaración compuesta"
+msgstr "Avisa sobre etiquetas en declaraciones y al final de sentencias compuestas."
 
 #: c-family/c.opt:846
 #, no-c-format
 msgid "Warn about the global module fragment not containing only preprocessing directives."
-msgstr ""
+msgstr "Advierte de que el fragmento del módulo global no contiene únicamente directivas de procesamiento."
 
 #: c-family/c.opt:850
 #, no-c-format
 msgid "Warn when #ifndef of a header guard is followed by #define of a different macro with the header guard macro not defined at the end of header."
-msgstr ""
+msgstr "Avisa cuando un #ifndef de una guarda de cabecera va seguida de un #define con una macro distinta con la macro de guarda de cabecera no definida al final de la cabecera."
 
 #: c-family/c.opt:854
 #, no-c-format
@@ -2152,10 +2096,9 @@ msgid "Warn when a declaration does not specify a type."
 msgstr "Avisa cuando una declaración no especifique un tipo."
 
 #: c-family/c.opt:885
-#, fuzzy, no-c-format
-#| msgid "direct base %qT inaccessible in %qT due to ambiguity"
+#, no-c-format
 msgid "Warn when a base is inaccessible in derived due to ambiguity."
-msgstr "base directa %qT inaccesible en %qT debido a ambigüedad"
+msgstr "Avisa cuando una base es inaccesible en una derivada a causa de ambigüedad."
 
 #: c-family/c.opt:889
 #, no-c-format
@@ -2175,7 +2118,7 @@ msgstr "Avisa sobre usos de std::initializer_list que pueden resultar en puntero
 #: c-family/c.opt:905
 #, no-c-format
 msgid "Warn about nonsensical values of --param destructive-interference-size or constructive-interference-size."
-msgstr ""
+msgstr "Advierte de valores sin sentido de --param destructive-interference-size o constructive-interference-size."
 
 #: c-family/c.opt:910
 #, no-c-format
@@ -2198,10 +2141,9 @@ msgid "Warn when there is a cast to a pointer from an integer of a different siz
 msgstr "Avisa cuando hay una conversión a puntero desde un entero de tamaño diferente."
 
 #: c-family/c.opt:926
-#, fuzzy, no-c-format
-#| msgid "Warn about underflow of numerical constant expressions."
+#, no-c-format
 msgid "Warn when a function never produces a constant expression."
-msgstr "Avisa sobre desbordamiento por debajo de expresiones numéricas constantes."
+msgstr "Avisa cuando una función nunca produce una expresión constante."
 
 #: c-family/c.opt:930
 #, no-c-format
@@ -2214,10 +2156,9 @@ msgid "Warn about PCH files that are found but not used."
 msgstr "Avisa sobre ficheros PCH que se encuentran pero no se usan."
 
 #: c-family/c.opt:938
-#, fuzzy, no-c-format
-#| msgid "Warn about using variadic macros."
+#, no-c-format
 msgid "Warn about invalid UTF-8 characters."
-msgstr "Avisa sobre el uso de macros variadic."
+msgstr "Avisa sobre caracteres UTF-8 no válidos."
 
 #: c-family/c.opt:942
 #, no-c-format
@@ -2227,7 +2168,7 @@ msgstr "Avisa cuando un salto pierde la inicialización de una variable."
 #: c-family/c.opt:961
 #, no-c-format
 msgid "Warn about leading whitespace style issues on lines except when in raw string literals."
-msgstr ""
+msgstr "Advierte de cuestiones de estilo de espacios en blanco iniciales en las líneas excepto si son literales de cadena en bruto."
 
 #: c-family/c.opt:965
 #, no-c-format
@@ -2310,10 +2251,9 @@ msgid "Warn about user-specified include directories that do not exist."
 msgstr "Avisa sobre directorios de inclusión definidos por el usuario que no existen."
 
 #: c-family/c.opt:1044
-#, fuzzy, no-c-format
-#| msgid "function definition does not declare parameters"
+#, no-c-format
 msgid "Warn about function definitions omitting parameter names."
-msgstr "la definición de la función no declara parámetros"
+msgstr "Avisa sobre definiciones de función que omiten los nombres de parámetros."
 
 #: c-family/c.opt:1048
 #, no-c-format
@@ -2326,21 +2266,19 @@ msgid "Warn about global functions without prototypes."
 msgstr "Avisa sobre funciones globales sin prototipos."
 
 #: c-family/c.opt:1056
-#, fuzzy, no-c-format
-#| msgid "Warn about possibly missing parentheses."
+#, no-c-format
 msgid "Warn about likely missing requires keyword."
-msgstr "Avisa sobre posibles paréntesis ausentes."
+msgstr "Avisa sobre la probable ausencia de palabra clave requerida."
 
 #: c-family/c.opt:1060
 #, no-c-format
 msgid "Warn when the template keyword is missing after a member access token in a dependent member access expression if that member is a template."
-msgstr ""
+msgstr "Advierte de la omisión de la palabra clave template después de un «token» de acceso a miembro en una expresión de acceso a miembro dependiente si el miembro es una plantilla."
 
 #: c-family/c.opt:1064
-#, fuzzy, no-c-format
-#| msgid "Warn about global functions without previous declarations."
+#, no-c-format
 msgid "Warn about global variables without previous declarations."
-msgstr "Avisa sobre funciones globales sin declaraciones previas."
+msgstr "Avisa sobre variables globales sin declaraciones previas."
 
 #: c-family/c.opt:1071
 #, no-c-format
@@ -2425,13 +2363,12 @@ msgstr "Avisa si se usa una definición de parámetro al estilo antiguo."
 #: c-family/c.opt:1167
 #, no-c-format
 msgid "Warn about potentially suboptimal choices related to OpenACC parallelism."
-msgstr ""
+msgstr "Avisa sobre decisiones potencialmente subóptimas relacionadas con paralelismo OpenACC."
 
 #: c-family/c.opt:1171
-#, fuzzy, no-c-format
-#| msgid "Warn about \"suspicious\" constructs."
+#, no-c-format
 msgid "Warn about suspicious OpenMP code."
-msgstr "Avisa sobre construcciones \"sospechosas\"."
+msgstr "Avisa sobre código OpenMP sospechoso."
 
 #: c-family/c.opt:1175
 #, no-c-format
@@ -2519,10 +2456,9 @@ msgid "Warn about misuses of pragmas."
 msgstr "Avisa sobre malos usos de pragmas."
 
 #: c-family/c.opt:1255
-#, fuzzy, no-c-format
-#| msgid "Warn about deprecated compiler features"
+#, no-c-format
 msgid "Warn about #pragma once outside of a header."
-msgstr "Avisa si se usan opciones de compilador obsoletas"
+msgstr "Advierte de #pragma once fuera de una cabecera."
 
 #: c-family/c.opt:1259
 #, no-c-format
@@ -2577,7 +2513,7 @@ msgstr "Avisa cuando un argumento que se pasa a un parámetro con calificación 
 #: c-family/c.opt:1300
 #, no-c-format
 msgid "Warn whenever void-returning functions return a non-void expressions, or a return expression is missing in a function not returning void."
-msgstr ""
+msgstr "Avisa siempre que una función que devuelve void devuelve una expresión no void, o si falta expresión de retorno en una función que no devuelve void."
 
 #: c-family/c.opt:1304
 #, no-c-format
@@ -2595,10 +2531,9 @@ msgid "Warn if a selector has multiple methods."
 msgstr "Avisa si un selector tiene métodos múltiples."
 
 #: c-family/c.opt:1316
-#, fuzzy, no-c-format
-#| msgid "Warn when a variable is only set, otherwise unused."
+#, no-c-format
 msgid "Warn when a value is moved to itself with std::move."
-msgstr "Avisa cuando sólo se define una variable, y no se usa posteriormente."
+msgstr "Avisa cuando un valor se mueve a sí mismo con std::move."
 
 #: c-family/c.opt:1320
 #, no-c-format
@@ -2703,13 +2638,12 @@ msgstr "Advierte de desbordamiento de búfer en funciones que manipulan cadenas,
 #: c-family/c.opt:1421
 #, no-c-format
 msgid "Under the control of Object Size type, warn about buffer overflow in string manipulation functions like memcpy and strcpy."
-msgstr ""
+msgstr "Bajo el control del tipo de tamao del obejto (Object Size), advierte de desbordamiento de búfer en funciones de manipulación de cadenas como memcpy y strcpy."
 
 #: c-family/c.opt:1426
-#, fuzzy, no-c-format
-#| msgid "Warn about buffer overflow in string manipulation functions like memcpy and strcpy."
+#, no-c-format
 msgid "Warn about reading past the end of a source array in string manipulation functions like memchr and memcpy."
-msgstr "Advierte de desbordamiento de búfer en funciones que manipulan cadenas, como memcpy y strcpy."
+msgstr "Advierte de lecturas más allá del final de un array origen en funciones que manipulan cadenas, como memcpy y strcpy."
 
 #: c-family/c.opt:1430
 #, no-c-format
@@ -2772,26 +2706,19 @@ msgid "Warn on primary template declaration."
 msgstr "Avisa en la declaración de la plantilla primeraria."
 
 #: c-family/c.opt:1483
-#, fuzzy, no-c-format
-#| msgid "error while parsing fields"
+#, no-c-format
 msgid "Diagnose errors when parsing a template."
-msgstr "error al decodificar los campos"
+msgstr "Diagnostica errores al analizar plantillas."
 
 #: c-family/c.opt:1487
-#, fuzzy, no-c-format
-#| msgid ""
-#| "\n"
-#| "ldd output with constructors/destructors.\n"
+#, no-c-format
 msgid "Warn about simple-template-id in a constructor or destructor."
-msgstr ""
-"\n"
-"salida de ldd con constructores/destructores.\n"
+msgstr "Advierte de simple-template-id en constructores y destructores."
 
 #: c-family/c.opt:1491
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about templates naming TU-local entities in a module."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre plantillas que designan entidades TU-local en un módulo."
 
 #: c-family/c.opt:1495
 #, no-c-format
@@ -2881,7 +2808,7 @@ msgstr "Advierte de un uso cuestionable de las macros utilizadas para obtener ar
 #: c-family/c.opt:1607
 #, no-c-format
 msgid "Warn about the most vexing parse syntactic ambiguity."
-msgstr ""
+msgstr "Advierten de la ambigüedad de análisis sintáctico más irritante."
 
 #: c-family/c.opt:1611
 #, no-c-format
@@ -2894,28 +2821,24 @@ msgid "Warn if a variable length array is used."
 msgstr "Avisa si se usa una matriz de longitud variable."
 
 #: c-family/c.opt:1619
-#, fuzzy, no-c-format
-#| msgid "-Wvla-larger-than=<number>\tWarn on unbounded uses of variable-length arrays, and on bounded uses of variable-length arrays whose bound can be larger than <number> bytes. <number> bytes."
+#, no-c-format
 msgid "-Wvla-larger-than=<number>\tWarn on unbounded uses of variable-length arrays, and on bounded uses of variable-length arrays whose bound can be larger than <number> bytes."
-msgstr "-Wvla-larger-than=<número>\tAdvierte de usos no acotados de arrays de longitud variable y de usos acotados de arrays de longitud variable cuyo límite pueda ser más grande que <número> bytes. <número> bytes"
+msgstr "-Wvla-larger-than=<número>\tAdvierte de usos no acotados de arrays de longitud variable y de usos acotados de arrays de longitud variable cuyo límite pueda ser más grande que <número> bytes."
 
 #: c-family/c.opt:1625
-#, fuzzy, no-c-format
-#| msgid "-Wno-vla-larger-than Disable Wvla-larger-than= warning.  Equivalent to Wvla-larger-than=<SIZE_MAX> or larger."
+#, no-c-format
 msgid "Disable Wvla-larger-than= warning.  Equivalent to Wvla-larger-than=<SIZE_MAX> or larger."
-msgstr "-Wno-vla-larger-than Desactiva el aviso Wvla-larger-than=.  Equivalente a Wvla-larger-than=<MAX_TAMAÑO> o mayor."
+msgstr "Desactiva el aviso Wvla-larger-than=.  Equivalente a Wvla-larger-than=<MAX_TAMAÑO> o mayor."
 
 #: c-family/c.opt:1629
-#, fuzzy, no-c-format
-#| msgid "Warn about multiple declarations of the same object."
+#, no-c-format
 msgid "Warn about mismatched declarations of VLA parameters."
-msgstr "Avisa sobre declaraciones múltiples del mismo objeto."
+msgstr "Avisa sobre declaraciones discrepantes de parámetros VLA."
 
 #: c-family/c.opt:1633
-#, fuzzy, no-c-format
-#| msgid "Warn about deprecated compiler features"
+#, no-c-format
 msgid "Warn about deprecated uses of volatile qualifier."
-msgstr "Avisa si se usan opciones de compilador obsoletas"
+msgstr "Advierte de usos obsoletos del cualificador volatile."
 
 #: c-family/c.opt:1637
 #, no-c-format
@@ -2935,7 +2858,7 @@ msgstr "En C++, un valor diferente de cero significa avisar sobre conversiones o
 #: c-family/c.opt:1649
 #, no-c-format
 msgid "Warn about xor operators where it appears the user meant exponentiation."
-msgstr ""
+msgstr "Advierte de operadores xor cuando parece que el usuario pretendía exponenciación."
 
 #: c-family/c.opt:1653
 #, no-c-format
@@ -2943,10 +2866,9 @@ msgid "Warn when a literal '0' is used as null pointer."
 msgstr "Avisa cuando se usa un '0' literal como puntero nulo."
 
 #: c-family/c.opt:1657
-#, fuzzy, no-c-format
-#| msgid "Warn about zero-length formats."
+#, no-c-format
 msgid "Warn about accesses to interior zero-length array members."
-msgstr "Avisa sobre formatos de longitud cero."
+msgstr "Avisa sobre accesos a miembros de array interiores de longitud cero."
 
 #: c-family/c.opt:1661
 #, no-c-format
@@ -2964,10 +2886,9 @@ msgid "Enforce class member access control semantics."
 msgstr "Cumple las semánticas de control de acceso de miembros de clase."
 
 #: c-family/c.opt:1677
-#, fuzzy, no-c-format
-#| msgid "-fada-spec-parent=unit  Dump Ada specs as child units of given parent."
+#, no-c-format
 msgid "-fada-spec-parent=unit\tDump Ada specs as child units of given parent."
-msgstr "-fada-spec-parent=unidad  Vuelca specs de Ada como unidades hijas del padre dado."
+msgstr "-fada-spec-parent=unidad\tVuelca specs de Ada como unidades hijas del padre dado."
 
 #: c-family/c.opt:1681
 #, no-c-format
@@ -2975,10 +2896,9 @@ msgid "Support C++17 allocation of over-aligned types."
 msgstr "Admite alojamiento C++17 de tipos sobrealineados."
 
 #: c-family/c.opt:1685
-#, fuzzy, no-c-format
-#| msgid "-faligned-new=<N> Use C++17 over-aligned type allocation for alignments greater than N."
+#, no-c-format
 msgid "-faligned-new=<N>\tUse C++17 over-aligned type allocation for alignments greater than N."
-msgstr "-faligned-new=<N> Usa alojamiento de tipo sobrealineado de C++17 para alineamientos mayores que N."
+msgstr "-faligned-new=<N>\tUsa alojamiento de tipo sobrealineado de C++17 para alineamientos mayores que N."
 
 #: c-family/c.opt:1696 c-family/c.opt:2017 c-family/c.opt:2430
 #: c-family/c.opt:2434 c-family/c.opt:2450
@@ -2994,7 +2914,7 @@ msgstr "Reconoce la palabra clave \"asm\"."
 #: c-family/c.opt:1704
 #, no-c-format
 msgid "Assume C++ replaceable global operators new, new[], delete, delete[] don't read or write visible global state."
-msgstr ""
+msgstr "Asume que los operadores globales C++ reemplazables new, new[], delete, delete[] no leen ni escriben el estado global visible."
 
 #: c-family/c.opt:1712
 #, no-c-format
@@ -3012,10 +2932,9 @@ msgid "Enable the char8_t fundamental type and use it as the type for UTF-8 stri
 msgstr "Habilita el tipo fundamental char8_t y lo usa como el tipo para los literales de cadenas UTF-8 y de caracteres."
 
 #: c-family/c.opt:1811
-#, fuzzy, no-c-format
-#| msgid "Deprecated in GCC 8.  This switch has no effect."
+#, no-c-format
 msgid "Removed in GCC 8.  This switch has no effect."
-msgstr "Obsoleto en GCC 8.  Esta opción no tiene efecto."
+msgstr "Eliminado en GCC 8.  Esta opción no tiene ningún efecto."
 
 #: c-family/c.opt:1815
 #, no-c-format
@@ -3023,15 +2942,14 @@ msgid "Enable support for C++ concepts."
 msgstr "Activa el soporte para conceptos de C++."
 
 #: c-family/c.opt:1819
-#, fuzzy, no-c-format
-#| msgid "Deprecated in GCC 9.  This switch has no effect."
+#, no-c-format
 msgid "Removed in GCC 15.  This switch has no effect."
-msgstr "Obsoleto en GCC 9.  Esta opción no tiene efecto."
+msgstr "Eliminado en GCC 15.  Esta opción no tiene ningún efecto."
 
 #: c-family/c.opt:1823
 #, no-c-format
 msgid "Specify maximum error replay depth during recursive diagnosis of a constraint satisfaction failure."
-msgstr ""
+msgstr "Especifica la profundidad de reproducción de error máxima durante el diagnóstico recursivo de un fallo de satisfacción de restricciones."
 
 #: c-family/c.opt:1827
 #, no-c-format
@@ -3049,16 +2967,14 @@ msgid "-fconstexpr-depth=<number>\tSpecify maximum constexpr recursion depth."
 msgstr "-fconstexpr-depth-<número>\tEspecifica la profundidad de recursión constexpr máxima."
 
 #: c-family/c.opt:1843
-#, fuzzy, no-c-format
-#| msgid "-fconstexpr-depth=<number>\tSpecify maximum constexpr recursion depth."
+#, no-c-format
 msgid "-fconstexpr-cache-depth=<number>\tSpecify maximum constexpr recursion cache depth."
-msgstr "-fconstexpr-depth-<número>\tEspecifica la profundidad de recursión constexpr máxima."
+msgstr "-fconstexpr-cache-depth-<número>\tEspecifica la profundidad de la caché de recursión constexpr máxima."
 
 #: c-family/c.opt:1847
-#, fuzzy, no-c-format
-#| msgid "difference of two pointer expressions is not a constant expression"
+#, no-c-format
 msgid "Allow IEC559 floating point exceptions in constant expressions."
-msgstr "la diferencia de dos expresiones puntero no es una expresión constante"
+msgstr "Permite las excepciones de coma flotante IEC559 en expresiones constantes."
 
 #: c-family/c.opt:1851
 #, no-c-format
@@ -3071,45 +2987,44 @@ msgid "-fconstexpr-ops-limit=<number>\tSpecify maximum number of constexpr opera
 msgstr "-fconstexpr-ops-limit=<número>\tEspecifica el número máximo de operaciones constexpr durante una evaluación de constexpr."
 
 #: c-family/c.opt:1859
-#, fuzzy, no-c-format
-#| msgid "Warn about features not present in traditional C."
+#, no-c-format
 msgid "Enable certain features present in drafts of C++ Contracts."
-msgstr "Avisa sobre características no presentes en C tradicional."
+msgstr "Activa ciertas características presentes en los borradores de los contratos de C++ ."
 
 #: c-family/c.opt:1872
 #, no-c-format
 msgid "-fcontract-assumption-mode=[on|off]\tEnable or disable treating axiom level contracts as assumptions (default on)."
-msgstr ""
+msgstr "-fcontract-assumption-mode=[on|off]\tActiva o desactiva el tratamiento de las contracciones del nivel de axiomas como hipótesis (activo por defecto)."
 
 #: c-family/c.opt:1876
 #, no-c-format
 msgid "-fcontract-build-level=[off|default|audit]\tSpecify max contract level to generate runtime checks for."
-msgstr ""
+msgstr "-fcontract-build-level=[off|default|audit]\tEspecifca el máximo nivel de contrato para el cual se generarán comprobaciones en tiempo de ejecución."
 
 #: c-family/c.opt:1880
 #, no-c-format
 msgid "-fcontract-strict-declarations=[on|off]\tEnable or disable warnings on generalized redeclaration of functions with contracts (default off)."
-msgstr ""
+msgstr "-fcontract-strict-declarations=[on|off]\tActiva o desactiva los avisos sobre redeclaraciones generalizadas de funciones con contratos (desactivado por defecto)."
 
 #: c-family/c.opt:1884
 #, no-c-format
 msgid "-fcontract-mode=[on|off]\tEnable or disable all contract facilities (default on)."
-msgstr ""
+msgstr "-fcontract-mode=[on|off]\tActiva o desactiva todo lo relacionado con contratos (activado por defecto)."
 
 #: c-family/c.opt:1888
 #, no-c-format
 msgid "-fcontract-continuation-mode=[on|off]\tEnable or disable contract continuation mode (default off)."
-msgstr ""
+msgstr "-fcontract-continuation-mode=[on|off]\tActiva o desactiva el modo de continuación de contrato (desactivado por defecto)."
 
 #: c-family/c.opt:1892
 #, no-c-format
 msgid "-fcontract-role=<name>:<semantics>\tSpecify the semantics for all levels in a role (default, review), or a custom contract role with given semantics (ex: opt:assume,assume,assume)."
-msgstr ""
+msgstr "-fcontract-role=<name>:<semantics>\tEspecifica la semántica de todos los niveles en un rol («review» por defecto) o un rol de contrato personalizado con un significado determinado (ej: opt:assume,assume,assume)."
 
 #: c-family/c.opt:1896
 #, no-c-format
 msgid "-fcontract-semantic=<level>:<semantic>\tSpecify the concrete semantics for level."
-msgstr ""
+msgstr "-fcontract-semantic=<level>:<semantic>\tEspecifica la semántica concreta para el nivel."
 
 #: c-family/c.opt:1900
 #, no-c-format
@@ -3132,10 +3047,9 @@ msgid "Print hierarchical comparisons when template types are mismatched."
 msgstr "Imprime comparaciones jerárquicas cuando los tipos de plantilla no coinciden."
 
 #: c-family/c.opt:1924
-#, fuzzy, no-c-format
-#| msgid "default argument mismatch in overload resolution"
+#, no-c-format
 msgid "Note all candidates during overload resolution failure."
-msgstr "no coincide el argumento por defecto en la resolución de sobrecarga"
+msgstr "Anota todos los candidatos en los fallos de resolución de sobrecarga."
 
 #: c-family/c.opt:1928
 #, no-c-format
@@ -3148,10 +3062,9 @@ msgid "Permit '$' as an identifier character."
 msgstr "Permite '$' como un identificador de carácter."
 
 #: c-family/c.opt:1936
-#, fuzzy, no-c-format
-#| msgid "-fmacro-prefix-map=<old>=<new> Map one directory name to another in __FILE__, __BASE_FILE__, and __builtin_FILE()."
+#, no-c-format
 msgid "-fmacro-prefix-map=<old>=<new>\tMap one directory name to another in __FILE__, __BASE_FILE__, and __builtin_FILE()."
-msgstr "-fmacro-prefix-map=<viejo>=<nuevo> Asocia un nombre de directorio a otro en __FILE__, __BASE_FILE__, y __builtin_FILE()."
+msgstr "-fmacro-prefix-map=<viejo>=<nuevo>\tAsocia un nombre de directorio a otro en __FILE__, __BASE_FILE__, y __builtin_FILE()."
 
 #: c-family/c.opt:1940
 #, no-c-format
@@ -3164,10 +3077,9 @@ msgid "Write all declarations as Ada code for the given file only."
 msgstr "Escribe todas las declaraciones como código Ada solo para el fichero dado."
 
 #: c-family/c.opt:1951
-#, fuzzy, no-c-format
-#| msgid "Do not discard comments in macro expansions."
+#, no-c-format
 msgid "Do not elide common elements in template comparisons."
-msgstr "No descarta comentarios en expansiones de macro."
+msgstr "No elude comentarios comunes en comparaciones de plantillas."
 
 #: c-family/c.opt:1955
 #, no-c-format
@@ -3195,10 +3107,9 @@ msgid "Support dynamic initialization of thread-local variables in a different t
 msgstr "Admite inicialización dinámica de variables locales de hilo en una unidad de traducción diferente."
 
 #: c-family/c.opt:1981
-#, fuzzy, no-c-format
-#| msgid "No calls in function %s\n"
+#, no-c-format
 msgid "Fold calls to simple inline functions."
-msgstr "No hay llamadas en la función %s\n"
+msgstr "Pliega llamadas en forma de funciones en línea."
 
 #: c-family/c.opt:1988
 #, no-c-format
@@ -3228,7 +3139,7 @@ msgstr "Asume el entorno normal de ejecución C."
 #: c-family/c.opt:2021
 #, no-c-format
 msgid "Implement P2564 for consteval propagation."
-msgstr ""
+msgstr "Implementa P2564 para la propagación de consteval."
 
 #: c-family/c.opt:2025
 #, no-c-format
@@ -3236,10 +3147,9 @@ msgid "Export functions even if they can be inlined."
 msgstr "Exporta funciones aun si pueden incluir en línea."
 
 #: c-family/c.opt:2029
-#, fuzzy, no-c-format
-#| msgid "Inline member functions by default"
+#, no-c-format
 msgid "Make inline functions constexpr by default."
-msgstr "Incluye en línea a las funciones miembro por defecto"
+msgstr "Hace las funciones en línea constexpr por defecto."
 
 #: c-family/c.opt:2033
 #, no-c-format
@@ -3267,80 +3177,74 @@ msgid "Allow implicit conversions between vectors with differing numbers of subp
 msgstr "Permite las conversiones implícitas entre vectores con números diferentes de subpartes y/o tipos de elementos diferentes."
 
 #: c-family/c.opt:2059
-#, fuzzy, no-c-format
-#| msgid "Enable C++ coroutines (experimental)."
+#, no-c-format
 msgid "Enable C++20 Modules (experimental)."
-msgstr "Permite corrutinas C++ (experimental)."
+msgstr "Permite módulos C++ (experimental)."
 
 #: c-family/c.opt:2067
-#, fuzzy, no-c-format
-#| msgid "Enable C++ coroutines (experimental)."
+#, no-c-format
 msgid "Enable C++ header module (experimental)."
-msgstr "Permite corrutinas C++ (experimental)."
+msgstr "Permite módulo cabecera C++ (experimental)."
 
 #: c-family/c.opt:2074
 #, no-c-format
 msgid "Member functions defined within their class are inline in module purview."
-msgstr ""
+msgstr "Las funciones miembro definidas dentro de sus clases se hacen en línea en el «module purview»."
 
 #: c-family/c.opt:2078
 #, no-c-format
 msgid "Only emit Compiled Module Interface."
-msgstr ""
+msgstr "Solo se emite el interfaz de módulo compilado."
 
 #: c-family/c.opt:2082
 #, no-c-format
 msgid "Mapper for module to CMI files."
-msgstr ""
+msgstr "Asociador de módulo a ficheros CMI."
 
 #: c-family/c.opt:2086
-#, fuzzy, no-c-format
-#| msgid "Enable code hoisting."
+#, no-c-format
 msgid "Enable lazy module importing."
-msgstr "Activa la elevación de código."
+msgstr "Activa la importación de módulos perezosa."
 
 #: c-family/c.opt:2094
-#, fuzzy, no-c-format
-#| msgid "Warn about semicolon after in-class function definition."
+#, no-c-format
 msgid "Warn about macros that have conflicting header units definitions."
-msgstr "Advierte de punto y coma después de una definición de función dentro de una clase."
+msgstr "Advierte de macros con definiciones de unidades de cabecera conflictivas."
 
 #: c-family/c.opt:2098
-#, fuzzy, no-c-format
-#| msgid "return makes pointer from integer without a cast"
+#, no-c-format
 msgid "Warn if pointers of distinct types are compared without a cast."
-msgstr "la devolución crea un puntero desde un entero sin una conversión"
+msgstr "Avisa si punteros de tipos distintos se comparan sin cast."
 
 #: c-family/c.opt:2102
 #, no-c-format
 msgid "Note #include directives translated to import declarations."
-msgstr ""
+msgstr "Nótese las directivas #include traducidas a declaraciones import."
 
 #: c-family/c.opt:2106
 #, no-c-format
 msgid "Note #include directives not translated to import declarations, and not known to be textual."
-msgstr ""
+msgstr "Nótese las directivas #include no traducidas a declaraciones import y no reconocidas como textuales."
 
 #: c-family/c.opt:2110
 #, no-c-format
 msgid "Note a #include translation of a specific header."
-msgstr ""
+msgstr "Nótese una traducción de #include de una cabecera específica."
 
 #: c-family/c.opt:2114
 #, no-c-format
 msgid "Note Compiled Module Interface pathnames."
-msgstr ""
+msgstr "Nótese nombres de rutas de interfaces de módulos compilados (Compiled Module Interface)."
 
 #: c-family/c.opt:2118
 #, no-c-format
 msgid "Note Compiled Module Interface pathname of a specific module or header-unit."
-msgstr ""
+msgstr "Nótese nombres de rutas de interfaces de módulos compilados (Compiled Module Interface) de un módulo específico o unidad de cabecera."
 
 #: c-family/c.opt:2122
-#, fuzzy, no-c-format
-#| msgid "ffixed-line-length-<number>\tSet the maximum line length to <number>"
+#, no-c-format
 msgid "fmax-include-depth=<number> Set the maximum depth of the nested #include."
-msgstr "ffixed-line-length-<número>\tLimita la longitud máxima de línea a <número>"
+msgstr "fmax-include-depth-<número> Limita la máxima profundidad de #include anidados."
 
 #: c-family/c.opt:2126
 #, no-c-format
@@ -3353,10 +3257,9 @@ msgid "Implement resolution of DR 150 for matching of template template argument
 msgstr "Implementa la resolución de DR 150 para coincidencias de argumentos de plantilla de plantilla."
 
 #: c-family/c.opt:2149
-#, fuzzy, no-c-format
-#| msgid "Generate code for NeXT (Apple Mac OS X) runtime environment."
+#, no-c-format
 msgid "Generate code for NeXT (Apple macOS) runtime environment."
-msgstr "Genera código para el entorno de tiempo de ejecución NeXT (Apple Mac OS X)."
+msgstr "Genera código para el entorno de tiempo de ejecución NeXT (Apple macOS)."
 
 #: c-family/c.opt:2153
 #, no-c-format
@@ -3464,16 +3367,14 @@ msgid "Treat the input file as already preprocessed."
 msgstr "Trata al fichero de entrada como previamente preprocesado."
 
 #: c-family/c.opt:2274
-#, fuzzy, no-c-format
-#| msgid "-ftrack-macro-expansion=<0|1|2>  Track locations of tokens coming from macro expansion and display them in error messages."
+#, no-c-format
 msgid "-ftrack-macro-expansion=<0|1|2>\tTrack locations of tokens coming from macro expansion and display them in error messages."
-msgstr "-ftrack-macro-expansion=<0|1|2>  Rastrea las ubicaciones de los elementos que provienen de la expansión de macros y los muestra en mensajes de error."
+msgstr "-ftrack-macro-expansion=<0|1|2>\tRastrea las ubicaciones de los elementos que provienen de la expansión de macros y los muestra en mensajes de error."
 
 #: c-family/c.opt:2278
-#, fuzzy, no-c-format
-#| msgid "-fno-pretty-templates Do not pretty-print template specializations as the template signature followed by the arguments."
+#, no-c-format
 msgid "Do not pretty-print template specializations as the template signature followed by the arguments."
-msgstr "-fno-pretty-templates No da formato legible a las especializaciones de plantilla como la firma de plantilla seguida por los argumentos."
+msgstr "No hace especializaciones de plantilla pretty-print como la firma de plantilla seguida por los argumentos."
 
 #: c-family/c.opt:2282
 #, no-c-format
@@ -3483,7 +3384,7 @@ msgstr "Trata los valores de retorno conocidos de sprintf como constantes."
 #: c-family/c.opt:2286
 #, no-c-format
 msgid "Enable lifetime extension of range based for temporaries."
-msgstr ""
+msgstr "Activa la extensión del tiempo de vida de rango basado en temporales."
 
 #: c-family/c.opt:2290
 #, no-c-format
@@ -3491,10 +3392,9 @@ msgid "Used in Fix-and-Continue mode to indicate that object files may be swappe
 msgstr "Usa el modo Fix-and-Continue para indicar que los ficheros objeto se pueden intercambiar en tiempo de ejecución."
 
 #: c-family/c.opt:2294
-#, fuzzy, no-c-format
-#| msgid "Deprecated in GCC 9.  This switch has no effect."
+#, no-c-format
 msgid "Removed in GCC 10.  This switch has no effect."
-msgstr "Obsoleto en GCC 9.  Esta opción no tiene efecto."
+msgstr "Eliminado en GCC 10.  Esta opción no tiene efecto."
 
 #: c-family/c.opt:2298
 #, no-c-format
@@ -3502,10 +3402,9 @@ msgid "Generate run time type descriptor information."
 msgstr "Genera información de descriptor de tipo en tiempo de ejecución."
 
 #: c-family/c.opt:2302
-#, fuzzy, no-c-format
-#| msgid "Do not look for source files in standard path"
+#, no-c-format
 msgid "Look for the main source file on the include path."
-msgstr "No buscar ficheros fuente en la ruta estándar"
+msgstr "Busca el fichero fuente pricipal en la ruta de include."
 
 #: c-family/c.opt:2309 ada/gcc-interface/lang.opt:81
 #, no-c-format
@@ -3753,22 +3652,19 @@ msgid "Conform to the ISO 2017 C++ standard."
 msgstr "Conforma al estándar ISO 2017 C++."
 
 #: c-family/c.opt:2581 c-family/c.opt:2585
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2020(?) C++ draft standard (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2020 C++ standard (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 2020(?) C++ (soporte experimental e incompleto)."
+msgstr "Conforma al estándar ISO 2020 C++ (soporte experimental e incompleto)."
 
 #: c-family/c.opt:2589 c-family/c.opt:2593
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 202X C standard draft (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2023 C++ standard (published in 2024; experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 202X C (soporte experimental e incompleto)"
+msgstr "Conforma al estándar ISO 2023 C++ (publicado en 2024; soporte experimental e incompleto)"
 
 #: c-family/c.opt:2597 c-family/c.opt:2601
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2020(?) C++ draft standard (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2026 C++ draft standard (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 2020(?) C++ (soporte experimental e incompleto)."
+msgstr "Conforma al borrador del estándar ISO 2026 C++ (soporte experimental e incompleto)."
 
 #: c-family/c.opt:2605 c-family/c.opt:2767
 #, no-c-format
@@ -3787,22 +3683,19 @@ msgid "Conform to the ISO 2017 C standard (published in 2018)."
 msgstr "Conforma al estándar ISO 2017 C (publicado en 2018)."
 
 #: c-family/c.opt:2621 c-family/c.opt:2779
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2017 C standard (published in 2018)."
+#, no-c-format
 msgid "Conform to the ISO 2023 C standard (published in 2024)."
-msgstr "Conforma al estándar ISO 2017 C (publicado en 2018)."
+msgstr "Conforma al estándar ISO 2023 C (publicado en 2024)."
 
 #: c-family/c.opt:2625
-#, fuzzy, no-c-format
-#| msgid "Deprecated in favor of -std=c11."
+#, no-c-format
 msgid "Deprecated in favor of -std=c23."
-msgstr "Obsoleto en favor de -std=c11."
+msgstr "Obsoleto en favor de -std=c23."
 
 #: c-family/c.opt:2629
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 202X C standard draft (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 202Y C standard draft (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 202X C (soporte experimental e incompleto)"
+msgstr "Conforma al borrador del estándar ISO 202Y C (soporte experimental e incompleto)"
 
 #: c-family/c.opt:2633 c-family/c.opt:2637 c-family/c.opt:2751
 #, no-c-format
@@ -3855,22 +3748,19 @@ msgid "Conform to the ISO 2017 C++ standard with GNU extensions."
 msgstr "Conforma al estándar ISO 2017 C++ con extensiones GNU."
 
 #: c-family/c.opt:2683 c-family/c.opt:2687
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2020(?) C++ draft standard with GNU extensions (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2020 C++ standard with GNU extensions (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 2020(?) C++ con extensiones GNU (soporte experimental e incompleto)."
+msgstr "Conforma al estándar ISO 2020 C++ con extensiones GNU (soporte experimental e incompleto)."
 
 #: c-family/c.opt:2691 c-family/c.opt:2695
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 202X C standard draft with GNU extensions (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2023 C++ standard with GNU extensions (published in 2024; experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 202X C con extensiones GNU (soporte experimental e incompleto)."
+msgstr "Conforma al estándar ISO 2023 C++ con extensiones GNU (publicado en 2024; soporte experimental e incompleto)."
 
 #: c-family/c.opt:2699 c-family/c.opt:2703
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2020(?) C++ draft standard with GNU extensions (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 2026 C++ draft standard with GNU extensions (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 2020(?) C++ con extensiones GNU (soporte experimental e incompleto)."
+msgstr "Conforma al borrador del estándar ISO 2026 C++ con extensiones GNU (soporte experimental e incompleto)."
 
 #: c-family/c.opt:2707
 #, no-c-format
@@ -3888,22 +3778,19 @@ msgid "Conform to the ISO 2017 C standard (published in 2018) with GNU extension
 msgstr "Conforma al estándar ISO 2017 C (publicado en 2018) con extensiones GNU."
 
 #: c-family/c.opt:2723
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 2017 C standard (published in 2018) with GNU extensions."
+#, no-c-format
 msgid "Conform to the ISO 2023 C standard (published in 2024) with GNU extensions."
-msgstr "Conforma al estándar ISO 2017 C (publicado en 2018) con extensiones GNU."
+msgstr "Conforma al estándar ISO 2023 C (publicado en 2024) con extensiones GNU."
 
 #: c-family/c.opt:2727
-#, fuzzy, no-c-format
-#| msgid "Deprecated in favor of -std=gnu11."
+#, no-c-format
 msgid "Deprecated in favor of -std=gnu23."
-msgstr "Obsoleto en favor de -std=gnu11."
+msgstr "Obsoleto en favor de -std=gnu23."
 
 #: c-family/c.opt:2731
-#, fuzzy, no-c-format
-#| msgid "Conform to the ISO 202X C standard draft with GNU extensions (experimental and incomplete support)."
+#, no-c-format
 msgid "Conform to the ISO 202Y C standard draft with GNU extensions (experimental and incomplete support)."
-msgstr "Conforma al borrador del estándar ISO 202X C con extensiones GNU (soporte experimental e incompleto)."
+msgstr "Conforma al borrador del estándar ISO 202Y C con extensiones GNU (soporte experimental e incompleto)."
 
 #: c-family/c.opt:2735 c-family/c.opt:2739
 #, no-c-format
@@ -3953,18 +3840,17 @@ msgstr "No predefine las macros específicas del sistema y específicas de GCC."
 #: cobol/lang.opt:48
 #, no-c-format
 msgid "Accept COBOL constructs used by non-ISO compilers"
-msgstr ""
+msgstr "Acepta construcciones de COBOL utilizadas por compiladores no ISO"
 
 #: cobol/lang.opt:67
-#, fuzzy, no-c-format
-#| msgid "-fhandle-exceptions has been renamed -fexceptions (and is now on by default)"
+#, no-c-format
 msgid "-fcobol-exceptions=<n>\tEnable some exceptions by default"
-msgstr "se renombró -fhandle-exceptions a -fexceptions (y ahora está activado por defecto)"
+msgstr "-fcobol-exceptions=<n>\tHabilita algunas excepciones por defecto"
 
 #: cobol/lang.opt:71
 #, no-c-format
 msgid "Define alternative implicit copybook filename extension"
-msgstr ""
+msgstr "Define extensión de nombre de fichero copybook implícita alternativa"
 
 #: cobol/lang.opt:75
 #, no-c-format
@@ -3973,59 +3859,56 @@ msgstr ""
 
 # No me gusta mucho esta traducción. cfuga
 #: cobol/lang.opt:79
-#, fuzzy, no-c-format
-#| msgid "Enable backend debugging."
+#, no-c-format
 msgid "Enable Cobol lex debugging"
-msgstr "Habilita la depuración del extremo trasero."
+msgstr "Habilita la depuración lex de Cobol"
 
 #: cobol/lang.opt:91
 #, no-c-format
 msgid "-findicator-column=<n>\tColumn after which Region A begins"
-msgstr ""
+msgstr "-findicator-column=<n>\tColumna tras la cual comienza la Región A"
 
 #: cobol/lang.opt:95
 #, no-c-format
 msgid "-finternal-ebcdic\tInternal processing is in EBCDIC Code Page 1140"
-msgstr ""
+msgstr "-finternal-ebcdic\tProcesamiento interno en EBCDIC página de código 1140"
 
 #: cobol/lang.opt:99
 #, no-c-format
 msgid "Enable/disable static linkage for CALL literals"
-msgstr ""
+msgstr "Activa/desactiva el enlazamiento estático de literales CALL"
 
 # No me gusta mucho esta traducción. cfuga
 #: cobol/lang.opt:103
-#, fuzzy, no-c-format
-#| msgid "Enable backend debugging."
+#, no-c-format
 msgid "Enable Cobol parser debugging"
-msgstr "Habilita la depuración del extremo trasero."
+msgstr "Habilita la depuración del analizador de Cobol"
 
 # No me gusta mucho esta traducción. cfuga
 #: cobol/lang.opt:107
-#, fuzzy, no-c-format
-#| msgid "Enable backend debugging."
+#, no-c-format
 msgid "Enable Cobol yacc debugging"
-msgstr "Habilita la depuración del extremo trasero."
+msgstr "Habilita la depuración de yacc de Cobol"
 
 #: cobol/lang.opt:111
 #, no-c-format
 msgid "preprocess <source_filter> before compiling"
-msgstr ""
+msgstr "preprocesa <filtro_fuente> antes de compilar"
 
 #: cobol/lang.opt:131
 #, no-c-format
 msgid "-main\tThe first program-id in the next source file is called by a generated main() entry point"
-msgstr ""
+msgstr "-main\tEl primer id de programa en el siguiente fichero fuente lo llama un punto de entrada main() generado"
 
 #: cobol/lang.opt:135
 #, no-c-format
 msgid "-main=<source_file> source_file/PROGRAM-ID is called by the generated main()"
-msgstr ""
+msgstr "-main=<fichero_fuente> fichero_fuente/ID-PROGRAMA lo llama el main() generado"
 
 #: cobol/lang.opt:139
 #, no-c-format
 msgid "-nomain\tNo main() function is created from COBOL source files"
-msgstr ""
+msgstr "-nomain\tNo se crea ninguna función main() desde los ficheros fuente COBOL"
 
 #: ada/gcc-interface/lang.opt:61
 #, no-c-format
@@ -4083,15 +3966,14 @@ msgid "Warn about casts that will produce a null result."
 msgstr "Avisa sobre conversiones que darán resultado nulo."
 
 #: d/lang.opt:143
-#, fuzzy, no-c-format
-#| msgid "Warn when a built-in function is declared with the wrong signature."
+#, no-c-format
 msgid "Warn when a special enum is declared with the wrong base type."
-msgstr "Avisa cuando una función interna se declara con una firma incorrecta."
+msgstr "Avisa cuando un enum especial se declara con un tipo base incorrecto."
 
 #: d/lang.opt:151
 #, no-c-format
 msgid "Warn from speculative compiles such as __traits(compiles)."
-msgstr ""
+msgstr "Advierte de compilaciones especulativas como __traits(compiles)."
 
 #: d/lang.opt:163
 #, no-c-format
@@ -4136,7 +4018,7 @@ msgstr "-fbounds-check=[on|safeonly|off]\tActiva o desactiva las comprobaciones 
 #: d/lang.opt:240
 #, no-c-format
 msgid "-fcheckaction=[throw,halt,context]\tBehavior on contract failure."
-msgstr ""
+msgstr "-fcheckaction=[throw,halt,context]\tComportamiento ante falle de contrato."
 
 #: d/lang.opt:256
 #, no-c-format
@@ -4144,10 +4026,9 @@ msgid "Compile in debug code."
 msgstr "Compila en código de depuración."
 
 #: d/lang.opt:260
-#, fuzzy, no-c-format
-#| msgid "-fdebug=<level|ident>\tCompile in debug code, code <= <level>, or code identified by <ident>."
+#, no-c-format
 msgid "-fdebug=<ident>\tCompile in debug code identified by <ident>."
-msgstr "-fdebug=<level|ident>\tCompila en código de depuración, código <= <nivel>, o código identificado por <ident>."
+msgstr "-fdebug=<ident>\tCompila en código de depuración identificado por <ident>."
 
 #: d/lang.opt:264
 #, no-c-format
@@ -4177,24 +4058,22 @@ msgstr "Asume que existen bibliotecas D estándar de tiempo de ejecución y \"D 
 #: d/lang.opt:284
 #, no-c-format
 msgid "Add comments for ignored declarations in the generated C++ header."
-msgstr ""
+msgstr "Añade comentarios para declaraciones descartadas en la cabecera C++ generada."
 
 #: d/lang.opt:288
-#, fuzzy, no-c-format
-#| msgid "-fdump-go-spec=filename\tWrite all declarations to file as Go code."
+#, no-c-format
 msgid "-fdump-cxx-spec=<filename>\tWrite all declarations as C++ code to <filename>."
-msgstr "-fdump-go-spec=fichero\tEscribe todas las declaraciones al fichero como código Go."
+msgstr "-fdump-cxx-spec=<fichero>\tEscribe todas las declaraciones como código C++ a <fichero>."
 
 #: d/lang.opt:292
-#, fuzzy, no-c-format
-#| msgid "Display the code tree after parsing; deprecated option."
+#, no-c-format
 msgid "Display the frontend AST after parsing and semantic passes."
-msgstr "Muestra el árbol del código después de analizar; opción obsoleta."
+msgstr "Muestra el frontal AST después de los pases de análisis sintáctico y semántico."
 
 #: d/lang.opt:300
 #, no-c-format
 msgid "-fextern-std=<standard>\tSet C++ name mangling compatibility with <standard>."
-msgstr ""
+msgstr "-fextern-std=<estándar>\tEstablece la compatibilidad de «mangling» de nombres C++ con <estándar>."
 
 #: d/lang.opt:328
 #, no-c-format
@@ -4202,16 +4081,14 @@ msgid "Ignore unsupported pragmas."
 msgstr "Hace caso omiso de pragmas no admitidas."
 
 #: d/lang.opt:332
-#, fuzzy, no-c-format
-#| msgid "unsupported wide integer operation"
+#, no-c-format
 msgid "Include imported modules in the compilation."
-msgstr "operación de enteros anchos sin soporte"
+msgstr "Incluye módulos importados en la compilación."
 
 #: d/lang.opt:336
-#, fuzzy, no-c-format
-#| msgid "Generate code for built-in atomic operations."
+#, no-c-format
 msgid "Generate code for class invariant contracts."
-msgstr "Genera código para operaciones atómicas internas."
+msgstr "Genera código para contratos invariantes de clase."
 
 #: d/lang.opt:340
 #, no-c-format
@@ -4224,10 +4101,9 @@ msgid "-fmodule-file=<package.module>=<filespec>\tuse <filespec> as source file 
 msgstr "-fmodule-file=<paquete.módulo>=<especfich>\tutiliza <especfich> como fichero fuente para <paquete.módulo>."
 
 #: d/lang.opt:348
-#, fuzzy, no-c-format
-#| msgid "Generate code for the user mode."
+#, no-c-format
 msgid "Generate ModuleInfo struct for output module."
-msgstr "Genera código para el modo de usuario."
+msgstr "Genera la estructura ModuleInfo para el módulo de salida."
 
 #: d/lang.opt:352
 #, no-c-format
@@ -4247,112 +4123,107 @@ msgstr "Genera código para contratos de precondiciones."
 #: d/lang.opt:364
 #, no-c-format
 msgid "Turn on all upcoming D language features."
-msgstr ""
+msgstr "Activa todas las características venideras del lenguaje D"
 
 #: d/lang.opt:368
 #, no-c-format
 msgid "Implement D bit-fields."
-msgstr ""
+msgstr "Implementa campos de bit de D."
 
 #: d/lang.opt:372
 #, no-c-format
 msgid "Implement DIP1000: Scoped pointers."
-msgstr ""
+msgstr "Implementa DIP1000: punteros con alcance."
 
 #: d/lang.opt:376
 #, no-c-format
 msgid "Implement DIP1008: Allow exceptions in @nogc code."
-msgstr ""
+msgstr "Implementa DIP1008: permite excepciones en código @nogc."
 
 #: d/lang.opt:380
-#, fuzzy, no-c-format
-#| msgid "malformed spec function arguments"
+#, no-c-format
 msgid "Implement DIP1021: Mutable function arguments."
-msgstr "argumentos de la función de especificación malformados"
+msgstr "Implement DIP1021: argumentos de funciones mutables."
 
 #: d/lang.opt:384
 #, no-c-format
 msgid "Destruct fields of partially constructed objects."
-msgstr ""
+msgstr "Destruye campos de objetos parcialmente construidos."
 
 #: d/lang.opt:388
 #, no-c-format
 msgid "Use field-wise comparisons for struct equality."
-msgstr ""
+msgstr "Utiliza comparaciones campo a campo para igualdad de estructuras."
 
 #: d/lang.opt:392
 #, no-c-format
 msgid "When a symbol is resolved, check `alias this' scope before going to upper scopes."
-msgstr ""
+msgstr "Cuando se resuelve un símbolo, comprueba el alcance de «alias this» antes de acudir a alcances superiores."
 
 #: d/lang.opt:396
 #, no-c-format
 msgid "Disallow unsound immutable conversions that were formerly incorrectly permitted."
-msgstr ""
+msgstr "Impide conversiones inmutables defectuosas que anteriormente se permitieron incorrectamente."
 
 #: d/lang.opt:400
 #, no-c-format
 msgid "Implement 'in' parameters to mean scope const."
-msgstr ""
+msgstr "Implementa parámetros «in» con el significado de «scope const»."
 
 #: d/lang.opt:404
 #, no-c-format
 msgid "Implement 'in' contracts of overridden methods to be a superset of parent contract."
-msgstr ""
+msgstr "Implementa contratos «in» de métodos anulados como superconjunto del contrato."
 
 #: d/lang.opt:408
-#, fuzzy, no-c-format
-#| msgid "Consider access to byte sized memory slow."
+#, no-c-format
 msgid "Disable access to shared memory objects."
-msgstr "Considera lento el acceso a memoria de tamaño byte."
+msgstr "Deshabilita el acceso a los objetos de memoria compartida."
 
 #: d/lang.opt:412
-#, fuzzy, no-c-format
-#| msgid "Inline member functions by default"
+#, no-c-format
 msgid "Enable safety checks on all functions by default."
-msgstr "Incluye en línea a las funciones miembro por defecto"
+msgstr "Habilita las comprobaciones de seguridad en todas las funciones por defecto."
 
 #: d/lang.opt:416
-#, fuzzy, no-c-format
-#| msgid "cannot pass rvalue to reference parameter"
+#, no-c-format
 msgid "Enable rvalue arguments to ref parameters."
-msgstr "no se puede pasar un valor-r a un parámetro de referencia"
+msgstr "Habilita argumentos valor-r a parámetros de referencia."
 
 #: d/lang.opt:420
 #, no-c-format
 msgid "Disable access to variables marked `@system' from @safe code."
-msgstr ""
+msgstr "Deshabilita el acceso a variables marcadas «@system» desde código @safe."
 
 #: d/lang.opt:424
-#, fuzzy, no-c-format
-#| msgid "Display the compiler's version."
+#, no-c-format
 msgid "Compile release version."
-msgstr "Muestra la versión del compilador."
+msgstr "Compila la versión «release»."
 
 #: d/lang.opt:428
 #, no-c-format
 msgid "Turn off all revertable D language features."
-msgstr ""
+msgstr "Desactiva todas las características reversibles del lenguaje D."
 
 #: d/lang.opt:432
 #, no-c-format
 msgid "Revert DIP1000: Scoped pointers."
-msgstr ""
+msgstr "Revierte DIP1000: punteros con alcance."
 
 #: d/lang.opt:436
 #, no-c-format
 msgid "Don't destruct fields of partially constructed objects."
-msgstr ""
+msgstr "No destruye campos de objetos parcialmente construidos."
 
 #: d/lang.opt:440
 #, no-c-format
 msgid "Don't use C-style integral promotion for unary '+', '-' and '~'."
-msgstr ""
+msgstr "No utiliza la promoción de enteros estilo C para los unitarios '+', '-' y '~'."
 
 #: d/lang.opt:448
 #, no-c-format
 msgid "-fsave-mixins=<filename>\tExpand and save mixins to file specified by <filename>."
-msgstr ""
+msgstr "-fsave-mixins=<fichero>\tExpande y guarda «mixins» en <fichero>."
 
 #: d/lang.opt:452
 #, no-c-format
@@ -4360,10 +4231,9 @@ msgid "Generate code for switches without a default case."
 msgstr "Genera código para las opciones sin caso predefinido."
 
 #: d/lang.opt:456
-#, fuzzy, no-c-format
-#| msgid "List information on all language changes."
+#, no-c-format
 msgid "List information on all D language transitions."
-msgstr "Muestra información sobre todos los cambios del lenguaje."
+msgstr "Muestra información sobre todas las transiciones del lenguaje D."
 
 #: d/lang.opt:460
 #, no-c-format
@@ -4371,21 +4241,19 @@ msgid "List all non-mutable fields which occupy an object instance."
 msgstr "Enumera todos los campos no mutables que ocupan la instancia de un objeto."
 
 #: d/lang.opt:464
-#, fuzzy, no-c-format
-#| msgid "List all usages of complex or imaginary types."
+#, no-c-format
 msgid "List all usages of 'in' on parameter."
-msgstr "Enumera todos los usos de los tipos complejo o imaginario."
+msgstr "Enumera todos los usos de 'in' en parámetro."
 
 #: d/lang.opt:468
 #, no-c-format
 msgid "List all hidden GC allocations."
-msgstr ""
+msgstr "Enumera todas las reservas GC ocultas."
 
 #: d/lang.opt:472
-#, fuzzy, no-c-format
-#| msgid "Enable automatic template instantiation."
+#, no-c-format
 msgid "List statistics on template instantiations."
-msgstr "Activa la instanciación automática de plantillas."
+msgstr "Muestra una lista de estadísticas sobre instanciaciones de plantillas."
 
 #: d/lang.opt:476
 #, no-c-format
@@ -4393,22 +4261,19 @@ msgid "List all variables going into thread local storage."
 msgstr "Enumera todas las variables que van al almacenamiento local del hilo."
 
 #: d/lang.opt:480
-#, fuzzy, no-c-format
-#| msgid "Compile with 32-bit integer mode"
+#, no-c-format
 msgid "Compile in unittest code."
-msgstr "Compila con el modo entero de 32-bit"
+msgstr "Compila en código unittest."
 
 #: d/lang.opt:484
-#, fuzzy, no-c-format
-#| msgid "-fdebug=<level|ident>\tCompile in debug code, code <= <level>, or code identified by <ident>."
+#, no-c-format
 msgid "-fversion=<ident>\tCompile in version code identified by <ident>."
-msgstr "-fdebug=<level|ident>\tCompila en código de depuración, código <= <nivel>, o código identificado por <ident>."
+msgstr "-fversion=<ident>\tCompila en código de versión identificado por <ident>."
 
 #: d/lang.opt:488
-#, fuzzy, no-c-format
-#| msgid "Emit implicit instantiations of templates."
+#, no-c-format
 msgid "Emit template instantiations as weak symbols."
-msgstr "Emite instanciaciones implícitas de plantillas."
+msgstr "Emite instanciaciones de plantillas como símbolos débiles."
 
 #: d/lang.opt:508
 #, no-c-format
@@ -4428,169 +4293,167 @@ msgstr "Enlaza la biblioteca D estándar dinámicamente en la compilación."
 #: m2/lang.opt:35
 #, no-c-format
 msgid "turns on case statement label compile time checking when using an expression of an enum type."
-msgstr ""
+msgstr "activa la comprobación en tiempo de compilación de etiquetas de sentencias case cuando se utilizan en expresiones de tipo enum."
 
 #: m2/lang.opt:39
 #, no-c-format
 msgid "compiler checks to force definition module procedure parameter names with their implementation module counterpart"
-msgstr ""
+msgstr "comprobaciones del compilador para forzar los nombres de parámetros de procedimientos de módulos de definición con sus módulos de implementación correspondientes."
 
 #: m2/lang.opt:43
 #, no-c-format
 msgid "compiler warns if a cast is being used on types of differing sizes"
-msgstr ""
+msgstr "el compilador avisa si un «cast» se está utilizando con tipos de diferente tamaño."
 
 #: m2/lang.opt:47
 #, no-c-format
 msgid "inform user which parameters will be passed by reference"
-msgstr ""
+msgstr "informa al usuario de qué parámetros se pasarán por referencia"
 
 #: m2/lang.opt:51
 #, no-c-format
 msgid "extra compile time semantic checking, typically tries to catch poor programming style"
-msgstr ""
+msgstr "comprobación semántica extra en tiempo de compilación, típicamente intenta detectar estilo de programación pobre"
 
 #: m2/lang.opt:55
 #, no-c-format
 msgid "turns on compile time analysis in the first basic block of a procedure detecting access to uninitialized data."
-msgstr ""
+msgstr "activa análisis en tiempo de compilación en el primer bloque básico de un procedimiento que detecta acceso a datos sin inicializar."
 
 #: m2/lang.opt:59
 #, no-c-format
 msgid "turns on compile time analysis to detect access to uninitialized variables, the checking can be specified by: known,cond,all."
-msgstr ""
+msgstr "activa análisis en tiempo de compilación para detectar acceso a variables sin inicializar, la comprobación puede especificarse mediante: known,cond,all."
 
 #: m2/lang.opt:63
 #, no-c-format
 msgid "automatically initializes all pointers to NIL"
-msgstr ""
+msgstr "inicializa automáticamente todos los punteros a NIL"
 
 #: m2/lang.opt:67
 #, no-c-format
 msgid "turns on runtime subrange, array index and indirection via NIL pointer checking"
-msgstr ""
+msgstr "activa subrango, índice de array e indirección en tiempo de ejecución mediante la comprobación de puntero a NIL"
 
 #: m2/lang.opt:71
 #, no-c-format
 msgid "turns on runtime checking to check whether a CASE statement requires an ELSE clause when one was not specified"
-msgstr ""
+msgstr "activa la comproboación en tiempo de ejecución para ver si las sentencias CASE requieren cláusula ELSE cuando no se ha especificado"
 
 #: m2/lang.opt:75
 #, no-c-format
 msgid "use cpp to preprocess the module"
-msgstr ""
+msgstr "utiliza cpp para reprocesar el módulo"
 
 #: m2/lang.opt:79 m2/lang.opt:83
 #, no-c-format
 msgid "passed to the preprocessor if -fcpp is used (internal switch)"
-msgstr ""
+msgstr "pasado al preprocesador si se utiliza -fcpp (opción interna)"
 
 #: m2/lang.opt:87
 #, no-c-format
 msgid "call a real function, rather than the builtin equivalent"
-msgstr ""
+msgstr "llama a una función real, en lugar de la equivalente incorporada («builtin»)"
 
 #: m2/lang.opt:91
-#, fuzzy, no-c-format
-#| msgid "Set name of output ALI file (internal switch)."
+#, no-c-format
 msgid "turn on internal debugging of the compiler (internal switch)"
-msgstr "Establece el nombre del fichero ALI de salida (opción interna)."
+msgstr "activa la depuración interna del compilador (opción interna)"
 
 #: m2/lang.opt:95
 #, no-c-format
 msgid "turn on tracing of procedure line numbers (internal switch)"
-msgstr ""
+msgstr "activa el trazado de números de línea de procedimientos (opción interna)"
 
 #: m2/lang.opt:99
 #, no-c-format
 msgid "recognize the specified suffix as a definition module filename"
-msgstr ""
+msgstr "reconoce el sufijo especificado como el nombre de fichero de un módulo de definición"
 
 #: m2/lang.opt:103
 #, no-c-format
 msgid "display all inbuilt system items"
-msgstr ""
+msgstr "muestra todos los elementos incorporados del sistema"
 
 #: m2/lang.opt:107
 #, no-c-format
 msgid "allows opaque types to be implemented as any type (a GNU Modula-2 extension)"
-msgstr ""
+msgstr "permite implementar tipos opacos como cualquier tipo (extensión del Modula-2 de GNU)"
 
 #: m2/lang.opt:111
 #, no-c-format
 msgid "turns on runtime checking to check whether a floating point number will exceed range"
-msgstr ""
+msgstr "activa la comprobación en tiempo de ejecución de números de coma flotante que puedan exceder el rango"
 
 #: m2/lang.opt:115
 #, no-c-format
 msgid "create a topologically sorted module list from all dependent modules used in the application"
-msgstr ""
+msgstr "crea lista de módulos oredenados topológicamente a partir de todos los módulos dependientes utilizados en la aplicación"
 
 #: m2/lang.opt:119 m2/lang.opt:235
 #, no-c-format
 msgid "turns on all range checking for numerical values"
-msgstr ""
+msgstr "activa toda la comprobación de rangos para valores numéricos"
 
 #: m2/lang.opt:123
 #, no-c-format
 msgid "use ISO dialect of Modula-2"
-msgstr ""
+msgstr "utiliza el dialecto ISO de Modula-2"
 
 #: m2/lang.opt:127
 #, no-c-format
 msgid "specify the library order, the libraries may be specified by a comma separated abbreviation: log,min,pim,iso or by directory names: m2log,m2min,m2pim,m2iso."
-msgstr ""
+msgstr "especifica el orden de las bibliotecas, pudiendo especificarse estas mediante abreviaturas separadas por comas: log,min,pim,iso o mediante nombres de directorios: m2log,m2min,m2pim,m2iso."
 
 #: m2/lang.opt:131
-#, fuzzy, no-c-format
-#| msgid "Set name of output ALI file (internal switch)."
+#, no-c-format
 msgid "set all location values to a specific value (internal switch)"
-msgstr "Establece el nombre del fichero ALI de salida (opción interna)."
+msgstr "establece todos los valores de localización a un valor especificado (opción interna)."
 
 #: m2/lang.opt:135
 #, no-c-format
 msgid "turn on internal debug tracing for quad,token,line,all (internal switch)"
-msgstr ""
+msgstr "activa las trazas de depuración internas para quad,token,line,all (opción interna)"
 
 #: m2/lang.opt:139
 #, no-c-format
 msgid "dump Modula-2 internal intemediate representation specified by: all,quad,decl,gimple"
-msgstr ""
+msgstr "vuelca la representación intermedia interna de Modula-2 especificada por: all,quad,decl,gimple"
 
 #: m2/lang.opt:143
 #, no-c-format
 msgid "dump Modula-2 decls to the filename stem specified"
-msgstr ""
+msgstr "vuelca las declaraciones de Modula-2 a la raíz de nombre de fichero especificada"
 
 #: m2/lang.opt:147
 #, no-c-format
 msgid "dump Modula-2 gimple to the filename stem specified"
-msgstr ""
+msgstr "vuelca los gimple de Modula-2 a la raíz de nombre de fichero especificada"
 
 #: m2/lang.opt:151
 #, no-c-format
 msgid "dump Modula-2 quads to the filename stem specified"
-msgstr ""
+msgstr "vuelca los quads de Modula-2 a la raíz de nombre de fichero especificada"
 
 #: m2/lang.opt:155
 #, no-c-format
 msgid "filter the language dump using a comma separated list of procedures and modules"
-msgstr ""
+msgstr "filtra el volcado del lenguaje utilizando una lista de procedimientos y módulos separados por comas"
 
 #: m2/lang.opt:159
 #, no-c-format
 msgid "override the default 64 bit definition of SYSTEM.COFF_T with the argument specified"
-msgstr ""
+msgstr "anula la definición de 64 bits predeterminada de SYSTEM.COFF_T con el argumento especificado"
 
 #: m2/lang.opt:163
 #, no-c-format
 msgid "generate extra nops to improve debugging, producing an instruction for every code related keyword"
-msgstr ""
+msgstr "genera nops extra para mejorar la depuración, produciendo una instrucción para cada palabra clave relacionada con código."
 
 #: m2/lang.opt:167
 #, no-c-format
 msgid "generate error messages which render keywords in lower case"
-msgstr ""
+msgstr "genera mensajes de error que ponen las palabras clave en minúsculas"
 
 #: m2/lang.opt:171
 #, no-c-format
@@ -4600,7 +4463,7 @@ msgstr ""
 #: m2/lang.opt:179
 #, no-c-format
 msgid "insert plugin to identify runtime errors at compiletime"
-msgstr ""
+msgstr "inserta un «plugin» para identificar errores de tiempo de ejecución en tiempo de compilación"
 
 #: m2/lang.opt:183
 #, no-c-format
@@ -4610,120 +4473,117 @@ msgstr ""
 #: m2/lang.opt:187
 #, no-c-format
 msgid "display statistics about the amount of source lines compiled and symbols used"
-msgstr ""
+msgstr "muestra estadísticas sobre la cantidad de líneas fuente compiladas y símbolos utilizados"
 
 #: m2/lang.opt:191
 #, no-c-format
 msgid "experimental flag to turn on the new strict type checker"
-msgstr ""
+msgstr "opción experimental para activar el nuevo comprobador de tipso estricto."
 
 #: m2/lang.opt:195
 #, no-c-format
 msgid "compile all implementation modules and program module at once"
-msgstr ""
+msgstr "compila todos los módulos de implementación y el módulo de programa inmediatamente"
 
 #: m2/lang.opt:199
 #, no-c-format
 msgid "recognize the specified suffix as implementation and module filenames"
-msgstr ""
+msgstr "reconoce el sufijo especificado como nombres de fichero de implementación y módulo"
 
 #: m2/lang.opt:203
 #, no-c-format
 msgid "turns on runtime checking to detect accessing data through a NIL value pointer"
-msgstr ""
+msgstr "activa la comprobación en tiempo de ejecución para detectar accesos a datos a través punteros con valor NIL"
 
 #: m2/lang.opt:207
 #, no-c-format
 msgid "use PIM [234] dialect of Modula-2"
-msgstr ""
+msgstr "utiliza un dialecto PIM [234] de Modula-2"
 
 #: m2/lang.opt:211
 #, no-c-format
 msgid "use PIM 2 dialect of Modula-2"
-msgstr ""
+msgstr "utiliza el dialecto PIM 2 de Modula-2"
 
 #: m2/lang.opt:215
 #, no-c-format
 msgid "use PIM 3 dialect of Modula-2"
-msgstr ""
+msgstr "utiliza el dialecto PIM 3 de Modula-2"
 
 #: m2/lang.opt:219
 #, no-c-format
 msgid "use PIM 4 dialect of Modula-2"
-msgstr ""
+msgstr "utiliza el dialecto PIM 4 de Modula-2"
 
 #: m2/lang.opt:223
 #, no-c-format
 msgid "force positive result from MOD and DIV result floor"
-msgstr ""
+msgstr "fuerza un resultado positivo del resultado truncado (suelo) de MOD y DIV"
 
 #: m2/lang.opt:227
 #, no-c-format
 msgid "link against the pthread library (default on)"
-msgstr ""
+msgstr "enlaza con la biblioteca pthread (activado por defecto)"
 
 #: m2/lang.opt:231
 #, no-c-format
 msgid "internal compiler debugging information, dump the list of quadruples"
-msgstr ""
+msgstr "información de depuración interna del compilador, vuelca la lista de cuádruplas"
 
 #: m2/lang.opt:239
 #, no-c-format
 msgid "turns on runtime checking for functions which finish without executing a RETURN statement"
-msgstr ""
+msgstr "activa la comprobación en tiempo de ejecución de funciones que finalizan sin ejecutar una sentencia RETURN"
 
 #: m2/lang.opt:243
 #, no-c-format
 msgid "specify the list of runtime modules and their initialization order"
-msgstr ""
+msgstr "especifica la lista de módulos de tiempo de ejecución y su orden de inicialización"
 
 #: m2/lang.opt:247
 #, no-c-format
 msgid "the modules initialization order is dynamically determined by M2RTS and application dependencies"
-msgstr ""
+msgstr "el orden de inicialización de los módulos se etermina dinámicamente mediante M2RTS y las dependencias de la aplicación"
 
 #: m2/lang.opt:251
 #, no-c-format
 msgid "generate a C source scaffold for the current module being compiled"
-msgstr ""
+msgstr "genera un andamio fuente en C para el módulo actualmente compilándose"
 
 #: m2/lang.opt:255
 #, no-c-format
 msgid "generate a C++ source scaffold for the current module being compiled"
-msgstr ""
+msgstr "genera un andamio fuente en C++ para el módulo actualmente compilándose"
 
 #: m2/lang.opt:259
-#, fuzzy, no-c-format
-#| msgid "Generate bit instructions."
+#, no-c-format
 msgid "generate the main function"
-msgstr "Genera instrucciones de bit."
+msgstr "genera la función principal"
 
 #: m2/lang.opt:263
 #, no-c-format
 msgid "generate static scaffold initialization and finalization for every module inside main"
-msgstr ""
+msgstr "genera la inicialización y la finalización estáticas del andamio para cada modulo dentro del principal"
 
 #: m2/lang.opt:267
-#, fuzzy, no-c-format
-#| msgid "Create a shared library."
+#, no-c-format
 msgid "generate a shared library from the module"
-msgstr "Crea una biblioteca compartida."
+msgstr "genera una biblioteca compartida a partir del módulo"
 
 #: m2/lang.opt:271
 #, no-c-format
 msgid "turns on all software runtime checking (an abbreviation for -fnil -frange -findex -fwholediv -fcase -freturn -fwholevalue -ffloatvalue)"
-msgstr ""
+msgstr "activa todas las comprobaciones de tiempo de ejecución del software (abreviatura de -fnil -frange -findex -fwholediv -fcase -freturn -fwholevalue -ffloatvalue)"
 
 #: m2/lang.opt:275
-#, fuzzy, no-c-format
-#| msgid "Print the name of header files as they are used."
+#, no-c-format
 msgid "display the location of module source files as they are compiled"
-msgstr "Muestra los nombres de los ficheros de cabecera mientras se utilizan."
+msgstr "muestra la ubicación de los ficheros fuente mientras se utilizan."
 
 #: m2/lang.opt:279
 #, no-c-format
 msgid "create a swig interface file for the module"
-msgstr ""
+msgstr "create un fichero de interfaz swig para el módulo"
 
 #: m2/lang.opt:283
 #, no-c-format
@@ -4733,29 +4593,27 @@ msgstr ""
 #: m2/lang.opt:287
 #, no-c-format
 msgid "orders the initialization/finalizations for scaffold-static or force linking of modules if scaffold-dynamic"
-msgstr ""
+msgstr "ordena la inicialización/finalización de estáticos del andamio o fuerza el enlazamiento de módulos de dinámicos del andamio"
 
 #: m2/lang.opt:295
 #, no-c-format
 msgid "turns on all division and modulus by zero checking for ordinal values"
-msgstr ""
+msgstr "activa todas las comprobaciones de división y módulo por cero para valroes ordinales"
 
 #: m2/lang.opt:299
 #, no-c-format
 msgid "turns on runtime checking to check whether a whole number will exceed range"
-msgstr ""
+msgstr "activa la comprobación de tiempo de ejecución para ver si un número enter puede exceder el rango"
 
 #: m2/lang.opt:303
-#, fuzzy, no-c-format
-#| msgid "Link the standard D library statically in the compilation."
+#, no-c-format
 msgid "Link the standard Modula-2 libraries statically in the compilation."
-msgstr "Enlaza la biblioteca D estándar estáticamente en la compilación."
+msgstr "Enlaza las bibliotecas estándar de Modula-2 estáticamente en la compilación."
 
 #: m2/lang.opt:448 m2/lang.opt:452
-#, fuzzy, no-c-format
-#| msgid "could not close temporary response file %s"
+#, no-c-format
 msgid "save temporary preprocessed files"
-msgstr "no se puede cerrar el fichero de respuesta temporal %s"
+msgstr "guarda los ficheros preprocesados temporales"
 
 #: go/lang.opt:42
 #, no-c-format
@@ -4828,10 +4686,9 @@ msgid "-fgo-debug-escape-hash=<string>\tHash value to debug escape analysis."
 msgstr ""
 
 #: go/lang.opt:98
-#, fuzzy, no-c-format
-#| msgid "Enable optional diagnostics"
+#, no-c-format
 msgid "Emit optimization diagnostics."
-msgstr "Activa los diagnósticos opcionales"
+msgstr "Emite los diagnósticos de optimización"
 
 #: analyzer/analyzer.opt:27
 #, no-c-format
@@ -4844,16 +4701,14 @@ msgid "The maximum number of exploded nodes per program point within the analyze
 msgstr ""
 
 #: analyzer/analyzer.opt:35
-#, fuzzy, no-c-format
-#| msgid "The maximum number of loop iterations we predict statically."
+#, no-c-format
 msgid "The maximum number of constraints per state."
-msgstr "El número máximo de iteraciones de bucle que se predicen estáticamente."
+msgstr "El número máximo de restricciones por estado."
 
 #: analyzer/analyzer.opt:39
-#, fuzzy, no-c-format
-#| msgid "The maximum number of incoming edges to consider for crossjumping."
+#, no-c-format
 msgid "The maximum number of infeasible edges to reject before declaring a diagnostic as infeasible."
-msgstr "El número máximo de bordes entrantes para considerar el salto cruzado."
+msgstr "El número máximo de bordes inviables que hay que rechazar antes de declarar un diagnóstico como inviable."
 
 #: analyzer/analyzer.opt:43
 #, no-c-format
@@ -4863,7 +4718,7 @@ msgstr ""
 #: analyzer/analyzer.opt:47
 #, no-c-format
 msgid "The maximum depth of a symbolic value, before approximating the value as unknown."
-msgstr ""
+msgstr "Profundidad máxima de un valor simbólico antes de aproximar el valor como desconocido."
 
 #: analyzer/analyzer.opt:51
 #, no-c-format
@@ -4896,448 +4751,404 @@ msgid "The ideal width in characters of text art diagrams generated by the analy
 msgstr ""
 
 #: analyzer/analyzer.opt:75
-#, fuzzy, no-c-format
-#| msgid "Warn about macros defined in the main file that are not used."
+#, no-c-format
 msgid "Warn about code paths in which a pointer to a buffer is assigned to an incompatible type."
-msgstr "Avisa sobre macros definidas en el fichero principal que no se usan."
+msgstr "Avisa sobre caminos en el código en los que un puntero a búfer se asigna a un tipo incompatible."
 
 #: analyzer/analyzer.opt:79
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which a pointer is checked for NULL after it has already been dereferenced."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que se comprueba si un puntero es NULL después de haberlo desreferenciado."
 
 #: analyzer/analyzer.opt:83
 #, no-c-format
 msgid "Warn about code paths in which a stdio FILE can be closed more than once."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que un FICHERO stdio puede cerrarse más de una vez."
 
 #: analyzer/analyzer.opt:87
 #, no-c-format
 msgid "Warn about code paths in which a pointer can be freed more than once."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que un puntero puede liberarse más de una vez."
 
 #: analyzer/analyzer.opt:91
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which sensitive data is written to a file."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se escriben datos sensibles en un fichero."
 
 #: analyzer/analyzer.opt:95
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which sensitive data is copied across a security boundary."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se copian datos sensibles fuera del perímetro de seguridad."
 
 #: analyzer/analyzer.opt:99
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which read on a write-only file descriptor is attempted, or vice versa."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta leer un descriptor de fichero de solo escritura, o viceversa."
 
 #: analyzer/analyzer.opt:103
-#, fuzzy, no-c-format
-#| msgid "Warn about macros defined in the main file that are not used."
+#, no-c-format
 msgid "Warn about code paths in which a file descriptor can be closed more than once."
-msgstr "Avisa sobre macros definidas en el fichero principal que no se usan."
+msgstr "Avisa sobre caminos en el código en los que un descriptor de fichero puede cerrarse más de una vez."
 
 #: analyzer/analyzer.opt:107
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a file descriptor is not closed."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que un descriptor de fichero no se cierra."
 
 #: analyzer/analyzer.opt:111
-#, fuzzy, no-c-format
-#| msgid "Warn about macros defined in the main file that are not used."
+#, no-c-format
 msgid "Warn about code paths in which an operation is attempted in the wrong phase of a file descriptor's lifetime."
-msgstr "Avisa sobre macros definidas en el fichero principal que no se usan."
+msgstr "Avisa sobre caminos en el código en los que se intenta una operación en una fase incorrecta del tiempo de vida de un descriptor de fichero."
 
 #: analyzer/analyzer.opt:115
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which an operation is attempted on the wrong type of file descriptor."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta una operación sobre un tipo incorrecto de descriptor de fichero."
 
 #: analyzer/analyzer.opt:119
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which a read or write is performed on a closed file descriptor."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que se realiza una lectura o escritura de un descriptor de fichero cerrado."
 
 #: analyzer/analyzer.opt:123
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a file descriptor is used without being checked for validity."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se utiliza un descriptor de fichero sin comprobarse su validez."
 
 #: analyzer/analyzer.opt:127
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a stdio FILE is not closed."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que un FICHERO de stdio no se cierra."
 
 #: analyzer/analyzer.opt:131
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a non-heap pointer is freed."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se libera un puntero que no está en la memoria dinámica."
 
 #: analyzer/analyzer.opt:135
-#, fuzzy, no-c-format
-#| msgid "Warn about macros defined in the main file that are not used."
+#, no-c-format
 msgid "Warn about code paths in which floating-point arithmetic is used in locations where precise computation is needed."
-msgstr "Avisa sobre macros definidas en el fichero principal que no se usan."
+msgstr "Avisa sobre caminos en el código en los que se utiliza aritmética de coma flotante donde se necesita computación precisa."
 
 #: analyzer/analyzer.opt:139
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths which appear to lead to an infinite loop."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código que parecen llevar a bucles infinitos."
 
 #: analyzer/analyzer.opt:143
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths which appear to lead to infinite recursion."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código que parecen llevar a recursión infinita."
 
 #: analyzer/analyzer.opt:147
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which a NULL function pointer is called."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que se llama a un puntero a función NULL."
 
 #: analyzer/analyzer.opt:151
-#, fuzzy, no-c-format
-#| msgid "Warn about calls with implicit interface."
+#, no-c-format
 msgid "Warn about code paths in which a heap-allocated pointer leaks."
-msgstr "Avisa sobre llamadas con interfaz implícita."
+msgstr "Avisa sobre caminos en el código en los que se pierde un puntero reservado en la memoria dinámica («leak»)."
 
 #: analyzer/analyzer.opt:155
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which the wrong deallocation function is called."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se llama a una función de liberación de memoria incorrecta."
 
 #: analyzer/analyzer.opt:159
-#, fuzzy, no-c-format
-#| msgid "Warn about casts which discard qualifiers."
+#, no-c-format
 msgid "Warn about code paths in which a write or read to a buffer is out-of-bounds."
-msgstr "Avisa sobre conversiones que descartan calificadores."
+msgstr "Avisa sobre caminos en el código en los que una escritura o lectura de búfer está fuera de los límites."
 
 #: analyzer/analyzer.opt:163
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which undefined behavior would occur due to overlapping buffers."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que puede darse un comportamiento indefinido a causa de búfers que se solapan."
 
 #: analyzer/analyzer.opt:167
 #, no-c-format
 msgid "Warn about code paths in which a possibly-NULL value is passed to a must-not-be-NULL function argument."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que se pasa un valor que podría ser NULL a un argumento de función que no debe ser NULL."
 
 #: analyzer/analyzer.opt:171
 #, no-c-format
 msgid "Warn about code paths in which a possibly-NULL pointer is dereferenced."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que se desreferencia un puntero que podría ser NULL."
 
 #: analyzer/analyzer.opt:175
 #, no-c-format
 msgid "Warn about code paths in which an async-signal-unsafe function is called from a signal handler."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que se llama a una función de señal asíncrona insegura desde un manejador de señal."
 
 #: analyzer/analyzer.opt:179
 #, no-c-format
 msgid "Warn about code paths in which NULL is passed to a must-not-be-NULL function argument."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que se pasa NULL a un argumento de función que no debe ser NULL."
 
 #: analyzer/analyzer.opt:183
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which a NULL pointer is dereferenced."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que se desreferencia un puntero NULL."
 
 #: analyzer/analyzer.opt:187
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an on-stack buffer is passed to putenv."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que se oasa un búfer en pila a putenv."
 
 #: analyzer/analyzer.opt:191
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a shift with negative count is attempted."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta un desplazamiento con cuenta negativa."
 
 #: analyzer/analyzer.opt:195
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which a shift with count >= width of type is attempted."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta un desplazamiento con cuenta >= ancho del tipo."
 
 #: analyzer/analyzer.opt:199
 #, no-c-format
 msgid "Warn about code paths in which a longjmp rewinds to a jmp_buf saved in a stack frame that has returned."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que un longjmp se desenrrolla en un jmp_buf guardado en un marco de la pila que ha retornado."
 
 #: analyzer/analyzer.opt:203
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an unsanitized value is used as an allocation size."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que un valor no saneado se utiliza como tamaño de una reserva."
 
 #: analyzer/analyzer.opt:207
 #, no-c-format
 msgid "Warn about code paths in which an unsanitized value is used as an array index."
-msgstr ""
+msgstr "Avisa sobre caminos en el código en los que un valor no saneado se utiliza como tamaño de una array."
 
 #: analyzer/analyzer.opt:211
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an 'assert()' is made involving an unsanitized value."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que se hace un 'assert()' que implica un valor no saneado."
 
 #: analyzer/analyzer.opt:215
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an unsanitized value is used as a divisor."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que un valor no saneado se utiliza como divisor."
 
 #: analyzer/analyzer.opt:219
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an unsanitized value is used as a pointer offset."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que un valor no saneado se utiliza como desplazamiento de un puntero."
 
 #: analyzer/analyzer.opt:223
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an unsanitized value is used as a size."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que un valor no saneado se utiliza como tamaño."
 
 #: analyzer/analyzer.opt:227
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which pointer subtraction involves undefined behavior."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que la sustracción de punteros conlleva comportamiento indefinido."
 
 #: analyzer/analyzer.opt:231
-#, fuzzy, no-c-format
-#| msgid "Warn about code that will never be executed"
+#, no-c-format
 msgid "Warn about code paths in which a call is made to strtok with undefined behavior."
-msgstr "Avisa sobre código que nunca se ejecutará"
+msgstr "Avisa sobre caminos en el código en los que se hace una llamada a strtok con comportamiento indefinido."
 
 #: analyzer/analyzer.opt:235
-#, fuzzy, no-c-format
-#| msgid "Warn about casts which discard qualifiers."
+#, no-c-format
 msgid "Warn about code paths in which a freed value is used."
-msgstr "Avisa sobre conversiones que descartan calificadores."
+msgstr "Avisa sobre caminos en el código en los que se utiliza un valor liberado."
 
 #: analyzer/analyzer.opt:239
-#, fuzzy, no-c-format
-#| msgid "Warn about macros defined in the main file that are not used."
+#, no-c-format
 msgid "Warn about code paths in which a pointer to a stale stack frame is used."
-msgstr "Avisa sobre macros definidas en el fichero principal que no se usan."
+msgstr "Avisa sobre caminos en el código en los que se utiliza un marco de la pila obsoleto."
 
 #: analyzer/analyzer.opt:243
-#, fuzzy, no-c-format
-#| msgid "Warn about casts which discard qualifiers."
+#, no-c-format
 msgid "Warn about code paths in which va_arg uses the wrong type."
-msgstr "Avisa sobre conversiones que descartan calificadores."
+msgstr "Avisa sobre caminos en el código en los que va_arg utiliza un tipo incorrecto."
 
 #: analyzer/analyzer.opt:247
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which va_arg is used too many times on a va_list."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se utiliza va_arg demasiadas veces en un va_list."
 
 #: analyzer/analyzer.opt:251
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths in which va_start or va_copy is used without a corresponding va_end."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que va_start o va_copy se utilizan sin su correspondiente va_end."
 
 #: analyzer/analyzer.opt:255
-#, fuzzy, no-c-format
-#| msgid "Warn about casts which discard qualifiers."
+#, no-c-format
 msgid "Warn about code paths in which a va_list is used after va_end."
-msgstr "Avisa sobre conversiones que descartan calificadores."
+msgstr "Avisa sobre caminos en el código en los que va_list se utiliza después de va_end."
 
 #: analyzer/analyzer.opt:259
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths which attempt to write to a const object."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta escribir un objeto const."
 
 #: analyzer/analyzer.opt:263
-#, fuzzy, no-c-format
-#| msgid "Warn about code which might break strict aliasing rules."
+#, no-c-format
 msgid "Warn about code paths which attempt to write to a string literal."
-msgstr "Avisa sobre código que pueda romper las reglas estrictas de aliases."
+msgstr "Avisa sobre caminos en el código en los que se intenta escribir una cadena literal."
 
 #: analyzer/analyzer.opt:267
-#, fuzzy, no-c-format
-#| msgid "Warn about variables which are initialized to themselves."
+#, no-c-format
 msgid "Warn about code paths in which an uninitialized value is used."
-msgstr "Avisa sobre variables que se inicialicen ellas mismas."
+msgstr "Avisa sobre caminos en el código en los que se utiliza un valor sin inicializar."
 
 #: analyzer/analyzer.opt:271
 #, no-c-format
 msgid "Warn if expressions are too complicated for the analyzer to fully track."
-msgstr ""
+msgstr "Advierte de expresiones demasiado complicadas de rastrear completamente para el analizador."
 
 #: analyzer/analyzer.opt:275
 #, no-c-format
 msgid "Warn if the code is too complicated for the analyzer to fully explore."
-msgstr ""
+msgstr "Advierte de que el código es demasiado complicado de explorar completamente para el analizador."
 
 #: analyzer/analyzer.opt:279
 #, no-c-format
 msgid "Restrict the analyzer to run just the named checker."
-msgstr ""
+msgstr "Restringe el analizador a solo ejecutar el comprobador con nombre."
 
 #: analyzer/analyzer.opt:283
 #, no-c-format
 msgid "Add extra annotations to diagrams."
-msgstr ""
+msgstr "Añade anotaciones extra a los diagramas."
 
 #: analyzer/analyzer.opt:287
 #, no-c-format
 msgid "Avoid combining multiple statements into one exploded edge."
-msgstr ""
+msgstr "Evita combinar sentencias múltiples en un arco explotado."
 
 #: analyzer/analyzer.opt:291
 #, no-c-format
 msgid "Verify that paths are feasible when emitting diagnostics."
-msgstr ""
+msgstr "Verifica que los caminos son viables al emitir diagnósticos."
 
 #: analyzer/analyzer.opt:295
 #, no-c-format
 msgid "Issue a note when diagnostics are deduplicated."
-msgstr ""
+msgstr "Genera una nota cuando los diagnósticos están deduplicados."
 
 #: analyzer/analyzer.opt:299
 #, no-c-format
 msgid "Purge unneeded state during analysis."
-msgstr ""
+msgstr "Purga estados innecesarios durante el análisis"
 
 #: analyzer/analyzer.opt:303
 #, no-c-format
 msgid "Merge similar-enough states during analysis."
-msgstr ""
+msgstr "Mezcla estados suficientemente parecidos durante el análisis."
 
 #: analyzer/analyzer.opt:307
 #, no-c-format
 msgid "Stop exploring an execution path after certain diagnostics."
-msgstr ""
+msgstr "Deja de explorar un camino de ejecución después de ciertos diagnósticos."
 
 #: analyzer/analyzer.opt:311
 #, no-c-format
 msgid "Enable transitivity of constraints during analysis."
-msgstr ""
+msgstr "Activa la transitividad de restricciones durante el análisis."
 
 #: analyzer/analyzer.opt:315
 #, no-c-format
 msgid "Show events within system headers in analyzer execution paths."
-msgstr ""
+msgstr "Muestra eventos en cabeceras del sistema en los caminos de ejecución del analizador."
 
 #: analyzer/analyzer.opt:319
 #, no-c-format
 msgid "Approximate the effect of function calls to simplify analysis."
-msgstr ""
+msgstr "Aproxima el efecto de llamadas a funciones para simplificar el análisis."
 
 #: analyzer/analyzer.opt:323
-#, fuzzy, no-c-format
-#| msgid "originally indirect function call not considered for inlining"
+#, no-c-format
 msgid "Try to reconstruct function calls and returns after inlining."
-msgstr "originalmente la llamada indirecta a función no se considera para la inclusión en línea"
+msgstr "Trata de reconstruir las llamadas a funciones y retornos después del tratamiento en línea."
 
 #: analyzer/analyzer.opt:327
 #, no-c-format
 msgid "Emit more verbose descriptions of control flow in diagnostics."
-msgstr ""
+msgstr "Emite descripciones más extensas del flujo de control en los diagnósticos."
 
 #: analyzer/analyzer.opt:331
 #, no-c-format
 msgid "Emit more verbose descriptions of state changes in diagnostics."
-msgstr ""
+msgstr "Emite descripciones más extensas de los cambios de estado en los diagnósticos."
 
 #: analyzer/analyzer.opt:335
 #, no-c-format
 msgid "Control which events are displayed in diagnostic paths."
-msgstr ""
+msgstr "Controla los eventos que se muestran en los caminos del diagnóstico."
 
 #: analyzer/analyzer.opt:339
-#, fuzzy, no-c-format
-#| msgid "-fdump-<type>\tDump various compiler internals to a file."
+#, no-c-format
 msgid "Dump various analyzer internals to SRCFILE.analyzer.txt."
-msgstr "-fdump-<tipo>\tVuelca varios internos del compilador a un fichero."
+msgstr "Vuelca varios internos del analizador a FICHSRC.analyzer.txt."
 
 #: analyzer/analyzer.opt:343
-#, fuzzy, no-c-format
-#| msgid "-fdump-<type>\tDump various compiler internals to a file."
+#, no-c-format
 msgid "Dump various analyzer internals to stderr."
-msgstr "-fdump-<tipo>\tVuelca varios internos del compilador a un fichero."
+msgstr "Vuelca varios internos del analizador a stderr."
 
 #: analyzer/analyzer.opt:347
 #, no-c-format
 msgid "Dump analyzer-specific call graph information to a SRCFILE.callgraph.dot file."
-msgstr ""
+msgstr "Vuelca información del grafo específica del analizador al fichero FICHSRC.callgraph.dot."
 
 #: analyzer/analyzer.opt:351
 #, no-c-format
 msgid "Dump the analyzer exploded graph to a SRCFILE.eg.dot file."
-msgstr ""
+msgstr "Vuelca el grafo descompuesto del analizador al fichero FICHSRC.eg.dot."
 
 #: analyzer/analyzer.opt:355
 #, no-c-format
 msgid "Emit diagnostics showing the location of nodes in the exploded graph."
-msgstr ""
+msgstr "Emite diagnósticos que muestran la ubicación de los nodos en el grafo descompuesto."
 
 #: analyzer/analyzer.opt:359
 #, no-c-format
 msgid "Dump a textual representation of the exploded graph to SRCFILE.eg.txt."
-msgstr ""
+msgstr "Vuelca una representación textual del grafo descompuesto a FICHSRC.eg.txt."
 
 #: analyzer/analyzer.opt:363
 #, no-c-format
 msgid "Dump a textual representation of the exploded graph to SRCFILE.eg-ID.txt."
-msgstr ""
+msgstr "Vuelca una representación textual del grafo descompuesto a FICHSRC.eg-ID.txt."
 
 #: analyzer/analyzer.opt:367
 #, no-c-format
 msgid "Dump a textual representation of each diagnostic's exploded path to SRCFILE.IDX.KIND.epath.txt."
-msgstr ""
+msgstr "Vuelca una representación textual de cada camino descompuesto de diagnóstico a FICHSRC.IDX.KIND.txt."
 
 #: analyzer/analyzer.opt:371
 #, no-c-format
 msgid "Dump various analyzer internals to SRCFILE.*.fg.dot and SRCFILE.*.tg.dot."
-msgstr ""
+msgstr "Vuelca varios internos del analizador a FICHSRC.*.fg.dot y FICHSRC.*.tg.dot."
 
 #: analyzer/analyzer.opt:375
 #, no-c-format
 msgid "Dump various analyzer internals to SRCFILE.*.infinite-loop.dot."
-msgstr ""
+msgstr "Vuelca varios internos del analizador a FICHSRC.*.infinite-loop.dot."
 
 #: analyzer/analyzer.opt:379
 #, no-c-format
 msgid "Dump analyzer-specific data to a SRCFILE.analyzer.json.gz file."
-msgstr ""
+msgstr "Vuelca datos específicos del analizador al fichero FICHSRC.analyzer.json.gz."
 
 #: analyzer/analyzer.opt:383
 #, no-c-format
 msgid "Dump state-purging information to a SRCFILE.state-purge.dot file."
-msgstr ""
+msgstr "Vuelca información de purga de estados a un fichero FICHSRC.state-purge.dot."
 
 #: analyzer/analyzer.opt:387
 #, no-c-format
 msgid "Dump the analyzer supergraph to a SRCFILE.supergraph.dot file."
-msgstr ""
+msgstr "Vuelca el supergrafo del analizador a un fichero FICHSRC.supergraph.dot."
 
 #: analyzer/analyzer.opt:391
 #, no-c-format
 msgid "Emit custom warnings with internal details intended for analyzer developers."
-msgstr ""
+msgstr "Emite avisos personalizados con detalles internos destinados a desarrolladores del analizador."
 
 #: config/vms/vms.opt:27
 #, no-c-format
@@ -5555,10 +5366,9 @@ msgid "Generate code for the kernel or loadable kernel extensions."
 msgstr "Genera código para el núcleo o para las extensiones cargables del núcleo."
 
 #: config/darwin.opt:75
-#, fuzzy, no-c-format
-#| msgid "The earliest MacOS X version on which this program will run."
+#, no-c-format
 msgid "The earliest macOS version on which this program will run."
-msgstr "La versión más temprana de MacOS X en la cual este programa se ejecutará."
+msgstr "La versión más temprana de macOS X en la cual este programa se ejecutará."
 
 #: config/darwin.opt:80
 #, no-c-format
@@ -5566,188 +5376,184 @@ msgid "Set sizeof(bool) to 1."
 msgstr "Establece sizeof(bool) a 1."
 
 #: config/darwin.opt:84
-#, fuzzy, no-c-format
-#| msgid "Support code generation of movbe instruction."
+#, no-c-format
 msgid "Force generation of external symbol indirection stubs."
-msgstr "Admite la generación de código de la instrucción movbe."
+msgstr "Fuerza la generación de «stubs» de indirección de símbolos externos."
 
 #: config/darwin.opt:92
 #, no-c-format
 msgid "-mtarget-linker <version>\tSpecify that ld64 <version> is the toolchain linker for the current invocation."
-msgstr ""
+msgstr "-mtarget-linker <versión>\tEspecifica que ld64 <versión> es el enlazador de la cadena de herramientas para la invocación actual."
 
 #: config/darwin.opt:98
 #, no-c-format
 msgid "Load all members of archive libraries, rather than only those that satisfy undefined symbols."
-msgstr ""
+msgstr "Carga todos los miembros de las bibliotecas de archivo, en vez de solo aquellas que satisfacen los símbolos indefinidos."
 
 #: config/darwin.opt:102
 #, no-c-format
 msgid "-allowable_client <name>\tThe output dylib is private to the client <name>."
-msgstr ""
+msgstr "-allowable_client <nombre>\tLa salida dylib es privada del cliente <nombre>."
 
 #: config/darwin.opt:106
-#, fuzzy, no-c-format
-#| msgid "Generate code for CR16C architecture."
+#, no-c-format
 msgid "-arch <name>\tGenerate output for architecture <name>."
-msgstr "Genera código para la arquitectura CR16C."
+msgstr "-arch <nombre>\tGenera salida para la arquitectura <nombre>."
 
 #: config/darwin.opt:110
 #, no-c-format
 msgid "Mismatches between file architecture and one specified by \"-arch\" are errors instead of warnings."
-msgstr ""
+msgstr "Las discrepancias entre la arquitectura del fichero y la especificada por «-arch» son errores en lugar de avisos."
 
 #: config/darwin.opt:114
-#, fuzzy, no-c-format
-#| msgid "The earliest MacOS X version on which this program will run."
+#, no-c-format
 msgid "The earliest macOS version on which this program will run (formatted for the assembler)."
-msgstr "La versión más temprana de MacOS X en la cual este programa se ejecutará."
+msgstr "La versión más temprana de macOS X en la cual este programa se ejecutará (formateado para ensamblador)."
 
 #: config/darwin.opt:118
 #, no-c-format
 msgid "Generate an output executable that binds symbols on load, rather than lazily."
-msgstr ""
+msgstr "Genera una salida ejecutable que vincula símbolos al cargar, en vez de perezosamente."
 
 #: config/darwin.opt:122
 #, no-c-format
 msgid "Generate a Mach-O bundle (file type MH_BUNDLE)."
-msgstr ""
+msgstr "Genera un «bundle» Mach-O (tipo de fichero MH_BUNDLE)."
 
 #: config/darwin.opt:126
 #, no-c-format
 msgid "-bundle_loader <executable>\tTreat <executable> (that will be loading this bundle) as if it was one of the dynamic libraries the bundle is linked against for symbol resolution."
-msgstr ""
+msgstr "-bundle_loader <ejecutable>\tTrata <ejecutable> (el que va a cargar este «bundle») como si fuera una de las bibliotecas dinámicas contra las que el «bundle» está enlazado para resolver símbolos."
 
 #: config/darwin.opt:130
 #, no-c-format
 msgid "-client_name <name>\tEnable the executable being built to link against a private dylib (using allowable_client)."
-msgstr ""
+msgstr "-client_name <nombre>\tPermite que el ejecutable que se está construyendo se vincule contra una dylib privada (utilizando allowable_client)."
 
 #: config/darwin.opt:134
 #, no-c-format
 msgid "-compatibility_version <number>\tSet the version for the client interface.  Client programs must record a value less than or equal to <number>, or the binding will fail at runtime."
-msgstr ""
+msgstr "-compatibility_version <número>\tEstablece la versión del interfaz cliente.  Los programas cliente deben registrar un valor menor o igual que <número> o el vínculo fallará en tiempo de ejecución."
 
 #: config/darwin.opt:138
 #, no-c-format
 msgid "-current_version <number>\tSet the current version for the library to <number>."
-msgstr ""
+msgstr "-current_version <número>\tEstablece la versión actual de la biblioteca como <número>."
 
 #: config/darwin.opt:142
 #, no-c-format
 msgid "Remove code and data that is unreachable from any exported symbol (including the entry point)."
-msgstr ""
+msgstr "Elimina código y datos inalcanzables desde cualquier símbolo exportado (incluido el punto de entrada)."
 
 #: config/darwin.opt:146
 #, no-c-format
 msgid "-dylib_file install_name:file_name\tThis allows linking of a dylib with \"install_name\" but to be found in a different install position \"file_name\""
-msgstr ""
+msgstr "-dylib_file nombre_instalado:nombre_fichero\tEsto permite enlazar una dylib con «nombre_instalado» pero ubicado en un lugar de instalación distinto «nombre_fichero»"
 
 #: config/darwin.opt:150
 #, no-c-format
 msgid "Produce a Mach-O dylinker (file type MH_DYLINKER), only used for building dyld."
-msgstr ""
+msgstr "Produce un dylinker Mach-O (tipo de fichero MH_DYLINKER), utilizado únicamente para la construcción de dyld."
 
 #: config/darwin.opt:154
 #, no-c-format
 msgid "-dylinker_install_name <path>\tOnly used for building dyld."
-msgstr ""
+msgstr "-dylinker_install_name <ruta>\tUtilizado únicamente para la construcción de dyld."
 
 #: config/darwin.opt:158
 #, no-c-format
 msgid "The default (and opposite of -static), implied by user mode executables, shared libraries and bundles."
-msgstr ""
+msgstr "Lo predeterminado (y opuesto de -static), implicado por ejecutables de modo usuario, bibliotecas compartidas «bundles»."
 
 #: config/darwin.opt:162
 #, no-c-format
 msgid "Produce a Mach-O shared library (file type MH_DYLIB), synonym for \"-shared\"."
-msgstr ""
+msgstr "Produce una biblioteca compartida Mach-O (tipo de fichero MH_DYLIB), sinónimo de «-shared»."
 
 #: config/darwin.opt:166
 #, no-c-format
 msgid "-exported_symbols_list <filename>\tExport global symbols in <filename> in linked output file; any symbols not mentioned will be treated as \"hidden\"."
-msgstr ""
+msgstr "-exported_symbols_list <nombrefich>\tExporta los símbolos globales de <nombrefich> en el fichero de salida enlazado; todo símbolo no mencionado será tratado como «hidden» (oculto)."
 
 #: config/darwin.opt:170
 #, no-c-format
 msgid "Supply a list of objects to be linked from a file, rather than the command line."
-msgstr ""
+msgstr "Suministra en un fichero una lista de objetos para enlazar, en vez de la línea de órdenes."
 
 #: config/darwin.opt:174 config/darwin.opt:194
-#, fuzzy, no-c-format
-#| msgid "Generate code for darwin loadable kernel extensions."
+#, no-c-format
 msgid "Used for generating code for some older kernel revisions."
-msgstr "Genera código para las extensiones cargables de núcleo darwin."
+msgstr "Utilizado para generar código para algunas revisiones del núcleo más antiguas."
 
 #: config/darwin.opt:178
 #, no-c-format
 msgid "Ignore the normal two-level namespace; resolve symbols in command line order and do not record which library provided the resolved symbol."
-msgstr ""
+msgstr "Descarta el espacio normal de nombres de dos niveles; resuelve los símbolos en el orden de la línea de órdenes y no registra la biblioteca proporcionada que resolvió el símbolo."
 
 #: config/darwin.opt:182
 #, no-c-format
 msgid "For the assembler (and linker) permit any architecture sub-variant to be used without error."
-msgstr ""
+msgstr "Para que el ensamblador (y enlazador) permitan que se utilice cualquier subvariante de la arquitectura sin error."
 
 #: config/darwin.opt:186
 #, no-c-format
 msgid "Set the output object such that, on loading, dyld will ignore any two-level namespace information and resolve symbols in the discovery order for loaded libs."
-msgstr ""
+msgstr "Pone el objeto de salida de tal manera que, al cargar, dyld descarte cualquier información de espacio de nombres de dos niveles y resolve los símbolos en el orden en que se descubran para las bibliotecas cargadas."
 
 #: config/darwin.opt:190
 #, no-c-format
 msgid "-framework <name>\tThe linker should search for the framework <name> in the framework search path."
-msgstr ""
+msgstr "-framework <nombre>\tEl enlazador debería buscar el «framework» <nombre> en la ruta de búsqueda de «frameworks»."
 
 #: config/darwin.opt:198
 #, no-c-format
 msgid "Abbreviation for \"-g -fno-eliminate-unused-debug-symbols\"."
-msgstr ""
+msgstr "Abreviatura de «-g -fno-eliminate-unused-debug-symbols»."
 
 #: config/darwin.opt:202
 #, no-c-format
 msgid "Abbreviation for \"-g -feliminate-unused-debug-symbols\"."
-msgstr ""
+msgstr "Abreviatura de «-g -feliminate-unused-debug-symbols»."
 
 #: config/darwin.opt:206
 #, no-c-format
 msgid "Automatically adds space for longer path names in load commands (up to MAXPATHLEN)."
-msgstr ""
+msgstr "Añade espacio automáticamente a los nombres de ruta más largos en órdenes de carga (hasta MAXPATHLEN)."
 
 #: config/darwin.opt:210
 #, no-c-format
 msgid "-image_base <address>\tSpecify <address> as the base address for a dylib or bundle."
-msgstr ""
+msgstr "-image_base <dirección>\tEspecifica <dirección> como dirección base de una dylib o un «bundle»."
 
 #: config/darwin.opt:214
 #, no-c-format
 msgid "-init <symbol_name>\tThe symbol <symbol_name> will be used as the first initializer for a dylib."
-msgstr ""
+msgstr "-init <nombre_símbolo>\tEl símbolo <nombre_símbolo> se utilizará como primer inicializador de una dylib."
 
 #: config/darwin.opt:218
 #, no-c-format
 msgid "-install_name <name>\tSet the install name for a dylib."
-msgstr ""
+msgstr "-install_name <nombre>\tEstablece el nombre de instalación de una dylib."
 
 #: config/darwin.opt:222
 #, no-c-format
 msgid "Usually \"private extern\" (hidden) symbols are made local when linking, this command suppresses that such that they remain exported."
-msgstr ""
+msgstr "Normalmente los símbolos «private extern» (ocultos) se hacen locales al enlazar; esta orden anula eso de tal forma que sean exportados."
 
 #: config/darwin.opt:226
 #, no-c-format
 msgid "(Obsolete after 10.4) Multi modules are ignored at runtime since macOS 10.4."
-msgstr ""
+msgstr "(Obsoleto después de 10.4) Los multimódulos se descartan en tiempo de ejecución desde macOS 10.4."
 
 #: config/darwin.opt:230
 #, no-c-format
 msgid "(Obsolete after 10.4) -multiply_defined <treatment>\tProvided a mechanism for warning about symbols defined in multiple dylibs."
-msgstr ""
+msgstr "(Obsoleto después de 10.4) -multiply_defined <tratamiento>\tProporciona un mecanismo de advertencia sobre símbolos definidos en más de una dylib."
 
 #: config/darwin.opt:234
 #, no-c-format
 msgid "(Obsolete after 10.4) -multiply_defined_unused <treatment>\tProvided a mechanism for warning about symbols defined in the current executable also being defined in linked dylibs."
-msgstr ""
+msgstr "(Obsoleto después de 10.4) -multiply_defined_unused <tratamiento>\tProporciona un mecanismo de advertencia sobre símbolos definidos en el ejecutable actual que también se definen en dylibs enlazadas."
 
 #: config/darwin.opt:238
 #, no-c-format
@@ -5767,187 +5573,182 @@ msgstr ""
 #: config/darwin.opt:250
 #, no-c-format
 msgid "(Obsolete after 10.3.9) Set MH_NOPREFIXBINDING, in an executable."
-msgstr ""
+msgstr "(Obsoleto después de 10.3.9) Establece MH_NOPREFIXBINDING, en un ejecutable."
 
 #: config/darwin.opt:254
 #, no-c-format
 msgid "(Obsolete after 10.4)\tSet MH_NOMULTIDEFS in an umbrella framework."
-msgstr ""
+msgstr "(Obsoleto después de 10.4)\tEstablece MH_NOMULTIDEFS en un marco paraguas."
 
 #: config/darwin.opt:258 config/darwin.opt:279 config/darwin.opt:283
-#, fuzzy, no-c-format
-#| msgid "switch %qs is no longer supported"
+#, no-c-format
 msgid "(Obsolete) LD_PREBIND is no longer supported."
-msgstr "la opción %qs ya no se admite"
+msgstr "(Obsoleto) LD_PREBIND ya no está disponible."
 
 #: config/darwin.opt:262
-#, fuzzy, no-c-format
-#| msgid "Stores doubles in 32 bits.  This is the default."
+#, no-c-format
 msgid "(Obsolete) This is the default."
-msgstr "Almacena dobles en 32 bits.  Este es el valor por defecto."
+msgstr "(Obsoleto) Este es el valor por defecto."
 
 #: config/darwin.opt:275
 #, no-c-format
 msgid "-pagezero_size <size>\tAllows setting the page 0 size to 4kb when required."
-msgstr ""
+msgstr "-pagezero_size <tamaño>\tPermite establecer el taño de la página 0 a 4kb cuando se requiera."
 
 #: config/darwin.opt:287
 #, no-c-format
 msgid "Produces a Mach-O file suitable for embedded/ROM use."
-msgstr ""
+msgstr "Produce un fichero Mach-O adecuado para uso empotrado/ROM."
 
 #: config/darwin.opt:291
 #, no-c-format
 msgid "(Obsolete) Allowed linking to proceed with \"-flat_namespace\" when a linked bundle contained a symbol also exported from the main executable."
-msgstr ""
+msgstr "(Obsoleto) Permitía que el enlazamiento procediera con «-flat_namespace» cuando un «bundle» contenía un símbolo también exportado desde el ejecutable principal."
 
 #: config/darwin.opt:298
 #, no-c-format
 msgid "Synonym for \"-export-dynamic\" for linker versions that support it."
-msgstr ""
+msgstr "Sinónimo de «-export-dynamic» para las versiones del enlazador que lo admitan."
 
 #: config/darwin.opt:302
 #, no-c-format
 msgid "-read_only_relocs <treatment>\tAllow relocations in read-only pages (not recommended)."
-msgstr ""
+msgstr "-read_only_relocs <tratamiento>\tPermite reubicaciones en páginas de solo lectura (no recomendado)."
 
 #: config/darwin.opt:306
 #, no-c-format
 msgid "-sectalign <segname> <sectname> <value>\tSet section <sectname> in segment <segname> to have alignment <value> which must be an integral power of two expressed in hexadecimal form."
-msgstr ""
+msgstr "-sectalign <nombreseg> <nombresec> <valor>\tConfigura la sección <nombresec> en el segmento <nombreseg> para tener alineamiento <valor>, que debe ser una potencia entera de dos expresada en forma hexadecimal."
 
 #: config/darwin.opt:310
 #, no-c-format
 msgid "-sectcreate <segname> <sectname> <file>\tCreate section <sectname> in segment <segname> from the contents of <file>."
-msgstr ""
+msgstr "-sectcreate <nombreseg> <nombresec> <fichero>\tCrea la sección <nombresec> en el segmento <nombreseg> a partir del contenido de <fichero>."
 
 #: config/darwin.opt:314
 #, no-c-format
 msgid "(Obsolete) -sectobjectsymbols <segname> <sectname>\tSetting a local symbol at the start of a section is no longer supported."
-msgstr ""
+msgstr "(Obsoleto) -sectobjectsymbols <nombreseg> <nombresec>\tYa no se puede poner establecer un símbolo al comienzo de una sección."
 
 #: config/darwin.opt:318
 #, no-c-format
 msgid "(Obsolete) -sectorder <segname> <sectname> <orderfile>\tReplaced by a more general option \"-order_file\"."
-msgstr ""
+msgstr "(Obsoleto) -sectorder <nombreseg> <nombresec> <ficheroorden>\tReemplazado por la opción más general «-order_file»."
 
 #: config/darwin.opt:322
 #, no-c-format
 msgid "-seg_addr_table <file>\tSpecify the base addresses for dynamic libraries; <file> contains a line for each library."
-msgstr ""
+msgstr "-seg_addr_table <fichero>\tEspecifica las direcciones base para bibliotecas dinámicas; <fichero> contiene una línea para cada biblioteca."
 
 #: config/darwin.opt:327
 #, no-c-format
 msgid "(Obsolete, ld_classic only) -seg_addr_table_filename <path>."
-msgstr ""
+msgstr "(Obsoleto, solamente ld_classic) -seg_addr_table_filename <ruta>."
 
 #: config/darwin.opt:331
-#, fuzzy, no-c-format
-#| msgid "Synonym for -Wcomment."
+#, no-c-format
 msgid "Synonym for \"image_base\"."
-msgstr "Sinónimo de -Wcomment."
+msgstr "Sinónimo de «image_base»."
 
 #: config/darwin.opt:335
 #, no-c-format
 msgid "-segaddr <name> <address>\tSet the base address of segment <name> to <address> which must be aligned to a page boundary (currently 4kb)."
-msgstr ""
+msgstr "-segaddr <nombre> <dirección>\tConfigura la dirección base del segmento <nombre> a <dirección>, que debe estar alineada al contorno de página (actualmente 4kb)."
 
 #: config/darwin.opt:340
 #, no-c-format
 msgid "(Obsolete, ld_classic only) -sectcreate <segname> <sectname> <file>\tAllowed creation of a section from a file."
-msgstr ""
+msgstr "(Obsoleto, solamente ld_classic) -sectcreate <nombreseg> <nombresec> <fichero>\tPermitía la creación de una sección dede un fichero."
 
 #: config/darwin.opt:344
 #, no-c-format
 msgid "(Obsolete) Object files with LINKEDIT sections are no longer supported."
-msgstr ""
+msgstr "(Obsoleto) Los ficheros objeto con secciones LINKEDIT ya no están disponibles."
 
 #: config/darwin.opt:348
 #, no-c-format
 msgid "-segprot <segname> <max_prot> <init_prot>\tThe virtual memory protections for segment <segname> have maximum and initial values <max_prot> and <init_prot> respectively.  The specified values may contain \"r\", \"w\", \"x\" or \"-\" the latter meaning \"no access\"."
-msgstr ""
+msgstr "-segprot <nombreseg> <maxprot> <iniprot>\tLas protecciones de la memoria virtual para el segmento <nombreseg> tienen valores máximo e inicial <maxproto> e <initprot>, respectivamente.  Los valores especificados pueden contener «r», «w», «x» o «-», este último con el significado «sin acceso»."
 
 #: config/darwin.opt:352
 #, no-c-format
 msgid "-segs_read_only_addr <address>\tSpecify that <address> is the base address of the read-only segments of a dylib."
-msgstr ""
+msgstr "-segs_read_only_addr <dirección>\tEspecifica que <dirección> es la dirección base de los segmentos de solo lectura de una dylib."
 
 #: config/darwin.opt:356
 #, no-c-format
 msgid "-segs_read_write_addr <address>\tSpecify that <address> is the base address address of the read-write segments of a dylib."
-msgstr ""
+msgstr "-segs_read_write_addr <dirección>\tEspecifica que <dirección> es la dirección base de los segmentos de lectura y escritura de una dylib."
 
 #: config/darwin.opt:360
-#, fuzzy, no-c-format
-#| msgid "Stores doubles in 32 bits.  This is the default."
+#, no-c-format
 msgid "(Obsolete)\tThis is the default."
-msgstr "Almacena dobles en 32 bits.  Este es el valor por defecto."
+msgstr "(Obsoleto)\tEste es el valor por defecto."
 
 #: config/darwin.opt:364
 #, no-c-format
 msgid "-sub_library <name>\tLibrary named <name> will be re-exported (only useful for dylibs)."
-msgstr ""
+msgstr "-sub_library <nombre>\tLa biblioteca llamada <nombre> se va a volver a exportar (útil únicamente para dylibs)."
 
 #: config/darwin.opt:368
 #, no-c-format
 msgid "-sub_umbrella <name>\tFramework named <name> will be re-exported (only useful for dylibs)."
-msgstr ""
+msgstr "-sub_umbrella <nombre>\tEl marco llamado nombre> se va a volver a exportar (útil únicamente para dylibs)."
 
 #: config/darwin.opt:372
-#, fuzzy, no-c-format
-#| msgid "this is the first default label"
+#, no-c-format
 msgid "This is the default."
-msgstr "esta es la primera etiqueta por defecto"
+msgstr "Esto es lo predeterminado."
 
 #: config/darwin.opt:376
 #, no-c-format
 msgid "Add extra information to the executable that can speed up dynamic loading (provided that dependent libraries are unchanged)."
-msgstr ""
+msgstr "Añade información extra al ejecutable, que puede acelerar la carga dinámica (suponiendo que no cambien las bibliotecas de las que depende)."
 
 #: config/darwin.opt:380
 #, no-c-format
 msgid "-umbrella <framework>\tThe specified framework will be re-exported."
-msgstr ""
+msgstr "-umbrella <marco>\tEl marco especificado se volverá a exportar."
 
 #: config/darwin.opt:384
 #, no-c-format
 msgid "-undefined <treatment>\tSpecify the handling for undefined symbols (default is error)."
-msgstr ""
+msgstr "-undefined <tratamiento>\tEspecifica el manejo de símbolos indefinidos (lo predeterminado es error)."
 
 #: config/darwin.opt:388
 #, no-c-format
 msgid "-unexported_symbols_list <filename>\tDo not export the global symbols listed in <filename>."
-msgstr ""
+msgstr "-unexported_symbols_list <nombrefich>\tNo exporta los símbolos globales enumerados en <nombrefich>."
 
 #: config/darwin.opt:392
 #, no-c-format
 msgid "-weak_framework <framework>\tMake a weak link to the specified framework."
-msgstr ""
+msgstr "-weak_framework <marco>\tCrea un enlace débil al marco especificado."
 
 #: config/darwin.opt:396
 #, no-c-format
 msgid "-weak_reference_mismatches <treatment>\tSpecifies what to do if a symbol import conflicts between file (weak in one and not in another) the default is to treat the symbol as non-weak."
-msgstr ""
+msgstr "-weak_reference_mismatches <marco>\tEspecifica lo que se hará si al importar un símbolo hay conflicto entre fichero (débil en uno y no en otro) lo predeterminado es tratar el símbolo como no débil."
 
 #: config/darwin.opt:400
 #, no-c-format
 msgid "Logs which object files the linker loads."
-msgstr ""
+msgstr "Registra los ficheros objeto que carga el enlazador."
 
 #: config/darwin.opt:404
 #, no-c-format
 msgid "Logs which symbol(s) caused an object to be loaded."
-msgstr ""
+msgstr "Registra los símbolos que provocan la carga de un objeto."
 
 #: config/darwin.opt:412
 #, no-c-format
 msgid "(Obsolete, ignored)\tOld support similar to \"-whyload\"."
-msgstr ""
+msgstr "(Obsoleto, descartado)\tSoporte viejo similar a «-whyload»."
 
 #: config/darwin.opt:416
 #, no-c-format
 msgid "(Obsolete and unhandled by ld64, ignored)\tld should produce an executable (only handled by ld_classic)."
-msgstr ""
+msgstr "(Obsoleto y no manejado por ld64, descartado)\tld debería producir un ejecutable (solo manejado por ld_classic)."
 
 #: config/bfin/bfin.opt:40 config/msp430/msp430.opt:3 config/c6x/c6x.opt:38
 #, no-c-format
@@ -6290,10 +6091,9 @@ msgid "-mbranch-cost=N\tSet the cost of branches to roughly N instructions."
 msgstr "-mbranch-cost=N\tEstablece el costo de las ramificaciones aproximadamente a N instrucciones."
 
 #: config/riscv/riscv.opt:38
-#, fuzzy, no-c-format
-#| msgid "This switch is deprecated; use -Wextra instead."
+#, no-c-format
 msgid "This option is deprecated; use -fplt or -fno-plt instead."
-msgstr "Esta opción es obsoleta; utilice en su lugar -Wextra."
+msgstr "Esta opción es obsoleta; utilice en su lugar -fplt o -fno-plt."
 
 #: config/riscv/riscv.opt:42
 #, no-c-format
@@ -6328,7 +6128,7 @@ msgstr "-march=\tGenera código para el RISC-V ISA dado (por ejemplo, RV64IM).  
 #: config/riscv/riscv.opt:91
 #, no-c-format
 msgid "-march=help\tPrint supported -march extensions."
-msgstr ""
+msgstr "-march=help\tImprime las extensiones -march disponibles."
 
 #: config/riscv/riscv.opt:103 config/mips/mips.opt:426
 #, no-c-format
@@ -6336,10 +6136,9 @@ msgid "-mtune=PROCESSOR\tOptimize the output for PROCESSOR."
 msgstr "-mtune=PROCESADOR\tOptimiza la salida para el PROCESADOR."
 
 #: config/riscv/riscv.opt:107
-#, fuzzy, no-c-format
-#| msgid "-mtune=PROCESSOR\tOptimize the output for PROCESSOR."
+#, no-c-format
 msgid "-mcpu=PROCESSOR\tUse architecture of and optimize the output for PROCESSOR."
-msgstr "-mtune=PROCESADOR\tOptimiza la salida para el PROCESADOR."
+msgstr "-mcpu=PROCESADOR\tUtiliza la arquitectura de y optimiza la salida para el PROCESADOR."
 
 #: config/riscv/riscv.opt:111
 #, no-c-format
@@ -6354,7 +6153,7 @@ msgstr "Usa código de prólogo y epílogo más pequeño pero más lento."
 #: config/riscv/riscv.opt:119
 #, no-c-format
 msgid "Convert BASE + LARGE_OFFSET addresses to NEW_BASE + SMALL_OFFSET to allow more memory accesses to be generated as compressed instructions.  Currently targets 32-bit integer load/stores."
-msgstr ""
+msgstr "Convierte las direcciones BASE + LARGE_OFFSET en NEW_BASE + SMALL_OFFSET para permitir que más accesos a memoria se generen como instrucciones comprimidas."
 
 #: config/riscv/riscv.opt:125 config/aarch64/aarch64.opt:107
 #: config/loongarch/loongarch.opt:270
@@ -6368,16 +6167,14 @@ msgid "Do not generate unaligned memory accesses."
 msgstr "No genera accessos a memoria sin alinear"
 
 #: config/riscv/riscv.opt:133
-#, fuzzy, no-c-format
-#| msgid "Do not generate unaligned memory accesses."
+#, no-c-format
 msgid "Do not generate unaligned scalar memory accesses."
-msgstr "No genera accessos a memoria sin alinear"
+msgstr "No genera accessos a memoria escalares sin alinear"
 
 #: config/riscv/riscv.opt:137
-#, fuzzy, no-c-format
-#| msgid "Do not generate unaligned memory accesses."
+#, no-c-format
 msgid "Do not create element-misaligned vector memory accesses."
-msgstr "No genera accessos a memoria sin alinear"
+msgstr "No crea accessos a memoria vectoriales con elementos desalineados"
 
 #: config/riscv/riscv.opt:141 config/i386/i386.opt:308
 #: config/rs6000/aix64.opt:36 config/rs6000/linux64.opt:32
@@ -6398,7 +6195,7 @@ msgstr "Aprovecha los descansos del enlazador para reducir el número de instruc
 #: config/riscv/riscv.opt:163
 #, no-c-format
 msgid "Enable the CSR checking for the ISA-dependent CSR and the read-only CSR. The ISA-dependent CSR are only valid when the specific ISA is set.  The read-only CSR can not be written by the CSR instructions."
-msgstr ""
+msgstr "Activa las comprobaciones de CSR para el CSR dependiente de ISA y el CSR de solo lectura. Los CR dependientes de ISA solo son válidos cuando el ISA específico está configurado."
 
 #: config/riscv/riscv.opt:169 config/aarch64/aarch64.opt:150
 #: config/i386/i386.opt:420
@@ -6447,51 +6244,44 @@ msgid "Use the given offset for addressing the stack-protector guard."
 msgstr "Usa el desplazamiento dado para direccionar la guarda de protección de la pila."
 
 #: config/riscv/riscv.opt:543
-#, fuzzy, no-c-format
-#| msgid "Supported ABIs (for use with the -mabi= option):"
+#, no-c-format
 msgid "Supported ISA specs (for use with the -misa-spec= option):"
-msgstr "ABIs admitidas (para usar con la opción -mabi=):"
+msgstr "Especificaciones ISA admitidas (para usar con la opción -misa-spec=):"
 
 #: config/riscv/riscv.opt:556
-#, fuzzy, no-c-format
-#| msgid "The version of the C++ ABI in use."
+#, no-c-format
 msgid "Set the version of RISC-V ISA spec."
-msgstr "La versión de la ABI de C++ que se está usando."
+msgstr "Establece la versión de la especificación ISA RISC-V."
 
 #: config/riscv/riscv.opt:560
-#, fuzzy, no-c-format
-#| msgid "enable conditional move instruction usage."
+#, no-c-format
 msgid "Enable conditional moves unconditionally."
-msgstr "activa el uso de la instrucción move condicional."
+msgstr "Activa las move condicionales incondicionalmente."
 
 #: config/riscv/riscv.opt:564
-#, fuzzy, no-c-format
-#| msgid "Specify the model for atomic operations."
+#, no-c-format
 msgid "Always inline subword atomic operations."
-msgstr "Especifica el modelo para operaciones atómicas."
+msgstr "Siempre operaciones atómicas de subpalabra en línea."
 
 #: config/riscv/riscv.opt:568
-#, fuzzy, no-c-format
-#| msgid "Use caller save register across calls if possible."
+#, no-c-format
 msgid "Inline strcmp calls if possible."
-msgstr "Usa registro de guarda de invocador entre llamadas si es posible."
+msgstr "Las llamadas a strcmp en línea si es posible."
 
 #: config/riscv/riscv.opt:572
-#, fuzzy, no-c-format
-#| msgid "Use caller save register across calls if possible."
+#, no-c-format
 msgid "Inline strncmp calls if possible."
-msgstr "Usa registro de guarda de invocador entre llamadas si es posible."
+msgstr "Las llamadas a strncmp en línea si es posible."
 
 #: config/riscv/riscv.opt:576
-#, fuzzy, no-c-format
-#| msgid "Use caller save register across calls if possible."
+#, no-c-format
 msgid "Inline strlen calls if possible."
-msgstr "Usa registro de guarda de invocador entre llamadas si es posible."
+msgstr "Las llamadas a strlen en línea si es posible."
 
 #: config/riscv/riscv.opt:580
 #, no-c-format
 msgid "Max number of bytes to compare as part of inlined strcmp/strncmp routines (default: 64)."
-msgstr ""
+msgstr "Número máximo de bytes que comparar como parte de rutinas strcmp/strncmp en línea (predeterminado: 64)."
 
 #: config/riscv/riscv.opt:584
 #, no-c-format
@@ -6504,20 +6294,19 @@ msgid "-mrvv-max-lmul=<string>\tSet the RVV LMUL of auto-vectorization."
 msgstr ""
 
 #: config/riscv/riscv.opt:610
-#, fuzzy, no-c-format
-#| msgid "Valid arguments to -mstringop-strategy=:"
+#, no-c-format
 msgid "Valid arguments to -param=vsetvl-strategy=:"
-msgstr "Argumentos válidos para -mstringop-strategy=:"
+msgstr "Argumentos válidos para -param=vsetvl-strategy=:"
 
 #: config/riscv/riscv.opt:623
 #, no-c-format
 msgid "-param=vsetvl-strategy=<string>\tSet the optimization level of VSETVL insert pass."
-msgstr ""
+msgstr "-param=vsetvl-strategy=<cadena>\tEstablece el nivel de optimización del paso de inserción de VSETVL."
 
 #: config/riscv/riscv.opt:627
 #, no-c-format
 msgid "-param=riscv-two-source-permutes Enable permutes with two source vectors."
-msgstr ""
+msgstr "-param=riscv-two-source-permutes Activa las permutaciones con vectores de dos fuentes."
 
 #: config/riscv/riscv.opt:631 config/i386/i386.opt:496
 #, no-c-format
@@ -6525,22 +6314,19 @@ msgid "Valid arguments to -mstringop-strategy=:"
 msgstr "Argumentos válidos para -mstringop-strategy=:"
 
 #: config/riscv/riscv.opt:647
-#, fuzzy, no-c-format
-#| msgid "Specify memset expansion strategy when expected size is known."
+#, no-c-format
 msgid "Specify stringop expansion strategy."
-msgstr "Especifica la estrategia de expansión de memset cuando se conoce el tamaño esperado."
+msgstr "Especifica la estrategia de expansión de stringop."
 
 #: config/riscv/riscv.opt:651
-#, fuzzy, no-c-format
-#| msgid "The possible SVE vector lengths:"
+#, no-c-format
 msgid "The possible RVV vector register lengths:"
-msgstr "Las direcciones de vector SVE posibles:"
+msgstr "Las longitudes de vector RVV posibles:"
 
 #: config/riscv/riscv.opt:661
-#, fuzzy, no-c-format
-#| msgid "-msve-vector-bits=N\tSet the number of bits in an SVE vector register to N."
+#, no-c-format
 msgid "-mrvv-vector-bits=<string>\tSet the kind of bits for an RVV vector register."
-msgstr "-msve-vector-bits=N\tEstablece el número de bits en un registro de vector SVE a N."
+msgstr "-mrvv-vector-bits=<cadena>\tEstablece la clase de bits para un registro vectorial RVV."
 
 #: config/riscv/riscv.opt:665 config/aarch64/aarch64.opt:58
 #: config/loongarch/loongarch.opt:287
@@ -6555,16 +6341,14 @@ msgid "Specify TLS dialect."
 msgstr "Especifica el dialecto de TLS."
 
 #: config/riscv/riscv.opt:679
-#, fuzzy, no-c-format
-#| msgid "Specify whether the byte access instructions should be used. Enabled by default."
+#, no-c-format
 msgid "Specifies whether the fence.tso instruction should be used."
-msgstr "Especifica si se deben usar las instrucciones de acceso a byte. Activado por defecto."
+msgstr "Especifica si se deben usar la instrucción fence.tso."
 
 #: config/riscv/riscv.opt:683
-#, fuzzy, no-c-format
-#| msgid "Enable automatic generation of fused floating point multiply-add instructions"
+#, no-c-format
 msgid "Enable (default) or disable generation of vector segment load/store instructions."
-msgstr "Permite la generación automática de instrucciones multiply-add de coma flotante de corto circuito"
+msgstr "Activa (predeterminado) o desactiva la generación de instrucciones de carga/almacenamiento de segmento vectorial."
 
 #: config/m32c/m32c.opt:23
 #, no-c-format
@@ -6697,10 +6481,9 @@ msgid "Generate code which uses only the general registers."
 msgstr "Genera código que usa solo los registros generales."
 
 #: config/aarch64/aarch64.opt:91 config/i386/i386.opt:1148
-#, fuzzy, no-c-format
-#| msgid "Generate code for all template instantiations."
+#, no-c-format
 msgid "Generate code to mitigate against straight line speculation."
-msgstr "Genera código para todas las instanciaciones de plantillas."
+msgstr "Genera código para mitigar la especulación de línea recta."
 
 #: config/aarch64/aarch64.opt:95
 #, no-c-format
@@ -6713,16 +6496,14 @@ msgid "Workaround for ARM Cortex-A53 Erratum number 843419."
 msgstr "Solución alternativa para la errata de ARM Cortex-A53 número 843419."
 
 #: config/aarch64/aarch64.opt:111
-#, fuzzy, no-c-format
-#| msgid "Specify how to access the thread pointer."
+#, no-c-format
 msgid "The register used to access the thread pointer:"
-msgstr "Especifica cómo accedar al puntero de hilo."
+msgstr "El registro utilizado para acceder al puntero de hilo:"
 
 #: config/aarch64/aarch64.opt:142
-#, fuzzy, no-c-format
-#| msgid "Specify thread pointer register number."
+#, no-c-format
 msgid "Specify the thread pointer register."
-msgstr "Especifica el número de registro de puntero del hilo."
+msgstr "Especifica el registro de puntero de hilo."
 
 #: config/aarch64/aarch64.opt:146
 #, no-c-format
@@ -6735,33 +6516,29 @@ msgid "Specifies bit size of immediate TLS offsets.  Valid values are 12, 24, 32
 msgstr "Especifica el tamaño de bit para los desplazamientos TLS inmediatos. Los valores válidos son 12, 24, 32, 48."
 
 #: config/aarch64/aarch64.opt:177
-#, fuzzy, no-c-format
-#| msgid "-march=ARCH\tUse features of architecture ARCH."
+#, no-c-format
 msgid "Use features of architecture ARCH."
-msgstr "-march=ARCH\tUsa las características de la arquitectura ARCH."
+msgstr "Usa las características de la arquitectura ARCH."
 
 #: config/aarch64/aarch64.opt:181
-#, fuzzy, no-c-format
-#| msgid "-mcpu=CPU\tUse features of and optimize for CPU."
+#, no-c-format
 msgid "Use features of and optimize for CPU."
-msgstr "-mcpu=CPU\tUsa las características de y optimiza para CPU."
+msgstr "Usa las características de y optimiza para CPU."
 
 #: config/aarch64/aarch64.opt:185
-#, fuzzy, no-c-format
-#| msgid "Optimize for 3900"
+#, no-c-format
 msgid "Optimize for CPU."
-msgstr "Optimizar para 3900"
+msgstr "Optimiza para CPU."
 
 #: config/aarch64/aarch64.opt:189
-#, fuzzy, no-c-format
-#| msgid "-mabi=ABI\tGenerate code that conforms to the specified ABI."
+#, no-c-format
 msgid "Generate code that conforms to the specified ABI."
-msgstr "-mabi=ABI\tGenera código que cumpla con la ABI especificada."
+msgstr "Genera código que cumpla con la ABI especificada."
 
 #: config/aarch64/aarch64.opt:193
 #, no-c-format
 msgid "-moverride=<string>\tPower users only! Override CPU optimization parameters."
-msgstr ""
+msgstr "-moverride=<cadena>\t¡Solo usuarios avanzados! Anula los parámetros de optimización de la CPU."
 
 #: config/aarch64/aarch64.opt:197
 #, no-c-format
@@ -6774,21 +6551,19 @@ msgid "PC relative literal loads."
 msgstr "Cargas literales relativas a PC."
 
 #: config/aarch64/aarch64.opt:211 config/arm/arm.opt:337
-#, fuzzy, no-c-format
-#| msgid "Use given stack-protector guard."
+#, no-c-format
 msgid "Use branch-protection features."
-msgstr "USa la guarda de protección de la pila dada."
+msgstr "Utiliza las características de protección de bifurcación."
 
 #: config/aarch64/aarch64.opt:215
 #, no-c-format
 msgid "Select return address signing scope."
-msgstr ""
+msgstr "Selecciona el ámbito de la firma de la dirección de retorno."
 
 #: config/aarch64/aarch64.opt:219
-#, fuzzy, no-c-format
-#| msgid "Known address mode (for use with the -maddress-mode= option):"
+#, no-c-format
 msgid "Supported AArch64 return address signing scope (for use with -msign-return-address= option):"
-msgstr "Modo de dirección conocido (para uso con la opción -maddress-mode=):"
+msgstr "Ámbito de firma de la dirección de retorno de AArch64 disponible (para uso con la opción -msign-return-address=):"
 
 #: config/aarch64/aarch64.opt:232
 #, no-c-format
@@ -6808,7 +6583,7 @@ msgstr "Activa la aproximación de la división.  Activar esto reduce la precisi
 #: config/aarch64/aarch64.opt:263
 #, no-c-format
 msgid "Specify when to enable an early register allocation pass.  The possibilities are: all functions, functions that have access to strided multi-register instructions, and no functions."
-msgstr ""
+msgstr "Especifica cuándo habilitar paso de reserva de registro temprano.  Posibilidades: todas las funciones, funciones con acceso a instrucciones multi-registro por pasos, ninguna función."
 
 #: config/aarch64/aarch64.opt:269
 #, no-c-format
@@ -6816,10 +6591,9 @@ msgid "The possible SVE vector lengths:"
 msgstr "Las direcciones de vector SVE posibles:"
 
 #: config/aarch64/aarch64.opt:291
-#, fuzzy, no-c-format
-#| msgid "-msve-vector-bits=N\tSet the number of bits in an SVE vector register to N."
+#, no-c-format
 msgid "-msve-vector-bits=<number>\tSet the number of bits in an SVE vector register."
-msgstr "-msve-vector-bits=N\tEstablece el número de bits en un registro de vector SVE a N."
+msgstr "-msve-vector-bits=<número>\tEstablece el número de bits en un registro vectorial SVE."
 
 #: config/aarch64/aarch64.opt:295
 #, no-c-format
@@ -6829,93 +6603,92 @@ msgstr "Activa volcado de modelo de coste expresivo en los ficheros de volcado p
 #: config/aarch64/aarch64.opt:299
 #, no-c-format
 msgid "Generate code to track when the CPU might be speculating incorrectly."
-msgstr ""
+msgstr "Genera código para rastrear cuándo la CPU podría estar especulando incorrectamente."
 
 #: config/aarch64/aarch64.opt:303
 #, no-c-format
 msgid "Enable the copy of the AArch64 load/store pair fusion pass that runs before register allocation."
-msgstr ""
+msgstr "Habilita la copia de paso de fusión de parejas load/store de AArch64 que corre antes de la reserva de registros."
 
 #: config/aarch64/aarch64.opt:308
 #, no-c-format
 msgid "Enable the copy of the AArch64 load/store pair fusion pass that runs after register allocation."
-msgstr ""
+msgstr "Habilita la copia de paso de fusión de parejas load/store de AArch64 que corre después de la reserva de registros."
 
 #: config/aarch64/aarch64.opt:327
 #, no-c-format
 msgid "Use the system register specified on the command line as the stack protector guard register. This option is for use with fstack-protector-strong and not for use in user-land code."
-msgstr ""
+msgstr "Utiliza el registro del sistema especificado en la línea de órdenes como registro de guarda de protección de la pila. Esta opción es para utilizar con fstack-protector-strong y no para utilizar en código del usuario."
 
 #: config/aarch64/aarch64.opt:333
 #, no-c-format
 msgid "Use an immediate to offset from the stack protector guard register, sp_el0. This option is for use with fstack-protector-strong and not for use in user-land code."
-msgstr ""
+msgstr "Utiliza un inmediato para desplazar desde el registro de guarda de protección de la pila, sp_el0. Esta opción es para utilizar con fstack-protector-strong y no para utilizar en código del usuario."
 
 #: config/aarch64/aarch64.opt:342
-#, fuzzy, no-c-format
-#| msgid "Generate a call to abort if a noreturn function returns."
+#, no-c-format
 msgid "Generate local calls to out-of-line atomic operations."
-msgstr "Genera una llamada a abortar si una funcion noreturn devuelve."
+msgstr "Genera llamadas locales a operaciones atómicas de fuera de línea."
 
 #: config/aarch64/aarch64.opt:346
 #, no-c-format
 msgid "When vectorizing, consider using multiple different approaches and use the cost model to choose the cheapest one."
-msgstr ""
+msgstr "Cuando se vectoriza, considera el uso de diversas estrategias y utiliza el modelo de costes para elegir la más barata."
 
 #: config/aarch64/aarch64.opt:351
 #, no-c-format
 msgid "The number of Newton iterations for calculating the reciprocal for float type.  The precision of division is proportional to this param when division approximation is enabled.  The default value is 1."
-msgstr ""
+msgstr "El número de iteraciones de Newton para calcular el recíproco de un tipo float.  La precisión de la división es proporcional a este parámetro cuando la aproximación de la división está habilitada.  El valor predefinido es 1."
 
 #: config/aarch64/aarch64.opt:355
 #, no-c-format
 msgid "The number of Newton iterations for calculating the reciprocal for double type.  The precision of division is proportional to this param when division approximation is enabled.  The default value is 2."
-msgstr ""
+msgstr "El número de iteraciones de Newton para calcular el recíproco de un tipo double.  La precisión de la división es proporcional a este parámetro cuando la aproximación de la división está habilitada.  El valor predefinido es 2."
 
 #: config/aarch64/aarch64.opt:359
 #, no-c-format
 msgid "--param=aarch64-autovec-preference=[default|asimd-only|sve-only|prefer-asimd|prefer-sve] Force an ISA selection strategy for auto-vectorization."
-msgstr ""
+msgstr "--param=aarch64-autovec-preference=[default|asimd-only|sve-only|prefer-asimd|prefer-sve] Fuerza una estrategia de selección de ISA para auto vectorización."
 
 #: config/aarch64/aarch64.opt:385
 #, no-c-format
 msgid "Constant memcpy size in bytes above which to start using MOPS sequence."
-msgstr ""
+msgstr "Tamaño en bytes de memcpy constante por encima del cual empezar a utilizar una secuencia MOPS."
 
 #: config/aarch64/aarch64.opt:389
 #, no-c-format
 msgid "Constant memmove size in bytes above which to start using MOPS sequence."
-msgstr ""
+msgstr "Tamaño en bytes de memmove constante por encima del cual empezar a utilizar una secuencia MOPS."
 
 #: config/aarch64/aarch64.opt:393
 #, no-c-format
 msgid "Constant memset size in bytes from which to start using MOPS sequence."
-msgstr ""
+msgstr "Tamaño en bytes de memset constante por encima del cual empezar a utilizar una secuencia MOPS."
 
 #: config/aarch64/aarch64.opt:397
 #, no-c-format
 msgid "Limit how much the autovectorizer may unroll a loop."
-msgstr ""
+msgstr "Limita cuánto puede desenrrollar un bucle el autovectorizador."
 
 #: config/aarch64/aarch64.opt:401
 #, no-c-format
 msgid "--param=aarch64-ldp-policy=[default|always|never|aligned] Fine-grained policy for load pairs."
-msgstr ""
+msgstr "--param=aarch64-ldp-policy=[default|always|never|aligned] Política de grano fino para pares de load."
 
 #: config/aarch64/aarch64.opt:405
 #, no-c-format
 msgid "--param=aarch64-stp-policy=[default|always|never|aligned] Fine-grained policy for store pairs."
-msgstr ""
+msgstr "--param=aarch64-stp-policy=[default|always|never|aligned] Política de grano fino para pares de store."
 
 #: config/aarch64/aarch64.opt:424
 #, no-c-format
 msgid "Limit on number of alias checks performed when attempting to form an ldp/stp."
-msgstr ""
+msgstr "Límite del número de comprobaciones de alias realizados cuando se intenta formar un ldp/stp."
 
 #: config/aarch64/aarch64.opt:428
 #, no-c-format
 msgid "Param to control which writeback opportunities we try to handle in the load/store pair fusion pass.  A value of zero disables writeback handling.  One means we try to form pairs involving one or more existing individual writeback accesses where possible.  A value of two means we also try to opportunistically form writeback opportunities by folding in trailing destructive updates of the base register used by a pair."
-msgstr ""
+msgstr "Parámetro para controlar qué oportunidades de retroescritura intentamos manejar en los pasos de fusión load/store.  Un valor de cero deshabilita el manejo de la retroescritura. Uno significa que intentamos formar pares implicando uno o más accesos de retroescritura individuales existentes cuando sea posible.  Un valor de dos significa que también intentamos oportunísticamente formar oportunidades de retroescritura incorporando actualizaciones destructivas residuales del registro base utilizado por un par."
 
 #: config/aarch64/aarch64.opt:437
 #, fuzzy, no-c-format
