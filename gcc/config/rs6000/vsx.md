@@ -104,8 +104,8 @@
 ;; Map the register class used
 (define_mode_attr VSr	[(V16QI "v")
 			 (V8HI  "v")
-			 (V8BF  "v")
-			 (V8HF  "v")
+			 (V8BF  "wa")
+			 (V8HF  "wa")
 			 (V4SI  "v")
 			 (V4SF  "wa")
 			 (V2DI  "wa")
@@ -121,8 +121,8 @@
 ;; What value we need in the "isa" field, to make the IEEE QP float work.
 (define_mode_attr VSisa	[(V16QI "*")
 			 (V8HI  "*")
-			 (V8BF  "p10")
-			 (V8HF  "p9v")
+			 (V8BF  "*")
+			 (V8HF  "*")
 			 (V4SI  "*")
 			 (V4SF  "*")
 			 (V2DI  "*")
@@ -224,24 +224,30 @@
 ;; Iterator for ISA 3.0 vector extract/insert of small integer vectors.
 ;; VSX_EXTRACT_I2 doesn't include V4SImode because SI extracts can be
 ;; done on ISA 2.07 and not just ISA 3.0.
-(define_mode_iterator VSX_EXTRACT_I  [V16QI V8HI V4SI])
-(define_mode_iterator VSX_EXTRACT_I2 [V16QI V8HI])
-(define_mode_iterator VSX_EXTRACT_I4 [V16QI V8HI V4SI V2DI])
+(define_mode_iterator VSX_EXTRACT_I  [V16QI V8HI V8HF V8BF V4SI])
+(define_mode_iterator VSX_EXTRACT_I2 [V16QI V8HI V8HF V8BF])
+(define_mode_iterator VSX_EXTRACT_I4 [V16QI V8HI V8HF V8BF V4SI V2DI])
 
 (define_mode_attr VSX_EXTRACT_WIDTH [(V16QI "b")
 		  		     (V8HI "h")
+		  		     (V8HF "h")
+		  		     (V8BF "h")
 				     (V4SI "w")])
 
 ;; Mode attribute to give the correct predicate for ISA 3.0 vector extract and
 ;; insert to validate the operand number.
 (define_mode_attr VSX_EXTRACT_PREDICATE [(V16QI "const_0_to_15_operand")
 					 (V8HI  "const_0_to_7_operand")
+					 (V8HF  "const_0_to_7_operand")
+					 (V8BF  "const_0_to_7_operand")
 					 (V4SI  "const_0_to_3_operand")])
 
 ;; Mode attribute to give the constraint for vector extract and insert
 ;; operations.
 (define_mode_attr VSX_EX [(V16QI "v")
 			  (V8HI  "v")
+			  (V8HF  "v")
+			  (V8BF  "v")
 			  (V4SI  "wa")])
 
 ;; Mode iterator for binary floating types other than double to
