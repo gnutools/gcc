@@ -643,6 +643,10 @@ mdense_math
 Target Mask(DENSE_MATH) Var(rs6000_isa_flags)
 Generate (do not generate) dense math MMA+ instructions.
 
+mfloat16
+Target Mask(FLOAT16) Var(rs6000_isa_flags)
+Enable or disable 16-bit floating point.
+
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=
