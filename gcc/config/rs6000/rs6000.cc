@@ -277,7 +277,7 @@ bool cpu_builtin_p = false;
 /* Pointer to function (in rs6000-c.cc) that can define or undefine target
    macros that have changed.  Languages that don't support the preprocessor
    don't link in rs6000-c.cc, so we can't call it directly.  */
-void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT, bool, bool);
+void (*rs6000_target_modify_macros_ptr) (bool, HOST_WIDE_INT);
 
 /* Simplfy register classes into simpler classifications.  We assume
    GPR_REG_TYPE - FPR_REG_TYPE are ordered so that we can use a simple range
@@ -292,8 +292,7 @@ enum rs6000_reg_type {
   ALTIVEC_REG_TYPE,
   FPR_REG_TYPE,
   SPR_REG_TYPE,
-  CR_REG_TYPE,
-  DMF_REG_TYPE
+  CR_REG_TYPE
 };
 
 /* Map register class to register type.  */
@@ -307,23 +306,22 @@ static enum rs6000_reg_type reg_class_to_reg_type[N_REG_CLASSES];
 
 
 /* Register classes we care about in secondary reload or go if legitimate
-   address.  We only need to worry about GPR, FPR, Altivec, and DMF registers
-   here, along an ANY field that is the OR of the 4 register classes.  */
+   address.  We only need to worry about GPR, FPR, and Altivec registers here,
+   along an ANY field that is the OR of the 3 register classes.  */
 
 enum rs6000_reload_reg_type {
   RELOAD_REG_GPR,			/* General purpose registers.  */
   RELOAD_REG_FPR,			/* Traditional floating point regs.  */
   RELOAD_REG_VMX,			/* Altivec (VMX) registers.  */
-  RELOAD_REG_DMF,			/* DMF registers.  */
-  RELOAD_REG_ANY,			/* OR of GPR/FPR/VMX/DMF masks.  */
+  RELOAD_REG_ANY,			/* OR of GPR, FPR, Altivec masks.  */
   N_RELOAD_REG
 };
 
-/* For setting up register classes, loop through the 4 register classes mapping
+/* For setting up register classes, loop through the 3 register classes mapping
    into real registers, and skip the ANY class, which is just an OR of the
    bits.  */
 #define FIRST_RELOAD_REG_CLASS	RELOAD_REG_GPR
-#define LAST_RELOAD_REG_CLASS	RELOAD_REG_DMF
+#define LAST_RELOAD_REG_CLASS	RELOAD_REG_VMX
 
 /* Map reload register type to a register in the register class.  */
 struct reload_reg_map_type {
@@ -335,7 +333,6 @@ static const struct reload_reg_map_type reload_reg_map[N_RELOAD_REG] = {
   { "Gpr",	FIRST_GPR_REGNO },	/* RELOAD_REG_GPR.  */
   { "Fpr",	FIRST_FPR_REGNO },	/* RELOAD_REG_FPR.  */
   { "VMX",	FIRST_ALTIVEC_REGNO },	/* RELOAD_REG_VMX.  */
-  { "DMF",	FIRST_DMF_REGNO },	/* RELOAD_REG_DMF.  */
   { "Any",	-1 },			/* RELOAD_REG_ANY.  */
 };
 
@@ -1173,7 +1170,7 @@ enum reg_class (*rs6000_preferred_reload_class_ptr) (rtx, enum reg_class)
 const int INSN_NOT_AVAILABLE = -1;
 
 static void rs6000_print_isa_options (FILE *, int, const char *,
-				      HOST_WIDE_INT, bool);
+				      HOST_WIDE_INT);
 static HOST_WIDE_INT rs6000_disable_incompatible_switches (void);
 
 static enum rs6000_reg_type register_to_reg_type (rtx, bool *);
@@ -1229,8 +1226,6 @@ char rs6000_reg_names[][8] =
       "0",  "1",  "2",  "3",  "4",  "5",  "6",  "7",
   /* vrsave vscr sfp */
       "vrsave", "vscr", "sfp",
-  /* DMFs */
-      "0", "1", "2", "3", "4", "5", "6", "7",
 };
 
 #ifdef TARGET_REGNAMES
@@ -1257,8 +1252,6 @@ static const char alt_reg_names[][8] =
   "%cr0",  "%cr1", "%cr2", "%cr3", "%cr4", "%cr5", "%cr6", "%cr7",
   /* vrsave vscr sfp */
   "vrsave", "vscr", "sfp",
-  /* DMFs */
-  "%dmr0", "%dmr1", "%dmr2", "%dmr3", "%dmr4", "%dmr5", "%dmr6", "%dmr7",
 };
 #endif
 
@@ -1842,16 +1835,12 @@ rs6000_hard_regno_nregs_internal (int regno, machine_mode mode)
      128-bit floating point that can go in vector registers, which has VSX
      memory addressing.  */
   if (FP_REGNO_P (regno))
-    reg_size = (VECTOR_MEM_VSX_P (mode)
-		|| VECTOR_ALIGNMENT_P (mode)
+    reg_size = (VECTOR_MEM_VSX_P (mode) || VECTOR_ALIGNMENT_P (mode)
 		? UNITS_PER_VSX_WORD
 		: UNITS_PER_FP_WORD);
 
   else if (ALTIVEC_REGNO_P (regno))
     reg_size = UNITS_PER_ALTIVEC_WORD;
-
-  else if (DMF_REGNO_P (regno))
-    reg_size = UNITS_PER_DMF_WORD;
 
   else
     reg_size = UNITS_PER_WORD;
@@ -1874,35 +1863,9 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
   if (mode == OOmode)
     return (TARGET_MMA && VSX_REGNO_P (regno) && (regno & 1) == 0);
 
-  /* On ISA 3.1 (power10), MMA accumulator modes need FPR registers divisible
-     by 4.
-
-     If dense math registers are enabled, we can allow all VSX registers plus
-     the DMF registers.  VSX registers are used to load and store the registers
-     as the accumulator registers do not have load and store instructions.
-     Because we just use the VSX registers for load/store operations, we just
-     need to make sure load vector pair and store vector pair instructions can
-     be used.  */
-  if (mode == XOmode || mode == TDOmode)
-    {
-      if (!TARGET_MMA)
-	return 0;
-
-      else if (!TARGET_DENSE_MATH)
-	return (mode == XOmode && FP_REGNO_P (regno) && (regno & 3) == 0);
-
-      else if (DMF_REGNO_P (regno))
-	return 1;
-
-      else
-	return (VSX_REGNO_P (regno)
-		&& VSX_REGNO_P (last_regno)
-		&& (regno & 1) == 0);
-    }
-
-  /* No other types other than XOmode can go in dense math registers.  */
-  if (DMF_REGNO_P (regno))
-    return 0;
+  /* MMA accumulator modes need FPR registers divisible by 4.  */
+  if (mode == XOmode)
+    return (TARGET_MMA && FP_REGNO_P (regno) && (regno & 3) == 0);
 
   /* PTImode can only go in GPRs.  Quad word memory operations require even/odd
      register combinations, and use PTImode where we need to deal with quad
@@ -1929,8 +1892,7 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
 
       if (ALTIVEC_REGNO_P (regno))
 	{
-	  if (GET_MODE_SIZE (mode) < 16 && !reg_addr[mode].scalar_in_vmx_p
-	      && !FP16_SCALAR_MODE_P (mode))
+	  if (GET_MODE_SIZE (mode) < 16 && !reg_addr[mode].scalar_in_vmx_p)
 	    return 0;
 
 	  return ALTIVEC_REGNO_P (last_regno);
@@ -2009,11 +1971,9 @@ rs6000_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
    GPR registers, and TImode can go in any GPR as well as VSX registers (PR
    57744).
 
-   Similarly, don't allow OOmode (vector pair), XOmode (vector quad), or
-   TDOmode (dense math register) to pair with anything else.  Vector pairs are
-   restricted to even/odd VSX registers.  Without dense math, vector quads are
-   limited to FPR registers divisible by 4.  With dense math, vector quads are
-   limited to even VSX registers or DMF registers.
+   Similarly, don't allow OOmode (vector pair, restricted to even VSX
+   registers) or XOmode (vector quad, restricted to FPR registers divisible
+   by 4) to tie with other modes.
 
    Altivec/VSX vector tests were moved ahead of scalar float mode, so that IEEE
    128-bit floating point on VSX systems ties with other vectors.  */
@@ -2022,9 +1982,7 @@ static bool
 rs6000_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 {
   if (mode1 == PTImode || mode1 == OOmode || mode1 == XOmode
-      || mode1 == TDOmode || mode2 == PTImode || mode2 == OOmode
-      || mode2 == XOmode || mode2 == TDOmode
-      || FP16_SCALAR_MODE_P (mode1) || FP16_SCALAR_MODE_P (mode2))
+      || mode2 == PTImode || mode2 == OOmode || mode2 == XOmode)
     return mode1 == mode2;
 
   if (ALTIVEC_OR_VSX_VECTOR_MODE (mode1))
@@ -2289,8 +2247,6 @@ rs6000_debug_reg_global (void)
     DImode,
     TImode,
     PTImode,
-    BFmode,
-    HFmode,
     SFmode,
     DFmode,
     TFmode,
@@ -2311,15 +2267,12 @@ rs6000_debug_reg_global (void)
     V8SImode,
     V4DImode,
     V2TImode,
-    V8BFmode,
-    V8HFmode,
     V4SFmode,
     V2DFmode,
     V8SFmode,
     V4DFmode,
     OOmode,
     XOmode,
-    TDOmode,
     CCmode,
     CCUNSmode,
     CCEQmode,
@@ -2355,7 +2308,6 @@ rs6000_debug_reg_global (void)
   rs6000_debug_reg_print (FIRST_ALTIVEC_REGNO,
 			  LAST_ALTIVEC_REGNO,
 			  "vs");
-  rs6000_debug_reg_print (FIRST_DMF_REGNO, LAST_DMF_REGNO, "dmf");
   rs6000_debug_reg_print (LR_REGNO, LR_REGNO, "lr");
   rs6000_debug_reg_print (CTR_REGNO, CTR_REGNO, "ctr");
   rs6000_debug_reg_print (CR0_REGNO, CR7_REGNO, "cr");
@@ -2376,7 +2328,6 @@ rs6000_debug_reg_global (void)
 	   "wr reg_class = %s\n"
 	   "wx reg_class = %s\n"
 	   "wA reg_class = %s\n"
-	   "wD reg_class = %s\n"
 	   "\n",
 	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_d]],
 	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_v]],
@@ -2384,8 +2335,7 @@ rs6000_debug_reg_global (void)
 	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_we]],
 	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_wr]],
 	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_wx]],
-	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_wA]],
-	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_wD]]);
+	   reg_class_names[rs6000_constraints[RS6000_CONSTRAINT_wA]]);
 
   nl = "\n";
   for (m = 0; m < NUM_MACHINE_MODES; ++m)
@@ -2448,11 +2398,9 @@ rs6000_debug_reg_global (void)
       const char *name = processor_target_table[rs6000_cpu_index].name;
       HOST_WIDE_INT flags
 	= processor_target_table[rs6000_cpu_index].target_enable;
-      bool future = strcmp (processor_target_table[rs6000_cpu_index].name,
-			    "future") == 0;
 
       sprintf (flags_buffer, "-mcpu=%s flags", name);
-      rs6000_print_isa_options (stderr, 0, flags_buffer, flags, future);
+      rs6000_print_isa_options (stderr, 0, flags_buffer, flags);
     }
   else
     fprintf (stderr, DEBUG_FMT_S, "cpu", "<none>");
@@ -2462,24 +2410,21 @@ rs6000_debug_reg_global (void)
       const char *name = processor_target_table[rs6000_tune_index].name;
       HOST_WIDE_INT flags
 	= processor_target_table[rs6000_tune_index].target_enable;
-      bool future = strcmp (processor_target_table[rs6000_tune_index].name,
-			    "future") == 0;
 
       sprintf (flags_buffer, "-mtune=%s flags", name);
-      rs6000_print_isa_options (stderr, 0, flags_buffer, flags, future);
+      rs6000_print_isa_options (stderr, 0, flags_buffer, flags);
     }
   else
     fprintf (stderr, DEBUG_FMT_S, "tune", "<none>");
 
   cl_target_option_save (&cl_opts, &global_options, &global_options_set);
   rs6000_print_isa_options (stderr, 0, "rs6000_isa_flags",
-			    rs6000_isa_flags, TARGET_FUTURE);
+			    rs6000_isa_flags);
 
   rs6000_print_isa_options (stderr, 0, "rs6000_isa_flags_explicit",
-			    rs6000_isa_flags_explicit, false);
+			    rs6000_isa_flags_explicit);
 
-  rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT,
-			    false);
+  rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT);
 
   fprintf (stderr, DEBUG_FMT_S, "--with-cpu default",
 	   OPTION_TARGET_CPU_DEFAULT ? OPTION_TARGET_CPU_DEFAULT : "<none>");
@@ -2678,35 +2623,14 @@ rs6000_setup_reg_addr_masks (void)
 
       /* SDmode is special in that we want to access it only via REG+REG
 	 addressing on power7 and above, since we want to use the LFIWZX and
-	 STFIWZX instructions to load it.
-
-	 Never allow offset addressing for 16-bit floating point modes, since
-	 it is expected that 16-bit floating point should always go into the
-	 vector registers and we only have indexed and indirect 16-bit loads to
-	 VSR registers.  */
-      bool indexed_only_p = ((m == SDmode && TARGET_NO_SDMODE_STACK)
-			     || FP16_SCALAR_MODE_P (m));
+	 STFIWZX instructions to load it.  */
+      bool indexed_only_p = (m == SDmode && TARGET_NO_SDMODE_STACK);
 
       any_addr_mask = 0;
       for (rc = FIRST_RELOAD_REG_CLASS; rc <= LAST_RELOAD_REG_CLASS; rc++)
 	{
 	  addr_mask = 0;
 	  reg = reload_reg_map[rc].reg;
-
-	  /* Special case DMF registers.  */
-	  if (rc == RELOAD_REG_DMF)
-	    {
-	      if (TARGET_DENSE_MATH && (m2 == XOmode || m2 == TDOmode))
-		{
-		  addr_mask = RELOAD_REG_VALID;
-		  reg_addr[m].addr_mask[rc] = addr_mask;
-		  any_addr_mask |= addr_mask;
-		}
-	      else
-		reg_addr[m].addr_mask[rc] = 0;
-
-	      continue;
-	    }
 
 	  /* Can mode values go in the GPR/FPR/Altivec registers?  */
 	  if (reg >= 0 && rs6000_hard_regno_mode_ok_p[m][reg])
@@ -2749,7 +2673,6 @@ rs6000_setup_reg_addr_masks (void)
 		  && !complex_p
 		  && (m != E_DFmode || !TARGET_VSX)
 		  && (m != E_SFmode || !TARGET_P8_VECTOR)
-		  && !FP16_SCALAR_MODE_P (m)
 		  && !small_int_vsx_p)
 		{
 		  addr_mask |= RELOAD_REG_PRE_INCDEC;
@@ -2804,10 +2727,10 @@ rs6000_setup_reg_addr_masks (void)
 
 	  /* Vector pairs can do both indexed and offset loads if the
 	     instructions are enabled, otherwise they can only do offset loads
-	     since it will be broken into two vector moves.  Vector quads and
-	     dense math types can only do offset loads.  */
+	     since it will be broken into two vector moves.  Vector quads can
+	     only do offset loads.  */
 	  else if ((addr_mask != 0) && TARGET_MMA
-		   && (m2 == OOmode || m2 == XOmode || m2 == TDOmode))
+		   && (m2 == OOmode || m2 == XOmode))
 	    {
 	      addr_mask |= RELOAD_REG_OFFSET;
 	      if (rc == RELOAD_REG_FPR || rc == RELOAD_REG_VMX)
@@ -2859,9 +2782,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
   for (r = CR1_REGNO; r <= CR7_REGNO; ++r)
     rs6000_regno_regclass[r] = CR_REGS;
 
-  for (r = FIRST_DMF_REGNO; r <= LAST_DMF_REGNO; ++r)
-    rs6000_regno_regclass[r] = DM_REGS;
-
   rs6000_regno_regclass[LR_REGNO] = LINK_REGS;
   rs6000_regno_regclass[CTR_REGNO] = CTR_REGS;
   rs6000_regno_regclass[CA_REGNO] = NO_REGS;
@@ -2886,7 +2806,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
   reg_class_to_reg_type[(int)LINK_OR_CTR_REGS] = SPR_REG_TYPE;
   reg_class_to_reg_type[(int)CR_REGS] = CR_REG_TYPE;
   reg_class_to_reg_type[(int)CR0_REGS] = CR_REG_TYPE;
-  reg_class_to_reg_type[(int)DM_REGS] = DMF_REG_TYPE;
 
   if (TARGET_VSX)
     {
@@ -2970,24 +2889,18 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[V16QImode] = VECTOR_ALTIVEC;
       rs6000_vector_align[V4SImode] = align32;
       rs6000_vector_align[V8HImode] = align32;
-      rs6000_vector_align[V8HFmode] = align32;
-      rs6000_vector_align[V8BFmode] = align32;
       rs6000_vector_align[V16QImode] = align32;
 
       if (TARGET_VSX)
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_VSX;
 	  rs6000_vector_mem[V8HImode] = VECTOR_VSX;
-	  rs6000_vector_mem[V8HFmode] = VECTOR_VSX;
-	  rs6000_vector_mem[V8BFmode] = VECTOR_VSX;
 	  rs6000_vector_mem[V16QImode] = VECTOR_VSX;
 	}
       else
 	{
 	  rs6000_vector_mem[V4SImode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V8HImode] = VECTOR_ALTIVEC;
-	  rs6000_vector_mem[V8HFmode] = VECTOR_ALTIVEC;
-	  rs6000_vector_mem[V8BFmode] = VECTOR_ALTIVEC;
 	  rs6000_vector_mem[V16QImode] = VECTOR_ALTIVEC;
 	}
     }
@@ -3005,15 +2918,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[V1TImode]
 	= (TARGET_P8_VECTOR) ? VECTOR_P8_VECTOR : VECTOR_NONE;
       rs6000_vector_align[V1TImode] = 128;
-    }
-
-  /* _Float16 support.  */
-  if (TARGET_FLOAT16)
-    {
-      rs6000_vector_mem[HFmode] = VECTOR_VSX;
-      rs6000_vector_mem[BFmode] = VECTOR_VSX;
-      rs6000_vector_align[HFmode] = 16;
-      rs6000_vector_align[BFmode] = 16;
     }
 
   /* DFmode, see if we want to use the VSX unit.  Memory is handled
@@ -3048,14 +2952,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
       rs6000_vector_unit[XOmode] = VECTOR_NONE;
       rs6000_vector_mem[XOmode] = VECTOR_VSX;
       rs6000_vector_align[XOmode] = 512;
-    }
-
-  /* Add support for 1,024 bit DMF registers.  */
-  if (TARGET_DENSE_MATH)
-    {
-      rs6000_vector_unit[TDOmode] = VECTOR_NONE;
-      rs6000_vector_mem[TDOmode] = VECTOR_VSX;
-      rs6000_vector_align[TDOmode] = 512;
     }
 
   /* Register class constraints for the constraints that depend on compile
@@ -3096,12 +2992,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
   if (TARGET_DIRECT_MOVE_128)
     rs6000_constraints[RS6000_CONSTRAINT_we] = VSX_REGS;
 
-  /* Support for the accumulator registers, either FPR registers (aka original
-     mma) or DMF registers (dense math).  */
-  if (TARGET_MMA)
-    rs6000_constraints[RS6000_CONSTRAINT_wD]
-      = TARGET_DENSE_MATH ? DM_REGS : FLOAT_REGS;
-
   /* Set up the reload helper and direct move functions.  */
   if (TARGET_VSX || TARGET_ALTIVEC)
     {
@@ -3111,10 +3001,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V16QImode].reload_load  = CODE_FOR_reload_v16qi_di_load;
 	  reg_addr[V8HImode].reload_store  = CODE_FOR_reload_v8hi_di_store;
 	  reg_addr[V8HImode].reload_load   = CODE_FOR_reload_v8hi_di_load;
-	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_di_store;
-	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_di_load;
-	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_di_store;
-	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_di_load;
 	  reg_addr[V4SImode].reload_store  = CODE_FOR_reload_v4si_di_store;
 	  reg_addr[V4SImode].reload_load   = CODE_FOR_reload_v4si_di_load;
 	  reg_addr[V2DImode].reload_store  = CODE_FOR_reload_v2di_di_store;
@@ -3144,14 +3030,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_di_load;
 	    }
 
-	  if (TARGET_FLOAT16)
-	    {
-	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_di_store;
-	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_di_store;
-	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_di_load;
-	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_di_load;
-	    }
-
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
 	     available.  */
 	  if (TARGET_NO_SDMODE_STACK)
@@ -3174,8 +3052,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv2di;
 	      reg_addr[V4SFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4sf;
 	      reg_addr[V4SImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv4si;
-	      reg_addr[V8BFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8bf;
-	      reg_addr[V8HFmode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hf;
 	      reg_addr[V8HImode].reload_gpr_vsx  = CODE_FOR_reload_gpr_from_vsxv8hi;
 	      reg_addr[V16QImode].reload_gpr_vsx = CODE_FOR_reload_gpr_from_vsxv16qi;
 	      reg_addr[SFmode].reload_gpr_vsx    = CODE_FOR_reload_gpr_from_vsxsf;
@@ -3186,8 +3062,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[V2DImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv2di;
 	      reg_addr[V4SFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4sf;
 	      reg_addr[V4SImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv4si;
-	      reg_addr[V8BFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8bf;
-	      reg_addr[V8HFmode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hf;
 	      reg_addr[V8HImode].reload_vsx_gpr  = CODE_FOR_reload_vsx_from_gprv8hi;
 	      reg_addr[V16QImode].reload_vsx_gpr = CODE_FOR_reload_vsx_from_gprv16qi;
 	      reg_addr[SFmode].reload_vsx_gpr    = CODE_FOR_reload_vsx_from_gprsf;
@@ -3225,10 +3099,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	  reg_addr[V2DImode].reload_load   = CODE_FOR_reload_v2di_si_load;
 	  reg_addr[V1TImode].reload_store  = CODE_FOR_reload_v1ti_si_store;
 	  reg_addr[V1TImode].reload_load   = CODE_FOR_reload_v1ti_si_load;
-	  reg_addr[V8BFmode].reload_store  = CODE_FOR_reload_v8bf_si_store;
-	  reg_addr[V8BFmode].reload_load   = CODE_FOR_reload_v8bf_si_load;
-	  reg_addr[V8HFmode].reload_store  = CODE_FOR_reload_v8hf_si_store;
-	  reg_addr[V8HFmode].reload_load   = CODE_FOR_reload_v8hf_si_load;
 	  reg_addr[V4SFmode].reload_store  = CODE_FOR_reload_v4sf_si_store;
 	  reg_addr[V4SFmode].reload_load   = CODE_FOR_reload_v4sf_si_load;
 	  reg_addr[V2DFmode].reload_store  = CODE_FOR_reload_v2df_si_store;
@@ -3250,14 +3120,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	    {
 	      reg_addr[TFmode].reload_store = CODE_FOR_reload_tf_si_store;
 	      reg_addr[TFmode].reload_load  = CODE_FOR_reload_tf_si_load;
-	    }
-
-	  if (TARGET_FLOAT16)
-	    {
-	      reg_addr[HFmode].reload_store = CODE_FOR_reload_hf_si_store;
-	      reg_addr[BFmode].reload_store = CODE_FOR_reload_bf_si_store;
-	      reg_addr[HFmode].reload_load  = CODE_FOR_reload_hf_si_load;
-	      reg_addr[BFmode].reload_load  = CODE_FOR_reload_bf_si_load;
 	    }
 
 	  /* Only provide a reload handler for SDmode if lfiwzx/stfiwx are
@@ -3296,12 +3158,6 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 	      reg_addr[QImode].scalar_in_vmx_p = true;
 	    }
 	}
-    }
-
-  if (TARGET_DENSE_MATH)
-    {
-      reg_addr[TDOmode].reload_load = CODE_FOR_reload_dmf_from_memory;
-      reg_addr[TDOmode].reload_store = CODE_FOR_reload_dmf_to_memory;
     }
 
   /* Precalculate HARD_REGNO_NREGS.  */
@@ -3765,8 +3621,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* Print defaults.  */
   if ((TARGET_DEBUG_REG || TARGET_DEBUG_TARGET) && global_init_p)
-    rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT,
-			      false);
+    rs6000_print_isa_options (stderr, 0, "TARGET_DEFAULT", TARGET_DEFAULT);
 
   /* Remember the explicit arguments.  */
   if (global_init_p)
@@ -3870,8 +3725,6 @@ rs6000_option_override_internal (bool global_init_p)
       rs6000_isa_flags &= ~set_masks;
       rs6000_isa_flags |= (processor_target_table[cpu_index].target_enable
 			   & set_masks);
-      TARGET_FUTURE = strcmp (processor_target_table[cpu_index].name,
-			      "future") == 0;
     }
   else
     {
@@ -3897,7 +3750,6 @@ rs6000_option_override_internal (bool global_init_p)
 	  flags = processor_target_table[default_cpu_index].target_enable;
 	}
       rs6000_isa_flags |= (flags & ~rs6000_isa_flags_explicit);
-      TARGET_FUTURE = false;
     }
 
   /* Don't expect powerpc64 enabled on those OSes with OS_MISSING_POWERPC64,
@@ -4009,16 +3861,6 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
-  /* -mfloat16 needs power8 at a minimum in order to load up 16-bit values into
-      vector registers via loads/stores from GPRs and then using direct
-      moves.  */
-  if (TARGET_FLOAT16 && !TARGET_POWER8)
-    {
-      rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
-      if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
-	error ("%qs requires at least %qs", "-mfloat16", "-mcpu=power8");
-    }
-
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow
      the -mcpu setting to enable options that conflict. */
   if ((!TARGET_HARD_FLOAT || !TARGET_ALTIVEC || !TARGET_VSX)
@@ -4029,8 +3871,7 @@ rs6000_option_override_internal (bool global_init_p)
 		         & ~rs6000_isa_flags_explicit);
 
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "before defaults", rs6000_isa_flags,
-			      TARGET_FUTURE);
+    rs6000_print_isa_options (stderr, 0, "before defaults", rs6000_isa_flags);
 
 #ifdef XCOFF_DEBUGGING_INFO
   /* For AIX default to 64-bit DWARF.  */
@@ -4391,8 +4232,7 @@ rs6000_option_override_internal (bool global_init_p)
 
   /* Print the options after updating the defaults.  */
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "after defaults", rs6000_isa_flags,
-			      TARGET_FUTURE);
+    rs6000_print_isa_options (stderr, 0, "after defaults", rs6000_isa_flags);
 
   /* E500mc does "better" if we inline more aggressively.  Respect the
      user's opinion, though.  */
@@ -4499,8 +4339,7 @@ rs6000_option_override_internal (bool global_init_p)
     TARGET_NO_FP_IN_TOC = 1;
 
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "before subtarget", rs6000_isa_flags,
-			      TARGET_FUTURE);
+    rs6000_print_isa_options (stderr, 0, "before subtarget", rs6000_isa_flags);
 
 #ifdef SUBTARGET_OVERRIDE_OPTIONS
   SUBTARGET_OVERRIDE_OPTIONS;
@@ -4566,19 +4405,8 @@ rs6000_option_override_internal (bool global_init_p)
   if (!TARGET_PCREL && TARGET_PCREL_OPT)
     rs6000_isa_flags &= ~OPTION_MASK_PCREL_OPT;
 
-  /* Turn off dense math MMA+ options on non-future systems.  */
-  if (TARGET_DENSE_MATH && (!TARGET_MMA || !TARGET_FUTURE))
-    {
-      if ((rs6000_isa_flags_explicit & OPTION_MASK_DENSE_MATH) != 0)
-	error ("%qs requires %qs", "-mdense-math",
-	       (!TARGET_FUTURE ? "-mcpu=future" : "-mma"));
-
-      rs6000_isa_flags &= ~OPTION_MASK_DENSE_MATH;
-    }
-
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
-    rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags,
-			      TARGET_FUTURE);
+    rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags);
 
   rs6000_always_hint = (rs6000_tune != PROCESSOR_POWER4
 			&& rs6000_tune != PROCESSOR_POWER5
@@ -6083,10 +5911,8 @@ rs6000_machine_from_flags (void)
 
   /* Disable the flags that should never influence the .machine selection.  */
   flags &= ~(OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT | OPTION_MASK_ISEL
-	     | OPTION_MASK_ALTIVEC | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR);
+	     | OPTION_MASK_ALTIVEC);
 
-  if (TARGET_FUTURE)
-    return "future";
   if ((flags & (POWER11_MASKS_SERVER & ~ISA_3_1_MASKS_SERVER)) != 0)
     return "power11";
   if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
@@ -6592,12 +6418,9 @@ easy_altivec_constant (rtx op, machine_mode mode)
   else if (mode != GET_MODE (op))
     return 0;
 
-  /* V2DI/V2DF was added with VSX.  Only allow 0 and all 1's as easy constants.
-     Likewise, don't handle 16-bit floating point constants here, unless they
-     are 0.0.  */
-  if (mode == V2DFmode
-      || FP16_SCALAR_MODE_P (mode)
-      || FP16_VECTOR_MODE_P (mode))
+  /* V2DI/V2DF was added with VSX.  Only allow 0 and all 1's as easy
+     constants.  */
+  if (mode == V2DFmode)
     return zero_constant (op, mode) ? 8 : 0;
 
   else if (mode == V2DImode)
@@ -6723,12 +6546,6 @@ xxspltib_constant_p (rtx op,
   /* Handle (vec_duplicate <constant>).  */
   if (GET_CODE (op) == VEC_DUPLICATE)
     {
-      element = XEXP (op, 0);
-
-      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
-      if (mode == V8BFmode || mode == V8HFmode)
-	return element == CONST0_RTX (GET_MODE_INNER (mode));
-
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
@@ -6745,20 +6562,6 @@ xxspltib_constant_p (rtx op,
   /* Handle (const_vector [...]).  */
   else if (GET_CODE (op) == CONST_VECTOR)
     {
-      /* For V8BFmode & V8HFmode, the only valid to use xxspltib is 0.0.  */
-      if (mode == V8BFmode || mode == V8HFmode)
-	{
-	  if (op == CONST0_RTX (mode))
-	    return true;
-
-	  rtx zero = CONST0_RTX (GET_MODE_INNER (mode));
-	  for (i = 0; i < nunits; i++)
-	    if (CONST_VECTOR_ELT (op, i) != zero)
-	      return false;
-
-	  return true;
-	}
-
       if (mode != V16QImode && mode != V8HImode && mode != V4SImode
 	  && mode != V2DImode)
 	return false;
@@ -6975,8 +6778,6 @@ output_vec_const_move (rtx *operands)
 	  return "vspltisw %0,%1";
 
 	case E_V8HImode:
-	case E_V8HFmode:
-	case E_V8BFmode:
 	  return "vspltish %0,%1";
 
 	case E_V16QImode:
@@ -7205,15 +7006,6 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
-  /* Special case splats of 16-bit floating point.  */
-  if (all_same && FP16_VECTOR_MODE_P (mode))
-    {
-      rtx op0 = force_reg (GET_MODE_INNER (mode), XVECEXP (vals, 0, 0));
-      rtx dup = gen_rtx_VEC_DUPLICATE (mode, op0);
-      emit_insn (gen_rtx_SET (target, dup));
-      return;
-    }
-						     
   /* Special case initializing vector short/char that are splats if we are on
      64-bit systems with direct move.  */
   if (all_same && TARGET_DIRECT_MOVE_64BIT
@@ -7277,9 +7069,7 @@ rs6000_expand_vector_init (rtx target, rtx vals)
       return;
     }
 
-  if (TARGET_DIRECT_MOVE
-      && (mode == V16QImode || mode == V8HImode || mode == V8HFmode
-	  || mode == V8BFmode))
+  if (TARGET_DIRECT_MOVE && (mode == V16QImode || mode == V8HImode))
     {
       rtx op[16];
       /* Force the values into word_mode registers.  */
@@ -8854,8 +8644,6 @@ reg_offset_addressing_ok_p (machine_mode mode)
     {
     case E_V16QImode:
     case E_V8HImode:
-    case E_V8HFmode:
-    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -8874,21 +8662,11 @@ reg_offset_addressing_ok_p (machine_mode mode)
 	return mode_supports_dq_form (mode);
       break;
 
-      /* The vector pair/quad types and the dense math types support offset
-	 addressing if the underlying vectors support offset addressing.  */
+      /* The vector pair/quad types support offset addressing if the
+	 underlying vectors support offset addressing.  */
     case E_OOmode:
     case E_XOmode:
       return TARGET_MMA;
-
-    case E_TDOmode:
-      return TARGET_DENSE_MATH;
-
-      /* For 16-bit floating point types, do not allow offset addressing, since
-	 it is assumed that most of the use will be in vector registers, and we
-	 only have reg+reg addressing for 16-bit modes.  */
-    case E_BFmode:
-    case E_HFmode:
-      return false;
 
     case E_SDmode:
       /* If we can do direct load/stores of SDmode, restrict it to reg+reg
@@ -9174,13 +8952,6 @@ rs6000_legitimate_offset_address_p (machine_mode mode, rtx x,
   extra = 0;
   switch (mode)
     {
-      /* For 16-bit floating point types, do not allow offset addressing, since
-	 it is assumed that most of the use will be in vector registers, and we
-	 only have reg+reg addressing for 16-bit modes.  */
-    case E_BFmode:
-    case E_HFmode:
-      return false;
-
     case E_DFmode:
     case E_DDmode:
     case E_DImode:
@@ -9282,11 +9053,6 @@ macho_lo_sum_memory_operand (rtx x, machine_mode mode)
 static bool
 legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
 {
-      /* For 16-bit floating point types, do not allow offset addressing, since
-	 it is assumed that most of the use will be in vector registers, and we
-	 only have reg+reg addressing for 16-bit modes.  */
-  if (FP16_SCALAR_MODE_P (mode))
-    return false;
   if (GET_CODE (x) != LO_SUM)
     return false;
   if (!REG_P (XEXP (x, 0)))
@@ -10983,8 +10749,6 @@ rs6000_const_vec (machine_mode mode)
       subparts = 4;
       break;
     case E_V8HImode:
-    case E_V8HFmode:
-    case E_V8BFmode:
       subparts = 8;
       break;
     case E_V16QImode:
@@ -11440,8 +11204,6 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
 
     case E_V16QImode:
     case E_V8HImode:
-    case E_V8HFmode:
-    case E_V8BFmode:
     case E_V4SFmode:
     case E_V4SImode:
     case E_V2DFmode:
@@ -11457,12 +11219,6 @@ rs6000_emit_move (rtx dest, rtx source, machine_mode mode)
       if (CONST_INT_P (operands[1]) && INTVAL (operands[1]) != 0)
 	error ("%qs is an opaque type, and you cannot set it to other values",
 	       (mode == OOmode) ? "__vector_pair" : "__vector_quad");
-      break;
-
-    case E_TDOmode:
-      if (CONST_INT_P (operands[1]))
-	error ("%qs is an opaque type, and you cannot set it to constants",
-	       "__dmf");
       break;
 
     case E_SImode:
@@ -12593,11 +12349,6 @@ rs6000_secondary_reload_memory (rtx addr,
     addr_mask = (reg_addr[mode].addr_mask[RELOAD_REG_VMX]
 		 & ~RELOAD_REG_AND_M16);
 
-  /* DMF registers use VSX registers for memory operations, and need to
-     generate some extra instructions.  */
-  else if (rclass == DM_REGS)
-    return 2;
-
   /* If the register allocator hasn't made up its mind yet on the register
      class to use, settle on defaults to use.  */
   else if (rclass == NO_REGS)
@@ -12894,9 +12645,6 @@ rs6000_secondary_reload_simple_move (enum rs6000_reg_type to_type,
       && ((to_type == GPR_REG_TYPE && from_type == VSX_REG_TYPE)
 	  || (to_type == VSX_REG_TYPE && from_type == GPR_REG_TYPE)))
     {
-      if (FP16_SCALAR_MODE_P (mode))
-	return true;
-
       if (TARGET_POWERPC64)
 	{
 	  /* ISA 2.07: MTVSRD or MVFVSRD.  */
@@ -12927,13 +12675,6 @@ rs6000_secondary_reload_simple_move (enum rs6000_reg_type to_type,
   else if ((size == 4 || (TARGET_POWERPC64 && size == 8))
 	   && ((to_type == GPR_REG_TYPE && from_type == SPR_REG_TYPE)
 	       || (to_type == SPR_REG_TYPE && from_type == GPR_REG_TYPE)))
-    return true;
-
-  /* We can transfer between VSX registers and DMF registers without needing
-     extra registers.  */
-  if (TARGET_DENSE_MATH && (mode == XOmode || mode == TDOmode)
-      && ((to_type == DMF_REG_TYPE && from_type == VSX_REG_TYPE)
-	  || (to_type == VSX_REG_TYPE && from_type == DMF_REG_TYPE)))
     return true;
 
   return false;
@@ -13630,10 +13371,6 @@ rs6000_preferred_reload_class (rtx x, enum reg_class rclass)
   machine_mode mode = GET_MODE (x);
   bool is_constant = CONSTANT_P (x);
 
-  /* DMF registers can't be loaded or stored.  */
-  if (rclass == DM_REGS)
-    return NO_REGS;
-
   /* If a mode can't go in FPR/ALTIVEC/VSX registers, don't return a preferred
      reload class for it.  */
   if ((rclass == ALTIVEC_REGS || rclass == VSX_REGS)
@@ -13695,11 +13432,6 @@ rs6000_preferred_reload_class (rtx x, enum reg_class rclass)
 	  || mode_supports_dq_form (mode))
 	return rclass;
 
-      /* IEEE 16-bit and bfloat16 don't support offset addressing, but they can
-	 go in any floating point/vector register.  */
-      if (FP16_SCALAR_MODE_P (mode))
-	return rclass;
-
       /* If this is a scalar floating point value and we don't have D-form
 	 addressing, prefer the traditional floating point registers so that we
 	 can use D-form (register+offset) addressing.  */
@@ -13735,10 +13467,7 @@ rs6000_preferred_reload_class (rtx x, enum reg_class rclass)
 	return VSX_REGS;
 
       if (mode == XOmode)
-	return TARGET_DENSE_MATH ? VSX_REGS : FLOAT_REGS;
-
-      if (mode == TDOmode)
-	return VSX_REGS;
+	return FLOAT_REGS;
 
       if (GET_MODE_CLASS (mode) == MODE_INT)
 	return GENERAL_REGS;
@@ -13863,11 +13592,6 @@ rs6000_secondary_reload_class (enum reg_class rclass, machine_mode mode,
   else
     regno = -1;
 
-  /* DMF registers don't have loads or stores.  We have to go through the VSX
-     registers to load XOmode (vector quad).  */
-  if (TARGET_DENSE_MATH && rclass == DM_REGS)
-    return VSX_REGS;
-
   /* If we have VSX register moves, prefer moving scalar values between
      Altivec registers and GPR by going via an FPR (and then via memory)
      instead of reloading the secondary memory address for Altivec moves.  */
@@ -13936,9 +13660,6 @@ rs6000_can_change_mode_class (machine_mode from,
 {
   unsigned from_size = GET_MODE_SIZE (from);
   unsigned to_size = GET_MODE_SIZE (to);
-
-  if (FP16_SCALAR_MODE_P (from) || FP16_SCALAR_MODE_P (to))
-    return from_size == to_size;
 
   if (from_size != to_size)
     {
@@ -14402,19 +14123,8 @@ print_operand (FILE *file, rtx x, int code)
 	 output_operand.  */
 
     case 'A':
-      /* Write the MMA accumulator number associated with VSX register X.  On
-	 dense math systems, only allow DMF accumulators, not accumulators
-	 overlapping with the FPR registers.  */
-      if (!REG_P (x))
-	output_operand_lossage ("invalid %%A value");
-      else if (TARGET_DENSE_MATH)
-	{
-	  if (DMF_REGNO_P (REGNO (x)))
-	    fprintf (file, "%d", REGNO (x) - FIRST_DMF_REGNO);
-	  else
-	    output_operand_lossage ("%%A operand is not a DMF");
-	}
-      else if (!FP_REGNO_P (REGNO (x)) || (REGNO (x) % 4) != 0)
+      /* Write the MMA accumulator number associated with VSX register X.  */
+      if (!REG_P (x) || !FP_REGNO_P (REGNO (x)) || (REGNO (x) % 4) != 0)
 	output_operand_lossage ("invalid %%A value");
       else
 	fprintf (file, "%d", (REGNO (x) - FIRST_FPR_REGNO) / 4);
@@ -20922,8 +20632,6 @@ rs6000_mangle_type (const_tree type)
     return "u13__vector_pair";
   if (type == vector_quad_type_node)
     return "u13__vector_quad";
-  if (type == dmf_type_node)
-    return "u5__dmf";
 
   /* For all other types, use the default mangling.  */
   return NULL;
@@ -23036,35 +22744,6 @@ rs6000_debug_address_cost (rtx x, machine_mode mode,
 }
 
 
-/* Subroutine to determine the move cost of dense math registers.  If we are
-   moving to/from VSX_REGISTER registers, the cost is either 1 move (for
-   512-bit accumulators) or 2 moves (for 1,024 dmf registers).  If we are
-   moving to anything else like GPR registers, make the cost very high.  */
-
-static int
-rs6000_dmf_register_move_cost (machine_mode mode, reg_class_t rclass)
-{
-  const int reg_move_base = 2;
-  HARD_REG_SET vsx_set = (reg_class_contents[rclass]
-			  & reg_class_contents[VSX_REGS]);
-
-  if (TARGET_DENSE_MATH && !hard_reg_set_empty_p (vsx_set))
-    {
-      /* __vector_quad (i.e. XOmode) is tranfered in 1 instruction.  */
-      if (mode == XOmode)
-	return reg_move_base;
-
-      /* __dmf (i.e. TDOmode) is transferred in 2 instructions.  */
-      else if (mode == TDOmode)
-	return reg_move_base * 2;
-
-      else
-	return reg_move_base * 2 * hard_regno_nregs (FIRST_DMF_REGNO, mode);
-    }
-
-  return 1000 * 2 * hard_regno_nregs (FIRST_DMF_REGNO, mode);
-}
-
 /* A C expression returning the cost of moving data from a register of class
    CLASS1 to one of CLASS2.  */
 
@@ -23078,28 +22757,17 @@ rs6000_register_move_cost (machine_mode mode,
   if (TARGET_DEBUG_COST)
     dbg_cost_ctrl++;
 
-  HARD_REG_SET to_vsx, from_vsx;
-  to_vsx = reg_class_contents[to] & reg_class_contents[VSX_REGS];
-  from_vsx = reg_class_contents[from] & reg_class_contents[VSX_REGS];
-
-  /* Special case DMF registers, that can only move to/from VSX registers.  */
-  if (from == DM_REGS && to == DM_REGS)
-    ret = 2 * hard_regno_nregs (FIRST_DMF_REGNO, mode);
-
-  else if (from == DM_REGS)
-    ret = rs6000_dmf_register_move_cost (mode, to);
-
-  else if (to == DM_REGS)
-    ret = rs6000_dmf_register_move_cost (mode, from);
-
   /* If we have VSX, we can easily move between FPR or Altivec registers,
      otherwise we can only easily move within classes.
      Do this first so we give best-case answers for union classes
      containing both gprs and vsx regs.  */
-  else if (!hard_reg_set_empty_p (to_vsx)
-	   && !hard_reg_set_empty_p (from_vsx)
-	   && (TARGET_VSX
-	       || hard_reg_set_intersect_p (to_vsx, from_vsx)))
+  HARD_REG_SET to_vsx, from_vsx;
+  to_vsx = reg_class_contents[to] & reg_class_contents[VSX_REGS];
+  from_vsx = reg_class_contents[from] & reg_class_contents[VSX_REGS];
+  if (!hard_reg_set_empty_p (to_vsx)
+      && !hard_reg_set_empty_p (from_vsx)
+      && (TARGET_VSX
+	  || hard_reg_set_intersect_p (to_vsx, from_vsx)))
     {
       int reg = FIRST_FPR_REGNO;
       if (TARGET_VSX
@@ -23195,9 +22863,6 @@ rs6000_memory_move_cost (machine_mode mode, reg_class_t rclass,
     ret = 4 * hard_regno_nregs (32, mode);
   else if (reg_classes_intersect_p (rclass, ALTIVEC_REGS))
     ret = 4 * hard_regno_nregs (FIRST_ALTIVEC_REGNO, mode);
-  else if (reg_classes_intersect_p (rclass, DM_REGS))
-    ret = (rs6000_dmf_register_move_cost (mode, VSX_REGS)
-	   + rs6000_memory_move_cost (mode, VSX_REGS, false));
   else
     ret = 4 + rs6000_register_move_cost (mode, rclass, GENERAL_REGS);
 
@@ -23282,7 +22947,7 @@ rs6000_load_constant_and_splat (machine_mode mode, REAL_VALUE_TYPE dconst)
 {
   rtx reg;
 
-  if (mode == SFmode || mode == DFmode || FP16_SCALAR_MODE_P (mode))
+  if (mode == SFmode || mode == DFmode)
     {
       rtx d = const_double_from_real_value (dconst, mode);
       reg = force_reg (mode, d);
@@ -24406,8 +24071,6 @@ rs6000_compute_pressure_classes (enum reg_class *pressure_classes)
       if (TARGET_HARD_FLOAT)
 	pressure_classes[n++] = FLOAT_REGS;
     }
-  if (TARGET_DENSE_MATH)
-    pressure_classes[n++] = DM_REGS;
   pressure_classes[n++] = CR_REGS;
   pressure_classes[n++] = SPECIAL_REGS;
 
@@ -24572,10 +24235,6 @@ rs6000_debugger_regno (unsigned int regno, unsigned int format)
     return 67;
   if (regno == 64)
     return 64;
-  /* XXX: This is a guess.  The GCC register number for FIRST_DMF_REGNO is 111,
-     but the frame pointer regnum uses that.  */
-  if (DMF_REGNO_P (regno))
-    return regno - FIRST_DMF_REGNO + 112;
 
   gcc_unreachable ();
 }
@@ -24615,8 +24274,6 @@ rs6000_scalar_mode_supported_p (scalar_mode mode)
     return default_decimal_float_supported_p ();
   else if (TARGET_FLOAT128_TYPE && (mode == KFmode || mode == IFmode))
     return true;
-  else if (FP16_SCALAR_MODE_P (mode))
-    return true;
   else
     return default_scalar_mode_supported_p (mode);
 }
@@ -24640,10 +24297,6 @@ rs6000_libgcc_floating_mode_supported_p (scalar_float_mode mode)
 	 because it can't find KFmode in the Floatn types.  */
     case E_KFmode:
       return TARGET_FLOAT128_TYPE && !TARGET_IEEEQUAD;
-
-    case E_BFmode:
-    case E_HFmode:
-      return TARGET_FLOAT16;
 
     default:
       return false;
@@ -24672,9 +24325,6 @@ rs6000_floatn_mode (int n, bool extended)
     {
       switch (n)
 	{
-	case 16:
-	  return TARGET_FLOAT16 ? SFmode : opt_scalar_float_mode ();
-
 	case 32:
 	  return DFmode;
 
@@ -24696,9 +24346,6 @@ rs6000_floatn_mode (int n, bool extended)
     {
       switch (n)
 	{
-	case 16:
-	  return TARGET_FLOAT16 ? HFmode : opt_scalar_float_mode ();
-
 	case 32:
 	  return SFmode;
 
@@ -24809,7 +24456,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
 								false, true  },
   { "cmpb",			OPTION_MASK_CMPB,		false, true  },
   { "crypto",			OPTION_MASK_CRYPTO,		false, true  },
-  { "dense-math",		OPTION_MASK_DENSE_MATH,		false, true  },
   { "direct-move",		0,				false, true  },
   { "dlmzb",			OPTION_MASK_DLMZB,		false, true  },
   { "efficient-unaligned-vsx",	OPTION_MASK_EFFICIENT_UNALIGNED_VSX,
@@ -24821,7 +24467,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "power11",			OPTION_MASK_POWER11,		false, false },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
-  { "float16",			OPTION_MASK_FLOAT16,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
   { "mfcrf",			OPTION_MASK_MFCRF,		false, true  },
   { "mfpgpr",			0,				false, true  },
@@ -25234,7 +24879,6 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
   tree cur_tree;
   struct cl_target_option *prev_opt, *cur_opt;
   HOST_WIDE_INT prev_flags, cur_flags, diff_flags;
-  bool prev_future, cur_future, diff_future;
 
   if (TARGET_DEBUG_TARGET)
     {
@@ -25287,28 +24931,21 @@ rs6000_pragma_target_parse (tree args, tree pop_target)
     {
       prev_opt    = TREE_TARGET_OPTION (prev_tree);
       prev_flags  = prev_opt->x_rs6000_isa_flags;
-      prev_future = prev_opt->x_TARGET_FUTURE;
 
       cur_opt     = TREE_TARGET_OPTION (cur_tree);
       cur_flags   = cur_opt->x_rs6000_isa_flags;
-      cur_future  = cur_opt->x_TARGET_FUTURE;
 
       diff_flags  = (prev_flags ^ cur_flags);
-      diff_future = (prev_future ^ cur_future);
 
-      if (diff_flags != 0 || diff_future)
+      if (diff_flags != 0)
 	{
 	  /* Delete old macros.  */
 	  rs6000_target_modify_macros_ptr (false,
-					   prev_flags & diff_flags,
-					   diff_future,
-					   prev_future);
+					   prev_flags & diff_flags);
 
 	  /* Define new macros.  */
 	  rs6000_target_modify_macros_ptr (true,
-					   cur_flags & diff_flags,
-					   diff_future,
-					   cur_future);
+					   cur_flags & diff_flags);
 	}
     }
 
@@ -25422,7 +25059,6 @@ rs6000_function_specific_save (struct cl_target_option *ptr,
 {
   ptr->x_rs6000_isa_flags = opts->x_rs6000_isa_flags;
   ptr->x_rs6000_isa_flags_explicit = opts->x_rs6000_isa_flags_explicit;
-  ptr->x_TARGET_FUTURE = opts->x_TARGET_FUTURE;
 }
 
 /* Restore the current options */
@@ -25435,7 +25071,6 @@ rs6000_function_specific_restore (struct gcc_options *opts,
 {
   opts->x_rs6000_isa_flags = ptr->x_rs6000_isa_flags;
   opts->x_rs6000_isa_flags_explicit = ptr->x_rs6000_isa_flags_explicit;
-  opts->x_TARGET_FUTURE = ptr->x_TARGET_FUTURE;
   (void) rs6000_option_override_internal (false);
 }
 
@@ -25446,12 +25081,10 @@ rs6000_function_specific_print (FILE *file, int indent,
 				struct cl_target_option *ptr)
 {
   rs6000_print_isa_options (file, indent, "Isa options set",
-			    ptr->x_rs6000_isa_flags,
-			    ptr->x_TARGET_FUTURE);
+			    ptr->x_rs6000_isa_flags);
 
   rs6000_print_isa_options (file, indent, "Isa options explicit",
-			    ptr->x_rs6000_isa_flags_explicit,
-			    ptr->x_TARGET_FUTURE);
+			    ptr->x_rs6000_isa_flags_explicit);
 }
 
 /* Helper function to print the current isa or misc options on a line.  */
@@ -25463,8 +25096,7 @@ rs6000_print_options_internal (FILE *file,
 			       HOST_WIDE_INT flags,
 			       const char *prefix,
 			       const struct rs6000_opt_mask *opts,
-			       size_t num_elements,
-			       bool future)
+			       size_t num_elements)
 {
   size_t i;
   size_t start_column = 0;
@@ -25530,18 +25162,6 @@ rs6000_print_options_internal (FILE *file,
       comma_len = strlen (", ");
     }
 
-  if (future)
-    {
-      cur_column += sizeof ("-mcpu=future") - 1;
-      if (cur_column > max_column)
-	{
-	  fprintf (stderr, ", \\\n%*s", (int)start_column, "");
-	  comma = "";
-	}
-
-      fprintf (file, "%s%s", comma, "-mcpu=future");
-    }
-      
   fputs ("\n", file);
 }
 
@@ -25549,12 +25169,11 @@ rs6000_print_options_internal (FILE *file,
 
 static void
 rs6000_print_isa_options (FILE *file, int indent, const char *string,
-			  HOST_WIDE_INT flags, bool future)
+			  HOST_WIDE_INT flags)
 {
   rs6000_print_options_internal (file, indent, string, flags, "-m",
 				 &rs6000_opt_masks[0],
-				 ARRAY_SIZE (rs6000_opt_masks),
-				 future);
+				 ARRAY_SIZE (rs6000_opt_masks));
 }
 
 /* If the user used -mno-vsx, we need turn off all of the implicit ISA 2.06,
@@ -27782,10 +27401,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
   mode = GET_MODE (dst);
   nregs = hard_regno_nregs (reg, mode);
 
-  /* If we have a vector quad register for MMA or DMF register for dense math,
-     and this is a load or store, see if we can use vector paired
-     load/stores.  */
-  if ((mode == XOmode || mode == TDOmode) && TARGET_MMA
+  /* If we have a vector quad register for MMA, and this is a load or store,
+     see if we can use vector paired load/stores.  */
+  if (mode == XOmode && TARGET_MMA
       && (MEM_P (dst) || MEM_P (src)))
     {
       reg_mode = OOmode;
@@ -27793,7 +27411,7 @@ rs6000_split_multireg_move (rtx dst, rtx src)
     }
   /* If we have a vector pair/quad mode, split it into two/four separate
      vectors.  */
-  else if (mode == OOmode || mode == XOmode || mode == TDOmode)
+  else if (mode == OOmode || mode == XOmode)
     reg_mode = V1TImode;
   else if (FP_REGNO_P (reg))
     reg_mode = DECIMAL_FLOAT_MODE_P (mode) ? DDmode :
@@ -27839,13 +27457,13 @@ rs6000_split_multireg_move (rtx dst, rtx src)
       return;
     }
 
-  /* The __vector_pair, __vector_quad, and __dmf modes are multi-register
-     modes, so if we have to load or store the registers, we have to be careful
-     to properly swap them if we're in little endian mode below.  This means
-     the last register gets the first memory location.  We also need to be
-     careful of using the right register numbers if we are splitting XO to
-     OO.  */
-  if (mode == OOmode || mode == XOmode || mode == TDOmode)
+  /* The __vector_pair and __vector_quad modes are multi-register
+     modes, so if we have to load or store the registers, we have to be
+     careful to properly swap them if we're in little endian mode
+     below.  This means the last register gets the first memory
+     location.  We also need to be careful of using the right register
+     numbers if we are splitting XO to OO.  */
+  if (mode == OOmode || mode == XOmode)
     {
       nregs = hard_regno_nregs (reg, mode);
       int reg_mode_nregs = hard_regno_nregs (reg, reg_mode);
@@ -27854,9 +27472,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	  unsigned offset = 0;
 	  unsigned size = GET_MODE_SIZE (reg_mode);
 
-	  /* If we are reading an accumulator register, we have to deprime it
-	     before we can access it unless we have dense math registers.  */
-	  if (TARGET_MMA_NO_DENSE_MATH
+	  /* If we are reading an accumulator register, we have to
+	     deprime it before we can access it.  */
+	  if (TARGET_MMA
 	      && GET_MODE (src) == XOmode && FP_REGNO_P (REGNO (src)))
 	    emit_insn (gen_mma_xxmfacc (src, src));
 
@@ -27888,9 +27506,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	      emit_insn (gen_rtx_SET (dst2, src2));
 	    }
 
-	  /* If we are writing an accumulator register, we have to prime it
-	     after we've written it unless we have dense math registers.  */
-	  if (TARGET_MMA_NO_DENSE_MATH
+	  /* If we are writing an accumulator register, we have to
+	     prime it after we've written it.  */
+	  if (TARGET_MMA
 	      && GET_MODE (dst) == XOmode && FP_REGNO_P (REGNO (dst)))
 	    emit_insn (gen_mma_xxmtacc (dst, dst));
 
@@ -27904,9 +27522,7 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 		      || XINT (src, 1) == UNSPECV_MMA_ASSEMBLE);
 	  gcc_assert (REG_P (dst));
 	  if (GET_MODE (src) == XOmode)
-	    gcc_assert ((TARGET_DENSE_MATH
-			 ? VSX_REGNO_P (REGNO (dst))
-			 : FP_REGNO_P (REGNO (dst))));
+	    gcc_assert (FP_REGNO_P (REGNO (dst)));
 	  if (GET_MODE (src) == OOmode)
 	    gcc_assert (VSX_REGNO_P (REGNO (dst)));
 
@@ -27959,9 +27575,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	      emit_insn (gen_rtx_SET (dst_i, op));
 	    }
 
-	  /* We are writing an accumulator register, so we have to prime it
-	     after we've written it unless we have dense math registers.  */
-	  if (GET_MODE (src) == XOmode && !TARGET_DENSE_MATH)
+	  /* We are writing an accumulator register, so we have to
+	     prime it after we've written it.  */
+	  if (GET_MODE (src) == XOmode)
 	    emit_insn (gen_mma_xxmtacc (dst, dst));
 
 	  return;
@@ -27972,9 +27588,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 
   if (REG_P (src) && REG_P (dst) && (REGNO (src) < REGNO (dst)))
     {
-      /* If we are reading an accumulator register, we have to deprime it
-	 before we can access it unless we have dense math registers.  */
-      if (TARGET_MMA_NO_DENSE_MATH
+      /* If we are reading an accumulator register, we have to
+	 deprime it before we can access it.  */
+      if (TARGET_MMA
 	  && GET_MODE (src) == XOmode && FP_REGNO_P (REGNO (src)))
 	emit_insn (gen_mma_xxmfacc (src, src));
 
@@ -27982,7 +27598,7 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	 overlap.  */
       int i;
       /* XO/OO are opaque so cannot use subregs. */
-      if (mode == OOmode || mode == XOmode || mode == TDOmode)
+      if (mode == OOmode || mode == XOmode )
 	{
 	  for (i = nregs - 1; i >= 0; i--)
 	    {
@@ -28000,9 +27616,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 							 i * reg_mode_size)));
 	}
 
-      /* If we are writing an accumulator register, we have to prime it after
-	 we've written it unless we have dense math registers.  */
-      if (TARGET_MMA_NO_DENSE_MATH
+      /* If we are writing an accumulator register, we have to
+	 prime it after we've written it.  */
+      if (TARGET_MMA
 	  && GET_MODE (dst) == XOmode && FP_REGNO_P (REGNO (dst)))
 	emit_insn (gen_mma_xxmtacc (dst, dst));
     }
@@ -28137,9 +27753,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	    gcc_assert (rs6000_offsettable_memref_p (dst, reg_mode, true));
 	}
 
-      /* If we are reading an accumulator register, we have to deprime it
-	 before we can access it unless we have dense math registers.  */
-      if (TARGET_MMA_NO_DENSE_MATH && REG_P (src)
+      /* If we are reading an accumulator register, we have to
+	 deprime it before we can access it.  */
+      if (TARGET_MMA && REG_P (src)
 	  && GET_MODE (src) == XOmode && FP_REGNO_P (REGNO (src)))
 	emit_insn (gen_mma_xxmfacc (src, src));
 
@@ -28156,7 +27772,7 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 	    continue;
 
 	  /* XO/OO are opaque so cannot use subregs. */
-	  if (mode == OOmode || mode == XOmode || mode == TDOmode)
+	  if (mode == OOmode || mode == XOmode )
 	    {
 	      rtx dst_i = gen_rtx_REG (reg_mode, REGNO (dst) + j);
 	      rtx src_i = gen_rtx_REG (reg_mode, REGNO (src) + j);
@@ -28169,9 +27785,9 @@ rs6000_split_multireg_move (rtx dst, rtx src)
 							 j * reg_mode_size)));
 	}
 
-      /* If we are writing an accumulator register, we have to prime it after
-	 we've written it unless we have dense math registers.  */
-      if (TARGET_MMA_NO_DENSE_MATH && REG_P (dst)
+      /* If we are writing an accumulator register, we have to
+	 prime it after we've written it.  */
+      if (TARGET_MMA && REG_P (dst)
 	  && GET_MODE (dst) == XOmode && FP_REGNO_P (REGNO (dst)))
 	emit_insn (gen_mma_xxmtacc (dst, dst));
 
@@ -29184,8 +28800,7 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
 
   if (frommode != tomode)
     {
-      /* Do not allow conversions to/from XOmode, OOmode, and TDOmode
-	 types.  */
+      /* Do not allow conversions to/from XOmode and OOmode types.  */
       if (frommode == XOmode)
 	return N_("invalid conversion from type %<__vector_quad%>");
       if (tomode == XOmode)
@@ -29194,10 +28809,6 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
 	return N_("invalid conversion from type %<__vector_pair%>");
       if (tomode == OOmode)
 	return N_("invalid conversion to type %<__vector_pair%>");
-      if (frommode == TDOmode)
-	return N_("invalid conversion from type %<__dmf%>");
-      if (tomode == TDOmode)
-	return N_("invalid conversion to type %<__dmf%>");
     }
 
   /* Conversion allowed.  */
@@ -29276,37 +28887,24 @@ constant_fp_to_128bit_vector (rtx op,
   const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op);
   long real_words[VECTOR_128BIT_WORDS];
 
-  /* For 16-bit floating point, the constant doesn't fill the whole 32-bit
-     word.  Deal with it here, storing the bytes in big endian fashion.  */
-  if (FP16_SCALAR_MODE_P (mode))
+  /* Make sure we don't overflow the real_words array and that it is
+     filled completely.  */
+  gcc_assert (num_words <= VECTOR_128BIT_WORDS && (bitsize % 32) == 0);
+
+  real_to_target (real_words, rtype, mode);
+
+  /* Iterate over each 32-bit word in the floating point constant.  The
+     real_to_target function puts out words in target endian fashion.  We need
+     to arrange the order so that the bytes are written in big endian order.  */
+  for (unsigned num = 0; num < num_words; num++)
     {
-      real_to_target (real_words, rtype, mode);
-      info->bytes[byte_num] = (unsigned char) (real_words[0] >> 8);
-      info->bytes[byte_num+1] = (unsigned char) (real_words[0]);
-    }
+      unsigned endian_num = (BYTES_BIG_ENDIAN
+			     ? num
+			     : num_words - 1 - num);
 
-  else
-    {
-      /* Make sure we don't overflow the real_words array and that it is filled
-	 completely.  */
-      gcc_assert (num_words <= VECTOR_128BIT_WORDS && (bitsize % 32) == 0);
-
-      real_to_target (real_words, rtype, mode);
-
-      /* Iterate over each 32-bit word in the floating point constant.  The
-	 real_to_target function puts out words in target endian fashion.  We
-	 need to arrange the order so that the bytes are written in big endian
-	 order.  */
-      for (unsigned num = 0; num < num_words; num++)
-	{
-	  unsigned endian_num = (BYTES_BIG_ENDIAN
-				 ? num
-				 : num_words - 1 - num);
-
-	  unsigned uvalue = real_words[endian_num];
-	  for (int shift = 32 - 8; shift >= 0; shift -= 8)
-	    info->bytes[byte_num++] = (uvalue >> shift) & 0xff;
-	}
+      unsigned uvalue = real_words[endian_num];
+      for (int shift = 32 - 8; shift >= 0; shift -= 8)
+	info->bytes[byte_num++] = (uvalue >> shift) & 0xff;
     }
 
   /* Mark that this constant involves floating point.  */
@@ -29345,7 +28943,6 @@ vec_const_128bit_to_bytes (rtx op,
     return false;
 
   /* Set up the bits.  */
-  info->mode = mode;
   switch (GET_CODE (op))
     {
       /* Integer constants, default to double word.  */
@@ -29572,10 +29169,6 @@ constant_generates_xxspltiw (vec_const_128bit_type *vsx_const)
 {
   if (!TARGET_SPLAT_WORD_CONSTANT || !TARGET_PREFIXED || !TARGET_VSX)
     return 0;
-
-  /* HFmode/BFmode constants can always use XXSPLTIW.  */
-  if (FP16_SCALAR_MODE_P (vsx_const->mode))
-    return 1;
 
   if (!vsx_const->all_words_same)
     return 0;

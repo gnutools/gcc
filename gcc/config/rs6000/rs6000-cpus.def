@@ -43,15 +43,6 @@
 				 | OPTION_MASK_ALTIVEC			\
 				 | OPTION_MASK_VSX)
 
-/* Determine whether to enable 16-bit floating point types on power8 systems
-   and above.  */
-#if POWERPC_FLOAT16_DEFAULT
-#define TARGET_16BIT_FLOATING_POINT	OPTION_MASK_FLOAT16
-
-#else
-#define TARGET_16BIT_FLOATING_POINT	0
-#endif
-
 /* For now, don't provide an embedded version of ISA 2.07.  Do not set power8
    fusion here, instead set it in rs6000.cc if we are tuning for a power8
    system.  */
@@ -61,8 +52,7 @@
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
 				 | OPTION_MASK_QUAD_MEMORY		\
-				 | OPTION_MASK_QUAD_MEMORY_ATOMIC	\
-				 | TARGET_16BIT_FLOATING_POINT)
+				 | OPTION_MASK_QUAD_MEMORY_ATOMIC)
 
 /* ISA masks setting fusion options.  */
 #define OTHER_FUSION_MASKS	(OPTION_MASK_P8_FUSION			\
@@ -102,16 +92,6 @@
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_P9_MINMAX)
 
-/* Options for -mcpu=future.
-
-   During the development of the power10 support for GCC, using load/store
-   vector pair instructions for string operations was turned off by default,
-   because there was a use case that had really bad performance.  Assume this
-   will be fixed in potential future machines.  */
-#define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
-				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
-				 | OPTION_MASK_DENSE_MATH)
-
 /* Flags that need to be turned off if -mno-altivec.  */
 #define OTHER_ALTIVEC_MASKS	(OTHER_VSX_VECTOR_MASKS			\
 				 | OPTION_MASK_VSX)
@@ -131,16 +111,13 @@
 
 /* Mask of all options to set the default isa flags based on -mcpu=<xxx>.  */
 #define POWERPC_MASKS		(OPTION_MASK_ALTIVEC			\
-				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
-				 | OPTION_MASK_DENSE_MATH		\
 				 | OPTION_MASK_DFP			\
 				 | OPTION_MASK_DLMZB			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
-				 | OPTION_MASK_FLOAT16			\
 				 | OPTION_MASK_FPRND			\
 				 | OPTION_MASK_POWER10			\
 				 | OPTION_MASK_POWER11			\
@@ -278,4 +255,3 @@ RS6000_CPU ("powerpc64", PROCESSOR_POWERPC64, OPTION_MASK_PPC_GFXOPT
 RS6000_CPU ("powerpc64le", PROCESSOR_POWER8, MASK_POWERPC64
 	    | ISA_2_7_MASKS_SERVER | OPTION_MASK_HTM)
 RS6000_CPU ("rs64", PROCESSOR_RS64A, OPTION_MASK_PPC_GFXOPT | MASK_POWERPC64)
-RS6000_CPU ("future", PROCESSOR_FUTURE, MASK_POWERPC64 | FUTURE_MASKS_SERVER)
