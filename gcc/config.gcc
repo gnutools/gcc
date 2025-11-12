@@ -533,7 +533,6 @@ powerpc*-*-*)
 	extra_objs="rs6000-string.o rs6000-p8swap.o rs6000-logue.o"
 	extra_objs="${extra_objs} rs6000-call.o rs6000-pcrel-opt.o"
 	extra_objs="${extra_objs} rs6000-builtins.o rs6000-builtin.o"
-	extra_objs="${extra_objs} float16.o"
 	extra_headers="ppc-asm.h altivec.h htmintrin.h htmxlintrin.h"
 	extra_headers="${extra_headers} bmi2intrin.h bmiintrin.h"
 	extra_headers="${extra_headers} xmmintrin.h mm_malloc.h emmintrin.h"
@@ -543,7 +542,7 @@ powerpc*-*-*)
 	extra_headers="${extra_headers} ppu_intrinsics.h spu2vmx.h vec_types.h si2vmx.h"
 	extra_headers="${extra_headers} amo.h"
 	case x$with_cpu in
-	    xpowerpc64|xdefault64|x6[23]0|x970|xG5|xpower[3456789]|xpower1[01]|xpower6x|xrs64a|xcell|xa2|xe500mc64|xe5500|xe6500|xfuture)
+	    xpowerpc64|xdefault64|x6[23]0|x970|xG5|xpower[3456789]|xpower1[01]|xpower6x|xrs64a|xcell|xa2|xe500mc64|xe5500|xe6500)
 		cpu_is_64bit=yes
 		;;
 	esac
@@ -5750,7 +5749,7 @@ case "${target}" in
 				tm_defines="${tm_defines} CONFIG_PPC405CR"
 				eval "with_$which=405"
 				;;
-			"" | common | native | future \
+			"" | common | native \
 			| power[3456789] | power1[01] | power5+ | power6x \
 			| powerpc | powerpc64 | powerpc64le \
 			| rs64 \
@@ -5815,24 +5814,6 @@ case "${target}" in
 
 		elif test x$with_long_double_format = xibm; then
 		    tm_defines="${tm_defines} TARGET_IEEEQUAD_DEFAULT=0"
-		fi
-
-		# Test if we should enable 16-bit floating point on the platforms
-		# where we can support __bfloat16 and _Float16.
-		if test x$with_powerpc_float16 = xyes; then
-		    tm_defines="${tm_defines} POWERPC_FLOAT16_DEFAULT=1"
-
-		elif test x$with_powerpc_16bit_floating_point = xyes; then
-		    tm_defines="${tm_defines} POWERPC_FLOAT16_DEFAULT=0"
-		fi
-
-		# Test if we should disable the warning about passing
-		# and returning 16-bit floating point values.
-		if test x$with_powerpc_float16_disable_warning = xyes; then
-		    tm_defines="${tm_defines} POWERPC_FLOAT16_DISABLE_WARNING=1"
-
-		elif test x$with_powerpc_float16_disable_warning = xno; then
-		    tm_defines="${tm_defines} POWERPC_FLOAT16_DISABLE_WARNING=0"
 		fi
 		;;
 

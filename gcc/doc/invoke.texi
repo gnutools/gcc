@@ -32063,18 +32063,13 @@ Supported values for @var{cpu_type} are @samp{401}, @samp{403},
 @samp{titan}, @samp{power3}, @samp{power4}, @samp{power5}, @samp{power5+},
 @samp{power6}, @samp{power6x}, @samp{power7}, @samp{power8},
 @samp{power9}, @samp{power10}, @samp{power11}, @samp{powerpc}, @samp{powerpc64},
-@samp{powerpc64le}, @samp{rs64}, @samp{future}, and @samp{native}.
+@samp{powerpc64le}, @samp{rs64}, and @samp{native}.
 
 @option{-mcpu=powerpc}, @option{-mcpu=powerpc64}, and
 @option{-mcpu=powerpc64le} specify pure 32-bit PowerPC (either
 endian), 64-bit big endian PowerPC and 64-bit little endian PowerPC
 architecture machine types, with an appropriate, generic processor
 model assumed for scheduling purposes.
-
-Specifying @samp{future} as cpu type adds support for new instructions
-that may be added to future PowerPC processors.  This support is meant
-to try out possible new PowerPC instructions, and these instruction
-may or may not be used in new official PowerPC processors.
 
 Specifying @samp{native} as cpu type detects and selects the
 architecture option that corresponds to the host processor of the
