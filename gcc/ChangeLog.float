@@ -2,6 +2,48 @@
 
 Optimize __bfloat16 scalar code.
 
+Optimize __bfloat16 binary operations.  Unlike _Float16 where we
+have instructions to convert between HFmode and SFmode as scalar
+values, with BFmode, we only have vector conversions.  Thus to do:
+
+	__bfloat16 a, b, c;
+
+	a = b + c;
+
+the GCC compiler generates the following code:
+
+	lxsihzx 0,4,2           // load __bfloat16 value b
+	lxsihzx 12,5,2          // load __bfloat16 value c
+	xxsldwi 0,0,0,1         // shift b into bits 16..31
+	xxsldwi 12,12,12,1      // shift c into bits 16..31
+	xvcvbf16spn 0,0         // vector convert b into V4SFmode
+	xvcvbf16spn 12,12       // vector convert c into V4SFmode
+	xscvspdpn 0,0           // convert b into SFmode scalar
+	xscvspdpn 12,12         // convert c into SFmode scalar
+	fadds 0,0,12            // add b+c
+	xscvdpspn 0,0           // convert b+c into SFmode memory format
+	xvcvspbf16 0,0          // convert b+c into BFmode memory format
+	stxsihx 0,3,2           // store b+c
+
+Using the following combiner patterns that are defined in this patch, the code
+generated would be:
+
+
+	lxsihzx 12,4,2          // load __bfloat16 value b
+	lxsihzx 0,5,2           // load __bfloat16 value c
+	xxspltw 12,12,1         // shift b into bits 16..31
+	xxspltw 0,0,1           // shift c into bits 16..31
+	xvcvbf16spn 12,12       // vector convert b into V4SFmode
+	xvcvbf16spn 0,0         // vector convert c into V4SFmode
+	xvaddsp 0,0,12          // vector b+c in V4SFmode
+	xvcvspbf16 0,0          // convert b+c into BFmode memory format
+	stxsihx 0,3,2           // store b+c
+
+We cannot just define insns like 'addbf3' to keep the operation as
+BFmode because GCC will not generate these patterns unless the user
+uses -Ofast.  Without -Ofast, it will always convert BFmode into
+SFmode.
+
 2025-11-13  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
@@ -18,15 +60,12 @@ gcc/
 	(bfloat16_nfma_internal1): Likewise.
 	(bfloat16_nfma_internal2): Likewise.
 	(bfloat16_nfms_internal3): Likewise.
-	(__bfloat16 peephole): Likewise.
 	* config/rs6000/predicates.md (fp16_reg_or_constant_operand): New
 	predicate.
 	(bfloat16_v4sf_operand): Likewise.
 	(bfloat16_bf_operand): Likewise.
 	* config/rs6000/rs6000-protos.h (bfloat16_operation_as_v4sf): New
 	declaration.
-	* config/rs6000/rs6000.opt (-mbfloat16-combine): New option.
-	(-mbfloat16-peephole): Likewise.
 
 ==================== Branch work226-float, patch #208 ====================
 
