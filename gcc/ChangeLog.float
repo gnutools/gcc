@@ -1,3 +1,33 @@
+==================== Branch work226-float, patch #209 ====================
+
+Optimize __bfloat16 scalar code.
+
+2025-11-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.cc (bfloat16_operation_as_v4sf): New function to
+	optimize __bfloat16 scalar operations.
+	* config/rs6000/float16.md (bfloat16_binary_op_internal1): New
+	__bfloat16 scalar combiner insns.
+	(bfloat16_binary_op_internal2): Likewise.
+	(bfloat16_fma_internal1): Likewise.
+	(bfloat16_fma_internal2): Likewise.
+	(bfloat16_fms_internal1): Likewise.
+	(bfloat16_fms_internal2): Likewise.
+	(bfloat16_nfma_internal1): Likewise.
+	(bfloat16_nfma_internal2): Likewise.
+	(bfloat16_nfms_internal3): Likewise.
+	(__bfloat16 peephole): Likewise.
+	* config/rs6000/predicates.md (fp16_reg_or_constant_operand): New
+	predicate.
+	(bfloat16_v4sf_operand): Likewise.
+	(bfloat16_bf_operand): Likewise.
+	* config/rs6000/rs6000-protos.h (bfloat16_operation_as_v4sf): New
+	declaration.
+	* config/rs6000/rs6000.opt (-mbfloat16-combine): New option.
+	(-mbfloat16-peephole): Likewise.
+
 ==================== Branch work226-float, patch #208 ====================
 
 Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
