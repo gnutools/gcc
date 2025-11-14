@@ -4006,14 +4006,17 @@ rs6000_option_override_internal (bool global_init_p)
 	}
     }
 
-  /* -mfloat16 needs power8 at a minimum in order to load up 16-bit values into
-      vector registers via loads/stores from GPRs and then using direct
-      moves.  */
-  if (TARGET_FLOAT16 && !TARGET_POWER8)
+  /* 16-bit floating point needs 64-bit power8 at a minimum in order to load up
+     16-bit values into vector registers via loads/stores from GPRs and then
+     using direct moves.  Don't allow 16-bit float on big endian systems at the
+     current time.  */
+  if (TARGET_FLOAT16 && (!TARGET_DIRECT_MOVE_64BIT || BYTES_BIG_ENDIAN))
     {
       rs6000_isa_flags &= ~OPTION_MASK_FLOAT16;
       if (rs6000_isa_flags_explicit & OPTION_MASK_FLOAT16)
-	error ("%qs requires at least %qs", "-mfloat16", "-mcpu=power8");
+	error ("%qs is only available on 64-bit little endian systems "
+	       "that use at least %qs",
+	       "-mfloat16", "-mcpu=power8");
     }
 
   /* If hard-float/altivec/vsx were explicitly turned off then don't allow

@@ -209,5 +209,3 @@ extern BFtype2 __truncsfbf2 (SFtype2);
 extern HFtype2 __truncbfhf2 (BFtype2);
 extern BFtype2 __trunchfbf2 (HFtype2);
 #endif
-
-
