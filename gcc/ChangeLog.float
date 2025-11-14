@@ -1,3 +1,22 @@
+==================== Branch work228-float, patch #220 ====================
+
+Add _Float16 and __bfloat16 tests.
+
+2025-11-13  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/bfloat16-1.c: New target.
+	* gcc.target/powerpc/bfloat16-2.c: Likewise.
+	* gcc.target/powerpc/float16-1.c: Likewise.
+	* gcc.target/powerpc/float16-2.c: Likewise.
+	* lib/target-supports.exp (check_ppc_float16_hw_available): New target
+	supports for _Float16 and __bfloat16 support.
+	(check_ppc_float16_runtime_available): Likewise.
+	(check_ppc_bfloat16_hw_available): Likewise.
+	(check_ppc_bfloat16_runtime_available): Likewise.
+	(is-effective-target): Add new _Float16 and __bfloat16 targets.
+
 ==================== Branch work228-float, patch #219 ====================
 
 Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
