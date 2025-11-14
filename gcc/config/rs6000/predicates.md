@@ -633,11 +633,6 @@
   if (TARGET_VSX && op == CONST0_RTX (mode))
     return 1;
 
-  /* If we are on power10, we can use XXSPLTIW to load constants.  On power8
-     and power9, we can use direct move.  */
-  if (FP16_SCALAR_MODE_P (mode))
-    return true;
-
   /* Constants that can be generated with ISA 3.1 instructions are easy.  */
   vec_const_128bit_type vsx_const;
   if (TARGET_POWER10 && vec_const_128bit_to_bytes (op, mode, &vsx_const))
@@ -780,10 +775,6 @@
 	  if (constant_generates_xxspltidp (&vsx_const))
 	    return true;
 	}
-
-      /* -0,0 can be done as VSPLTIH x,-1 and VSLH x,x,x.  */
-      if (FP16_VECTOR_MODE_P (mode) && minus_zero_constant (op, mode))
-	return true;
 
       if (TARGET_P9_VECTOR
           && xxspltib_constant_p (op, mode, &num_insns, &value))
@@ -2207,148 +2198,3 @@
   (and (match_code "subreg")
        (match_test "subreg_lowpart_offset (mode, GET_MODE (SUBREG_REG (op)))
 		    == SUBREG_BYTE (op)")))
-
-;; Return 1 if this is a floating point scalar constant that is -0.0 or
-;; a vector floating point constant where each element is -0.0.
-(define_predicate "minus_zero_constant"
-  (match_code "const_double,vec_duplicate,const_vector")
-{
-  if (GET_CODE (op) == VEC_DUPLICATE)
-    {
-      op = XEXP (op, 0);
-      if (!CONST_DOUBLE_P (op))
-	return false;
-
-      mode = GET_MODE (op);
-    }
-
-  /* Scalar or vector filled with duplicates.  */
-  if (CONST_DOUBLE_P (op))
-    {
-      if (!SCALAR_FLOAT_MODE_P (mode))
-	return false;
-
-      const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (op);
-      return real_isnegzero (rtype);
-    }
-
-  /* Vector constant, check all elements.  */
-  else if (CONST_VECTOR_P (op))
-    {
-      if (GET_MODE_CLASS (mode) != MODE_VECTOR_FLOAT)
-	return false;
-
-      size_t nunits = GET_MODE_NUNITS (mode);
-      for (size_t i = 0; i < nunits; i++)
-	{
-	  rtx ele = CONST_VECTOR_ELT (op, i);
-	  if (!CONST_DOUBLE_P (ele))
-	    return false;
-
-	  const REAL_VALUE_TYPE *rtype = CONST_DOUBLE_REAL_VALUE (ele);
-	  if (!real_isnegzero (rtype))
-	    return false;
-	}
-
-      return true;
-    }
-
-  return false;
-})
-    
-;; Return 1 if this is a 16-bit floating point constant that can be
-;; loaded with XXSPLTIW or is 0.0 that can be loaded with XXSPLTIB.
-(define_predicate "fp16_xxspltiw_constant"
-  (match_code "const_double")
-{
-  if (!FP16_SCALAR_MODE_P (mode))
-    return false;
-
-  if (op == CONST0_RTX (mode))
-    return true;
-
-  if (!TARGET_PREFIXED)
-    return false;
-
-  vec_const_128bit_type vsx_const;
-  if (!vec_const_128bit_to_bytes (op, mode, &vsx_const))
-    return false;
-
-  return constant_generates_xxspltiw (&vsx_const);
-})
-
-;; Return 1 if this is a 16-bit floating point operand that can be used
-;; in an add, subtract, or multiply operation that uses the vector
-;; conversion function.
-(define_predicate "fp16_reg_or_constant_operand"
-  (match_code "reg,subreg,const_double")
-{
-  if (REG_P (op) || SUBREG_P (op))
-    return vsx_register_operand (op, mode);
-
-  if (CONST_DOUBLE_P (op))
-    return fp16_xxspltiw_constant (op, mode);
-
-  return false;
-})
-
-;; Match binary operators where we convert a BFmode operand into a
-;; SFmode operand so that we can optimize the BFmode operation to do
-;; the operation in vector mode rather than convverting the BFmode to a
-;; V8BFmode vector, converting that V8BFmode vector to V4SFmode, and
-;; then converting the V4SFmode element to SFmode scalar.
-(define_predicate "fp16_binary_operator"
-  (match_code "plus,minus,mult,smax,smin"))
-
-;; Match bfloat16/float operands that can be optimized to do the
-;; operation in V4SFmode.
-(define_predicate "bfloat16_v4sf_operand"
-  (match_code "reg,subreg,const_double,float_extend,float_truncate")
-{
-  if (mode != BFmode && mode != SFmode)
-    return false;
-
-  if (REG_P (op) || SUBREG_P (op))
-    return register_operand (op, mode);
-
-  if (CONST_DOUBLE_P (op))
-    return true;
-
-  if (GET_CODE (op) == FLOAT_EXTEND)
-    {
-      rtx op_arg = XEXP (op, 0);
-      return (mode == SFmode
-	      && GET_MODE (op_arg) == BFmode
-	      && (REG_P (op_arg) || SUBREG_P (op_arg)));
-    }
-
-  if (GET_CODE (op) == FLOAT_TRUNCATE)
-    {
-      rtx op_arg = XEXP (op, 0);
-      return (mode == BFmode
-	      && GET_MODE (op_arg) == SFmode
-	      && (REG_P (op_arg) || SUBREG_P (op_arg)));
-    }
-
-  return false;
-})
-
-;; Match an operand that originally was an BFmode value to prevent
-;; operations involing only SFmode values from being converted to
-;; BFmode.
-(define_predicate "bfloat16_bf_operand"
-  (match_code "reg,subreg,const_double,float_extend")
-{
-  if (mode == BFmode || GET_MODE (op) == BFmode)
-    return true;
-
-  if (mode != SFmode)
-    return false;
-
-  if (GET_MODE (op) == SFmode
-      && GET_CODE (op) == FLOAT_EXTEND
-      && GET_MODE (XEXP (op, 0)) == BFmode)
-    return true;
-
-  return false;
-})
