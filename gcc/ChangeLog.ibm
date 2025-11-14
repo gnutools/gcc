@@ -1,4 +1,19 @@
-==================== Branch ibm/gcc-16-future-float16, patch #209 ====================
+==================== Branch ibm/gcc-16-future-float16, patch #410 ====================
+
+Add updates from the development branch.
+
+2025-11-10   Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Don't allow
+	-mfloat16 on big endian systems.
+
+libgcc/
+
+	* config/rs6000/sfp-machine.h: Delete final blank lines.
+
+==================== Branch ibm/gcc-16-future-float16, patch #409 ====================
 
 Optimize __bfloat16 scalar code.
 
@@ -67,7 +82,7 @@ gcc/
 	* config/rs6000/rs6000-protos.h (bfloat16_operation_as_v4sf): New
 	declaration.
 
-==================== Branch ibm/gcc-16-future-float16, patch #208 ====================
+==================== Branch ibm/gcc-16-future-float16, patch #408 ====================
 
 Add --with-powerpc-float16 and --with-powerpc-float16-disable-warning.
 
