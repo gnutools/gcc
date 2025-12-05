@@ -5913,6 +5913,8 @@ rs6000_machine_from_flags (void)
   flags &= ~(OPTION_MASK_PPC_GFXOPT | OPTION_MASK_PPC_GPOPT | OPTION_MASK_ISEL
 	     | OPTION_MASK_ALTIVEC);
 
+  if ((flags & (FUTURE_MASKS_SERVER & ~POWER11_MASKS_SERVER)) != 0)
+    return "future";
   if ((flags & (POWER11_MASKS_SERVER & ~ISA_3_1_MASKS_SERVER)) != 0)
     return "power11";
   if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
@@ -24465,6 +24467,7 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "fprnd",			OPTION_MASK_FPRND,		false, true  },
   { "power10",			OPTION_MASK_POWER10,		false, true  },
   { "power11",			OPTION_MASK_POWER11,		false, false },
+  { "future",			OPTION_MASK_FUTURE,		false, false },
   { "hard-dfp",			OPTION_MASK_DFP,		false, true  },
   { "htm",			OPTION_MASK_HTM,		false, true  },
   { "isel",			OPTION_MASK_ISEL,		false, true  },
