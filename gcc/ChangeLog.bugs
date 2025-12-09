@@ -310,7 +310,6 @@ gcc/
 gcc/testsuite/
 
 	PR target/99293
-	* gcc.target/powerpc/builtins-1.c: Adjust insn count.
 	* gcc.target/powerpc/pr99293.c: New test.
 
 ==================== Branch work231-bugs, patch #300 ====================
