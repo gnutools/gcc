@@ -14093,6 +14093,25 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
   return result;
 }
 
+/* Substitute ARGS into T, which is a TREE_VEC.  This function creates a new
+   TREE_VEC rather than substituting the elements in-place.  */
+
+static tree
+tsubst_tree_vec (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+{
+  const int len = TREE_VEC_LENGTH (t);
+  tree r = make_tree_vec (len);
+  for (int i = 0; i < len; ++i)
+    {
+      tree arg = TREE_VEC_ELT (t, i);
+      if (TYPE_P (arg))
+	TREE_VEC_ELT (r, i) = tsubst (arg, args, complain, in_decl);
+      else
+	TREE_VEC_ELT (r, i) = tsubst_expr (arg, args, complain, in_decl);
+    }
+  return r;
+}
+
 /* Substitute ARGS into T, which is a pack index (i.e., PACK_INDEX_TYPE or
    PACK_INDEX_EXPR).  Returns a single type or expression, a PACK_INDEX_*
    node if only a partial substitution could be performed, or ERROR_MARK_NODE
@@ -14110,7 +14129,7 @@ tsubst_pack_index (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	 a partially instantiated closure.  Let tsubst find the
 	 fully-instantiated one.  */
       gcc_assert (TREE_CODE (pack) == TREE_VEC);
-      pack = tsubst (pack, args, complain, in_decl);
+      pack = tsubst_tree_vec (pack, args, complain, in_decl);
     }
   if (TREE_CODE (pack) == TREE_VEC && TREE_VEC_LENGTH (pack) == 0)
     {
@@ -17449,6 +17468,8 @@ tsubst_baselink (tree baselink, tree object_type,
       if (template_args)
 	template_args = tsubst_template_args (template_args, args,
 					      complain, in_decl);
+      if (template_args == error_mark_node)
+	return error_mark_node;
     }
 
   tree binfo_type = BINFO_TYPE (BASELINK_BINFO (baselink));
@@ -17479,6 +17500,15 @@ tsubst_baselink (tree baselink, tree object_type,
       bool maybe_incomplete = BASELINK_FUNCTIONS_MAYBE_INCOMPLETE_P (baselink);
       baselink = lookup_fnfields (qualifying_scope, name, /*protect=*/1,
 				  complain);
+      if (!baselink)
+	{
+	  if ((complain & tf_error)
+	      && constructor_name_p (name, qualifying_scope))
+	    error ("cannot call constructor %<%T::%D%> directly",
+		   qualifying_scope, name);
+	  return error_mark_node;
+	}
+
       if (maybe_incomplete)
 	{
 	  /* Filter out from the new lookup set those functions which didn't
@@ -17490,15 +17520,6 @@ tsubst_baselink (tree baselink, tree object_type,
 	    = filter_memfn_lookup (fns, BASELINK_FUNCTIONS (baselink),
 				   binfo_type);
 	  BASELINK_FUNCTIONS_MAYBE_INCOMPLETE_P (baselink) = true;
-	}
-
-      if (!baselink)
-	{
-	  if ((complain & tf_error)
-	      && constructor_name_p (name, qualifying_scope))
-	    error ("cannot call constructor %<%T::%D%> directly",
-		   qualifying_scope, name);
-	  return error_mark_node;
 	}
 
       fns = BASELINK_FUNCTIONS (baselink);

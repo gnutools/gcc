@@ -16234,7 +16234,9 @@ arm_select_cc_mode (enum rtx_code op, rtx x, rtx y)
 	case LE:
 	case GT:
 	case GE:
-	  return CCFPEmode;
+	  return (flag_finite_math_only
+		  ? CCFPmode
+		  : CCFPEmode);
 
 	default:
 	  gcc_unreachable ();
@@ -18609,6 +18611,9 @@ comp_not_to_clear_mask_str_un (tree arg_type, int * regno,
 
 	  if (*last_used_bit != offset)
 	    {
+	      /* We never clear padding bits in any other registers than the
+		 first 4 GPRs.  */
+	      gcc_assert (*regno < 4);
 	      if (offset < *last_used_bit)
 		{
 		  /* This field's offset is before the 'last_used_bit', that
@@ -18701,19 +18706,25 @@ comp_not_to_clear_mask_str_un (tree arg_type, int * regno,
 	      last_used_bit_t = (starting_bit + field_size) % 32;
 	    }
 
-	  for (i = *regno; i < regno_t; i++)
+	  /* We only clear padding bits in the first 4 GPRs.  No need to check
+	     regno_t, since there is no way where this field would have been
+	     put into part GPR part FP reg.  */
+	  if (*regno < 4)
 	    {
-	      /* For all but the last register used by this field only keep the
-		 padding bits that were padding bits in this field.  */
-	      padding_bits_to_clear_res[i] &= padding_bits_to_clear_t[i];
-	    }
+	      for (i = *regno; i < regno_t; i++)
+		{
+		  /* For all but the last register used by this field only keep
+		     the padding bits that were padding bits in this field.  */
+		  padding_bits_to_clear_res[i] &= padding_bits_to_clear_t[i];
+		}
 
-	    /* For the last register, keep all padding bits that were padding
-	       bits in this field and any padding bits that are still valid
-	       as padding bits but fall outside of this field's size.  */
-	    mask = (((uint32_t) -1) - ((uint32_t) 1 << last_used_bit_t)) + 1;
-	    padding_bits_to_clear_res[regno_t]
-	      &= padding_bits_to_clear_t[regno_t] | mask;
+	      /* For the last register, keep all padding bits that were padding
+		 bits in this field and any padding bits that are still valid
+		 as padding bits but fall outside of this field's size.  */
+	      mask = (((uint32_t) -1) - ((uint32_t) 1 << last_used_bit_t)) + 1;
+	      padding_bits_to_clear_res[regno_t]
+		&= padding_bits_to_clear_t[regno_t] | mask;
+	    }
 
 	  /* Update the maximum size of the fields in terms of registers used
 	     ('max_reg') and the 'last_used_bit' in said register.  */
@@ -18728,16 +18739,25 @@ comp_not_to_clear_mask_str_un (tree arg_type, int * regno,
 	  field = TREE_CHAIN (field);
 	}
 
-      /* Update the current padding_bits_to_clear using the intersection of the
-	 padding bits of all the fields.  */
-      for (i=*regno; i < max_reg; i++)
-	padding_bits_to_clear[i] |= padding_bits_to_clear_res[i];
+      /* We only clear padding bits in the first 4 GPRs.  No need to check
+	 regno_t, since there is no way where this field would have been
+	 put into part GPR part FP reg.  */
+      if (*regno < 4)
+	{
+	  /* Update the current padding_bits_to_clear using the intersection of the
+	     padding bits of all the fields.  */
+	  for (i=*regno; i < max_reg; i++)
+	    padding_bits_to_clear[i] |= padding_bits_to_clear_res[i];
 
-      /* Do not keep trailing padding bits, we do not know yet whether this
-	 is the end of the argument.  */
-      mask = ((uint32_t) 1 << max_bit) - 1;
-      padding_bits_to_clear[max_reg]
-	|= padding_bits_to_clear_res[max_reg] & mask;
+	  /* Do not keep trailing padding bits, we do not know yet whether this
+	     is the end of the argument.  */
+	  mask = ((uint32_t) 1 << max_bit) - 1;
+	  padding_bits_to_clear[max_reg]
+	    |= padding_bits_to_clear_res[max_reg] & mask;
+	}
+
+      for (int i = *regno; i < max_reg; ++i)
+	not_to_clear_reg_mask |= HOST_WIDE_INT_1U << i;
 
       *regno = max_reg;
       *last_used_bit = max_bit;
@@ -18779,8 +18799,9 @@ compute_not_to_clear_mask (tree arg_type, rtx arg_rtx, int regno,
       /* If the 'last_used_bit' is not zero, that means we are still using a
 	 part of the last 'regno'.  In such cases we must clear the trailing
 	 bits.  Otherwise we are not using regno and we should mark it as to
-	 clear.  */
-      if (last_used_bit != 0)
+	 clear.  We only clear padding bits for scalar values that are passed
+	 in registers, so regno is never 4 or higher.  */
+      if (regno < 4 && last_used_bit != 0)
 	padding_bits_to_clear[regno]
 	  |= ((uint32_t)-1) - ((uint32_t) 1 << last_used_bit) + 1;
       else
@@ -24212,7 +24233,7 @@ arm_print_condition (FILE *stream)
 
 
 /* Globally reserved letters: acln
-   Puncutation letters currently used: @_|?().!#
+   Puncutation letters currently used: @_-|?().!#
    Lower case letters currently used: bcdefhimpqtvwxyz
    Upper case letters currently used: ABCDEFGHIJKLMOPQRSTUV
    Letters previously used, but now deprecated/obsolete: sNWXYZ.
@@ -24244,6 +24265,11 @@ arm_print_operand (FILE *stream, rtx x, int code)
 
     case '_':
       fputs (user_label_prefix, stream);
+      return;
+    case '-':
+#ifdef LOCAL_LABEL_PREFIX
+      fputs (LOCAL_LABEL_PREFIX, stream);
+#endif
       return;
 
     case '|':
@@ -25094,9 +25120,9 @@ arm_print_operand_punct_valid_p (unsigned char code)
 {
   return (code == '@' || code == '|' || code == '.'
 	  || code == '(' || code == ')' || code == '#'
+	  || code == '-' || code == '_'
 	  || (TARGET_32BIT && (code == '?'))
-	  || (TARGET_THUMB2 && (code == '!'))
-	  || (TARGET_THUMB && (code == '_')));
+	  || (TARGET_THUMB2 && (code == '!')));
 }
 
 /* Target hook for assembling integer objects.  The ARM version needs to

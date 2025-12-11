@@ -1,3 +1,99 @@
+2025-12-02  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-12-01  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/122921
+	* include/std/flat_map (_Flat_map_impl::_Iterator::value_type):
+	Remove const from key_type to make consistent with the
+	container's value_type.
+	* testsuite/23_containers/flat_map/1.cc (test09): New test.
+	* testsuite/23_containers/flat_multimap/1.cc (test09): New test.
+
+2025-11-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-11-28  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/122842
+	* include/bits/ranges_base.h (__access:_CBegin): Define in
+	terms of const_iterator directly, not const_iterator_t.
+	(__access::_CEnd): Likewise in terms of const_sentinel vs
+	const_sentinel_t.
+	(const_iterator_t): Move down definition and define in terms
+	of ranges::cbegin as per LWG 3946.
+	(const_sentinel_t): Likewise in terms of ranges::cend.
+	* testsuite/24_iterators/const_iterator/1.cc (test02): Correct
+	test for int[], std::array and std::vector.  Also test
+	std::string.
+
+2025-11-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/122743
+	* doc/xml/manual/abi.xml: Add versions for GCC 15.
+	* doc/html/manual/abi.html: Regenerate.
+
+2025-11-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/xml/faq.xml: Remove unwanted whitespace inside
+	programlisting elements.
+	* doc/xml/manual/allocator.xml: Likewise.
+	* doc/xml/manual/auto_ptr.xml: Likewise.
+	* doc/xml/manual/backwards_compatibility.xml: Likewise.
+	* doc/xml/manual/build_hacking.xml: Likewise.
+	* doc/xml/manual/containers.xml: Likewise.
+	* doc/xml/manual/diagnostics.xml: Likewise.
+	* doc/xml/manual/extensions.xml: Likewise.
+	* doc/xml/manual/intro.xml: Likewise.
+	* doc/xml/manual/io.xml: Likewise.
+	* doc/xml/manual/iterators.xml: Likewise.
+	* doc/xml/manual/numerics.xml: Likewise.
+	* doc/xml/manual/policy_data_structures.xml: Likewise.
+	* doc/xml/manual/strings.xml: Likewise.
+	* doc/xml/manual/support.xml: Likewise.
+	* doc/xml/manual/test.xml: Likewise.
+	* doc/xml/manual/using.xml: Likewise.
+	* doc/xml/manual/utilities.xml: Likewise.
+	* doc/html/*: Regenerate.
+
+2025-11-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/122726
+	* src/filesystem/ops-common.h [_GLIBCXX_FILESYSTEM_IS_WINDOWS]
+	(rename): Use __last_system_error to set errno accurately.
+	* testsuite/27_io/filesystem/operations/rename.cc: Test
+	error_code matches errc::no_such_file_or_directory.
+
+2025-11-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	* src/c++23/std.cc.in [!__cpp_lib_syncbuf]: Disable exports for
+	<syncstream> contents when not defined.
+	[!_GLIBCXX_USE_CXX11_ABI]: Disable exports for pmr aliases in
+	<string> when not defined.
+
+2025-11-14  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/122661
+	* include/bits/forward_list.h (forward_list::assign(I, I)): Fix
+	value category in is_assignable check.
+	* testsuite/23_containers/forward_list/modifiers/122661.cc:
+	New test.
+
 2025-10-20  Jonathan Wakely  <jwakely@redhat.com>
 
 	Backported from master:

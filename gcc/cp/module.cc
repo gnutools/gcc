@@ -4884,8 +4884,13 @@ maybe_add_cmi_prefix (const char *to, size_t *len_p = NULL)
 static void
 create_dirs (char *path)
 {
+  char *base = path;
+  /* Skip past initial slashes of absolute path.  */
+  while (IS_DIR_SEPARATOR (*base))
+    base++;
+
   /* Try and create the missing directories.  */
-  for (char *base = path; *base; base++)
+  for (; *base; base++)
     if (IS_DIR_SEPARATOR (*base))
       {
 	char sep = *base;
@@ -6402,13 +6407,19 @@ trees_out::core_vals (tree t)
 	if (has_warning_spec (t))
 	  u (get_warning_spec (t));
 
-      /* Walk in forward order, as (for instance) REQUIRES_EXPR has a
-         bunch of unscoped parms on its first operand.  It's safer to
-         create those in order.  */
       bool vl = TREE_CODE_CLASS (code) == tcc_vl_exp;
-      for (unsigned limit = (vl ? VL_EXP_OPERAND_LENGTH (t)
-			     : TREE_OPERAND_LENGTH (t)),
-	     ix = unsigned (vl); ix != limit; ix++)
+      unsigned limit = (vl ? VL_EXP_OPERAND_LENGTH (t)
+			: TREE_OPERAND_LENGTH (t));
+      unsigned ix = unsigned (vl);
+      if (code == REQUIRES_EXPR)
+	{
+	  /* The first operand of a REQUIRES_EXPR is a tree chain
+	     of PARM_DECLs.  We need to stream this separately as
+	     otherwise we would only stream the first one.  */
+	  chained_decls (REQUIRES_EXPR_PARMS (t));
+	  ++ix;
+	}
+      for (; ix != limit; ix++)
 	WT (TREE_OPERAND (t, ix));
     }
   else
@@ -6984,9 +6995,15 @@ trees_in::core_vals (tree t)
 	put_warning_spec (t, u ());
 
       bool vl = TREE_CODE_CLASS (code) == tcc_vl_exp;
-      for (unsigned limit = (vl ? VL_EXP_OPERAND_LENGTH (t)
-			     : TREE_OPERAND_LENGTH (t)),
-	     ix = unsigned (vl); ix != limit; ix++)
+      unsigned limit = (vl ? VL_EXP_OPERAND_LENGTH (t)
+			: TREE_OPERAND_LENGTH (t));
+      unsigned ix = unsigned (vl);
+      if (code == REQUIRES_EXPR)
+	{
+	  REQUIRES_EXPR_PARMS (t) = chained_decls ();
+	  ++ix;
+	}
+      for (; ix != limit; ix++)
 	RTU (TREE_OPERAND (t, ix));
     }
 
@@ -10017,9 +10034,10 @@ trees_out::tree_node (tree t)
 	      break;
 
 	    case PARM_DECL:
-	      /* REQUIRES_EXPRs have a tree list of uncontexted
-		 PARM_DECLS.  It'd be nice if they had a
-		 distinguishing flag to double check.  */
+	      /* REQUIRES_EXPRs have a chain of uncontexted PARM_DECLS,
+		 and an implicit this parm in an NSDMI has no context.  */
+	      gcc_checking_assert (CONSTRAINT_VAR_P (t)
+				   || DECL_NAME (t) == this_identifier);
 	      break;
 	    }
 	  goto by_value;
@@ -12848,8 +12866,10 @@ trees_in::read_var_def (tree decl, tree maybe_template)
 	  if (DECL_EXPLICIT_INSTANTIATION (decl)
 	      && !DECL_EXTERNAL (decl))
 	    setup_explicit_instantiation_definition_linkage (decl);
-	  /* Class static data members are handled in read_class_def.  */
-	  if (!DECL_CLASS_SCOPE_P (decl)
+	  /* Class non-template static members are handled in read_class_def.
+	     But still handle specialisations of member templates.  */
+	  if ((!DECL_CLASS_SCOPE_P (decl)
+	       || primary_template_specialization_p (decl))
 	      && (DECL_IMPLICIT_INSTANTIATION (decl)
 		  || (DECL_EXPLICIT_INSTANTIATION (decl)
 		      && !DECL_EXTERNAL (decl))))
