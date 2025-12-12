@@ -1,3 +1,15 @@
+==================== Branch work231-float, patch #221 ====================
+
+Add -mbfloat16-combine for testing.
+
+2025-12-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (extendbf<mode>): Disable if
+	-mbfloat16-combine.
+	* config/rs6000/rs6000.opt (-mbfloat16-combine): New debug option.
+
 ==================== Branch work231-float, patch #220 ====================
 
 Add -mbfloat16-vector for testing.
