@@ -1,3 +1,23 @@
+==================== Branch work231-float, patch #222 ====================
+
+Use shift left to convert BFmode to SFmode/DFmode.
+
+2025-12-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (UNSPEC_FP16_SHIFT_LEFT_32BIT): Delete.
+	(UNSPEC_BF_SHIFT_LEFT_48BIT): New unspec.
+	(UNSPEC_BF_SHIFT_LEFT_16BIT): Likewise.
+	(UNSPEC_XSCVSPDPN_BF): Likewise.
+	(extendbf<mode>2): Rewrite to do conversion by shifting a BFmode left to
+	get SFmode.
+	(bf_shift_left_48bit): New insn.
+	(bf_to_sf_store): Likewise.
+	(bf_shift_left_16bit): Likewise.
+	(xscvspdpn_sf): Delete.
+	(<fp16_vector8>_shift_left_32bi): Likewise.
+
 ==================== Branch work231-float, patch #221 was reverted ====================
 ==================== Branch work231-float, patch #220 was reverted ====================
 
