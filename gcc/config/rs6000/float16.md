@@ -75,7 +75,9 @@
 
 ;; UNSPEC constants
 (define_c_enum "unspec"
-  [UNSPEC_FP16_SHIFT_LEFT_32BIT
+  [UNSPEC_BF_SHIFT_LEFT_48BIT
+   UNSPEC_BF_SHIFT_LEFT_16BIT
+   UNSPEC_XSCVSPDPN_BF
    UNSPEC_CVT_FP16_TO_V4SF
    UNSPEC_XXSPLTW_FP16
    UNSPEC_XVCVSPBF16_BF
@@ -225,44 +227,86 @@
   [(set_attr "type" "fpsimple")])
 
 ;; Convert BFmode to SFmode/DFmode.
-;; 3 instructions are generated:
-;;	VSPLTH		-- duplicate BFmode into all elements
-;;	XVCVBF16SPN	-- convert even BFmode elements to SFmode
-;;	XSCVSPNDP	-- convert memory format of SFmode to DFmode.
+;; 3 instructions are generated
+;;	SLDI		-- shift left 48 bits, SFmode in upper 32 bits
+;;	MTVSRD		-- transfer to vector register
+;;	XSCVSPDP	-- convert to DFmode
 (define_insn_and_split "extendbf<mode>2"
   [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
 	(float_extend:SFDF
-	 (match_operand:BF 1 "vsx_register_operand" "v")))
-   (clobber (match_scratch:V8BF 2 "=v"))]
-  "TARGET_BFLOAT16_HW"
+	 (match_operand:BF 1 "int_reg_operand" "=r")))
+   (clobber (match_scratch:DI 2 "=r"))
+   (clobber (match_scratch:DI 3 "=wa"))]
+  "TARGET_FLOAT16 && TARGET_POWERPC64 && TARGET_DIRECT_MOVE
+   && TARGET_XSCVSPDPN"
   "#"
   "&& 1"
-  [(pc)]
+  [(set (match_dup 2)
+	(unspec:DI [(match_dup 1)] UNSPEC_BF_SHIFT_LEFT_48BIT))
+   (set (match_dup 3)
+	(match_dup 2))
+   (set (match_dup 0)
+	(unspec:SFDF [(match_dup 3)] UNSPEC_XSCVSPDPN_BF))]
 {
-  rtx op0 = operands[0];
-  rtx op1 = operands[1];
-  rtx op2_v8bf = operands[2];
-
-  if (GET_CODE (op2_v8bf) == SCRATCH)
-    op2_v8bf = gen_reg_rtx (V8BFmode);
-
-  rtx op2_v4sf = gen_lowpart (V4SFmode, op2_v8bf);
-
-  /* XXSLDWI -- shift BFmode element into the upper 32 bits.  */
-  emit_insn (gen_v8bf_shift_left_32bit (op2_v8bf, op1));
-
-  /* XVCVBF16SPN -- convert even V8BFmode elements to V4SFmode.  */
-  emit_insn (gen_cvt_fp16_to_v4sf_v8bf (op2_v4sf, op2_v8bf));
-
-  /* XSCVSPNDP -- convert single V4SFmode element to DFmode.  */
-  emit_insn (GET_MODE (op0) == SFmode
-	     ? gen_xscvspdpn_sf (op0, op2_v4sf)
-	     : gen_vsx_xscvspdpn (op0, op2_v4sf));
-
-  DONE;
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (DImode);
+  
+  if (GET_CODE (operands[3]) == SCRATCH)
+    operands[3] = gen_reg_rtx (DImode);
 }
-  [(set_attr "type" "fpsimple")
+  [(set_attr "type" "fp")
    (set_attr "length" "12")])
+
+;; Shift a BFmode value left 48 bits, creating a SFmode value in the upper
+;; 32-bits so a xscvspdpn instruction can be done
+(define_insn "*bf_shift_left_48bit"
+  [(set (match_operand:DI 0 "int_reg_operand" "=r")
+	(unspec:DI [(match_operand:BF 1 "int_reg_operand" "r")]
+		   UNSPEC_BF_SHIFT_LEFT_48BIT))]
+  "TARGET_FLOAT16 && TARGET_POWERPC64"
+  "sldi %0,%1,48")
+
+;; Convert a SFmode memory format value to SFmode/DFmode scalar
+(define_insn "*xscvspdpn_bf_<mode>"
+  [(set (match_operand:SFDF 0 "vsx_register_operand" "=wa")
+	(unspec:SFDF
+	 [(match_operand:DI 1 "vsx_register_operand" "wa")]
+	 UNSPEC_XSCVSPDPN_BF))]
+  "TARGET_FLOAT16 && TARGET_XSCVSPDPN"
+  "xscvspdpn %x0,%x1"
+  [(set_attr "type" "fp")])
+
+;; Optimize converting BFmode to SFmode and storing it to memory.
+;; We can eliminate doing a direct move and xscvspdpn and just
+;; do a shift left 16 bits, and then doing the store.
+(define_insn_and_split "*bf_to_sf_store"
+  [(set (match_operand:SF 0 "memory_operand" "=m")
+	(float_extend:SF
+	 (match_operand:BF 1 "int_reg_operand" "r")))
+   (clobber (match_scratch:SI 2 "=r"))]
+  "TARGET_FLOAT16"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(unspec:SI [(match_dup 1)] UNSPEC_BF_SHIFT_LEFT_16BIT))
+   (set (match_dup 3)
+	(match_dup 2))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (SImode);
+
+  operands[3] = gen_lowpart (SImode, operands[0]);
+}
+  [(set_attr "length" "8")])
+
+;; Shift a BFmode value left 16 bits, creating a SFmode value that
+;; can be stored directly.
+(define_insn "*bf_shift_left_16bit"
+  [(set (match_operand:SI 0 "int_reg_operand" "=r")
+	(unspec:SI [(match_operand:BF 1 "int_reg_operand" "r")]
+		   UNSPEC_BF_SHIFT_LEFT_16BIT))]
+  "TARGET_FLOAT16"
+  "slwi %0,%1,16")
 
 ;; Convert a SFmode scalar represented as DFmode to elements 0 and 1 of
 ;; V4SFmode.
@@ -273,27 +317,6 @@
   "VECTOR_UNIT_VSX_P (SFmode)"
   "xscvdpspn %x0,%x1"
   [(set_attr "type" "fp")])
-
-;; Convert element 0 of a V4SFmode to scalar SFmode (which on the
-;; PowerPC uses the DFmode encoding).
-(define_insn "xscvspdpn_sf"
-  [(set (match_operand:SF 0 "vsx_register_operand" "=wa")
-	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
-		   UNSPEC_VSX_CVSPDPN))]
-  "TARGET_XSCVSPDPN"
-  "xscvspdpn %x0,%x1"
-  [(set_attr "type" "fp")])
-
-;; Vector shift left by 32 bits to get the 16-bit floating point value
-;; into the upper 32 bits for the conversion.
-(define_insn "<fp16_vector8>_shift_left_32bit"
-  [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa")
-        (unspec:<FP16_VECTOR8>
-	 [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
-	 UNSPEC_FP16_SHIFT_LEFT_32BIT))]
-  ""
-  "xxsldwi %x0,%x1,%x1,1"
-  [(set_attr "type" "vecperm")])
 
 ;; Convert SFmode/DFmode to BFmode.
 ;; 2 instructions are generated:
