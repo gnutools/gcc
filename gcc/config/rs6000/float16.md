@@ -234,7 +234,7 @@
 	(float_extend:SFDF
 	 (match_operand:BF 1 "vsx_register_operand" "v")))
    (clobber (match_scratch:V8BF 2 "=v"))]
-  "TARGET_BFLOAT16_HW && !TARGET_BFLOAT16_COMBINE"
+  "TARGET_BFLOAT16_HW"
   "#"
   "&& 1"
   [(pc)]
@@ -281,36 +281,17 @@
 	(unspec:SF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
 		   UNSPEC_VSX_CVSPDPN))]
   "TARGET_XSCVSPDPN"
-{
-  return (TARGET_BFLOAT16_VECTOR
-	  ? "xvcvspdp %x0,%x1"
-	  : "xscvspdpn %x0,%x1");
-}
+  "xscvspdpn %x0,%x1"
   [(set_attr "type" "fp")])
 
 ;; Vector shift left by 32 bits to get the 16-bit floating point value
 ;; into the upper 32 bits for the conversion.
-(define_expand "<fp16_vector8>_shift_left_32bit"
-  [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand")
-        (unspec:<FP16_VECTOR8>
-	 [(match_operand:FP16_HW 1 "vsx_register_operand")]
-	 UNSPEC_FP16_SHIFT_LEFT_32BIT))])
-
-(define_insn "*<fp16_vector8>_shift_left_32bit_new"
-  [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=v")
-        (unspec:<FP16_VECTOR8>
-	 [(match_operand:FP16_HW 1 "vsx_register_operand" "v")]
-	 UNSPEC_FP16_SHIFT_LEFT_32BIT))]
-  "TARGET_BFLOAT16_VECTOR"
-  "vspltw %0,%1,1"
-  [(set_attr "type" "vecperm")])
-
-(define_insn "*<fp16_vector8>_shift_left_32bit_orig"
+(define_insn "<fp16_vector8>_shift_left_32bit"
   [(set (match_operand:<FP16_VECTOR8> 0 "vsx_register_operand" "=wa")
         (unspec:<FP16_VECTOR8>
 	 [(match_operand:FP16_HW 1 "vsx_register_operand" "wa")]
 	 UNSPEC_FP16_SHIFT_LEFT_32BIT))]
-  "!TARGET_BFLOAT16_VECTOR"
+  ""
   "xxsldwi %x0,%x1,%x1,1"
   [(set_attr "type" "vecperm")])
 
