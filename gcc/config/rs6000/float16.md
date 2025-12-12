@@ -115,7 +115,7 @@
   operands[2] = GEN_INT (real_words[0]);
   return (vsx_register_operand (operands[0], <MODE>mode)
 	  ? "xxspltiw %x0,%2"
-	  : "pli %0,%2");
+	  : "li %0,%2");
 }
   [(set_attr "type"     "veclogical, vecsimple, *,  *")
    (set_attr "prefixed" "no,         yes,       no, yes")])
