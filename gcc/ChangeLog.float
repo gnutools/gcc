@@ -1,3 +1,18 @@
+==================== Branch work231-float, patch #220 ====================
+
+Add -mbfloat16-vector for testing.
+
+2025-12-11  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (xscvspdpn_sf): If -mbfloat16-vector,
+	generate vector code, not scalar.
+	(<fp16_vector8>_shift_left_32bit): Likewise.
+	(<fp16_vector8>_shift_left_32bit_new): Likewise.
+	(<fp16_vector8>_shift_left_32bit_orig): Likewise.
+	* config/rs6000/rs6000.opt (-mbfloat16-vector): New debug option.
+
 ==================== Branch work231-float, patch #210 ====================
 
 Add _Float16 and __bfloat16 tests.
