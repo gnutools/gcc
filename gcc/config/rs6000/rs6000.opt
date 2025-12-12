@@ -647,6 +647,10 @@ mbfloat16-vector
 Target Var(TARGET_BFLOAT16_VECTOR) Init(0) Save Undocumented
 Change the code for bfloat16 conversions.
 
+mbfloat16-combine
+Target Var(TARGET_BFLOAT16_COMBINE) Init(0) Save Undocumented
+Change the code for bfloat16 conversions #2.
+
 ; Documented parameters
 
 -param=rs6000-vect-unroll-limit=

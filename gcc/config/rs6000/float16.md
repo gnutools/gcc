@@ -234,7 +234,7 @@
 	(float_extend:SFDF
 	 (match_operand:BF 1 "vsx_register_operand" "v")))
    (clobber (match_scratch:V8BF 2 "=v"))]
-  "TARGET_BFLOAT16_HW"
+  "TARGET_BFLOAT16_HW && !TARGET_BFLOAT16_COMBINE"
   "#"
   "&& 1"
   [(pc)]
