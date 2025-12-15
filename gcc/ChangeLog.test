@@ -1,0 +1,14 @@
+==================== Branch work232-test, baseline ====================
+
+2025-12-15   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.test and update REVISION.
+
+2025-12-15  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.test: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
