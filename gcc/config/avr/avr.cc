@@ -6917,27 +6917,55 @@ avr_out_cmp_ext (rtx xop[], rtx_code code, int *plen)
 }
 
 
-/* Generate asm equivalent for various shifts.  This only handles cases
-   that are not already carefully hand-optimized in ?sh<mode>3_out.
+/* Helper for the next function:  Shift register REG by 1 bit position
+   according to the shift CODE of ASHIFT, LSHIFTRT or ASHIFTRT.
+   PLEN == 0: Asm output respective shift instruction(s).
+   PLEN != 0: Add the length of the sequence in words to *PLEN.  */
 
-   OPERANDS[0] resp. %0 in TEMPL is the operand to be shifted.
+static void
+avr_out_shift_1 (rtx_code code, rtx reg, int *plen)
+{
+  const int n_bytes = GET_MODE_SIZE (GET_MODE (reg));
+  const int dir = code == ASHIFT ? 1 : -1;
+  const int regno = REGNO (reg);
+  const int first = code == ASHIFT ? 0 : n_bytes - 1;
+  for (int i = 0; i < n_bytes; ++i)
+    {
+      rtx reg8 = all_regs_rtx[regno + first + i * dir];
+      if (code == ASHIFT)
+	avr_asm_len (i == 0 ? "lsl %0" : "rol %0", &reg8, plen, 1);
+      else if (code == LSHIFTRT)
+	avr_asm_len (i == 0 ? "lsr %0" : "ror %0", &reg8, plen, 1);
+      else if (code == ASHIFTRT)
+	avr_asm_len (i == 0 ? "asr %0" : "ror %0", &reg8, plen, 1);
+      else
+	gcc_unreachable ();
+    }
+}
+
+
+/* Generate asm code to perform a shift of code CODE on register OPERANDS[0].
+   This only handles cases that are not already carefully hand-optimized
+   in ?sh<mode>3_out.  Always returns "".
+
    OPERANDS[2] is the shift count as CONST_INT, MEM or REG.
    OPERANDS[3] is a QImode scratch register from LD regs if
-               available and SCRATCH, otherwise (no scratch available)
-
-   TEMPL is an assembler template that shifts by one position.
-   T_LEN is the length of this template.
+	       available and SCRATCH, otherwise (no scratch available).
    PLEN != 0: Set *PLEN to the length of the sequence in words.
    PLEN == 0: Output instructions.  */
 
-void
-out_shift_with_cnt (const char *templ, rtx_insn *insn, rtx operands[],
-		    int *plen, int t_len)
+static const char*
+avr_out_shift_with_cnt (rtx_code code, rtx_insn *insn, rtx operands[],
+			int *plen)
 {
   bool second_label = true;
   bool saved_in_tmp = false;
   bool use_zero_reg = false;
-  rtx op[5];
+  bool tail_bits = false;
+  const int t_len = GET_MODE_SIZE (GET_MODE (operands[0]));
+  const int regno = REGNO (operands[0]);
+  const int tail_regno = regno + (code == ASHIFT ? t_len - 1 : 0);
+  rtx op[6];
 
   op[0] = operands[0];
   op[1] = operands[1];
@@ -6961,25 +6989,47 @@ out_shift_with_cnt (const char *templ, rtx_insn *insn, rtx operands[],
       int max_len = 10;  /* If larger than this, always use a loop.  */
 
       if (count <= 0)
-	return;
+	return "";
 
-      if (count < 8 && !scratch)
+      if (count < 8 && tail_regno >= REG_16)
+	tail_bits = true;
+      else if (count < 8 && !scratch)
 	use_zero_reg = true;
 
       if (optimize_size)
-	max_len = t_len + (scratch ? 3 : (use_zero_reg ? 4 : 5));
+	max_len = t_len + (scratch || tail_bits ? 3 : (use_zero_reg ? 4 : 5));
 
       if (t_len * count <= max_len)
 	{
 	  /* Output shifts inline with no loop - faster.  */
 
 	  while (count-- > 0)
-	    avr_asm_len (templ, op, plen, t_len);
+	    avr_out_shift_1 (code, op[0], plen);
 
-	  return;
+	  return "";
 	}
 
-      if (scratch)
+      if (tail_bits)
+	{
+	  /* The tail register (the last one in a multi-byte shift) is
+	     an upper register, so we can insert a stop mask into it.
+	     This will cost 2 instructions, but the loop body is one
+	     instruction shorter.  That yields the same code size like
+	     the "scratch" case but saves count-1 cycles.
+	     The loop branch is a BRCC that sees count-1 zeros and then
+	     a one to drop out of the loop.  */
+
+	  op[3] = all_regs_rtx[tail_regno];
+	  op[4] = gen_int_mode (code == ASHIFT
+				? 0xff >> count
+				: 0xff << count, QImode);
+	  op[5] = gen_int_mode (code == ASHIFT
+				? 0x80 >> (count - 1)
+				: 0x01 << (count - 1), QImode);
+	  avr_asm_len ("andi %3,%4" CR_TAB
+		       "ori %3,%5", op, plen, 2);
+	}
+      else if (scratch)
 	{
 	  avr_asm_len ("ldi %3,%2", op, plen, 1);
 	}
@@ -7035,16 +7085,25 @@ out_shift_with_cnt (const char *templ, rtx_insn *insn, rtx operands[],
     avr_asm_len ("rjmp 2f", op, plen, 1);
 
   avr_asm_len ("1:", op, plen, 0);
-  avr_asm_len (templ, op, plen, t_len);
+  avr_out_shift_1 (code, op[0], plen);
 
   if (second_label)
     avr_asm_len ("2:", op, plen, 0);
 
-  avr_asm_len (use_zero_reg ? "lsr %3" : "dec %3", op, plen, 1);
-  avr_asm_len (second_label ? "brpl 1b" : "brne 1b", op, plen, 1);
+  if (tail_bits)
+    {
+      avr_asm_len ("brcc 1b", op, plen, 1);
+    }
+  else
+    {
+      avr_asm_len (use_zero_reg ? "lsr %3" : "dec %3", op, plen, 1);
+      avr_asm_len (second_label ? "brpl 1b" : "brne 1b", op, plen, 1);
+    }
 
   if (saved_in_tmp)
     avr_asm_len ("mov %3,%4", op, plen, 1);
+
+  return "";
 }
 
 
@@ -7122,9 +7181,7 @@ ashlqi3_out (rtx_insn *insn, rtx operands[], int *plen)
   else if (CONSTANT_P (operands[2]))
     fatal_insn ("internal compiler error.  Incorrect shift:", insn);
 
-  out_shift_with_cnt ("lsl %0",
-		      insn, operands, plen, 1);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFT, insn, operands, plen);
 }
 
 
@@ -7389,9 +7446,7 @@ ashlhi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	} // switch
     }
 
-  out_shift_with_cnt ("lsl %A0" CR_TAB
-		      "rol %B0", insn, operands, plen, 2);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFT, insn, operands, plen);
 }
 
 
@@ -7455,10 +7510,7 @@ avr_out_ashlpsi3 (rtx_insn *insn, rtx *op, int *plen)
 	}
     }
 
-  out_shift_with_cnt ("lsl %A0" CR_TAB
-		      "rol %B0" CR_TAB
-		      "rol %C0", insn, op, plen, 3);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFT, insn, op, plen);
 }
 
 
@@ -7604,11 +7656,7 @@ ashlsi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	}
     }
 
-  out_shift_with_cnt ("lsl %A0" CR_TAB
-		      "rol %B0" CR_TAB
-		      "rol %C0" CR_TAB
-		      "rol %D0", insn, operands, plen, 4);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFT, insn, operands, plen);
 }
 
 
@@ -7659,9 +7707,7 @@ ashrqi3_out (rtx_insn *insn, rtx operands[], int *plen)
   else if (CONSTANT_P (operands[2]))
     fatal_insn ("internal compiler error.  Incorrect shift:", insn);
 
-  out_shift_with_cnt ("asr %0",
-		      insn, operands, plen, 1);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFTRT, insn, operands, plen);
 }
 
 
@@ -7818,9 +7864,7 @@ ashrhi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	} // switch
     }
 
-  out_shift_with_cnt ("asr %B0" CR_TAB
-		      "ror %A0", insn, operands, plen, 2);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFTRT, insn, operands, plen);
 }
 
 
@@ -7915,10 +7959,7 @@ avr_out_ashrpsi3 (rtx_insn *insn, rtx *op, int *plen)
 	} /* switch */
     }
 
-  out_shift_with_cnt ("asr %C0" CR_TAB
-		      "ror %B0" CR_TAB
-		      "ror %A0", insn, op, plen, 3);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFTRT, insn, op, plen);
 }
 
 
@@ -8052,11 +8093,7 @@ ashrsi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	} // switch
     }
 
-  out_shift_with_cnt ("asr %D0" CR_TAB
-		      "ror %C0" CR_TAB
-		      "ror %B0" CR_TAB
-		      "ror %A0", insn, operands, plen, 4);
-  return "";
+  return avr_out_shift_with_cnt (ASHIFTRT, insn, operands, plen);
 }
 
 /* 8-bit logic shift right ((unsigned char)x >> i) */
@@ -8133,9 +8170,7 @@ lshrqi3_out (rtx_insn *insn, rtx operands[], int *plen)
   else if (CONSTANT_P (operands[2]))
     fatal_insn ("internal compiler error.  Incorrect shift:", insn);
 
-  out_shift_with_cnt ("lsr %0",
-		      insn, operands, plen, 1);
-  return "";
+  return avr_out_shift_with_cnt (LSHIFTRT, insn, operands, plen);
 }
 
 
@@ -8339,9 +8374,7 @@ lshrhi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	}
     }
 
-  out_shift_with_cnt ("lsr %B0" CR_TAB
-		      "ror %A0", insn, operands, plen, 2);
-  return "";
+  return avr_out_shift_with_cnt (LSHIFTRT, insn, operands, plen);
 }
 
 
@@ -8406,10 +8439,7 @@ avr_out_lshrpsi3 (rtx_insn *insn, rtx *op, int *plen)
 	} /* switch */
     }
 
-  out_shift_with_cnt ("lsr %C0" CR_TAB
-		      "ror %B0" CR_TAB
-		      "ror %A0", insn, op, plen, 3);
-  return "";
+  return avr_out_shift_with_cnt (LSHIFTRT, insn, op, plen);
 }
 
 
@@ -8555,11 +8585,7 @@ lshrsi3_out (rtx_insn *insn, rtx operands[], int *plen)
 	} // switch
     }
 
-  out_shift_with_cnt ("lsr %D0" CR_TAB
-		      "ror %C0" CR_TAB
-		      "ror %B0" CR_TAB
-		      "ror %A0", insn, operands, plen, 4);
-  return "";
+  return avr_out_shift_with_cnt (LSHIFTRT, insn, operands, plen);
 }
 
 

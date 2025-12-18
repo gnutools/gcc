@@ -1,3 +1,584 @@
+2025-12-17  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/122343
+	* cselib.cc (cselib_redundant_set_p): Return false for volatile
+	memory source or destination.
+
+2025-12-17  Georg-Johann Lay  <avr@gjlay.de>
+
+	* config/avr/avr.cc (avr_out_shift_with_cnt): Tweak
+	execution time by count-1 cycles in some cases.
+
+2025-12-17  Georg-Johann Lay  <avr@gjlay.de>
+
+	* config/avr/avr-protos.h (out_shift_with_cnt): Remove.
+	* config/avr/avr.cc (avr_out_shift_with_cnt): New static
+	function from out_shift_with_cnt: Pass shift rtx_code instead
+	of asm template.
+	(avr_out_shift_1): New static helper function.
+	(ashlqi3_out, ashlhi3_out, avr_out_ashlpsi3, ashlsi3_out)
+	(ashrqi3_out, ashrhi3_out, avr_out_ashrpsi3, ashrsi3_out)
+	(lshrqi3_out, lshrhi3_out, avr_out_lshrpsi3, lshrsi3_out):
+	Adjust avr_out_shift_with_cnt to new interface.
+
+2025-12-17  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	* config/riscv/sync.md (atomic compare and set): Reorder patterns
+	so the stricter pattern comes first.
+
+2025-12-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/123155
+	* config/i386/xmmintrin.h (_mm_maskmove_si64): Rename offset automatic
+	variable to __offset.
+
+2025-12-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/123155
+	* config/i386/avx10_2bf16intrin.h (_mm512_roundscale_pbh,
+	_mm512_mask_roundscale_pbh, _mm512_maskz_roundscale_pbh,
+	_mm256_roundscale_pbh, _mm256_mask_roundscale_pbh,
+	_mm256_maskz_roundscale_pbh, _mm_roundscale_pbh,
+	_mm_mask_roundscale_pbh, _mm_maskz_roundscale_pbh,
+	_mm512_reduce_pbh, _mm512_mask_reduce_pbh, _mm512_maskz_reduce_pbh,
+	_mm256_reduce_pbh, _mm256_mask_reduce_pbh, _mm256_maskz_reduce_pbh,
+	_mm_reduce_pbh, _mm_mask_reduce_pbh, _mm_maskz_reduce_pbh): Rename
+	B argument to __B.
+
+2025-12-17  Umesh Kalvakuntla  <umesh.kalvakuntla@amd.com>
+
+	* common/config/i386/cpuinfo.h (get_amd_cpu): Add znver6 1Ah
+	family model numbers.
+	(get_available_features): Set feature AVX512BMM.
+	* common/config/i386/i386-common.cc (OPTION_MASK_ISA2_AVX512BMM_SET):
+	New macro.
+	(OPTION_MASK_ISA2_AVX512BMM_UNSET): New macro.
+	(OPTION_MASK_ISA2_AVX512BW_UNSET): Unset AVX512BMM.
+	(ix86_handle_option): Likewise.
+	* common/config/i386/i386-cpuinfo.h (enum processor_subtypes):
+	Add AMDFAM1AH_ZNVER6.
+	(enum processor_features): Add FEATURE_AVX512BMM.
+	* common/config/i386/i386-isas.h: Likewise.
+	* config.gcc: Add avx512bmmintrin.h, avx512bmmvlintrin.h,
+	znver6.
+	* config/i386/cpuid.h (bit_AVX512BMM): New macro.
+	* config/i386/driver-i386.cc (host_detect_local_cpu): Likewise.
+	* config/i386/i386-builtin.def (BDESC): Add AVX512BMM builtins.
+	* config/i386/i386-c.cc (ix86_target_macros_internal): Likewise.
+	* config/i386/i386-isa.def (AVX512BMM): Likewise.
+	* config/i386/i386-options.cc (m_ZNVER6): New macro.
+	(m_ZNVER): Add m_ZNVER6.
+	(processor_cost_table): Uses znver5_cost table for
+	PROCESSOR_ZNVER6 for now.
+	(ix86_valid_target_attribute_inner_p): Likewise.
+	* config/i386/i386.cc (ix86_reassociation_width): Likewise.
+	* config/i386/i386.h (enum processor_type): Likewise.
+	* config/i386/i386.md: Likewise.
+	* config/i386/i386.opt: Likewise.
+	* config/i386/i386.opt.urls: Likewise.
+	* config/i386/immintrin.h: Likewise.
+	* config/i386/sse.md (avx512bmm_vbmacor16x16x16_<mode>): New
+	define_insn.
+	(avx512bmm_vbmacxor16x16x16_<mode>): Likewise.
+	(avx512bmm_vbitrevb_<mode>_mask): Likewise.
+	(avx512bmm_vbitrevb_<mode>): Likewise.
+	* config/i386/x86-tune-sched.cc (ix86_issue_rate): Likewise.
+	(ix86_adjust_cost): Likewise.
+	* config/i386/x86-tune.def (X86_TUNE_FUSE_ALU_AND_BRANCH): Add
+	m_ZNVER6.
+	(X86_TUNE_FUSE_MOV_AND_ALU): Likewise.
+	(X86_TUNE_USE_SCATTER_2PARTS): Likewise.
+	(X86_TUNE_USE_SCATTER_4PARTS): Likewise.
+	(X86_TUNE_USE_SCATTER_8PARTS): Likewise.
+	(X86_TUNE_AVOID_256FMA_CHAINS): Likewise.
+	(X86_TUNE_AVOID_512FMA_CHAINS): Likewise.
+	(X86_TUNE_AVX512_MOVE_BY_PIECES): Likewise.
+	* doc/extend.texi: Likewise.
+	* doc/invoke.texi: Likewise.
+	* config/i386/avx512bmmintrin.h: New file.
+	* config/i386/avx512bmmvlintrin.h: New file.
+
+2025-12-16  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* config/aarch64/aarch64.cc
+	(aarch64_function_abi): Use checking assert.
+	(aarch64_fndecl_abi): Test for the availability of the
+	machine content before trying to look up the cached PCS.
+	Use a checking assert.
+
+2025-12-16  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* common.opt.urls: Regenerate.
+
+2025-12-16  Takayuki 'January June' Suwa  <jjsuwa_sys3175@yahoo.co.jp>
+
+	* config/xtensa/xtensa.cc (xtensa_expand_scc_SALT):
+	New sub-function that emits the SALT/SALTU instructions.
+	(xtensa_expand_scc): Change the part related to the SALT/SALTU
+	instructions to a call to the above sub-function.
+
+2025-12-16  Takayuki 'January June' Suwa  <jjsuwa_sys3175@yahoo.co.jp>
+
+	* config/xtensa/xtensa.cc
+	(xtensa_expand_block_set_libcall,
+	xtensa_expand_block_set_unrolled_loop,
+	xtensa_expand_block_set_small_loop, xtensa_call_tls_desc):
+	Change the return statement to pass the return value of
+	end_sequence() directly without going through a variable, and
+	remove the definition of that variable.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+	    Indu Bhagat  <indu.bhagat@oracle.com>
+
+	* config/aarch64/aarch64.md (addg): Update pattern to use
+	addg/subg instructions.
+	(stg): Update pattern.
+	(st2g): New pattern.
+	(tag_memory): Likewise.
+	(compose_tag): Likewise.
+	(irq): Update pattern to accept xzr register.
+	(gmi): Likewise.
+	(UNSPECV_TAG_SPACE): Define.
+	* config/aarch64/aarch64.cc (AARCH64_MEMTAG_GRANULE_SIZE):
+	Define.
+	(AARCH64_MEMTAG_TAG_BITSIZE): Likewise.
+	(aarch64_override_options_internal): Error out if MTE instructions
+	are not available.
+	(aarch64_post_cfi_startproc): Emit .cfi_mte_tagged_frame.
+	(aarch64_can_tag_addresses): Add MEMTAG specific handling.
+	(aarch64_memtag_tag_bitsize): New function
+	(aarch64_memtag_granule_size): Likewise.
+	(aarch64_memtag_insert_random_tag): Likwise.
+	(aarch64_memtag_add_tag): Likewise.
+	(aarch64_memtag_extract_tag): Likewise.
+	(aarch64_granule16_memory_address_p): Likewise.
+	(aarch64_emit_stxg_insn): Likewise.
+	(aarch64_memtag_tag_memory_via_loop): New definition.
+	(aarch64_expand_tag_memory): Likewise.
+	(aarch64_check_memtag_ops): Likewise.
+	(TARGET_MEMTAG_TAG_BITSIZE): Likewise.
+	(TARGET_MEMTAG_GRANULE_SIZE): Likewise.
+	(TARGET_MEMTAG_INSERT_RANDOM_TAG): Likewise.
+	(TARGET_MEMTAG_ADD_TAG): Likewise.
+	(TARGET_MEMTAG_EXTRACT_TAG): Likewise.
+	* config/aarch64/aarch64-builtins.cc
+	(aarch64_expand_builtin_memtag): Update set tag builtin logic.
+	* config/aarch64/aarch64-linux.h: Pass memtag-stack sanitizer
+	specific options to the linker.
+	* config/aarch64/aarch64-protos.h
+	(aarch64_granule16_memory_address_p): New prototype.
+	(aarch64_check_memtag_ops): Likewise.
+	(aarch64_expand_tag_memory): Likewise.
+	* config/aarch64/constraints.md (Umg): New memory constraint.
+	(Uag): New constraint.
+	(Ung): Likewise.
+	* config/aarch64/predicates.md (aarch64_memtag_tag_offset):
+	Refactor it.
+	(aarch64_granule16_imm6): Rename from aarch64_granule16_uimm6 and
+	refactor it.
+	(aarch64_granule16_memory_operand): New constraint.
+	* config/aarch64/iterators.md (MTE_PP): New code iterator to be
+	used for mte instructions.
+	(stg_ops): New code attributes.
+	(st2g_ops): Likewise.
+	(mte_name): Likewise.
+	* config/aarch64/aarch64.opt (aarch64-tag-memory-loop-threshold):
+	New parameter.
+	* doc/invoke.texi: Update documentation.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+	    Indu Bhagat  <indu.bhagat@oracle.com>
+
+	* asan.cc (handle_builtin_stack_restore): Accommodate MEMTAG
+	sanitizer.
+	(handle_builtin_alloca): Expand differently if MEMTAG sanitizer.
+	(get_mem_refs_of_builtin_call): Include MEMTAG along with
+	HWASAN.
+	(memtag_sanitize_stack_p): New definition.
+	(memtag_sanitize_allocas_p): Likewise.
+	(memtag_memintrin): Likewise.
+	(hwassist_sanitize_p): Likewise.
+	(hwassist_sanitize_stack_p): Likewise.
+	(report_error_func): Include MEMTAG along with HWASAN.
+	(build_check_stmt): Likewise.
+	(instrument_derefs): MEMTAG too does not deal with globals yet.
+	(instrument_builtin_call): Include MEMTAG along with HWASAN.
+	(maybe_instrument_call): Likewise.
+	(asan_expand_mark_ifn): Likewise.
+	(asan_expand_check_ifn): Likewise.
+	(asan_expand_poison_ifn): Expand differently if MEMTAG sanitizer.
+	(asan_instrument): Include MEMTAG along with HWASAN.
+	(hwasan_emit_prologue): Expand differently if MEMTAG sanitizer.
+	(hwasan_emit_untag_frame): Likewise.
+	* asan.h (memtag_sanitize_stack_p): New declaration.
+	(memtag_sanitize_allocas_p): Likewise.
+	(hwassist_sanitize_p): Likewise.
+	(hwassist_sanitize_stack_p): Likewise.
+	(asan_sanitize_use_after_scope): Include MEMTAG along with
+	HWASAN.
+	* cfgexpand.cc (align_local_variable): Likewise.
+	(expand_one_stack_var_at): Likewise.
+	(expand_stack_vars): Likewise.
+	(expand_one_stack_var_1): Likewise.
+	(init_vars_expansion): Likewise.
+	(expand_used_vars): Likewise.
+	(pass_expand::execute): Likewise.
+	* gimplify.cc (asan_poison_variable): Likewise.
+	* internal-fn.cc (expand_HWASAN_ALLOCA_POISON): New definition.
+	(expand_HWASAN_ALLOCA_UNPOISON): Expand differently if MEMTAG
+	sanitizer.
+	(expand_HWASAN_MARK): Likewise.
+	* internal-fn.def (HWASAN_ALLOCA_POISON): Define new.
+	* params.opt: Document new param.
+	* sanopt.cc (pass_sanopt::execute): Include MEMTAG along with
+	HWASAN.
+	* gcc.cc (sanitize_spec_function): Add check for memtag-stack.
+	* doc/tm.texi: Regenerate.
+	* target.def (extract_tag): Update documentation.
+	(add_tag): Likewise.
+	(insert_random_tag): Likewise.
+
+2025-12-16  Indu Bhagat  <indu.bhagat@oracle.com>
+	    Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+
+	* builtins.def: Adjust the macro to include the new
+	SANTIZIE_MEMTAG_STACK.
+	* flag-types.h (enum sanitize_code): Add new enumerator for
+	SANITIZE_MEMTAG and SANITIZE_MEMTAG_STACK.
+	* opts.cc (finish_options): memtag-stack sanitizer conflicts with
+	hwaddress and address sanitizers.
+	(sanitizer_opts): Add new memtag-stack sanitizer.
+	(parse_sanitizer_options): memtag-stack sanitizer cannot recover.
+	* params.opt: Add new params for memtag-stack sanitizer.
+	* doc/invoke.texi: Update documentation.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+
+	* target-insns.def (compose_tag): New target instruction.
+	* doc/md.texi (compose_tag): Add documentation.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+
+	* target-insns.def (tag_memory): New target instruction.
+	* doc/md.texi (tag_memory): Add documentation.
+
+2025-12-16  Jennifer Schmitz  <jschmitz@nvidia.com>
+
+	* config/aarch64/aarch64.md: Include olympus.md.
+	* config/aarch64/olympus.md: New file.
+	* config/aarch64/tuning_models/olympus.h: Add dispatch
+	constraints and enable dispatch scheduling.
+
+2025-12-16  Maxim Kuvyrkov  <maxim.kuvyrkov@linaro.org>
+
+	* haifa-sched.cc (choose_ready): Don't require dfa_lookahead <= 0
+	to schedule SCHED_GROUP_P insns first.
+
+2025-12-16  Richard Biener  <rguenther@suse.de>
+
+	PR ipa/122456
+	* cgraph.cc (cgraph_edge::resolve_speculation): Handle
+	a NULL symtab_node::get (callee_decl).
+
+2025-12-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/123110
+	* tree-cfgcleanup.cc (maybe_remove_forwarder_block): Add back
+	check for eh landing pad or non-local dest on the dest.
+
+2025-12-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/123111
+	* tree-cfg.cc (ifconvertable_edge): New function.
+	(make_forwarders_with_degenerate_phis):	Add skip_ifcvtable argument,
+	check ifconvertable_edge if skip_ifcvtable is true.
+	* tree-cfg.h (make_forwarders_with_degenerate_phis): New argument
+	with default of false.
+	* tree-cfgcleanup.cc (execute_cleanup_cfg_post_optimizing): Update
+	argument to make_forwarders_with_degenerate_phis.
+
+2025-12-15  Martin Jambor  <mjambor@suse.cz>
+
+	PR ipa/107666
+	* common.opt (fspeculatively-call-stored-functions): New.
+	* cgraph.h (cgraph_simple_indirect_info): New fields rec_type and
+	fld_offset.
+	* ipa-prop.h (ipa_analyze_var_static_initializer): Declare.
+	(ipa_dump_noted_record_fnptrs): Likewise.
+	(ipa_debug_noted_record_fnptrs): Likewise.
+	(ipa_single_noted_fnptr_in_record): Likewise.
+	(ipa_free_noted_fnptr_calls): Likewise.
+	* ipa-cp.cc (ipcp_generate_summary): Call
+	ipa_analyze_var_static_initializer on each varbool node with a static
+	initializer.
+	* ipa-devirt.cc (struct devirt_stats): New type.
+	(devirt_target_ok_p): New function.
+	(ipa_devirt): Move statistics counters to the new structure.  dump
+	noted function pointers stored in records.  Check for edge hotness
+	first and for odr_types only for polymorphic edges.  Moved a number of
+	checks to devirt_target_ok_p.  Also add speculative direct calls for
+	non-polymorphic indirect ones when ipa_single_noted_fnptr_in_record
+	finds a likely target.  Call ipa_free_noted_fnptr_calls.
+	(pass_ipa_devirt::gate): Also check the new flag.
+	* ipa-prop.cc (noted_fnptr_store): New type.
+	(struct noted_fnptr_hasher): Likewise.
+	(noted_fnptr_hasher::hash): New function.
+	(noted_fnptr_hasher::equal): Likewise.
+	(noted_fnptrs_in_records): New.
+	(is_func_ptr_from_record): New function.
+	(ipa_analyze_indirect_call_uses): Also simple create indirect info
+	structures with fnptr_loaded_from_record set.
+	(note_fnptr_in_record): New function.
+	(ipa_dump_noted_record_fnptrs): Likewise.
+	(ipa_debug_noted_record_fnptrs): Likewise.
+	(ipa_single_noted_fnptr_in_record): Likewise.
+	(ipa_free_noted_fnptr_calls): Likewise.
+	(ipa_analyze_stmt_uses): Also look for stroes of function pointers to
+	record structures.
+	(ipa_analyze_var_static_initializer): New function.
+	(ipa_write_indirect_edge_info): Also stream fnptr_loaded_from_record
+	indirec infos.
+	(ipa_read_indirect_edge_info): Likewise.
+	(ipa_prop_write_jump_functions): Also stream the contents of
+	noted_fnptrs_in_records.
+	(ipa_prop_read_section): Likewise.
+	* opts.cc (default_options_table): Also turn on
+	OPT_fspeculatively_call_stored_functions at -O2.
+	(common_handle_option): Turn flag_speculatively_call_stored_functions
+	when using profile feedback.
+	* doc/invoke.texi (-fspeculatively-call-stored-functions): New.
+
+2025-12-15  Martin Jambor  <mjambor@suse.cz>
+
+	* cgraph.h (cgraph_node): Adjust the comment of member function
+	create_indirect_edge.
+	(enum cgraph_indirect_info_kind): New.
+	(cgraph_indirect_call_info): Convert into a base class.
+	(cgraph_simple_indirect_info): New.
+	(cgraph_polymorphic_indirect_info): Likewise.
+	(usable_polymorphic_info_p): Likewise.
+	(is_a_helper <cgraph_simple_indirect_info *>::test): Likewise.
+	(is_a_helper <cgraph_polymorphic_indirect_info *>::test): Likewise.
+	(cgraph_allocate_init_indirect_info): Remove declaration.
+	(ipa_polymorphic_call_context::ipa_polymorphic_call_context): Use the
+	appropriate derived type of indirect info.
+	* cgraph.cc (cgraph_allocate_init_indirect_info): Removed.
+	(cgraph_node::create_indirect_edge): Create an appropriate type of
+	indirect_info.
+	(cgraph_node::dump): Dump indirect info using its dump function.
+	(cgraph_indirect_call_info::dump): New function.
+	(cgraph_indirect_call_info::debug): Likewise.
+	* cgraphclones.cc (cgraph_edge::clone): Create an appropriate type of
+	indirect_info.
+	* cgraphunit.cc (analyze_functions): Use the appropriate derived type
+	of indirect info.
+	* ipa-cp.cc (initialize_node_lattices): Adjust the check for
+	polymorphic indirect info.
+	(ipa_get_indirect_edge_target_1): Use the appropriate derived types of
+	indirect info.
+	(ipcp_discover_new_direct_edges): Likewise.
+	* ipa-devirt.cc (ipa_devirt): Use the polymorphis derived type of
+	indirect info and check that it is usable.
+	* ipa-inline.cc (dump_inline_stats): Adjust the check for polymorphic
+	indirect info.
+	* ipa-profile.cc (ipa_profile): Likewise and check usability.
+	* ipa-prop.cc (ipa_print_node_jump_functions): Dump indirect info
+	using its dumping member function.
+	(ipa_note_param_call): Removed.
+	(ipa_analyze_indirect_call_uses): Use the appropriate derived type of
+	indirect info, set all fields of indirect info separately rather than
+	relying on ipa_note_param_call.
+	(ipa_analyze_virtual_call_uses): Use the polymorphis derived type of
+	indirect info and check that it is usable, set all fields of indirect
+	info separately rather than relying on ipa_note_param_call.
+	(ipa_analyze_call_uses): Use the appropriate derived type of indirect
+	info.
+	(ipa_make_edge_direct_to_target): Use the appropriate derived type of
+	indirect info.  Remove wrong note that member_ptr check was not
+	needed.  Adjust check for polymorphic call when dumping.
+	(try_make_edge_direct_simple_call): Use the appropriate derived type
+	of indirect info.
+	(try_make_edge_direct_virtual_call): Use the polymorphis derived type
+	of indirect info and check that it is usable.
+	(update_indirect_edges_after_inlining): Use the appropriate derived
+	type of indirect info.  Define local variables only before their first
+	use.
+	(ipa_write_indirect_edge_info): Also stream indirect info kind.  Use
+	the appropriate derived type of indirect info.
+	(ipa_read_indirect_edge_info): Check that the streamed in indirect
+	info kind matches rthe structure at hand.  Use the appropriate derived
+	type of indirect info.
+	* ipa-utils.h (possible_polymorphic_call_targets): Use the
+	polymorphis derived type of indirect info.  Assert it is usable.
+	(dump_possible_polymorphic_call_targets): Use the polymorphis
+	derived type of indirect info and check it is usable.
+	(possible_polymorphic_call_target_p): Likewise.
+	* ipa.cc (symbol_table::remove_unreachable_nodes): Use
+	usable_polymorphic_info_p.
+	* lto-cgraph.cc (lto_output_edge): Stream indirect info kind.
+	(compute_ltrans_boundary): Use usable_polymorphic_info_p.
+	(input_edge): Move definition of ecf_flags before its first use.
+	Pass true as the last parameter to create_indirect_edge.  Stream
+	indirect info kind and create a corresponding type to hold the
+	information.
+	* trans-mem.cc (ipa_tm_insert_gettmclone_call): Use the
+	polymorphis derived type of indirect info.
+
+2025-12-15  Martin Jambor  <mjambor@suse.cz>
+
+	* gengtype.cc (walk_subclasses): Avoid generating code with unused
+	variables.
+
+2025-12-15  Pengxuan Zheng  <pengxuan.zheng@oss.qualcomm.com>
+
+	PR tree-optimization/122987
+	* tree-ssa-ifcombine.cc (ifcombine_ifandif): Replace
+	force_gimple_operand_gsi with gimple_build.
+
+2025-12-15  Joseph Myers  <josmyers@redhat.com>
+
+	* Makefile.in (PLUGIN_HEADERS): Add $(srcdir)/text-art/*.h.
+	(install-plugin): Preserve directory structure for text-art
+	headers.
+
+2025-12-15  Alfie Richards  <alfie.richards@arm.com>
+
+	* config/aarch64/aarch64-cores.def (cortex-a320): New core.
+	* config/aarch64/aarch64-tune.md: Regenerate.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop.cc (vect_analyze_loop_form): Relax niters
+	condition.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-data-refs.cc (vect_enhance_data_refs_alignment):
+	Enable peeling for uncounted loops.
+	* tree-vect-loop-manip.cc
+	(slpeel_tree_duplicate_loop_to_edge_cfg): Add exit condition
+	duplication functionality.
+	* tree-vectorizer.h (slpeel_tree_duplicate_loop_to_edge_cfg):
+	Modify function signature.
+	(vect_do_peeling): Enable uncounted loop peeling.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-data-refs.cc (vect_prune_runtime_alias_test_list):
+	Reject when !operand_equal_p for any data ref pair.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop.cc (vect_analyze_loop_2): Disable partial
+	vector use for uncounted loops.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop-manip.cc (slpeel_tree_duplicate_loop_to_edge_cfg):
+	reset IVs and accumulators for all exits for uncounted loops.
+	* tree-vectorizer.h (slpeel_tree_duplicate_loop_to_edge_cfg):
+	add boolean `uncounted_p' argument.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop-manip.cc (vect_do_peeling): Disable vector
+	loop skip checking.
+	(vect_loop_versioning): skip profitability check for uncounted loops.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop-manip.cc (vect_do_peeling): Disable niters
+	update.
+	* tree-vect-loop.cc (vect_transform_loop): Likewise.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vectorizer.h (LOOP_VINFO_IV_EXIT): Replace this...
+	(LOOP_VINFO_MAIN_EXIT): ...with this.
+	(LOOP_VINFO_EPILOGUE_IV_EXIT): Replace this...
+	(LOOP_VINFO_EPILOGUE_MAIN_EXIT): ...with this.
+	(LOOP_VINFO_SCALAR_IV_EXIT): Replace this...
+	(LOOP_VINFO_SCALAR_MAIN_EXIT): ...with this.
+	(class _loop_vec_info): s/iv/main for `vec_loop_iv_exit',
+	`vec_epilogue_loop_main_exit' and `scalar_loop_main_exit'
+	class members.
+	* tree-vect-data-refs.cc
+	(vect_enhance_data_refs_alignment):
+	s/LOOP_VINFO_IV_EXIT/LOOP_VINFO_MAIN_EXIT/.
+	* tree-vect-loop-manip.cc
+	(vect_set_loop_controls_directly): Likewise.
+	(vect_gen_vector_loop_niters_mult_vf): Likewise.
+	(vect_loop_versioning): Likewise.
+	(vect_do_peeling):
+	s/LOOP_VINFO_IV_EXIT/LOOP_VINFO_MAIN_EXIT/,
+	s/LOOP_VINFO_SCALAR_IV_EXIT/LOOP_VINFO_SCALAR_MAIN_EXIT,
+	s/LOOP_VINFO_EPILOGUE_IV_EXIT/LOOP_VINFO_EPILOGUE_MAIN_EXIT.
+	* tree-vect-loop.cc (_loop_vec_info::_loop_vec_info):
+	s/iv_exit/main_exit/ in initializer list.
+	(vec_init_loop_exit_info): Handle multiple-exit uncounted loops.
+	(vect_analyze_loop_form): Fix `failure_at' message.
+	(vect_create_loop_vinfo):
+	s/LOOP_VINFO_IV_EXIT/LOOP_VINFO_MAIN_EXIT/.
+	(vect_create_epilog_for_reduction): Likewise.
+	(vectorizable_live_operation): Likewise.
+	(vect_update_ivs_after_vectorizer_for_early_breaks): Likewise.
+	(vect_transform_loop):
+	s/LOOP_VINFO_IV_EXIT/LOOP_VINFO_MAIN_EXIT/,
+	s/LOOP_VINFO_SCALAR_IV_EXIT/LOOP_VINFO_SCALAR_MAIN_EXIT.
+	* tree-vectorizer.cc (set_uid_loop_bbs):
+	s/LOOP_VINFO_SCALAR_IV_EXIT/LOOP_VINFO_SCALAR_MAIN_EXIT.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vectorizer.h (LOOP_VINFO_EARLY_BREAKS_VECT_PEELED): OR
+	its current definition with `LOOP_VINFO_NITERS_UNCOUNTED_P(L)'
+	* tree-vect-loop.cc (vect_create_loop_vinfo): Don't populate
+	`LOOP_VINFO_LOOP_IV_COND' for uncounted loops.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* tree-vect-loop-manip.cc (vect_build_loop_niters): Gracefully
+	handle uncounted loops.
+	(vect_gen_prolog_loop_niters): Add type default of `sizetype'.
+	(vect_gen_vector_loop_niters): Likewise.
+	(vect_do_peeling): Likewise.
+	* tree-vect-loop.cc (vect_min_prec_for_max_niters): Likewise.
+	(loop_niters_no_overflow): Likewise.
+	* tree-vectorizer.h (LOOP_VINFO_NITERS_UNCOUNTED_P): New.
+
+2025-12-15  Peter Damianov  <peter0x44@disroot.org>
+
+	PR target/108866
+	* doc/install.texi: Document --with-windres configure option.
+
+2025-12-15  Peter Damianov  <peter0x44@disroot.org>
+
+	PR target/108866
+	* gcc.cc (find_a_program): Add check for DEFAULT_WINDRES.
+	* configure.ac: Add --with-windres= option.
+	* config.in: Regenerate.
+	* configure: Regenerate.
+
+2025-12-15  Peter Damianov  <peter0x44@disroot.org>
+
+	PR driver/108866
+	* gcc.cc (default_compilers): Add EXTRA_DEFAULT_COMPILERS so the config
+	of a target can add an extra compiler spec to default_compilers.
+	* config/i386/cygming.h (WINDRES_FORMAT_SPEC): New macro to handle
+	PE format selection based on TARGET_64BIT_DEFAULT and -m32/-m64 flags.
+	(EXTRA_DEFAULT_COMPILERS): Add spec for windres.
+	* config/aarch64/cygming.h (EXTRA_DEFAULT_COMPILERS): Likewise.
+
+2025-12-15  Jerry Zhang Jian  <jerry.zhangjian@sifive.com>
+
+	* config/riscv/gen-riscv-ext-opt.cc: Rename UPPERCAE_NAME to
+	UPPERCASE_NAME.
+	* config/riscv/gen-riscv-ext-texi.cc: Likewise.
+	* config/riscv/riscv-ext-corev.def: Likewise.
+	* config/riscv/riscv-ext-sifive.def: Likewise.
+	* config/riscv/riscv-ext-thead.def: Likewise.
+	* config/riscv/riscv-ext-ventana.def: Likewise.
+
 2010-06-30  Jakub Jelinek  <jakub@redhat.com>
 
 	* config/rs6000/rs6000.c (rs6000_elf_end_indicate_exec_stack): New.

@@ -45,6 +45,106 @@
 
 #include "a68.h"
 
+/* A few macros to aid parsing of module map strings below.  */
+
+#define SKIP_WHITESPACES(P) while (ISSPACE (*(P))) (P)++
+
+#define PARSE_BASENAME(P,W)						\
+  do									\
+    {									\
+      (W) = (char *) alloca (strlen ((P)));				\
+      size_t i = 0;							\
+      while ((*(P)) != '=' && !ISSPACE (*(P)) && ((*(P)) != '\0'))	\
+	(W)[i++] = *((P)++);						\
+      (W)[i] = '\0';							\
+    } while (0)
+
+#define PARSE_INDICANT(P,W)						\
+  do									\
+    {									\
+      (W) = (char *) alloca (strlen ((P)));				\
+      size_t i = 0;							\
+      if (ISALPHA (*(P)))						\
+	{								\
+	  (W)[i++] = *((P)++);						\
+	  while (ISALPHA (*(P)) || ISDIGIT(*(P)) || (*(P)) == '_')	\
+	    {								\
+	      if ((*(P)) != '_')					\
+		(W)[i++] = *((P)++);					\
+	    }								\
+	}								\
+      (W)[i] = '\0';							\
+    } while (0)
+
+/* Parse module map information in MAP and add entries to A68_MODULE_FILES
+   accordingly.  Existing entries in the map are overriden without warning.
+
+   If MAP is not a valid module map specification then this function returns
+   `false' and sets *ERRMSG to some explanatory message.  Otherwise it returns
+   `true' and sets *ERRMSG to NULL.  */
+
+bool
+a68_process_module_map (const char *map, const char **errmsg)
+{
+  const char *p = map;
+
+  while (*p != '\0')
+    {
+      char *filename;
+      SKIP_WHITESPACES (p);
+      PARSE_BASENAME (p, filename);
+
+      if (p[0] != '=')
+	{
+	  *errmsg = "expected = after filename";
+	  goto error;
+	}
+      p++;
+
+      /* Parse one or more joined module indicants.  */
+      while (p[0] != ':' && p[0] != '\0')
+	{
+	  char *module;
+	  SKIP_WHITESPACES (p);
+	  PARSE_INDICANT (p, module);
+	  if (module[0] == '\0')
+	    {
+	      *errmsg = "expected module indicant";
+	      goto error;
+	    }
+
+	  SKIP_WHITESPACES (p);
+	  if (p[0] != ',' && p[0] != ':' && p[0] != '\0')
+	    {
+	      *errmsg = "expected comma or end of string after module indicant";
+	      goto error;
+	    }
+
+	  for (char *q = module; *q; ++q)
+	    *q = TOUPPER (*q);
+	  A68_MODULE_FILES->put (ggc_strdup (module), ggc_strdup (filename));
+
+	  if (p[0] == ',')
+	    p++;
+	}
+
+      SKIP_WHITESPACES (p);
+      if (p[0] != ':' && p[0] != '\0')
+	{
+	  *errmsg = "expected semicolon or end of string";
+	  goto error;
+	}
+
+      if (p[0] == ':')
+	p++;
+    }
+
+  *errmsg = NULL;
+  return true;
+ error:
+  return false;
+}
+
 /* Read exports from an object file.
 
    FD is a file descriptor open for reading.
@@ -395,11 +495,10 @@ a68_get_packet_exports (const std::string &filename,
       if (pos + PTR_SIZE > size)					\
 	goto decode_error;						\
       (V) = 0;								\
-      uint64_t ptr_bit_size = 8 * PTR_SIZE;				\
       if (BYTES_BIG_ENDIAN)						\
 	{								\
 	  for (int i = 0; i < PTR_SIZE;	i++)				\
-	    (V) = ((V) | ((uint8_t) data[pos + i] << (ptr_bit_size - (i * 8)))); \
+	    (V) = ((V) | ((uint8_t) data[pos + i] << ((PTR_SIZE - i - 1) * 8))); \
 	}								\
       else								\
 	{								\
@@ -607,7 +706,9 @@ complete_encoded_mode (encoded_modes_map_t &encoded_modes, uint64_t offset)
       /* For recursive declarations.  */
       em->moid = a68_create_mode (em->kind == GA68_MODE_NAME ? REF_SYMBOL : FLEX_SYMBOL,
 				  0, NO_NODE, M_ERROR, NO_PACK);
-      sub = complete_encoded_mode (encoded_modes, em->data.name.sub_offset);
+      sub = complete_encoded_mode (encoded_modes,
+				   em->kind == GA68_MODE_NAME
+				   ? em->data.name.sub_offset : em->data.flex.sub_offset);
       if (sub == NO_MOID)
 	{
 	  /* Free em->moid */
@@ -729,7 +830,7 @@ dump_encoded_mode (struct encoded_mode *em)
       printf (" bool\n");
       break;
     case GA68_MODE_STRING:
-      printf (" basic\n");
+      printf (" string\n");
       break;
     case GA68_MODE_NAME:
       printf (" name\n");

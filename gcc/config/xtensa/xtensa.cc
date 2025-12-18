@@ -993,70 +993,71 @@ xtensa_expand_conditional_move (rtx *operands, int isflt)
 }
 
 
+static bool
+xtensa_expand_scc_SALT (rtx dest, enum rtx_code code, rtx op0, rtx op1)
+{
+  int flags;
+
+  /* Revert back the canonicalization of '(lt[u]:SI (reg:SI) (const_int N)'
+     to '(le[u]:SI (reg:SI) (const_int N-1)'.
+     Note that a comparison like '(le[u]:SI (reg:SI) (const_int [U]INT_MAX))'
+     will never be passed; because the result of such a comparison is a mere
+     constant.  */
+  if (CONST_INT_P (op1))
+    switch (code)
+      {
+      case LE:
+	code = LT, op1 = GEN_INT (INTVAL (op1) + 1);
+	break;
+      case LEU:
+	code = LTU, op1 = GEN_INT (UINTVAL (op1) + 1u);
+	break;
+      default:
+	break;
+      }
+
+  /* b0: inverting, b1: swap(op0,op1), b2: unsigned */
+  switch (code)
+    {
+    case GE:	flags = 1; break;
+    case GT:	flags = 2; break;
+    case LE:	flags = 3; break;
+    case LT:	flags = 0; break;
+    case GEU:	flags = 5; break;
+    case GTU:	flags = 6; break;
+    case LEU:	flags = 7; break;
+    case LTU:	flags = 4; break;
+    default:	return false;
+    }
+
+  op1 = force_reg (SImode, op1);
+  if (flags & 2)
+    std::swap (op0, op1);
+  emit_insn ((flags & 4) ? gen_saltu (dest, op0, op1)
+			 : gen_salt (dest, op0, op1));
+  if (flags & 1)
+    /* XORing with a temporary register with a value of 1 is advantageous
+       over negation followed by addition of 1 because the temporary register
+       assignment can be subject to CSE, constant propagation, or loop-
+       invariant hoisting.  */
+    emit_insn (gen_xorsi3 (dest, dest, force_reg (SImode, const1_rtx)));
+
+  return true;
+}
+
 int
 xtensa_expand_scc (rtx operands[4], machine_mode cmp_mode)
 {
   rtx dest = operands[0];
-  rtx cmp;
-  rtx one_tmp, zero_tmp;
+  rtx cmp, one_tmp, zero_tmp;
   rtx (*gen_fn) (rtx, rtx, rtx, rtx, rtx);
+  enum rtx_code code = GET_CODE (operands[1]);
 
-  if (cmp_mode == SImode && TARGET_SALT)
-    {
-      rtx a = operands[2], b = force_reg (SImode, operands[3]);
-      enum rtx_code code = GET_CODE (operands[1]);
-      bool invert_res = false;
+  if (TARGET_SALT && cmp_mode == SImode
+      && xtensa_expand_scc_SALT (dest, code, operands[2], operands[3]))
+    return 1;
 
-      switch (code)
-	{
-	case GE:
-	case GEU:
-	  invert_res = true;
-	  break;
-	case GT:
-	case GTU:
-	  std::swap (a, b);
-	  break;
-	case LE:
-	case LEU:
-	  invert_res = true;
-	  std::swap (a, b);
-	  break;
-	default:
-	  break;
-	}
-
-      switch (code)
-	{
-	case GE:
-	case GT:
-	case LE:
-	case LT:
-	  emit_insn (gen_salt (dest, a, b));
-	  if (!invert_res)
-	    return 1;
-	  break;
-	case GEU:
-	case GTU:
-	case LEU:
-	case LTU:
-	  emit_insn (gen_saltu (dest, a, b));
-	  if (!invert_res)
-	    return 1;
-	  break;
-	default:
-	  break;
-	}
-
-      if (invert_res)
-	{
-	  emit_insn (gen_negsi2 (dest, dest));
-	  emit_insn (gen_addsi3 (dest, dest, const1_rtx));
-	  return 1;
-	}
-    }
-
-  if (! (cmp = gen_conditional_move (GET_CODE (operands[1]), cmp_mode,
+  if (! (cmp = gen_conditional_move (code, cmp_mode,
 				     operands[2], operands[3])))
     return 0;
 
@@ -1425,7 +1426,6 @@ xtensa_expand_block_set_libcall (rtx dst_mem,
 				 HOST_WIDE_INT bytes)
 {
   rtx reg;
-  rtx_insn *seq;
 
   start_sequence ();
 
@@ -1439,9 +1439,7 @@ xtensa_expand_block_set_libcall (rtx dst_mem,
 		     GEN_INT (value), SImode,
 		     GEN_INT (bytes), SImode);
 
-  seq = end_sequence ();
-
-  return seq;
+  return end_sequence ();
 }
 
 /* Worker function for xtensa_expand_block_set().
@@ -1458,7 +1456,6 @@ xtensa_expand_block_set_unrolled_loop (rtx dst_mem,
 {
   rtx reg;
   int offset;
-  rtx_insn *seq;
 
   if (bytes > 64)
     return NULL;
@@ -1500,9 +1497,7 @@ xtensa_expand_block_set_unrolled_loop (rtx dst_mem,
     }
   while (bytes > 0);
 
-  seq = end_sequence ();
-
-  return seq;
+  return end_sequence ();
 }
 
 /* Worker function for xtensa_expand_block_set(),
@@ -1520,7 +1515,6 @@ xtensa_expand_block_set_small_loop (rtx dst_mem,
   rtx reg, dst, end;
   machine_mode unit_mode;
   rtx_code_label *label;
-  rtx_insn *seq;
 
   /* Totally-aligned block only.  */
   if (bytes % align != 0)
@@ -1581,9 +1575,7 @@ xtensa_expand_block_set_small_loop (rtx dst_mem,
   emit_insn (gen_addsi3 (dst, dst, GEN_INT (align)));
   emit_cmp_and_jump_insns (dst, end, NE, const0_rtx, SImode, true, label);
 
-  seq = end_sequence ();
-
-  return seq;
+  return end_sequence ();
 }
 
 
@@ -2247,7 +2239,7 @@ static rtx_insn *
 xtensa_call_tls_desc (rtx sym, rtx *retp)
 {
   rtx fn, arg, a_io;
-  rtx_insn *call_insn, *insns;
+  rtx_insn *call_insn;
 
   start_sequence ();
   fn = gen_reg_rtx (Pmode);
@@ -2259,10 +2251,9 @@ xtensa_call_tls_desc (rtx sym, rtx *retp)
   emit_move_insn (a_io, arg);
   call_insn = emit_call_insn (gen_tls_call (a_io, fn, sym, const1_rtx));
   use_reg (&CALL_INSN_FUNCTION_USAGE (call_insn), a_io);
-  insns = end_sequence ();
 
   *retp = a_io;
-  return insns;
+  return end_sequence ();
 }
 
 

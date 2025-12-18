@@ -17323,14 +17323,7 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	      return error_mark_node;
 	  }
 
-	/* FIXME: TYPENAME_IS_CLASS_P conflates 'class' vs 'struct' tags.
-	   TYPENAME_TYPE should probably remember the exact tag that
-	   was written for -Wmismatched-tags.  */
-	enum tag_types tag_type
-	  = (TYPENAME_IS_CLASS_P (t) ? class_type
-	     : TYPENAME_IS_UNION_P (t) ? union_type
-	     : TYPENAME_IS_ENUM_P (t) ? enum_type
-	     : typename_type);
+	enum tag_types tag_type = get_typename_tag (t);
 	tsubst_flags_t tcomplain = complain | tf_keep_type_decl;
 	tcomplain |= tst_ok_flag | qualifying_scope_flag;
 	f = make_typename_type (ctx, f, tag_type, tcomplain);
@@ -17342,7 +17335,7 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	    f = TREE_TYPE (f);
 	  }
 
-	if (TREE_CODE (f) != TYPENAME_TYPE)
+	if (!WILDCARD_TYPE_P (f))
 	  {
 	    if (TYPENAME_IS_ENUM_P (t) && TREE_CODE (f) != ENUMERAL_TYPE)
 	      {
@@ -17352,7 +17345,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 		else
 		  return error_mark_node;
 	      }
-	    else if (TYPENAME_IS_CLASS_P (t) && !NON_UNION_CLASS_TYPE_P (f))
+	    else if (TYPENAME_IS_CLASS_OR_STRUCT_P (t)
+		     && !NON_UNION_CLASS_TYPE_P (f))
 	      {
 		if (complain & tf_error)
 		  error ("%qT resolves to %qT, which is not a non-union "
@@ -20589,7 +20583,12 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
       return error_mark_node;
     }
 
-  if (LAMBDA_EXPR_EXTRA_SCOPE (t))
+  if (LAMBDA_EXPR_EXTRA_SCOPE (t)
+      /* When evaluating a concept we instantiate any lambda bodies
+	 in the context of the evaluation.  For ABI reasons don't
+	 record a scope for this instantiated lambda so we don't
+	 throw off the scope counter.  */
+      && TREE_CODE (LAMBDA_EXPR_EXTRA_SCOPE (t)) != CONCEPT_DECL)
     record_lambda_scope (r);
   if (TYPE_NAMESPACE_SCOPE_P (TREE_TYPE (t)))
     /* If we're pushed into another scope (PR105652), fix it.  */
@@ -29072,16 +29071,7 @@ dependent_scope_p (tree scope)
 bool
 dependentish_scope_p (tree scope)
 {
-  return dependent_scope_p (scope) || any_dependent_bases_p (scope)
-    /* A noexcept-spec is a complete-class context, so this should never hold.
-       But since we don't implement deferred noexcept-spec parsing of a friend
-       declaration (PR114764) we compensate by treating the current
-       instantiation as dependent to avoid bogus name lookup failures in this
-       case (PR122668).  */
-    || (cp_noexcept_operand
-	&& CLASS_TYPE_P (scope)
-	&& TYPE_BEING_DEFINED (scope)
-	&& dependent_type_p (scope));
+  return dependent_scope_p (scope) || any_dependent_bases_p (scope);
 }
 
 /* T is a SCOPE_REF.  Return whether it represents a non-static member of
@@ -31641,7 +31631,11 @@ type_targs_deducible_from (tree tmpl, tree type)
 	 per alias_ctad_tweaks.  */
       tparms = INNERMOST_TEMPLATE_PARMS (TREE_PURPOSE (tmpl));
       ttype = TREE_VALUE (tmpl);
-      tmpl = TI_TEMPLATE (TYPE_TEMPLATE_INFO_MAYBE_ALIAS (ttype));
+      tree ti = TYPE_TEMPLATE_INFO_MAYBE_ALIAS (ttype);
+      if (!ti)
+	/* TTYPE is a typedef to a template-id.  */
+	ti = TYPE_TEMPLATE_INFO (ttype);
+      tmpl = TI_TEMPLATE (ti);
     }
 
   int len = TREE_VEC_LENGTH (tparms);

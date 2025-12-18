@@ -1517,6 +1517,11 @@ static const struct compiler default_compilers[] =
 #endif
    , 0, 0, 0},
 
+#ifndef EXTRA_DEFAULT_COMPILERS
+#define EXTRA_DEFAULT_COMPILERS
+#endif
+  EXTRA_DEFAULT_COMPILERS
+
 #include "specs.h"
   /* Mark end of table.  */
   {0, 0, 0, 0, 0}
@@ -3090,6 +3095,11 @@ find_a_program (const char *name)
 #ifdef DEFAULT_DSYMUTIL
   if (! strcmp (name, "dsymutil") && access (DEFAULT_DSYMUTIL, X_OK) == 0)
     return xstrdup (DEFAULT_DSYMUTIL);
+#endif
+
+#ifdef DEFAULT_WINDRES
+  if (! strcmp (name, "windres") && access (DEFAULT_WINDRES, X_OK) == 0)
+    return xstrdup (DEFAULT_WINDRES);
 #endif
 
   return find_a_file (&exec_prefixes, name, X_OK, false);
@@ -10552,6 +10562,8 @@ sanitize_spec_function (int argc, const char **argv)
     return (flag_sanitize & SANITIZE_KERNEL_ADDRESS) ? "" : NULL;
   if (strcmp (argv[0], "kernel-hwaddress") == 0)
     return (flag_sanitize & SANITIZE_KERNEL_HWADDRESS) ? "" : NULL;
+  if (strcmp (argv[0], "memtag-stack") == 0)
+    return (flag_sanitize & SANITIZE_MEMTAG_STACK) ? "" : NULL;
   if (strcmp (argv[0], "thread") == 0)
     return (flag_sanitize & SANITIZE_THREAD) ? "" : NULL;
   if (strcmp (argv[0], "undefined") == 0)

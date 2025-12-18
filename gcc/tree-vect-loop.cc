@@ -657,17 +657,24 @@ vec_init_loop_exit_info (class loop *loop)
   /* Before we begin we must first determine which exit is the main one and
      which are auxilary exits.  */
   auto_vec<edge> exits = get_loop_exit_edges (loop);
+  if (exits.length () == 0)
+    return NULL;
   if (exits.length () == 1)
     return exits[0];
 
-  /* If we have multiple exits we only support counting IV at the moment.
+  /* If we have multiple exits, look for counting IV exit.
      Analyze all exits and return the last one we can analyze.  */
   class tree_niter_desc niter_desc;
   edge candidate = NULL;
   for (edge exit : exits)
     {
       if (!get_loop_exit_condition (exit))
-	continue;
+	{
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			     "Unhandled loop exit detected.\n");
+	  return NULL;
+	}
 
       if (number_of_iterations_exit_assumptions (loop, exit, &niter_desc, NULL)
 	  && !chrec_contains_undetermined (niter_desc.niter))
@@ -687,6 +694,11 @@ vec_init_loop_exit_info (class loop *loop)
 	    candidate = exit;
 	}
     }
+
+  /* If no exit is analyzable by scalar evolution, we return the last exit
+     under the assummption we are dealing with an uncounted loop.  */
+  if (!candidate && single_pred_p (loop->latch))
+    candidate = loop_exits_from_bb_p (loop, single_pred (loop->latch));
 
   return candidate;
 }
@@ -759,9 +771,9 @@ _loop_vec_info::_loop_vec_info (class loop *loop_in, vec_info_shared *shared)
     orig_loop_info (NULL),
     epilogue_vinfo (NULL),
     drs_advanced_by (NULL_TREE),
-    vec_loop_iv_exit (NULL),
-    vec_epilogue_loop_iv_exit (NULL),
-    scalar_loop_iv_exit (NULL)
+    vec_loop_main_exit (NULL),
+    vec_epilogue_loop_main_exit (NULL),
+    scalar_loop_main_exit (NULL)
 {
   /* CHECKME: We want to visit all BBs before their successors (except for
      latch blocks, for which this assertion wouldn't hold).  In the simple
@@ -923,7 +935,11 @@ vect_min_prec_for_max_niters (loop_vec_info loop_vinfo, unsigned int factor)
 
   /* Get the maximum number of iterations that is representable
      in the counter type.  */
-  tree ni_type = TREE_TYPE (LOOP_VINFO_NITERSM1 (loop_vinfo));
+  tree ni_type;
+  if (!LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo))
+    ni_type = TREE_TYPE (LOOP_VINFO_NITERSM1 (loop_vinfo));
+  else
+    ni_type = sizetype;
   widest_int max_ni = wi::to_widest (TYPE_MAX_VALUE (ni_type)) + 1;
 
   /* Get a more refined estimate for the number of iterations.  */
@@ -1426,8 +1442,7 @@ vect_analyze_loop_form (class loop *loop, gimple *loop_vectorized_call,
   if (!exit_e)
     return opt_result::failure_at (vect_location,
 				   "not vectorized:"
-				   " could not determine main exit from"
-				   " loop with multiple exits.\n");
+				   " Infinite loop detected.\n");
   if (loop_vectorized_call)
     {
       tree arg = gimple_call_arg (loop_vectorized_call, 1);
@@ -1458,6 +1473,20 @@ vect_analyze_loop_form (class loop *loop, gimple *loop_vectorized_call,
 				       "not vectorized:"
 				       " unsupported control flow in loop.\n");
       }
+
+  /* Check if we have any control flow that doesn't leave the loop.  */
+  bool has_phi = false;
+  for (unsigned i = 0; i < loop->num_nodes; i++)
+    if (!gimple_seq_empty_p (phi_nodes (bbs[i])))
+      {
+	has_phi = true;
+	break;
+      }
+  if (!has_phi)
+    return opt_result::failure_at (vect_location,
+				   "not vectorized:"
+				   " no scalar evolution detected in loop.\n");
+
   free (bbs);
 
   /* Different restrictions apply when we are considering an inner-most loop,
@@ -1582,9 +1611,20 @@ vect_analyze_loop_form (class loop *loop, gimple *loop_vectorized_call,
 	std::swap (info->conds[0], info->conds[i]);
     }
 
-  if (integer_zerop (info->assumptions)
-      || !info->number_of_iterations
-      || chrec_contains_undetermined (info->number_of_iterations))
+  if (chrec_contains_undetermined (info->number_of_iterations))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_NOTE, vect_location,
+			 "Loop being analyzed as uncounted.\n");
+      if (loop->inner)
+	return opt_result::failure_at
+	  (vect_location,
+	   "not vectorized: outer loop vectorization of uncounted loops"
+	   " is unsupported.\n");
+      return opt_result::success ();
+    }
+
+  if (integer_zerop (info->assumptions))
     return opt_result::failure_at
       (info->conds[0],
        "not vectorized: number of iterations cannot be computed.\n");
@@ -1649,11 +1689,14 @@ vect_create_loop_vinfo (class loop *loop, vec_info_shared *shared,
       STMT_VINFO_DEF_TYPE (loop_cond_info) = vect_condition_def;
     }
 
-  for (unsigned i = 1; i < info->conds.length (); i ++)
-    LOOP_VINFO_LOOP_CONDS (loop_vinfo).safe_push (info->conds[i]);
-  LOOP_VINFO_LOOP_IV_COND (loop_vinfo) = info->conds[0];
+  unsigned cond_id = 0;
+  if (!LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo))
+      LOOP_VINFO_LOOP_IV_COND (loop_vinfo) = info->conds[cond_id++];
 
-  LOOP_VINFO_IV_EXIT (loop_vinfo) = info->loop_exit;
+  for (; cond_id < info->conds.length (); cond_id ++)
+    LOOP_VINFO_LOOP_CONDS (loop_vinfo).safe_push (info->conds[cond_id]);
+
+  LOOP_VINFO_MAIN_EXIT (loop_vinfo) = info->loop_exit;
 
   /* Check to see if we're vectorizing multiple exits.  */
   LOOP_VINFO_EARLY_BREAKS (loop_vinfo)
@@ -2090,6 +2133,10 @@ vect_analyze_loop_2 (loop_vec_info loop_vinfo, int masked_p, bool &fatal,
     orig_loop_vinfo = loop_vinfo;
   gcc_assert (orig_loop_vinfo);
 
+  /* We can't mask on niters for uncounted loops due to unkown upper bound.  */
+  if (LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo))
+    LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+
   /* The first group of checks is independent of the vector size.  */
   fatal = true;
 
@@ -2474,8 +2521,8 @@ start_over:
         dump_printf_loc (MSG_NOTE, vect_location, "epilog loop required\n");
       if (!vect_can_advance_ivs_p (loop_vinfo)
 	  || !slpeel_can_duplicate_loop_p (loop,
-					   LOOP_VINFO_IV_EXIT (loop_vinfo),
-					   LOOP_VINFO_IV_EXIT (loop_vinfo)))
+					   LOOP_VINFO_MAIN_EXIT (loop_vinfo),
+					   LOOP_VINFO_MAIN_EXIT (loop_vinfo)))
         {
 	  ok = opt_result::failure_at (vect_location,
 				       "not vectorized: can't create required "
@@ -5389,7 +5436,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
       /* Create an induction variable.  */
       gimple_stmt_iterator incr_gsi;
       bool insert_after;
-      vect_iv_increment_position (LOOP_VINFO_IV_EXIT (loop_vinfo),
+      vect_iv_increment_position (LOOP_VINFO_MAIN_EXIT (loop_vinfo),
 				  &incr_gsi, &insert_after);
       create_iv (series_vect, PLUS_EXPR, vec_step, NULL_TREE, loop, &incr_gsi,
 		 insert_after, &indx_before_incr, &indx_after_incr);
@@ -5477,7 +5524,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
       def = vect_get_slp_vect_def (slp_node, i);
       tree new_def = copy_ssa_name (def);
       phi = create_phi_node (new_def, exit_bb);
-      if (LOOP_VINFO_IV_EXIT (loop_vinfo) == loop_exit)
+      if (LOOP_VINFO_MAIN_EXIT (loop_vinfo) == loop_exit)
 	SET_PHI_ARG_DEF (phi, loop_exit->dest_idx, def);
       else
 	{
@@ -10105,7 +10152,7 @@ vectorizable_live_operation (vec_info *vinfo, stmt_vec_info stmt_info,
 	  || !LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo))
 	vect_create_epilog_for_reduction (loop_vinfo, stmt_info, slp_node,
 					  slp_node_instance,
-					  LOOP_VINFO_IV_EXIT (loop_vinfo));
+					  LOOP_VINFO_MAIN_EXIT (loop_vinfo));
 
       /* If early break we only have to materialize the reduction on the merge
 	 block, but we have to find an alternate exit first.  */
@@ -10114,7 +10161,7 @@ vectorizable_live_operation (vec_info *vinfo, stmt_vec_info stmt_info,
 	  slp_tree phis_node = slp_node_instance->reduc_phis;
 	  stmt_info = SLP_TREE_REPRESENTATIVE (phis_node);
 	  for (auto exit : get_loop_exit_edges (LOOP_VINFO_LOOP (loop_vinfo)))
-	    if (exit != LOOP_VINFO_IV_EXIT (loop_vinfo))
+	    if (exit != LOOP_VINFO_MAIN_EXIT (loop_vinfo))
 	      {
 		vect_create_epilog_for_reduction (loop_vinfo, stmt_info,
 						  phis_node, slp_node_instance,
@@ -10124,7 +10171,8 @@ vectorizable_live_operation (vec_info *vinfo, stmt_vec_info stmt_info,
 	  if (LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo))
 	    vect_create_epilog_for_reduction (loop_vinfo, stmt_info,
 					      phis_node, slp_node_instance,
-					      LOOP_VINFO_IV_EXIT (loop_vinfo));
+					      LOOP_VINFO_MAIN_EXIT
+					      (loop_vinfo));
 	}
 
       return true;
@@ -10263,7 +10311,7 @@ vectorizable_live_operation (vec_info *vinfo, stmt_vec_info stmt_info,
 	 in these cases for an early break we restart the iteration the vector code
 	 did.  For the live values we want the value at the start of the iteration
 	 rather than at the end.  */
-      edge main_e = LOOP_VINFO_IV_EXIT (loop_vinfo);
+      edge main_e = LOOP_VINFO_MAIN_EXIT (loop_vinfo);
       bool all_exits_as_early_p = LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo);
       FOR_EACH_IMM_USE_STMT (use_stmt, imm_iter, lhs)
 	if (!is_gimple_debug (use_stmt)
@@ -10399,6 +10447,8 @@ vectorizable_live_operation (vec_info *vinfo, stmt_vec_info stmt_info,
 static bool
 loop_niters_no_overflow (loop_vec_info loop_vinfo)
 {
+  gcc_assert (!LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo));
+
   /* Constant case.  */
   if (LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo))
     {
@@ -11013,7 +11063,7 @@ vect_update_ivs_after_vectorizer_for_early_breaks (loop_vec_info loop_vinfo)
       basic_block exit_bb = NULL;
       /* Identify the early exit merge block.  I wish we had stored this.  */
       for (auto e : get_loop_exit_edges (loop))
-	if (e != LOOP_VINFO_IV_EXIT (loop_vinfo))
+	if (e != LOOP_VINFO_MAIN_EXIT (loop_vinfo))
 	  {
 	    exit_bb = e->dest;
 	    break;
@@ -11056,6 +11106,7 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
   bool check_profitability = false;
   unsigned int th;
   bool flat = maybe_flat_loop_profile (loop);
+  bool uncounted_p = LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo);
 
   DUMP_VECT_SCOPE ("vec_transform_loop");
 
@@ -11079,7 +11130,7 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
 
   /* Make sure there exists a single-predecessor exit bb.  Do this before
      versioning.   */
-  edge e = LOOP_VINFO_IV_EXIT (loop_vinfo);
+  edge e = LOOP_VINFO_MAIN_EXIT (loop_vinfo);
   if (! single_pred_p (e->dest) && !LOOP_VINFO_EARLY_BREAKS (loop_vinfo))
     {
       split_loop_exit_edge (e, true);
@@ -11105,7 +11156,7 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
      loop closed PHI nodes on the exit.  */
   if (LOOP_VINFO_SCALAR_LOOP (loop_vinfo))
     {
-      e = LOOP_VINFO_SCALAR_IV_EXIT (loop_vinfo);
+      e = LOOP_VINFO_SCALAR_MAIN_EXIT (loop_vinfo);
       if (! single_pred_p (e->dest))
 	{
 	  split_loop_exit_edge (e, true);
@@ -11117,9 +11168,10 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
   tree niters = vect_build_loop_niters (loop_vinfo);
   LOOP_VINFO_NITERS_UNCHANGED (loop_vinfo) = niters;
   tree nitersm1 = unshare_expr (LOOP_VINFO_NITERSM1 (loop_vinfo));
-  bool niters_no_overflow = loop_niters_no_overflow (loop_vinfo);
   tree advance;
   drs_init_vec orig_drs_init;
+  bool niters_no_overflow = uncounted_p ? false /* Not known.  */
+					: loop_niters_no_overflow (loop_vinfo);
 
   epilogue = vect_do_peeling (loop_vinfo, niters, nitersm1, &niters_vector,
 			      &step_vector, &niters_vector_mult_vf, th,
@@ -11137,10 +11189,10 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
 	      (LOOP_VINFO_SCALAR_LOOP_SCALING (loop_vinfo));
       scale_loop_frequencies (LOOP_VINFO_SCALAR_LOOP (loop_vinfo),
 			      LOOP_VINFO_SCALAR_LOOP_SCALING (loop_vinfo));
-      LOOP_VINFO_SCALAR_IV_EXIT (loop_vinfo)->dest->count = preheader->count;
+      LOOP_VINFO_SCALAR_MAIN_EXIT (loop_vinfo)->dest->count = preheader->count;
     }
 
-  if (niters_vector == NULL_TREE)
+  if (niters_vector == NULL_TREE && !uncounted_p)
     {
       if (LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo)
 	  && !LOOP_VINFO_USING_PARTIAL_VECTORS_P (loop_vinfo)
@@ -11266,13 +11318,17 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
 	}
     }
 
-  /* The vectorization factor is always > 1, so if we use an IV increment of 1.
-     a zero NITERS becomes a nonzero NITERS_VECTOR.  */
-  if (integer_onep (step_vector))
-    niters_no_overflow = true;
-  vect_set_loop_condition (loop, LOOP_VINFO_IV_EXIT (loop_vinfo), loop_vinfo,
-			   niters_vector, step_vector, niters_vector_mult_vf,
-			   !niters_no_overflow);
+  if (!uncounted_p)
+    {
+      /* The vectorization factor is always > 1, so if we use an IV increment of
+	 1.  A zero NITERS becomes a nonzero NITERS_VECTOR.  */
+      if (integer_onep (step_vector))
+	niters_no_overflow = true;
+
+      vect_set_loop_condition (loop, LOOP_VINFO_MAIN_EXIT (loop_vinfo),
+			       loop_vinfo, niters_vector, step_vector,
+			       niters_vector_mult_vf, !niters_no_overflow);
+    }
 
   unsigned int assumed_vf = vect_vf_for_cost (loop_vinfo);
 
@@ -11349,7 +11405,7 @@ vect_transform_loop (loop_vec_info loop_vinfo, gimple *loop_vectorized_call)
 			  assumed_vf) - 1
 	 : wi::udiv_floor (loop->nb_iterations_estimate + bias_for_assumed,
 			   assumed_vf) - 1);
-  scale_profile_for_vect_loop (loop, LOOP_VINFO_IV_EXIT (loop_vinfo),
+  scale_profile_for_vect_loop (loop, LOOP_VINFO_MAIN_EXIT (loop_vinfo),
 			       assumed_vf, flat);
 
   if (dump_enabled_p ())

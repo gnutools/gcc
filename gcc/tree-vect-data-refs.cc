@@ -2590,12 +2590,13 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
 
   /* Check if we can possibly peel the loop.  */
   if (!vect_can_advance_ivs_p (loop_vinfo)
-      || !slpeel_can_duplicate_loop_p (loop, LOOP_VINFO_IV_EXIT (loop_vinfo),
+      || !slpeel_can_duplicate_loop_p (loop, LOOP_VINFO_MAIN_EXIT (loop_vinfo),
 				       loop_preheader_edge (loop))
       || loop->inner
       /* We don't currently maintaing the LCSSA for prologue peeled inversed
 	 loops.  */
-      || LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo))
+      || (LOOP_VINFO_EARLY_BREAKS_VECT_PEELED (loop_vinfo)
+	  && !LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo)))
     do_peeling = false;
 
   struct _vect_peel_extended_info peel_for_known_alignment;
@@ -4324,7 +4325,13 @@ vect_prune_runtime_alias_test_list (loop_vec_info loop_vinfo)
 	{
 	  if (!operand_equal_p (DR_STEP (dr_info_a->dr),
 				DR_STEP (dr_info_b->dr), 0))
-	    length_factor = scalar_loop_iters;
+	    {
+	      length_factor = scalar_loop_iters;
+	      if (TREE_CODE (length_factor) == SCEV_NOT_KNOWN)
+		return opt_result::failure_at (vect_location,
+					       "Unsupported alias check on"
+					       " uncounted loop\n");
+	    }
 	  else
 	    length_factor = size_int (vect_factor);
 	  segment_length_a = vect_vfa_segment_size (dr_info_a, length_factor);

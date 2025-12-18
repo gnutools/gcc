@@ -2256,6 +2256,16 @@
 #endif /* !defined(__cpp_lib_observable_checkpoint) */
 #undef __glibcxx_want_observable_checkpoint
 
+#if !defined(__cpp_lib_algorithm_iterator_requirements)
+# if (__cplusplus >= 202002L)
+#  define __glibcxx_algorithm_iterator_requirements 202207L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_algorithm_iterator_requirements)
+#   define __cpp_lib_algorithm_iterator_requirements 202207L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_algorithm_iterator_requirements) */
+#undef __glibcxx_want_algorithm_iterator_requirements
+
 #if !defined(__cpp_lib_algorithm_default_value_type)
 # if (__cplusplus >  202302L)
 #  define __glibcxx_algorithm_default_value_type 202403L
@@ -2487,7 +2497,7 @@
 #undef __glibcxx_want_bitset
 
 #if !defined(__cpp_lib_constexpr_exceptions)
-# if (__cplusplus >  202302L) && (__cpp_constexpr_exceptions >= 202411L)
+# if (__cplusplus >  202302L) && _GLIBCXX_USE_CXX11_ABI && (__cpp_constexpr_exceptions >= 202411L)
 #  define __glibcxx_constexpr_exceptions 202502L
 #  if defined(__glibcxx_want_all) || defined(__glibcxx_want_constexpr_exceptions)
 #   define __cpp_lib_constexpr_exceptions 202502L
@@ -2497,7 +2507,7 @@
 #undef __glibcxx_want_constexpr_exceptions
 
 #if !defined(__cpp_lib_philox_engine)
-# if (__cplusplus >  202302L) && (__SIZEOF_INT128__)
+# if (__cplusplus >  202302L)
 #  define __glibcxx_philox_engine 202406L
 #  if defined(__glibcxx_want_all) || defined(__glibcxx_want_philox_engine)
 #   define __cpp_lib_philox_engine 202406L

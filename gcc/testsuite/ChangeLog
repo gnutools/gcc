@@ -1,3 +1,253 @@
+2025-12-17  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/122343
+	* gcc.dg/pr122343-1.c: New test.
+
+2025-12-17  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* algol68/execute/modules/module11.a68: Remove multiple definition
+	module.
+
+2025-12-17  Gaius Mulley  <gaiusmod2@gmail.com>
+
+	PR modula2/23178
+	* gm2/pim/fail/badprocedure.mod: New test.
+
+2025-12-17  Ulrich Weigand  <ulrich.weigand@de.ibm.com>
+
+	PR testsuite/123166
+	* gfortran.dg/bessel_6.f90: Add { dg-do run } annotation.
+	* gfortran.dg/erf_2.F90: Likewise.
+	* gfortran.dg/integer_exponentiation_3.F90: Likewise.
+	* gfortran.dg/integer_exponentiation_5.F90: Likewise.
+
+2025-12-17  Gaius Mulley  <gaiusmod2@gmail.com>
+
+	PR modula2/123151
+	* gm2/pimlib/base/run/pass/FIO.mod: Reimplement.
+	Copy from gm2-libs/FIO.mod since FIO.def api has changed.
+	* gm2/pimlib/run/pass/testclose.mod: New test.
+
+2025-12-17  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* gcc.target/i386/pr120881-1a.c: Restrict to Linux.
+	* gcc.target/i386/pr120881-1b.c: Likewise.
+
+2025-12-17  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR c++/112652
+	* g++.dg/cpp26/literals2.C: Skip on Solaris.
+
+2025-12-17  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* gcc.dg/plugin/crash-test-nested-write-through-null-html.py:
+	Import re.
+	(test_results): Allow for "Segmentation Fault", too.
+	* gcc.dg/plugin/crash-test-nested-write-through-null-sarif.py:
+	Likewise.
+	* gcc.dg/plugin/crash-test-write-through-null-stderr.c
+	(test_inject_write_through_null): Likewise.
+
+2025-12-17  benwu25  <soggysocks206@gmail.com>
+
+	PR c++/121443
+	* g++.dg/parse/pr121443.C: New test.
+
+2025-12-17  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/123075
+	* g++.dg/cpp2a/concepts-lambda25.C: New test.
+	* g++.dg/modules/lambda-13.h: New test.
+	* g++.dg/modules/lambda-13_a.H: New test.
+	* g++.dg/modules/lambda-13_b.C: New test.
+
+2025-12-17  Pierre-Emmanuel Patry  <pierre-emmanuel.patry@embecosm.com>
+
+	* rust/compile/issue-4301.rs: New test.
+
+2025-12-17  Pierre-Emmanuel Patry  <pierre-emmanuel.patry@embecosm.com>
+
+	* rust/compile/macros/mbe/macro-issue3608.rs: Update error messages.
+
+2025-12-17  Umesh Kalvakuntla  <umesh.kalvakuntla@amd.com>
+
+	* g++.target/i386/mv29.C: Likewise.
+	* gcc.target/i386/funcspec-56.inc: Likewise.
+	* gcc.target/i386/avx512bmm-1.c: New test.
+	* gcc.target/i386/avx512bmmvl-1.c: New test.
+
+2025-12-16  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	PR algol68/123131
+	* algol68/compile/modules/compile.exp: Pass module include path
+	via extra_flags to algol68-dg-runtest.
+	* algol68/execute/modules/execute.exp: Pass module include path
+	via algol68_compile_args.
+	* lib/algol68-dg.exp (MODULES_OPTIONS): Delete.
+	(algol68-dg-runtest): Do not use MODULE_OPTIONS.
+	* lib/algol68-torture.exp (BUILT_MODULES_DIR): Delete.
+	(algol68-torture-execute): Do not use BUILT_MODULES_DIR.
+
+2025-12-16  David Malcolm  <dmalcolm@redhat.com>
+
+	PR diagnostics/123142
+	* gcc.dg/plugin/diagnostic-test-graphs-html.c: Add
+	dg-require-dot directive.
+
+2025-12-16  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* algol68/compile/error-compile-unknown-tag-1.a68: Use a single
+	module per packet.
+	* algol68/compile/error-module-coercions-1.a68: Likewise.
+	* algol68/compile/error-module-ranges-1.a68: Likewise.
+	* algol68/compile/module-2.a68: Likewise.
+	* algol68/compile/module-pub-mangling-1.a68: Likewise.
+	* algol68/compile/module-pub-mangling-2.a68: Likewise.
+	* algol68/compile/module-pub-mangling-3.a68: Likewise.
+	* algol68/compile/module-pub-mangling-4.a68: Likewise.
+	* algol68/compile/module-pub-mangling-5.a68: Likewise.
+	* algol68/compile/module-pub-mangling-6.a68: Likewise.
+	* algol68/compile/warning-module-hidding-1.a68: Likewise.
+
+2025-12-16  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* algol68/execute/modules/Modules20.map: New file.
+	* algol68/execute/modules/module-bar.a68: New file.
+	* algol68/execute/modules/module-foo.a68: New file.
+	* algol68/execute/modules/program-19.a68: New file.
+	* algol68/execute/modules/program-20.a68: New file.
+
+2025-12-16  Richard Biener  <rguenther@suse.de>
+
+	PR testsuite/123137
+	* g++.dg/vect/pr64410.cc: Add -mfpmath=sse -msse on x86.
+
+2025-12-16  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* gcc.target/i386/shift-gf2p8affine-2.c: Skip on Solaris
+	without gas.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+	    Indu Bhagat  <indu.bhagat@oracle.com>
+
+	* gcc.target/aarch64/memtag/alloca-1.c: New test.
+	* gcc.target/aarch64/memtag/alloca-2.c: New test.
+	* gcc.target/aarch64/memtag/alloca-3.c: New test.
+	* gcc.target/aarch64/memtag/arguments-1.c: New test.
+	* gcc.target/aarch64/memtag/arguments-2.c: New test.
+	* gcc.target/aarch64/memtag/arguments-3.c: New test.
+	* gcc.target/aarch64/memtag/arguments-4.c: New test.
+	* gcc.target/aarch64/memtag/arguments.c: New test.
+	* gcc.target/aarch64/memtag/basic-1.c: New test.
+	* gcc.target/aarch64/memtag/basic-3.c: New test.
+	* gcc.target/aarch64/memtag/basic-struct.c: New test.
+	* gcc.target/aarch64/memtag/large-array.c: New test.
+	* gcc.target/aarch64/memtag/local-no-escape.c: New test.
+	* gcc.target/aarch64/memtag/memtag.exp: New file.
+	* gcc.target/aarch64/memtag/no-sanitize-attribute.c: New test.
+	* gcc.target/aarch64/memtag/value-init.c: New test.
+	* gcc.target/aarch64/memtag/vararray-gimple.c: New test.
+	* gcc.target/aarch64/memtag/vararray.c: New test.
+	* gcc.target/aarch64/memtag/zero-init.c: New test.
+	* gcc.target/aarch64/memtag/texec-1.c: New test.
+	* gcc.target/aarch64/memtag/texec-2.c: New test.
+	* gcc.target/aarch64/memtag/texec-3.c: New test.
+	* gcc.target/aarch64/memtag/vla-1.c: New test.
+	* gcc.target/aarch64/memtag/vla-2.c: New test.
+	* lib/target-supports.exp (check_effective_target_aarch64_mte):
+	New function.
+	* gcc.target/aarch64/memtag/cfi-mte-memtag-frame-1.c: New file.
+	* gcc.target/aarch64/memtag/mte-sig.h: New file.
+
+2025-12-16  Claudiu Zissulescu  <claudiu.zissulescu-ianculescu@oracle.com>
+	    Indu Bhagat  <indu.bhagat@oracle.com>
+
+	* gcc.target/aarch64/acle/memtag_1.c: Update test.
+
+2025-12-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/123110
+	* gcc.dg/pr123110-1.c: New test.
+
+2025-12-15  Martin Jambor  <mjambor@suse.cz>
+
+	* gcc.dg/lto/fnptr-from-rec-1_0.c: New test.
+	* gcc.dg/lto/fnptr-from-rec-1_1.c: Likewise.
+	* gcc.dg/lto/fnptr-from-rec-2_0.c: Likewise.
+	* gcc.dg/lto/fnptr-from-rec-2_1.c: Likewise.
+	* gcc.dg/lto/fnptr-from-rec-3_0.c: Likewise.
+	* gcc.dg/lto/fnptr-from-rec-3_1.c: Likewise.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/reduce4.adb: New test.
+	* gnat.dg/reduce5.adb: Likewise.
+
+2025-12-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR libfortran/122936
+	* gfortran.dg/pr122936.f90: New test.
+
+2025-12-15  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122752
+	* g++.dg/template/dependent-name19.C: New test.
+
+2025-12-15  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122668
+	PR c++/114764
+	* g++.dg/cpp0x/noexcept91a.C: New test.
+
+2025-12-15  Joseph Myers  <josmyers@redhat.com>
+
+	* lib/plugin-support.exp (plugin-test-execute): Support installed
+	testing.
+	* g++.dg/plugin/plugin.exp, gcc.dg/plugin/plugin.exp,
+	obj-c++.dg/plugin/plugin.exp, objc.dg/plugin/plugin.exp: Do not
+	disable for installed testing.
+
+2025-12-15  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/123085
+	* c-c++-common/analyzer/strlen-pr123085.c: New test.
+
+2025-12-15  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/122975
+	* c-c++-common/analyzer/arith-1.c: New test.
+	* c-c++-common/analyzer/infinite-recursion-pr122975.c: New test.
+
+2025-12-15  Victor Do Nascimento  <victor.donascimento@arm.com>
+
+	* gcc.dg/vect/vect-early-break_40.c: Fix.
+	* gcc.dg/gomp/static-chunk-size-one.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_1.c: New.
+	* gcc.dg/vect/vect-uncounted_2.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_3.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_4.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_5.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_6.c: Likewise.
+	* gcc.dg/vect/vect-uncounted_7.c: Likewise.
+	* gcc.dg/vect/vect-uncounted-run_1.c: Likewise.
+	* gcc.dg/vect/vect-uncounted-run_2.c: Likewise.
+	* gcc.dg/vect/vect-uncounted-run_3.c: Likewise.
+	* gcc.dg/vect/vect-uncounted-prolog-peel_1.c: Likewise.
+
+2025-12-15  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/123032
+	* gcc.dg/vect/pr123032.c: New test.
+
+2025-12-15  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/123043
+	* gcc.dg/vect/pr123043.c: New test.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/lto30.ads, gnat.dg/lto30.adb: New test.
+
 2010-06-30  Jakub Jelinek  <jakub@redhat.com>
 
 	* g++.dg/opt/ctor1.C: New test.

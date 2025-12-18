@@ -1318,9 +1318,10 @@ asan_poison_variable (tree decl, bool poison, gimple_stmt_iterator *it,
 
   /* It's necessary to have all stack variables aligned to ASAN granularity
      bytes.  */
-  gcc_assert (!hwasan_sanitize_p () || hwasan_sanitize_stack_p ());
+  gcc_assert (!hwassist_sanitize_p () || hwassist_sanitize_stack_p ());
   unsigned shadow_granularity
-    = hwasan_sanitize_p () ? HWASAN_TAG_GRANULE_SIZE : ASAN_SHADOW_GRANULARITY;
+    = (hwassist_sanitize_p ()
+       ? HWASAN_TAG_GRANULE_SIZE : ASAN_SHADOW_GRANULARITY);
   if (DECL_ALIGN_UNIT (decl) <= shadow_granularity)
     SET_DECL_ALIGN (decl, BITS_PER_UNIT * shadow_granularity);
 
@@ -14884,6 +14885,7 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	case OMP_CLAUSE_INIT:
 	case OMP_CLAUSE_USE:
 	case OMP_CLAUSE_DESTROY:
+	case OMP_CLAUSE_DEVICE_TYPE:
 	  break;
 
 	case OMP_CLAUSE_DYN_GROUPPRIVATE:
@@ -16372,6 +16374,7 @@ end_adjust_omp_map_clause:
 	case OMP_CLAUSE_INCLUSIVE:
 	case OMP_CLAUSE_EXCLUSIVE:
 	case OMP_CLAUSE_USES_ALLOCATORS:
+	case OMP_CLAUSE_DEVICE_TYPE:
 	  break;
 
 	case OMP_CLAUSE_NOHOST:
