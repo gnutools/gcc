@@ -19577,10 +19577,15 @@ c_parser_omp_clause_allocate (c_parser *parser, tree list)
    allocator ( traits-array )
    allocator ( traits-array ) , allocator-list
 
+   Deprecated in 5.2, removed in 6.0: 'allocator(trait-array)' syntax.
+
    OpenMP 5.2:
 
    uses_allocators ( modifier : allocator-list )
    uses_allocators ( modifier , modifier : allocator-list )
+
+   OpenMP 6.0:
+   uses_allocators ( [modifier-list :] allocator-list [; ...] )
 
    modifier:
    traits ( traits-array )
@@ -19594,6 +19599,8 @@ c_parser_omp_clause_uses_allocators (c_parser *parser, tree list)
   matching_parens parens;
   if (!parens.require_open (parser))
     return list;
+
+parse_next:
 
   bool has_modifiers = false;
   bool seen_allocators = false;
@@ -19788,6 +19795,12 @@ c_parser_omp_clause_uses_allocators (c_parser *parser, tree list)
 	c_parser_consume_token (parser);
       else
 	break;
+    }
+
+  if (c_parser_next_token_is (parser, CPP_SEMICOLON))
+    {
+      c_parser_consume_token (parser);
+      goto parse_next;
     }
 
  end:
@@ -30172,19 +30185,23 @@ c_parser_omp_error (c_parser *parser, enum pragma_context context)
   return false;
 }
 
-/* Assumption clauses:
-   OpenMP 5.1
+/* Assumption clauses
+   OpenMP 5.1:
    absent (directive-name-list)
    contains (directive-name-list)
    holds (expression)
    no_openmp
    no_openmp_routines
-   no_parallelism  */
+   no_parallelism
+
+   OpenMP 6.0:
+   no_openmp_constructs  */
 
 static void
 c_parser_omp_assumption_clauses (c_parser *parser, bool is_assume)
 {
   bool no_openmp = false;
+  bool no_openmp_constructs = false;
   bool no_openmp_routines = false;
   bool no_parallelism = false;
   bitmap_head absent_head, contains_head;
@@ -30216,6 +30233,13 @@ c_parser_omp_assumption_clauses (c_parser *parser, bool is_assume)
 	  if (no_openmp)
 	    error_at (cloc, "too many %qs clauses", "no_openmp");
 	  no_openmp = true;
+	}
+      else if (!strcmp (p, "no_openmp_constructs"))
+	{
+	  c_parser_consume_token (parser);
+	  if (no_openmp_constructs)
+	    error_at (cloc, "too many %qs clauses", "no_openmp_constructs");
+	  no_openmp_constructs = true;
 	}
       else if (!strcmp (p, "no_openmp_routines"))
 	{

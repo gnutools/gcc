@@ -67,7 +67,7 @@ imm_avl_p (machine_mode mode)
      registers.  Therefore divide the mode size by NF before checking if it is
      in range.  */
   int nf = 1;
-  if (riscv_v_ext_tuple_mode_p (mode))
+  if (riscv_tuple_mode_p (mode))
     nf = get_nf (mode);
 
   return nunits.is_constant ()
@@ -329,7 +329,7 @@ public:
     bool vls_p = false;
     if (m_vlmax_p)
       {
-	if (riscv_v_ext_vls_mode_p (vtype_mode))
+	if (riscv_vls_mode_p (vtype_mode))
 	  {
 	    /* VLS modes always set VSETVL by
 	       "vsetvl zero, rs1/imm".  */
@@ -1632,7 +1632,11 @@ expand_const_vector_interleaved_stepped_npatterns (rtx target, rtx src,
     {
       int elem_count = XVECLEN (src, 0);
       uint64_t step1_val = step1.to_constant ();
-      uint64_t base1_val = base1_poly.to_constant ();
+      int64_t base1_signed = base1_poly.to_constant ();
+      /* Reinterpret as type of inner bits size so we can properly check
+	 overflow.  */
+      uint64_t base1_val
+	= base1_signed & ((1ULL << builder->inner_bits_size ()) - 1);
       uint64_t elem_val = base1_val + (elem_count - 1) * step1_val;
 
       if ((elem_val >> builder->inner_bits_size ()) != 0)
@@ -1880,6 +1884,76 @@ get_frm_mode (rtx operand)
   gcc_unreachable ();
 }
 
+/* Expand vector extraction from a SUBREG source using slidedown.
+   Handles patterns like (subreg:V4DI (reg:V8DI) 32) by emitting
+   a slidedown instruction when extracting non-low parts.
+   Return true if the move was handled and emitted.  */
+static bool
+expand_vector_subreg_extract (rtx dest, rtx src)
+{
+  gcc_assert (SUBREG_P (src) && REG_P (SUBREG_REG (src)));
+
+  machine_mode mode = GET_MODE (dest);
+  machine_mode inner_mode = GET_MODE (SUBREG_REG (src));
+
+  gcc_assert (VECTOR_MODE_P (mode));
+  gcc_assert (VECTOR_MODE_P (inner_mode));
+
+  poly_uint16 outer_size = GET_MODE_BITSIZE (mode);
+  poly_uint16 inner_size = GET_MODE_BITSIZE (inner_mode);
+
+  poly_uint16 factor;
+  if (riscv_tuple_mode_p (inner_mode)
+      || !multiple_p (inner_size, outer_size, &factor)
+      || !factor.is_constant ()
+      || !pow2p_hwi (factor.to_constant ())
+      || factor.to_constant () <= 1)
+    return false;
+
+  enum vlmul_type lmul = get_vlmul (mode);
+  enum vlmul_type inner_lmul = get_vlmul (inner_mode);
+
+  /* These are just "renames".  */
+  if ((inner_lmul == LMUL_2 || inner_lmul == LMUL_4 || inner_lmul == LMUL_8)
+      && (lmul == LMUL_1 || lmul == LMUL_2 || lmul == LMUL_4))
+    return false;
+
+  poly_uint64 outer_nunits = GET_MODE_NUNITS (mode);
+  poly_uint64 subreg_byte = SUBREG_BYTE (src);
+
+  /* Calculate which part we're extracting (0 for low half, 1 for
+     higher half/quarter, etc.)  */
+  uint64_t part;
+  if (!exact_div (subreg_byte * BITS_PER_UNIT, outer_size).is_constant (&part))
+    return false;
+
+  rtx inner_reg = SUBREG_REG (src);
+  rtx tmp_out = gen_reg_rtx (mode);
+
+  if (part == 0)
+    {
+      /* Emit a direct reg-reg set here instead of emit_move_insn as that
+	 would trigger another legitimize_move.  */
+      emit_insn (gen_rtx_SET (tmp_out, gen_lowpart (mode, inner_reg)));
+    }
+  else
+    {
+      /* Extracting a non-zero part means we need to slide down.  */
+      poly_uint64 slide_count = part * outer_nunits;
+
+      rtx tmp = gen_reg_rtx (inner_mode);
+      rtx ops[] = {tmp, inner_reg, gen_int_mode (slide_count, Pmode)};
+      insn_code icode = code_for_pred_slide (UNSPEC_VSLIDEDOWN, inner_mode);
+      emit_vlmax_insn (icode, BINARY_OP, ops);
+
+      /* Extract the low part after sliding.  */
+      emit_insn (gen_rtx_SET (tmp_out, gen_lowpart (mode, tmp)));
+    }
+
+  emit_move_insn (dest, tmp_out);
+  return true;
+}
+
 /* Expand a pre-RA RVV data move from SRC to DEST.
    It expands move for RVV fractional vector modes.
    Return true if the move as already been emitted.  */
@@ -1894,7 +1968,25 @@ legitimize_move (rtx dest, rtx *srcp)
       return true;
     }
 
-  if (riscv_v_ext_vls_mode_p (mode))
+  /* The canonical way of extracting vectors from vectors is the vec_extract
+     optab with appropriate source and dest modes.  This is rather a VLS style
+     approach, though as we would need to enumerate all dest modes that are
+     half, quarter, etc. the size of the source.  It becomes particularly
+     cumbersome if we have a mix of VLA and VLS, i.e. extracting a smaller
+     VLS vector from a "VLA" vector.  Therefore we recognize patterns like
+       (set reg:V4DI
+	  (subreg:V4DI (reg:V8DI) offset))
+     and transform them into vector slidedowns.  */
+  if (SUBREG_P (src) && REG_P (SUBREG_REG (src))
+      && VECTOR_MODE_P (GET_MODE (SUBREG_REG (src)))
+      && VECTOR_MODE_P (mode)
+      && !lra_in_progress)
+    {
+      if (expand_vector_subreg_extract (dest, src))
+	return true;
+    }
+
+  if (riscv_vls_mode_p (mode))
     {
       if (GET_MODE_NUNITS (mode).to_constant () <= 31)
 	{
@@ -2002,7 +2094,7 @@ get_vlmul (machine_mode mode)
   /* For VLS modes, the vlmul should be dynamically
      calculated since we need to adjust VLMUL according
      to TARGET_MIN_VLEN.  */
-  if (riscv_v_ext_vls_mode_p (mode))
+  if (riscv_vls_mode_p (mode))
     {
       int size = GET_MODE_BITSIZE (mode).to_constant ();
       int inner_size = GET_MODE_BITSIZE (GET_MODE_INNER (mode));
@@ -2063,7 +2155,7 @@ get_vlmul (machine_mode mode)
 rtx
 get_vlmax_rtx (machine_mode mode)
 {
-  gcc_assert (riscv_v_ext_vector_mode_p (mode));
+  gcc_assert (riscv_vla_mode_p (mode));
   return gen_int_mode (GET_MODE_NUNITS (mode), Pmode);
 }
 
@@ -2072,7 +2164,7 @@ unsigned int
 get_nf (machine_mode mode)
 {
   /* We don't allow non-tuple modes go through this function.  */
-  gcc_assert (riscv_v_ext_tuple_mode_p (mode));
+  gcc_assert (riscv_tuple_mode_p (mode));
   return mode_vtype_infos.nf[mode];
 }
 
@@ -2083,7 +2175,7 @@ machine_mode
 get_subpart_mode (machine_mode mode)
 {
   /* We don't allow non-tuple modes go through this function.  */
-  gcc_assert (riscv_v_ext_tuple_mode_p (mode));
+  gcc_assert (riscv_tuple_mode_p (mode));
   return mode_vtype_infos.subpart_mode[mode];
 }
 
@@ -2091,7 +2183,7 @@ get_subpart_mode (machine_mode mode)
 unsigned int
 get_ratio (machine_mode mode)
 {
-  if (riscv_v_ext_vls_mode_p (mode))
+  if (riscv_vls_mode_p (mode))
     {
       unsigned int sew = get_sew (mode);
       vlmul_type vlmul = get_vlmul (mode);
@@ -2168,11 +2260,12 @@ machine_mode
 get_mask_mode (machine_mode mode)
 {
   poly_int64 nunits = GET_MODE_NUNITS (mode);
-  if (riscv_v_ext_tuple_mode_p (mode))
+  if (riscv_tuple_mode_p (mode))
     {
       unsigned int nf = get_nf (mode);
       nunits = exact_div (nunits, nf);
     }
+
   return get_vector_mode (BImode, nunits).require ();
 }
 
@@ -2213,11 +2306,12 @@ get_vector_mode (scalar_mode inner_mode, poly_uint64 nunits)
   else
     mclass = MODE_VECTOR_INT;
   machine_mode mode;
+
   FOR_EACH_MODE_IN_CLASS (mode, mclass)
     if (inner_mode == GET_MODE_INNER (mode)
 	&& known_eq (nunits, GET_MODE_NUNITS (mode))
-	&& (riscv_v_ext_vector_mode_p (mode)
-	    || riscv_v_ext_vls_mode_p (mode)))
+	&& (riscv_vla_mode_p (mode)
+	    || riscv_vls_mode_p (mode)))
       return mode;
   return opt_machine_mode ();
 }
@@ -2234,7 +2328,7 @@ get_tuple_mode (machine_mode subpart_mode, unsigned int nf)
   FOR_EACH_MODE_IN_CLASS (mode, mclass)
     if (inner_mode == GET_MODE_INNER (mode)
 	&& known_eq (nunits, GET_MODE_NUNITS (mode))
-	&& riscv_v_ext_tuple_mode_p (mode)
+	&& riscv_tuple_mode_p (mode)
 	&& get_subpart_mode (mode) == subpart_mode)
       return mode;
   return opt_machine_mode ();
@@ -3056,11 +3150,11 @@ can_find_related_mode_p (machine_mode vector_mode, scalar_mode element_mode,
 {
   if (!autovec_use_vlmax_p ())
     return false;
-  if (riscv_v_ext_vector_mode_p (vector_mode)
+  if (riscv_vla_mode_p (vector_mode)
       && multiple_p (BYTES_PER_RISCV_VECTOR * TARGET_MAX_LMUL,
 		     GET_MODE_SIZE (element_mode), nunits))
     return true;
-  if (riscv_v_ext_vls_mode_p (vector_mode)
+  if (riscv_vls_mode_p (vector_mode)
       && multiple_p ((TARGET_MIN_VLEN * TARGET_MAX_LMUL) / BITS_PER_UNIT,
 		     GET_MODE_SIZE (element_mode), nunits))
     return true;
@@ -4692,53 +4786,81 @@ expand_cond_binop (unsigned icode, rtx *ops)
 
 /* Prepare insn_code for gather_load/scatter_store according to
    the vector mode and index mode.  */
-static insn_code
-prepare_gather_scatter (machine_mode vec_mode, machine_mode idx_mode,
-			bool is_load)
+insn_code
+get_gather_scatter_code (machine_mode vec_mode, machine_mode idx_mode,
+			 bool is_load)
 {
-  if (!is_load)
-    return code_for_pred_indexed_store (UNSPEC_UNORDERED, vec_mode, idx_mode);
+  unsigned src_eew_bitsize = GET_MODE_BITSIZE (GET_MODE_INNER (idx_mode));
+  unsigned dst_eew_bitsize = GET_MODE_BITSIZE (GET_MODE_INNER (vec_mode));
+  if (dst_eew_bitsize == src_eew_bitsize)
+    {
+      if (is_load)
+	return code_for_pred_indexed_load_same_eew
+	  (UNSPEC_UNORDERED, vec_mode);
+      else
+	return code_for_pred_indexed_store_same_eew
+	  (UNSPEC_UNORDERED, vec_mode);
+    }
+  else if (dst_eew_bitsize > src_eew_bitsize)
+    {
+      unsigned factor = dst_eew_bitsize / src_eew_bitsize;
+      switch (factor)
+	{
+	case 2:
+	  if (is_load)
+	    return
+	      code_for_pred_indexed_load_x2_greater_eew
+		(UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return
+	      code_for_pred_indexed_store_x2_greater_eew
+		(UNSPEC_UNORDERED, vec_mode);
+	case 4:
+	  if (is_load)
+	    return code_for_pred_indexed_load_x4_greater_eew
+		(UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return code_for_pred_indexed_store_x4_greater_eew
+		(UNSPEC_UNORDERED, vec_mode);
+	case 8:
+	  if (is_load)
+	    return code_for_pred_indexed_load_x8_greater_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return code_for_pred_indexed_store_x8_greater_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	default:
+	  gcc_unreachable ();
+	}
+    }
   else
     {
-      unsigned src_eew_bitsize = GET_MODE_BITSIZE (GET_MODE_INNER (idx_mode));
-      unsigned dst_eew_bitsize = GET_MODE_BITSIZE (GET_MODE_INNER (vec_mode));
-      if (dst_eew_bitsize == src_eew_bitsize)
-	return code_for_pred_indexed_load_same_eew (UNSPEC_UNORDERED, vec_mode);
-      else if (dst_eew_bitsize > src_eew_bitsize)
+      unsigned factor = src_eew_bitsize / dst_eew_bitsize;
+      switch (factor)
 	{
-	  unsigned factor = dst_eew_bitsize / src_eew_bitsize;
-	  switch (factor)
-	    {
-	    case 2:
-	      return code_for_pred_indexed_load_x2_greater_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    case 4:
-	      return code_for_pred_indexed_load_x4_greater_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    case 8:
-	      return code_for_pred_indexed_load_x8_greater_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    default:
-	      gcc_unreachable ();
-	    }
-	}
-      else
-	{
-	  unsigned factor = src_eew_bitsize / dst_eew_bitsize;
-	  switch (factor)
-	    {
-	    case 2:
-	      return code_for_pred_indexed_load_x2_smaller_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    case 4:
-	      return code_for_pred_indexed_load_x4_smaller_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    case 8:
-	      return code_for_pred_indexed_load_x8_smaller_eew (
-		UNSPEC_UNORDERED, vec_mode);
-	    default:
-	      gcc_unreachable ();
-	    }
+	case 2:
+	  if (is_load)
+	    return code_for_pred_indexed_load_x2_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return code_for_pred_indexed_store_x2_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	case 4:
+	  if (is_load)
+	    return code_for_pred_indexed_load_x4_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return code_for_pred_indexed_store_x4_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	case 8:
+	  if (is_load)
+	    return code_for_pred_indexed_load_x8_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	  else
+	    return code_for_pred_indexed_store_x8_smaller_eew
+	      (UNSPEC_UNORDERED, vec_mode);
+	default:
+	  gcc_unreachable ();
 	}
     }
 }
@@ -4769,7 +4891,7 @@ expand_gather_scatter (rtx *ops, bool is_load)
   machine_mode idx_mode = GET_MODE (vec_offset);
   bool is_vlmax = is_vlmax_len_p (vec_mode, len);
 
-  insn_code icode = prepare_gather_scatter (vec_mode, idx_mode, is_load);
+  insn_code icode = get_gather_scatter_code (vec_mode, idx_mode, is_load);
   if (is_vlmax)
     {
       if (is_load)
@@ -5081,9 +5203,9 @@ expand_fold_extract_last (rtx *ops)
 bool
 cmp_lmul_le_one (machine_mode mode)
 {
-  if (riscv_v_ext_vector_mode_p (mode))
+  if (riscv_vla_mode_p (mode))
     return known_le (GET_MODE_SIZE (mode), BYTES_PER_RISCV_VECTOR);
-  else if (riscv_v_ext_vls_mode_p (mode))
+  else if (riscv_vls_mode_p (mode))
     return known_le (GET_MODE_BITSIZE (mode), TARGET_MIN_VLEN);
   return false;
 }
@@ -5092,9 +5214,9 @@ cmp_lmul_le_one (machine_mode mode)
 bool
 cmp_lmul_gt_one (machine_mode mode)
 {
-  if (riscv_v_ext_vector_mode_p (mode))
+  if (riscv_vla_mode_p (mode))
     return known_gt (GET_MODE_SIZE (mode), BYTES_PER_RISCV_VECTOR);
-  else if (riscv_v_ext_vls_mode_p (mode))
+  else if (riscv_vls_mode_p (mode))
     return known_gt (GET_MODE_BITSIZE (mode), TARGET_MIN_VLEN);
   return false;
 }
@@ -5168,14 +5290,14 @@ cmp_lmul_gt_one (machine_mode mode)
    Then we can have the condition for VLS mode in fixed-vlmax, aka:
      PRECISION (VLSmode) < VLEN / (64 / PRECISION(VLS_inner_mode)).  */
 bool
-vls_mode_valid_p (machine_mode vls_mode, bool allow_up_to_lmul_8)
+vls_mode_valid_p (machine_mode mode, bool allow_up_to_lmul_8)
 {
   if (!TARGET_VECTOR || TARGET_XTHEADVECTOR)
     return false;
 
   if (rvv_vector_bits == RVV_VECTOR_BITS_SCALABLE)
     {
-      if (GET_MODE_CLASS (vls_mode) != MODE_VECTOR_BOOL)
+      if (GET_MODE_CLASS (mode) != MODE_VECTOR_BOOL)
 	return true;
       if (allow_up_to_lmul_8)
 	return true;
@@ -5188,16 +5310,16 @@ vls_mode_valid_p (machine_mode vls_mode, bool allow_up_to_lmul_8)
 	 with size = 128 bits, we will end up with multiple ICEs in
 	 middle-end generic codes.  */
       return !ordered_p (TARGET_MAX_LMUL * BITS_PER_RISCV_VECTOR,
-			 GET_MODE_PRECISION (vls_mode));
+			 GET_MODE_PRECISION (mode));
     }
 
   if (rvv_vector_bits == RVV_VECTOR_BITS_ZVL)
     {
-      machine_mode inner_mode = GET_MODE_INNER (vls_mode);
+      machine_mode inner_mode = GET_MODE_INNER (mode);
       int precision = GET_MODE_PRECISION (inner_mode).to_constant ();
       int min_vlmax_bitsize = TARGET_MIN_VLEN / (64 / precision);
 
-      return GET_MODE_PRECISION (vls_mode).to_constant () < min_vlmax_bitsize;
+      return GET_MODE_PRECISION (mode).to_constant () < min_vlmax_bitsize;
     }
 
   return false;

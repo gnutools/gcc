@@ -2628,6 +2628,20 @@ public:
     bool ignore_tu_local;    /* In a context where referencing a TU-local
 				entity is not an exposure.  */
 
+  private:
+    /* Information needed to do dependent ADL for discovering
+       more decl-reachable entities.  Cached during walking to
+       prevent tree marking from interfering with lookup.  */
+    struct dep_adl_info {
+      /* The name of the call or operator.  */
+      tree name = NULL_TREE;
+      /* If not ERROR_MARK, a rewrite candidate for this operator.  */
+      tree_code rewrite = ERROR_MARK;
+      /* Argument list for the call.  */
+      vec<tree, va_gc>* args = make_tree_vector ();
+    };
+    vec<dep_adl_info> dep_adl_entity_list;
+
   public:
     hash (size_t size, hash *c = NULL)
       : parent (size), chain (c), current (NULL), section (0),
@@ -2635,10 +2649,12 @@ public:
 	ignore_tu_local (false)
     {
       worklist.create (size);
+      dep_adl_entity_list.create (16);
     }
     ~hash ()
     {
       worklist.release ();
+      dep_adl_entity_list.release ();
     }
 
   public:
@@ -2671,6 +2687,7 @@ public:
     void add_specializations (bool decl_p);
     void add_partial_entities (vec<tree, va_gc> *);
     void add_class_entities (vec<tree, va_gc> *);
+    void add_dependent_adl_entities (tree expr);
 
   private:
     void add_deduction_guides (tree decl);
@@ -2985,6 +3002,7 @@ private:
   vec<tree> back_refs;		/* Back references.  */
   duplicate_hash_map *duplicates;	/* Map from existings to duplicate.  */
   vec<post_process_data> post_decls;	/* Decls to post process.  */
+  vec<tree> post_types;		/* Types to post process.  */
   unsigned unused;		/* Inhibit any interior TREE_USED
 				   marking.  */
 
@@ -3089,11 +3107,22 @@ public:
   {
     return post_decls;
   }
+  /* Return the types to postprocess.  */
+  const vec<tree>& post_process_type ()
+  {
+    return post_types;
+  }
 private:
   /* Register DATA for postprocessing.  */
   void post_process (post_process_data data)
   {
     post_decls.safe_push (data);
+  }
+  /* Register TYPE for postprocessing.  */
+  void post_process_type (tree type)
+  {
+    gcc_checking_assert (TYPE_P (type));
+    post_types.safe_push (type);
   }
 
 private:
@@ -3107,6 +3136,7 @@ trees_in::trees_in (module_state *state)
   duplicates = NULL;
   back_refs.create (500);
   post_decls.create (0);
+  post_types.create (0);
 }
 
 trees_in::~trees_in ()
@@ -3114,6 +3144,7 @@ trees_in::~trees_in ()
   delete (duplicates);
   back_refs.release ();
   post_decls.release ();
+  post_types.release ();
 }
 
 /* Tree stream writer.  */
@@ -9789,6 +9820,9 @@ trees_out::tree_value (tree t)
 				  && !DECL_CONTEXT (t)))
 			  && TREE_CODE (t) != FUNCTION_DECL));
 
+  if (is_initial_scan () && EXPR_P (t))
+    dep_hash->add_dependent_adl_entities (t);
+
   if (streaming_p ())
     {
       /* A new node -> tt_node.  */
@@ -10402,10 +10436,23 @@ trees_in::tree_node (bool is_use)
 
 	  case ARRAY_TYPE:
 	    {
+	      tree elt_type = res;
 	      tree domain = tree_node ();
 	      int dep = u ();
 	      if (!get_overrun ())
-		res = build_cplus_array_type (res, domain, dep);
+		{
+		  res = build_cplus_array_type (elt_type, domain, dep);
+		  /* If we're an array of an incomplete imported type,
+		     save it for post-processing so that we can attempt
+		     to complete the type later if it will get a
+		     definition later in the cluster.  */
+		  if (!dep
+		      && !COMPLETE_TYPE_P (elt_type)
+		      && CLASS_TYPE_P (elt_type)
+		      && DECL_LANG_SPECIFIC (TYPE_NAME (elt_type))
+		      && DECL_MODULE_IMPORT_P (TYPE_NAME (elt_type)))
+		    post_process_type (res);
+		}
 	    }
 	    break;
 
@@ -14953,6 +15000,90 @@ depset::hash::add_class_entities (vec<tree, va_gc> *class_members)
     }
 }
 
+/* Add any entities found via dependent ADL.  */
+
+void
+depset::hash::add_dependent_adl_entities (tree expr)
+{
+  gcc_checking_assert (!is_key_order ());
+  if (TREE_CODE (current->get_entity ()) != TEMPLATE_DECL)
+    return;
+
+  dep_adl_info info;
+  switch (TREE_CODE (expr))
+    {
+    case CALL_EXPR:
+      if (!KOENIG_LOOKUP_P (expr))
+	return;
+      info.name = CALL_EXPR_FN (expr);
+      if (!info.name)
+	return;
+      if (TREE_CODE (info.name) == TEMPLATE_ID_EXPR)
+	info.name = TREE_OPERAND (info.name, 0);
+      if (TREE_CODE (info.name) == TU_LOCAL_ENTITY)
+	return;
+      if (!identifier_p (info.name))
+	info.name = OVL_NAME (info.name);
+      for (int ix = 0; ix < call_expr_nargs (expr); ix++)
+	vec_safe_push (info.args, CALL_EXPR_ARG (expr, ix));
+      break;
+
+    case LE_EXPR:
+    case GE_EXPR:
+    case LT_EXPR:
+    case GT_EXPR:
+      info.rewrite = SPACESHIP_EXPR;
+      goto overloadable_expr;
+
+    case NE_EXPR:
+      info.rewrite = EQ_EXPR;
+      goto overloadable_expr;
+
+    case EQ_EXPR:
+      /* Not strictly a rewrite candidate, but we need to ensure
+	 that lookup of a matching NE_EXPR can succeed if that
+	 would inhibit a rewrite with reversed parameters.  */
+      info.rewrite = NE_EXPR;
+      goto overloadable_expr;
+
+    case COMPOUND_EXPR:
+    case MEMBER_REF:
+    case MULT_EXPR:
+    case TRUNC_DIV_EXPR:
+    case TRUNC_MOD_EXPR:
+    case PLUS_EXPR:
+    case MINUS_EXPR:
+    case LSHIFT_EXPR:
+    case RSHIFT_EXPR:
+    case SPACESHIP_EXPR:
+    case BIT_AND_EXPR:
+    case BIT_XOR_EXPR:
+    case BIT_IOR_EXPR:
+    case TRUTH_ANDIF_EXPR:
+    case TRUTH_ORIF_EXPR:
+    overloadable_expr:
+      info.name = ovl_op_identifier (TREE_CODE (expr));
+      gcc_checking_assert (tree_operand_length (expr) == 2);
+      vec_safe_push (info.args, TREE_OPERAND (expr, 0));
+      vec_safe_push (info.args, TREE_OPERAND (expr, 1));
+      break;
+
+    default:
+      return;
+    }
+
+  /* If all arguments are type-dependent we don't need to do
+     anything further, we won't find new entities.  */
+  processing_template_decl_sentinel ptds;
+  ++processing_template_decl;
+  if (!any_type_dependent_arguments_p (info.args))
+    return;
+
+  /* We need to defer name lookup until after walking, otherwise
+     we get confused by stray TREE_VISITEDs.  */
+  dep_adl_entity_list.safe_push (info);
+}
+
 /* We add the partial & explicit specializations, and the explicit
    instantiations.  */
 
@@ -15313,6 +15444,31 @@ depset::hash::find_dependencies (module_state *module)
 	      if (!is_key_order ()
 		  && deduction_guide_p (decl))
 		add_deduction_guides (TYPE_NAME (TREE_TYPE (TREE_TYPE (decl))));
+
+	      /* Handle dependent ADL for [module.global.frag] p3.3.  */
+	      if (!is_key_order () && !dep_adl_entity_list.is_empty ())
+		{
+		  processing_template_decl_sentinel ptds;
+		  ++processing_template_decl;
+		  for (auto &info : dep_adl_entity_list)
+		    {
+		      tree lookup = lookup_arg_dependent (info.name, NULL_TREE,
+							  info.args, true);
+		      for (tree fn : lkp_range (lookup))
+			add_dependency (make_dependency (fn, EK_DECL));
+
+		      if (info.rewrite)
+			{
+			  tree rewrite_name = ovl_op_identifier (info.rewrite);
+			  lookup = lookup_arg_dependent (rewrite_name, NULL_TREE,
+							 info.args, true);
+			  for (tree fn : lkp_range (lookup))
+			    add_dependency (make_dependency (fn, EK_DECL));
+			}
+		      release_tree_vector (info.args);
+		    }
+		  dep_adl_entity_list.truncate (0);
+		}
 
 	      if (!is_key_order ()
 		  && TREE_CODE (decl) == TEMPLATE_DECL
@@ -17388,6 +17544,13 @@ module_state::read_cluster (unsigned snum)
 	    DECL_EXTERNAL (decl) = false;
 	}
 
+    }
+  for (const tree& type : sec.post_process_type ())
+    {
+      /* Attempt to complete an array type now in case its element type
+	 had a definition streamed later in the cluster.  */
+      gcc_checking_assert (TREE_CODE (type) == ARRAY_TYPE);
+      complete_type (type);
     }
   set_cfun (old_cfun);
   current_function_decl = old_cfd;

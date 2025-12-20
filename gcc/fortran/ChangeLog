@@ -1,3 +1,59 @@
+2025-12-19  Jakub Jelinek  <jakub@redhat.com>
+
+	* dump-parse-tree.cc (show_omp_clauses): Add default: with
+	gcc_unreachable () to avoid spurious -Wmaybe-uninitialized warnings.
+
+2025-12-19  Jakub Jelinek  <jakub@redhat.com>
+
+	* gfortran.texi: Fix typo, transfered -> transferred.
+	* resolve.cc (resolve_where): Fix comment typo, outmost -> outermost.
+
+2025-12-19  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/71565
+	* expr.cc (gfc_check_vardef_context): Fix treatment of INTENT(IN)
+	checks for ASSOCIATE variables.  Correct checking of PROTECTED
+	objects, as subobjects inherit the PROTECTED attribute.
+
+2025-12-19  Christopher Albert  <albert@tugraz.at>
+
+	PR fortran/92613
+	* cpp.cc (gfc_cpp_preprocess): Skip libcpp for -fpreprocessed.
+	Error out for -fpreprocessed -E.
+	* f95-lang.cc (gfc_init): Skip libcpp init for -fpreprocessed.
+	* scanner.cc (gfc_new_file): Load source directly if preprocessed.
+	* invoke.texi (Preprocessing Options): Document -fpreprocessed.
+
+2025-12-19  Tobias Burnus  <tburnus@baylibre.com>
+
+	* openmp.cc (gfc_match_omp_clause_uses_allocators): Accept
+	multiple clause-argument-specifications separated by ';'.
+
+2025-12-18  Tobias Burnus  <tburnus@baylibre.com>
+
+	* dump-parse-tree.cc (show_omp_assumes): Handle
+	no_openmp_constructs clause.
+	* gfortran.h (struct gfc_omp_assumptions): Add
+	no_openmp_constructs.
+	* openmp.cc (gfc_match_dupl_check): For free-form
+	Fortran, avoid substring matching.
+	(gfc_match_omp_clauses): Match no_openmp_constructs clause.
+	Remove no longer needed 'needs_space', match 'order' followed by
+	parenthesis instead of 'order' with parenthesis; reorder 'order'
+	and 'ordering' clauses for free-form Fortran.
+	(gfc_match_omp_assumes): Handle no_openmp_constructs clause.
+
+2025-12-18  Tobias Burnus  <tburnus@baylibre.com>
+
+	* dump-parse-tree.cc (show_omp_clauses): Handle
+	device_type clause.
+	* openmp.cc (gfc_match_omp_clauses): Reorder to
+	match 'device' after 'device_...' to avoid parse
+	errors.
+	(OMP_TARGET_CLAUSES): Add device_type clause.
+	* trans-openmp.cc (gfc_trans_omp_clauses,
+	gfc_split_omp_clauses): Handle device_type clause.
+
 2025-12-12  Tobias Burnus  <tburnus@baylibre.com>
 
 	* openmp.cc (gfc_match_omp_clause_uses_allocators): Mention

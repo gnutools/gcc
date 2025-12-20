@@ -424,6 +424,83 @@ non_mergeable_glvalue_p (const_tree ref)
 	  && !(kind & (clk_class|clk_mergeable)));
 }
 
+/* C++-specific version of stabilize_reference for bit-fields and
+   DECL_PACKED fields.  We can't bind a reference to those.  */
+
+static tree
+cp_stabilize_bitfield_reference (tree ref)
+{
+  tree op1, op2, op3;
+  STRIP_ANY_LOCATION_WRAPPER (ref);
+  switch (TREE_CODE (ref))
+    {
+    case VAR_DECL:
+    case PARM_DECL:
+    case RESULT_DECL:
+    CASE_CONVERT:
+    case FLOAT_EXPR:
+    case FIX_TRUNC_EXPR:
+    case INDIRECT_REF:
+    case COMPONENT_REF:
+    case BIT_FIELD_REF:
+    case ARRAY_REF:
+    case ARRAY_RANGE_REF:
+    case ERROR_MARK:
+    case REALPART_EXPR:
+    case IMAGPART_EXPR:
+    default:
+      break;
+    case COMPOUND_EXPR:
+      op2 = cp_stabilize_bitfield_reference (TREE_OPERAND (ref, 1));
+      if (op2 == TREE_OPERAND (ref, 1))
+	return ref;
+      op1 = TREE_OPERAND (ref, 0);
+      if (TREE_SIDE_EFFECTS (op1))
+	{
+	  if (VOID_TYPE_P (TREE_TYPE (op1)))
+	    op1 = save_expr (op1);
+	  else
+	    {
+	      op1 = build2 (COMPOUND_EXPR, void_type_node, op1,
+			    void_node);
+	      op1 = save_expr (op1);
+	    }
+	}
+      return build2 (COMPOUND_EXPR, TREE_TYPE (op2), op1, op2);
+    case COND_EXPR:
+      op1 = TREE_OPERAND (ref, 0);
+      op2 = TREE_OPERAND (ref, 1);
+      op3 = TREE_OPERAND (ref, 2);
+      if (op2 && TREE_CODE (op2) != THROW_EXPR)
+	op2 = cp_stabilize_bitfield_reference (op2);
+      if (TREE_CODE (op3) != THROW_EXPR)
+	op3 = cp_stabilize_bitfield_reference (op3);
+      if (op2 == NULL_TREE)
+	op1 = cp_stabilize_bitfield_reference (op1);
+      if (op1 == TREE_OPERAND (ref, 0)
+	  && op2 == TREE_OPERAND (ref, 1)
+	  && op3 == TREE_OPERAND (ref, 2))
+	return ref;
+      if (op2 != NULL_TREE && TREE_SIDE_EFFECTS (op1))
+	op1 = save_expr (op1);
+      return build3 (COND_EXPR, TREE_TYPE (ref), op1, op2, op3);
+    case PREINCREMENT_EXPR:
+    case PREDECREMENT_EXPR:
+      op1 = cp_stabilize_bitfield_reference (TREE_OPERAND (ref, 0));
+      if (op1 == TREE_OPERAND (ref, 0))
+	return ref;
+      return build2 (COMPOUND_EXPR, TREE_TYPE (ref),
+		     build2 (TREE_CODE (ref), TREE_TYPE (ref), op1,
+			     TREE_OPERAND (ref, 0)), op1);
+    case PAREN_EXPR:
+      op1 = cp_stabilize_bitfield_reference (TREE_OPERAND (ref, 0));
+      if (op1 == TREE_OPERAND (ref, 0))
+	return ref;
+      return build1 (PAREN_EXPR, TREE_TYPE (ref), op1);
+    }
+  return stabilize_reference (ref);
+}
+
 /* C++-specific version of stabilize_reference.  */
 
 tree
@@ -455,6 +532,8 @@ cp_stabilize_reference (tree ref)
       cp_lvalue_kind kind = lvalue_kind (ref);
       if ((kind & ~clk_class) != clk_none)
 	{
+	  if (kind & (clk_bitfield | clk_packed))
+	    return cp_stabilize_bitfield_reference (ref);
 	  tree type = unlowered_expr_type (ref);
 	  bool rval = !!(kind & clk_rvalueref);
 	  type = cp_build_reference_type (type, rval);
@@ -4829,18 +4908,24 @@ implicit_lifetime_type_p (tree t)
       && (!CLASSTYPE_DESTRUCTOR (t)
 	  || !user_provided_p (CLASSTYPE_DESTRUCTOR (t))))
     return true;
-  if (is_trivially_xible (BIT_NOT_EXPR, t, NULL_TREE))
+  if (TYPE_HAS_NONTRIVIAL_DESTRUCTOR (t))
+    return false;
+  if (TYPE_HAS_COMPLEX_DFLT (t)
+      && TYPE_HAS_COMPLEX_COPY_CTOR (t)
+      && TYPE_HAS_COMPLEX_MOVE_CTOR (t))
+    return false;
+  if (CLASSTYPE_LAZY_DESTRUCTOR (t))
+    lazily_declare_fn (sfk_destructor, t);
+  tree fn = CLASSTYPE_DESTRUCTOR (t);
+  if (!fn || DECL_DELETED_FN (fn))
+    return false;
+  for (ovl_iterator iter (get_class_binding (t, complete_ctor_identifier));
+       iter; ++iter)
     {
-      if (is_trivially_xible (INIT_EXPR, t, make_tree_vec (0)))
-	return true;
-      tree arg = make_tree_vec (1);
-      tree ct
-	= cp_build_qualified_type (t, (cp_type_quals (t) | TYPE_QUAL_CONST));
-      TREE_VEC_ELT (arg, 0) = cp_build_reference_type (ct, /*rval=*/false);
-      if (is_trivially_xible (INIT_EXPR, t, arg))
-	return true;
-      TREE_VEC_ELT (arg, 0) = t;
-      if (is_trivially_xible (INIT_EXPR, t, arg))
+      fn = *iter;
+      if ((default_ctor_p (fn) || copy_fn_p (fn) || move_fn_p (fn))
+	  && trivial_fn_p (fn)
+	  && !DECL_DELETED_FN (fn))
 	return true;
     }
   return false;

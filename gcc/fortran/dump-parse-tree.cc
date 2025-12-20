@@ -1736,6 +1736,8 @@ show_omp_assumes (gfc_omp_assumptions *assume)
     }
   if (assume->no_openmp)
     fputs (" NO_OPENMP", dumpfile);
+  if (assume->no_openmp_constructs)
+    fputs (" NO_OPENMP_CONSTRUCTS", dumpfile);
   if (assume->no_openmp_routines)
     fputs (" NO_OPENMP_ROUTINES", dumpfile);
   if (assume->no_parallelism)
@@ -1992,7 +1994,9 @@ show_omp_clauses (gfc_omp_clauses *omp_clauses)
 	case OMP_DEVICE_TYPE_HOST: s = "host"; break;
 	case OMP_DEVICE_TYPE_NOHOST: s = "nohost"; break;
 	case OMP_DEVICE_TYPE_ANY: s = "any"; break;
-	case OMP_DEVICE_TYPE_UNSET: gcc_unreachable ();
+	case OMP_DEVICE_TYPE_UNSET:
+	default:
+	  gcc_unreachable ();
 	}
       fputs (" DEVICE_TYPE(", dumpfile);
       fputs (s, dumpfile);

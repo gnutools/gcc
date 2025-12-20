@@ -195,7 +195,7 @@ struct _vec_perm_simplify_seq
   gassign *v_2_stmt;
   gassign *v_x_stmt;
   gassign *v_y_stmt;
-  /* Final permute statment.  */
+  /* Final permute statement.  */
   gassign *stmt;
   /* New selector indices for stmt.  */
   tree new_sel;
@@ -3848,6 +3848,7 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 
   orig[0] = NULL;
   orig[1] = NULL;
+  tree orig_elem_type[2] = {};
   conv_code = ERROR_MARK;
   bool maybe_ident = true;
   bool maybe_blend[2] = { true, true };
@@ -3902,6 +3903,11 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 	  if (j < 2)
 	    {
 	      orig[j] = ref;
+	      /* Track what element type was actually extracted (which may
+		 differ in signedness from the vector's element type due to
+		 tree_nop_conversion_p).  */
+	      if (!orig_elem_type[j])
+		orig_elem_type[j] = TREE_TYPE (op1);
 	      if (elem != i || j != 0)
 		maybe_ident = false;
 	      if (elem != i)
@@ -4011,6 +4017,9 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 	  if (CONVERT_EXPR_CODE_P (conv_code)
 	      && (2 * TYPE_PRECISION (TREE_TYPE (TREE_TYPE (orig[0])))
 		  == TYPE_PRECISION (TREE_TYPE (type)))
+	      && orig_elem_type[0]
+	      && useless_type_conversion_p (orig_elem_type[0],
+					    TREE_TYPE (type))
 	      && mode_for_vector (as_a <scalar_mode>
 				  (TYPE_MODE (TREE_TYPE (TREE_TYPE (orig[0])))),
 				  nelts * 2).exists ()
@@ -4050,6 +4059,9 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 	  else if (CONVERT_EXPR_CODE_P (conv_code)
 		   && (TYPE_PRECISION (TREE_TYPE (TREE_TYPE (orig[0])))
 		       == 2 * TYPE_PRECISION (TREE_TYPE (type)))
+		   && orig_elem_type[0]
+		   && useless_type_conversion_p (orig_elem_type[0],
+						 TREE_TYPE (type))
 		   && mode_for_vector (as_a <scalar_mode>
 				         (TYPE_MODE
 					   (TREE_TYPE (TREE_TYPE (orig[0])))),
@@ -4709,7 +4721,7 @@ narrow_vec_perm_simplify_seq (const vec_perm_simplify_seq &seq)
   gassign *stmt = seq->stmt;
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "Updating VEC_PERM statment:\n");
+      fprintf (dump_file, "Updating VEC_PERM statement:\n");
       fprintf (dump_file, "Old stmt: ");
       print_gimple_stmt (dump_file, stmt, 0);
     }
@@ -4955,7 +4967,7 @@ blend_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
   /* Adjust seq2->stmt: copy RHS1/RHS2 from seq1->stmt and set new sel.  */
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "Updating VEC_PERM statment:\n");
+      fprintf (dump_file, "Updating VEC_PERM statement:\n");
       fprintf (dump_file, "Old stmt: ");
       print_gimple_stmt (dump_file, seq2->stmt, 0);
     }
@@ -4976,7 +4988,7 @@ blend_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
   /* Adjust seq1->v_1_stmt: copy RHS2 from seq2->v_1_stmt and set new sel.  */
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "Updating VEC_PERM statment:\n");
+      fprintf (dump_file, "Updating VEC_PERM statement:\n");
       fprintf (dump_file, "Old stmt: ");
       print_gimple_stmt (dump_file, seq1->v_1_stmt, 0);
     }
@@ -4996,7 +5008,7 @@ blend_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
   /* Adjust seq1->v_2_stmt: copy RHS2 from seq2->v_2_stmt and set new sel.  */
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "Updating VEC_PERM statment:\n");
+      fprintf (dump_file, "Updating VEC_PERM statement:\n");
       fprintf (dump_file, "Old stmt: ");
       print_gimple_stmt (dump_file, seq1->v_2_stmt, 0);
     }

@@ -1243,9 +1243,10 @@ match_reload (signed char out, signed char *ins, signed char *outs,
     return;
   /* See a comment for the input operand above.  */
   narrow_reload_pseudo_class (out_rtx, goal_class);
-  if (find_reg_note (curr_insn, REG_UNUSED, out_rtx) == NULL_RTX)
+  reg = SUBREG_P (out_rtx) ? SUBREG_REG (out_rtx) : out_rtx;
+  if (find_reg_note (curr_insn, REG_UNUSED, reg) == NULL_RTX
+      && (!REG_P (reg) || !ira_former_scratch_p (REGNO (reg))))
     {
-      reg = SUBREG_P (out_rtx) ? SUBREG_REG (out_rtx) : out_rtx;
       start_sequence ();
       /* If we had strict_low_part, use it also in reload to keep other
 	 parts unchanged but do it only for regs as strict_low_part
@@ -3002,7 +3003,8 @@ process_alt_operands (int only_alternative)
 		 objects with a REG_UNUSED note.  */
 	      if ((curr_static_id->operand[nop].type != OP_IN
 		   && no_output_reloads_p
-		   && ! find_reg_note (curr_insn, REG_UNUSED, op))
+		   && ! find_reg_note (curr_insn, REG_UNUSED, op)
+		   && ! scratch_p)
 		  || (curr_static_id->operand[nop].type != OP_OUT
 		      && no_input_reloads_p && ! const_to_mem)
 		  || (this_alternative_matches >= 0
@@ -3012,7 +3014,8 @@ process_alt_operands (int only_alternative)
 				  [this_alternative_matches].type != OP_IN)
 			      && ! find_reg_note (curr_insn, REG_UNUSED,
 						  no_subreg_reg_operand
-						  [this_alternative_matches])))))
+						  [this_alternative_matches])
+			      && ! scratch_p))))
 		{
 		  if (lra_dump_file != NULL)
 		    fprintf
@@ -4856,7 +4859,8 @@ curr_insn_transform (bool check_only_p)
 	  if (type != OP_IN
 	      && find_reg_note (curr_insn, REG_UNUSED, old) == NULL_RTX
 	      /* OLD can be an equivalent constant here.  */
-	      && !CONSTANT_P (old))
+	      && !CONSTANT_P (old)
+	      && (!REG_P(old) || !ira_former_scratch_p (REGNO (old))))
 	    {
 	      start_sequence ();
 	      lra_emit_move (type == OP_INOUT ? copy_rtx (old) : old, new_reg);
