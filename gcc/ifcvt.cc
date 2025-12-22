@@ -3115,6 +3115,8 @@ get_base_reg (rtx exp)
 {
   if (REG_P (exp))
     return exp;
+  else if (SUBREG_P (exp))
+    return SUBREG_REG (exp);
 
   return NULL_RTX;
 }
