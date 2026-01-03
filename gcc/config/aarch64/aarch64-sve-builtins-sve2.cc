@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SVE (__ARM_FEATURE_SVE2 intrinsics)
-   Copyright (C) 2020-2025 Free Software Foundation, Inc.
+   Copyright (C) 2020-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -1020,6 +1020,8 @@ FUNCTION (svclamp, svclamp_impl,)
 FUNCTION (svcvt1, svcvt_fp8_impl, (UNSPEC_F1CVT))
 FUNCTION (svcvt2, svcvt_fp8_impl, (UNSPEC_F2CVT))
 FUNCTION (svcvtl, svcvtl_impl,)
+FUNCTION (svcvtl1, svcvt_fp8_impl, (UNSPEC_F1CVTL))
+FUNCTION (svcvtl2, svcvt_fp8_impl, (UNSPEC_F2CVTL))
 FUNCTION (svcvtlt1, svcvt_fp8_impl, (UNSPEC_F1CVTLT))
 FUNCTION (svcvtlt2, svcvt_fp8_impl, (UNSPEC_F2CVTLT))
 FUNCTION (svcvtlt, unspec_based_function, (-1, -1, UNSPEC_COND_FCVTLT))

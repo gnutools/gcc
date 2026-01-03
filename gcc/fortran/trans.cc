@@ -1,5 +1,5 @@
 /* Code translation -- generate GCC trees from gfc_code.
-   Copyright (C) 2002-2025 Free Software Foundation, Inc.
+   Copyright (C) 2002-2026 Free Software Foundation, Inc.
    Contributed by Paul Brook
 
 This file is part of GCC.
@@ -1623,7 +1623,10 @@ gfc_finalize_tree_expr (gfc_se *se, gfc_symbol *derived,
   if (derived && (derived->attr.is_c_interop
 		  || derived->attr.is_iso_c
 		  || derived->attr.is_bind_c
-		  || derived->attr.defined_assign_comp))
+		  || (derived->attr.extension && derived->f2k_derived
+		      && derived->f2k_derived->tb_op[INTRINSIC_ASSIGN])
+		  || (!derived->attr.extension
+		      && derived->attr.defined_assign_comp)))
     return;
 
   if (is_class)
@@ -1638,12 +1641,15 @@ gfc_finalize_tree_expr (gfc_se *se, gfc_symbol *derived,
     }
   else if (derived && gfc_is_finalizable (derived, NULL))
     {
-      if (!derived->components && (!rank || attr.elemental))
+      tree type = TREE_TYPE (se->expr);
+      if (type && TYPE_SIZE_UNIT (type)
+	  && integer_zerop (TYPE_SIZE_UNIT (type))
+	  && (!rank || attr.elemental))
 	{
 	  /* Any attempt to assign zero length entities, causes the gimplifier
 	     all manner of problems. Instead, a variable is created to act as
-	     as the argument for the final call.  */
-	  desc = gfc_create_var (TREE_TYPE (se->expr), "zero");
+	     the argument for the final call.  */
+	  desc = gfc_create_var (type, "zero");
 	}
       else if (se->direct_byref)
 	{

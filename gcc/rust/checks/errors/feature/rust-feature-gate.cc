@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025 Free Software Foundation, Inc.
+// Copyright (C) 2020-2026 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -59,6 +59,22 @@ FeatureGate::visit (AST::Crate &crate)
 	      std::unique_ptr<AST::AttrInputMetaItemContainer> meta_item (
 		option.parse_to_meta_item ());
 	      for (const auto &item : meta_item->get_items ())
+		{
+		  const auto &name_str = item->as_string ();
+
+		  // TODO: detect duplicates
+		  if (auto tname = Feature::as_name (name_str))
+		    valid_lang_features.insert (tname.value ());
+		  else
+		    valid_lib_features.emplace (name_str, item->get_locus ());
+		}
+	    }
+	  else if (type == AST::AttrInput::AttrInputType::META_ITEM)
+	    {
+	      const auto &meta_item
+		= static_cast<const AST::AttrInputMetaItemContainer &> (
+		  attr_input);
+	      for (const auto &item : meta_item.get_items ())
 		{
 		  const auto &name_str = item->as_string ();
 

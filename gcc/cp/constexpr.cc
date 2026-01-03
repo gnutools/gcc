@@ -2,7 +2,7 @@
    constexpr functions.  These routines are used both during actual parsing
    and during the instantiation of template functions.
 
-   Copyright (C) 1998-2025 Free Software Foundation, Inc.
+   Copyright (C) 1998-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -6727,7 +6727,9 @@ cxx_eval_vec_init_1 (const constexpr_ctx *ctx, tree atype, tree init,
 	  eltinit = (perform_implicit_conversion_flags
 		     (elttype, eltinit, complain,
 		      LOOKUP_IMPLICIT|LOOKUP_NO_NARROWING));
-	  if (CLASS_TYPE_P (elttype) && new_ctx.object)
+	  if (CLASS_TYPE_P (elttype)
+	      && new_ctx.object
+	      && !error_operand_p (eltinit))
 	    /* Clarify what object is being initialized (118285).  */
 	    eltinit = build2 (INIT_EXPR, elttype, new_ctx.object, eltinit);
 	  eltinit = cxx_eval_constant_expression (&new_ctx, eltinit, lval,
@@ -11414,6 +11416,7 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
   if (t == NULL_TREE)
     return true;
   location_t loc = cp_expr_loc_or_input_loc (t);
+  iloc_sentinel ils = loc;
 
   if (*jump_target)
     /* If we are jumping, ignore everything.  This is simpler than the
@@ -11737,10 +11740,7 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
       {
         tree from = TREE_OPERAND (t, 0);
 	if (location_wrapper_p (t))
-	  {
-	    iloc_sentinel ils = loc;
-	    return (RECUR (from, want_rval));
-	  }
+	  return (RECUR (from, want_rval));
 	if (INDIRECT_TYPE_P (TREE_TYPE (t)))
 	  {
 	    STRIP_ANY_LOCATION_WRAPPER (from);
@@ -12074,6 +12074,7 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	    && strict
 	    && !TYPE_P (e)
 	    && !type_dependent_expression_p (e)
+	    && CLASS_TYPE_P (TREE_TYPE (e))
 	    && TYPE_POLYMORPHIC_P (TREE_TYPE (e)))
           {
             if (flags & tf_error)

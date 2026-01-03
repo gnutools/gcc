@@ -441,9 +441,11 @@ static void
 a68_init_options (unsigned int argc ATTRIBUTE_UNUSED,
 		  cl_decoded_option *decoded_options ATTRIBUTE_UNUSED)
 {
-  /* Create an empty module files map.  */
+  /* Create an empty module files map and fill in some modules that are
+     provided by the run-time libga68 library.  */
   A68_MODULE_FILES = hash_map<nofree_string_hash,const char*>::create_ggc (16);
   A68_MODULE_FILES->empty ();
+  A68_MODULE_FILES->put (ggc_strdup ("TRANSPUT"), ggc_strdup ("ga68"));
 }
 
 #undef LANG_HOOKS_INIT_OPTIONS
@@ -533,14 +535,14 @@ a68_handle_option (size_t scode,
 	  fatal_error (UNKNOWN_LOCATION,
 		       "cannot open modules map file %<%s%>", arg);
 	
-	ssize_t ssize = a68_file_size (file);
+	ssize_t ssize = a68_file_size (fileno (file));
 	if (ssize < 0)
 	  fatal_error (UNKNOWN_LOCATION,
 		       "cannot determine size of modules map file %<%s%>", arg);
 	size_t fsize = ssize;
 
 	char *buffer = (char *) xmalloc (fsize + 1);
-	size_t bytes_read = a68_file_read (file, buffer, fsize);
+	size_t bytes_read = a68_file_read (fileno (file), buffer, fsize);
 	if (bytes_read != fsize)
 	  fatal_error (UNKNOWN_LOCATION,
 		       "cannot read contents of modules map file %<%s%>", arg);

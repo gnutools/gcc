@@ -1,3 +1,7 @@
+2025-12-23  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	* Make-lang.in: Bump GCOV version to 3.
+
 2025-12-19  Jakub Jelinek  <jakub@redhat.com>
 
 	* gimple-parser.cc (c_parser_gimple_switch_stmt): Fix comment typo,
@@ -12294,7 +12298,7 @@
 	* c-decl.c: Likewise.  Include gt-c-c-decl.h, not gt-c-decl.h.
 	* c-parser.c: Likewise.  Include gt-c-c-parser.h, not gt-c-parser.h.
 
-Copyright (C) 2012-2025 Free Software Foundation, Inc.
+Copyright (C) 2012-2026 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

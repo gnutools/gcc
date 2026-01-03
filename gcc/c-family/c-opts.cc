@@ -1,5 +1,5 @@
 /* C/ObjC/C++ command line option handling.
-   Copyright (C) 2002-2025 Free Software Foundation, Inc.
+   Copyright (C) 2002-2026 Free Software Foundation, Inc.
    Contributed by Neil Booth.
 
 This file is part of GCC.
@@ -1490,7 +1490,7 @@ c_common_finish (void)
 	}
       if (fdeps_stream == deps_stream && fdeps_stream != stdout)
 	fatal_error (input_location, "%<-MF%> and %<-fdeps-file=%> cannot share an output file %s: %m",
-		     fdeps_file);
+		     fdeps_file ? fdeps_file : out_fname);
     }
 
   /* For performance, avoid tearing down cpplib's internal structures

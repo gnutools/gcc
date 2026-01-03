@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025 Free Software Foundation, Inc.
+// Copyright (C) 2020-2026 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -1029,6 +1029,8 @@ void
 DefaultASTVisitor::visit (AST::TraitItemType &item)
 {
   visit_outer_attrs (item);
+  for (auto &generic : item.get_generic_params ())
+    visit (generic);
   for (auto &bound : item.get_type_param_bounds ())
     visit (bound);
 }

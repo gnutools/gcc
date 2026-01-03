@@ -1,5 +1,5 @@
 /* Subroutines shared by all languages that are variants of C.
-   Copyright (C) 1992-2025 Free Software Foundation, Inc.
+   Copyright (C) 1992-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -262,7 +262,7 @@ const char *constant_string_class_name;
 
 int warn_abi_version = -1;
 
-/* The C++ dialect being used.  Default set in c_common_post_options.  */
+/* The C++ dialect being used.  Default set in c_common_init_options.  */
 
 enum cxx_dialect cxx_dialect = cxx_unset;
 

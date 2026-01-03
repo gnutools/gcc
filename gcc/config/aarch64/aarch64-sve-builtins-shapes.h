@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SVE (function shapes)
-   Copyright (C) 2018-2025 Free Software Foundation, Inc.
+   Copyright (C) 2018-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -126,6 +126,7 @@ namespace aarch64_sve
     extern const function_shape *const count_pred_c;
     extern const function_shape *const count_vector;
     extern const function_shape *const create;
+    extern const function_shape *const dot_half_za_slice_lane;
     extern const function_shape *const dot_za_slice_int_lane;
     extern const function_shape *const dot_za_slice_lane;
     extern const function_shape *const dot_za_slice_uint_lane;

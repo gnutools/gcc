@@ -1,6 +1,6 @@
 /* Basic IPA utilities for type inheritance graph construction and
    devirtualization.
-   Copyright (C) 2013-2025 Free Software Foundation, Inc.
+   Copyright (C) 2013-2026 Free Software Foundation, Inc.
    Contributed by Jan Hubicka
 
 This file is part of GCC.
@@ -3865,7 +3865,7 @@ ipa_devirt (void)
 		continue;
 	      }
 	    bool first = true;
-	    unsigned speculative_id = 0;
+	    unsigned speculative_id = e->get_next_speculative_id ();
 	    for (cgraph_node * likely_target: likely_targets)
 	      {
 		if (!devirt_target_ok_p (likely_target, &stats))
@@ -3940,7 +3940,8 @@ ipa_devirt (void)
 
 		update = true;
 		e->make_speculative (likely_tgt_node,
-				     e->count.apply_scale (8, 10));
+				     e->count.apply_scale (8, 10),
+				     e->get_next_speculative_id ());
 	      }
 	  }
       if (update)

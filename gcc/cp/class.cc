@@ -1,5 +1,5 @@
 /* Functions related to building -*- C++ -*- classes and their related objects.
-   Copyright (C) 1987-2025 Free Software Foundation, Inc.
+   Copyright (C) 1987-2026 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -7472,7 +7472,12 @@ determine_key_method (tree type)
   for (method = TYPE_FIELDS (type); method; method = DECL_CHAIN (method))
     if (TREE_CODE (method) == FUNCTION_DECL
 	&& DECL_VINDEX (method) != NULL_TREE
-	&& ! DECL_DECLARED_INLINE_P (method)
+	&& (! DECL_DECLARED_INLINE_P (method)
+	    /* [[gnu::gnu_inline]] virtual inline/constexpr methods will
+	       have out of line bodies emitted in some other TU and so
+	       those can be key methods and vtable emitted in the TU with
+	       the actual out of line definition.  */
+	    || lookup_attribute ("gnu_inline", DECL_ATTRIBUTES (method)))
 	&& ! DECL_PURE_VIRTUAL_P (method))
       {
 	SET_CLASSTYPE_KEY_METHOD (type, method);

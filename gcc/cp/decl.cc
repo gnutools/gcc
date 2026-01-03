@@ -1,5 +1,5 @@
 /* Process declarations and variables for -*- C++ -*- compiler.
-   Copyright (C) 1988-2025 Free Software Foundation, Inc.
+   Copyright (C) 1988-2026 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -1129,6 +1129,7 @@ member_like_constrained_friend_p (tree decl)
 	  && DECL_UNIQUE_FRIEND_P (decl)
 	  && DECL_FRIEND_CONTEXT (decl)
 	  && get_constraints (decl)
+	  && CLASSTYPE_IMPLICIT_INSTANTIATION (DECL_FRIEND_CONTEXT (decl))
 	  && (!DECL_TEMPLATE_INFO (decl)
 	      || !PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (decl))
 	      || (uses_outer_template_parms_in_constraints
@@ -19760,7 +19761,7 @@ start_preparsed_function (tree decl1, tree attrs, int flags)
 	}
     }
 
-  bool honor_interface = (!DECL_TEMPLATE_INSTANTIATION (decl1)
+  bool honor_interface = (!DECL_TEMPLOID_INSTANTIATION (decl1)
 			  /* Implicitly-defined methods (like the
 			     destructor for a class in which no destructor
 			     is explicitly declared) must not be defined
@@ -19791,7 +19792,7 @@ start_preparsed_function (tree decl1, tree attrs, int flags)
   else if (!finfo->interface_unknown && honor_interface)
     {
       if (DECL_DECLARED_INLINE_P (decl1)
-	  || DECL_TEMPLATE_INSTANTIATION (decl1))
+	  || DECL_TEMPLOID_INSTANTIATION (decl1))
 	{
 	  DECL_EXTERNAL (decl1)
 	    = (finfo->interface_only
@@ -19833,7 +19834,7 @@ start_preparsed_function (tree decl1, tree attrs, int flags)
 	DECL_EXTERNAL (decl1) = 0;
 
       if ((DECL_DECLARED_INLINE_P (decl1)
-	   || DECL_TEMPLATE_INSTANTIATION (decl1))
+	   || DECL_TEMPLOID_INSTANTIATION (decl1))
 	  && ! DECL_INTERFACE_KNOWN (decl1))
 	DECL_DEFER_OUTPUT (decl1) = 1;
       else
@@ -20466,13 +20467,18 @@ finish_function (bool inline_p)
 	  || is_valid_constexpr_fn (fndecl, /*complain*/false))
 	 && potential_constant_expression (DECL_SAVED_TREE (fndecl)));
 
-  /* Save constexpr function body before it gets munged by
-     the NRV transformation.   */
-  maybe_save_constexpr_fundef (fndecl);
-
   /* Invoke the pre-genericize plugin before we start munging things.  */
   if (!processing_template_decl)
     invoke_plugin_callbacks (PLUGIN_PRE_GENERICIZE, fndecl);
+
+  /* Fold away non-ODR usages of constants so that we don't need to
+     try and stream them in modules if they're internal.  */
+  if (!processing_template_decl)
+    cp_fold_function_non_odr_use (fndecl);
+
+  /* Save constexpr function body before it gets munged by
+     the NRV transformation.   */
+  maybe_save_constexpr_fundef (fndecl);
 
   /* Perform delayed folding before NRV transformation.  */
   if (!processing_template_decl

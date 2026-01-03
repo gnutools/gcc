@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Free Software Foundation, Inc.
+# Copyright (C) 2024-2026 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,22 @@
 # These tests raise errors in the front end; torture testing doesn't apply.
 
 load_lib algol68-dg.exp
+
+proc dg-data { args } {
+  global objdir
+
+  if { [llength $args] != 3 } {
+      error "[lindex $args 0]: invalid arguments"
+  }
+
+  set filename $objdir/[lindex $args 1]
+  set bytes [lindex $args 2]
+
+  set fd [open $filename w]
+  fconfigure $fd -translation binary
+  puts -nonewline $fd [binary format c* $bytes]
+  close $fd
+}
 
 # Initialize `dg'.
 dg-init

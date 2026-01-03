@@ -1,5 +1,5 @@
 /* Perform type resolution on the various structures.
-   Copyright (C) 2001-2025 Free Software Foundation, Inc.
+   Copyright (C) 2001-2026 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -18816,6 +18816,13 @@ skip_interfaces:
 
   if (sym->param_list)
     resolve_pdt (sym);
+}
+
+
+void gfc_resolve_symbol (gfc_symbol *sym)
+{
+  resolve_symbol (sym);
+  return;
 }
 
 

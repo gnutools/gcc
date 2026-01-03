@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025 Free Software Foundation, Inc.
+// Copyright (C) 2020-2026 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -282,9 +282,7 @@ Resolver::Resolver ()
     label_scope (Scope (mappings.get_current_crate ())),
     macro_scope (Scope (mappings.get_current_crate ())),
     global_type_node_id (UNKNOWN_NODEID), unit_ty_node_id (UNKNOWN_NODEID)
-{
-  generate_builtins ();
-}
+{}
 
 Resolver *
 Resolver::get ()

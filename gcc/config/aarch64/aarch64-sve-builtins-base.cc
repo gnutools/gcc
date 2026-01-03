@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SVE (__ARM_FEATURE_SVE intrinsics)
-   Copyright (C) 2018-2025 Free Software Foundation, Inc.
+   Copyright (C) 2018-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -779,17 +779,23 @@ public:
       {
 	machine_mode mode0 = e.result_mode ();
 	machine_mode mode1 = GET_MODE (e.args[0]);
-	convert_optab optab;
-	if (e.type_suffix (0).integer_p)
-	  optab = e.type_suffix (0).unsigned_p ? ufix_optab : sfix_optab;
-	else if (e.type_suffix (1).integer_p)
-	  optab = e.type_suffix (1).unsigned_p ? ufloat_optab : sfloat_optab;
-	else if (e.type_suffix (0).element_bits
-		 < e.type_suffix (1).element_bits)
-	  optab = trunc_optab;
+	if (e.fpm_mode == aarch64_sve::FPM_set)
+	  icode = code_for_aarch64_sme2_fp8_cvt (mode1);
 	else
-	  optab = sext_optab;
-	icode = convert_optab_handler (optab, mode0, mode1);
+	  {
+	    convert_optab optab;
+	    if (e.type_suffix (0).integer_p)
+	      optab = e.type_suffix (0).unsigned_p ? ufix_optab : sfix_optab;
+	    else if (e.type_suffix (1).integer_p)
+	      optab = e.type_suffix (1).unsigned_p ? ufloat_optab
+						   : sfloat_optab;
+	    else if (e.type_suffix (0).element_bits
+		     < e.type_suffix (1).element_bits)
+	      optab = trunc_optab;
+	    else
+	      optab = sext_optab;
+	    icode = convert_optab_handler (optab, mode0, mode1);
+	  }
 	gcc_assert (icode != CODE_FOR_nothing);
 	return e.use_exact_insn (icode);
       }
@@ -2335,9 +2341,11 @@ public:
 	    tree negated_op = op1;
 	    if (integer_minus_onep (op1))
 	      negated_op = op2;
-	    type_suffix_pair signed_tsp =
-	      {find_type_suffix (TYPE_signed, f.type_suffix (0).element_bits),
-		f.type_suffix_ids[1]};
+	    type_suffix_triple signed_tsp = {
+	      find_type_suffix (TYPE_signed, f.type_suffix (0).element_bits),
+	      f.type_suffix_ids[1],
+	      NUM_TYPE_SUFFIXES
+	    };
 	    function_instance instance ("svneg", functions::svneg,
 					shapes::unary, MODE_none, signed_tsp,
 					GROUP_none, f.pred, FPM_unused);
@@ -3459,6 +3467,25 @@ public:
   unsigned int m_base;
 };
 
+class svscale_impl : public function_base
+{
+public:
+  rtx
+  expand (function_expander &e) const override
+  {
+    if (vectors_per_tuple (e) == 1)
+      return e.map_to_unspecs (-1, -1, UNSPEC_COND_FSCALE);
+    else
+      {
+	machine_mode mode = GET_MODE (e.args[0]);
+	insn_code code = (e.mode_suffix_id == MODE_single
+	  ? code_for_aarch64_sve_single_fscale (mode)
+	  : code_for_aarch64_sve_fscale (mode));
+	return e.use_exact_insn (code);
+      }
+  }
+};
+
 } /* end anonymous namespace */
 
 namespace aarch64_sve {
@@ -3700,7 +3727,7 @@ FUNCTION (svrintx, svrint_impl, (rint_optab, UNSPEC_COND_FRINTX))
 FUNCTION (svrintz, svrint_impl, (btrunc_optab, UNSPEC_COND_FRINTZ))
 FUNCTION (svrsqrte, unspec_based_function, (-1, UNSPEC_RSQRTE, UNSPEC_RSQRTE))
 FUNCTION (svrsqrts, unspec_based_function, (-1, -1, UNSPEC_RSQRTS))
-FUNCTION (svscale, unspec_based_function, (-1, -1, UNSPEC_COND_FSCALE))
+FUNCTION (svscale, svscale_impl,)
 FUNCTION (svsel, svsel_impl,)
 FUNCTION (svset2, svset_impl, (2))
 FUNCTION (svset3, svset_impl, (3))

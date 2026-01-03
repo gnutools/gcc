@@ -1,5 +1,5 @@
 /* Callgraph handling code.
-   Copyright (C) 2003-2025 Free Software Foundation, Inc.
+   Copyright (C) 2003-2026 Free Software Foundation, Inc.
    Contributed by Jan Hubicka
 
 This file is part of GCC.
@@ -1264,6 +1264,32 @@ cgraph_edge::remove (cgraph_edge *edge)
   /* Put the edge onto the free list.  */
   symtab->free_edge (edge);
 }
+
+/* Returns the next speculative_id based on currently in use
+   for the given statement for the edge.
+   Returns 0 if no speculative edges exist for this statement. */
+
+int
+cgraph_edge::get_next_speculative_id ()
+{
+  int max_id = -1;
+  cgraph_edge *e;
+
+  /* Iterate through all edges leaving this caller */
+  for (e = caller->callees; e; e = e->next_callee)
+    {
+      /* Match the specific GIMPLE statement and check the
+	 speculative flag */
+      if (e->call_stmt == call_stmt && e->speculative)
+	{
+	  if (e->speculative_id > max_id)
+	    max_id = e->speculative_id;
+	}
+    }
+
+  return max_id + 1;
+}
+
 
 /* Turn edge into speculative call calling N2. Update
    the profile so the direct call is taken COUNT times

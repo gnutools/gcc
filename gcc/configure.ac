@@ -1,7 +1,7 @@
 # configure.ac for GCC
 # Process this file with autoconf to generate a configuration script.
 
-# Copyright (C) 1997-2025 Free Software Foundation, Inc.
+# Copyright (C) 1997-2026 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -4950,11 +4950,6 @@ foo:	nop
        ;;
     esac
 
-    gcc_GAS_CHECK_FEATURE([-xbrace_comment], gcc_cv_as_ix86_xbrace_comment,
-      [-xbrace_comment=no], [.text],,
-      [AC_DEFINE(HAVE_AS_XBRACE_COMMENT_OPTION, 1,
-		[Define if your assembler supports -xbrace_comment option.])])
-
     gcc_GAS_CHECK_FEATURE([filds and fists mnemonics],
        gcc_cv_as_ix86_filds,,
        [filds (%ebp); fists (%ebp)],,
@@ -6439,6 +6434,17 @@ AC_DEFINE_UNQUOTED(HAVE_LD_COMPRESS_DEBUG, $gcc_cv_ld_compress_debug,
 AC_DEFINE_UNQUOTED(LD_COMPRESS_DEBUG_OPTION, "$gcc_cv_ld_compress_debug_option",
 [Define to the linker option to enable compressed debug sections.])
 AC_MSG_RESULT($gcc_cv_ld_compress_debug)
+
+AC_MSG_CHECKING(linker support for -z ctf)
+gcc_cv_ld_ctf=no
+# Check for Solaris ld 1.3315 introduced in Solaris 11.4 SRU 84.  ld -z ctf
+# already went in in SRU 81, but lacked GNU CTF to Solaris CTF conversion.
+if $gcc_cv_ld --help 2>&1 | grep -- '-z ctf' > /dev/null \
+  && test x$gnu_ld = xno && test "$ld_vers_minor" -ge 3315; then
+  gcc_cv_ld_ctf=yes
+  AC_DEFINE(HAVE_LD_CTF, 1, [Define if your linker supports -z ctf.])
+fi
+AC_MSG_RESULT($gcc_cv_ld_ctf)
 
 if test x"$ld64_flag" = x"yes"; then
 

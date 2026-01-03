@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025 Free Software Foundation, Inc.
+// Copyright (C) 2020-2026 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -451,7 +451,7 @@ ASTLoweringItem::visit (AST::Function &function)
 	  continue;
 	}
 
-      auto param = static_cast<AST::FunctionParam &> (*p);
+      auto &param = static_cast<AST::FunctionParam &> (*p);
 
       auto translated_pattern = std::unique_ptr<HIR::Pattern> (
 	ASTLoweringPattern::translate (param.get_pattern ()));

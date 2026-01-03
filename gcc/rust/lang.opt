@@ -1,5 +1,5 @@
 ; Options for the Rust front end.
-; Copyright (C) 2003-2025 Free Software Foundation, Inc.
+; Copyright (C) 2003-2026 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -232,5 +232,9 @@ Enable the overflow checks in code generation
 frust-assume-builtin-offset-of
 Rust Var(flag_assume_builtin_offset_of)
 Define a built-in offset_of macro in the compiler and assume it is present
+
+frust-unused-check-2.0
+Rust Var(flag_unused_check_2_0)
+Use the new unused variable check implementation.
 
 ; This comment is to ensure we retain the blank line above.

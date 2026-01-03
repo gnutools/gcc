@@ -1,5 +1,5 @@
 ;; Machine description for AArch64 SVE2.
-;; Copyright (C) 2019-2025 Free Software Foundation, Inc.
+;; Copyright (C) 2019-2026 Free Software Foundation, Inc.
 ;; Contributed by ARM Ltd.
 ;;
 ;; This file is part of GCC.
@@ -58,6 +58,7 @@
 ;; ---- [INT] Saturating left shifts
 ;; ---- [FP] Non-widening bfloat16 arithmetic
 ;; ---- [FP] Clamp to minimum/maximum
+;; ---- [FP] Scaling by powers of two
 ;;
 ;; == Uniform ternary arithmnetic
 ;; ---- [INT] General ternary arithmetic that maps to unspecs
@@ -1479,6 +1480,33 @@
   "TARGET_STREAMING_SME2"
   "<b>fclamp\t%0, %2.<Vetype>, %3.<Vetype>"
   [(set_attr "sve_type" "sve_fp_arith")]
+)
+
+;; -------------------------------------------------------------------------
+;; ---- [FP] Scaling by powers of two
+;; -------------------------------------------------------------------------
+;; Includes the multiple and single vector and multiple vectors forms of
+;; - FSCALE
+;; -------------------------------------------------------------------------
+
+(define_insn "@aarch64_sve_fscale<mode>"
+  [(set (match_operand:SVE_Fx24_NOBF 0 "register_operand" "=Uw<vector_count>")
+	(unspec:SVE_Fx24_NOBF
+	  [(match_operand:SVE_Fx24_NOBF 1 "register_operand" "0")
+	   (match_operand:<SVSCALE_INTARG> 2 "register_operand" "Uw<vector_count>")]
+	  UNSPEC_FSCALE))]
+  "TARGET_STREAMING_SME2 && TARGET_FP8"
+  "fscale\t%0, %1, %2"
+)
+
+(define_insn "@aarch64_sve_single_fscale<mode>"
+  [(set (match_operand:SVE_Fx24_NOBF 0 "register_operand" "=Uw<vector_count>")
+	(unspec:SVE_Fx24_NOBF
+	  [(match_operand:SVE_Fx24_NOBF 1 "register_operand" "0")
+	   (match_operand:<SVSCALE_SINGLE_INTARG> 2 "register_operand" "x")]
+	  UNSPEC_FSCALE))]
+  "TARGET_STREAMING_SME2 && TARGET_FP8"
+  "fscale\t%0, %1, %2.<Vetype>"
 )
 
 ;; =========================================================================
@@ -3591,6 +3619,16 @@
   [(set_attr "sve_type" "sve_fp_cvt")]
 )
 
+(define_insn "@aarch64_sve2_fp8_cvt_<fp8_cvt_uns_op><mode>"
+  [(set (match_operand:SVE_FULL_HFx2 0 "aligned_register_operand" "=Uw2")
+	(unspec:SVE_FULL_HFx2
+	  [(match_operand:VNx16QI 1 "register_operand" "w")
+	  (reg:DI FPM_REGNUM)]
+	  FP8CVT_UNS))]
+  "TARGET_SSME2_FP8"
+  "<b><fp8_cvt_uns_op>\t%0, %1.b"
+)
+
 ;; -------------------------------------------------------------------------
 ;; ---- [FP<-FP] Multi-vector narrowing conversions
 ;; -------------------------------------------------------------------------
@@ -3625,10 +3663,10 @@
 (define_insn "@aarch64_sve2_fp8_cvtn<mode>"
   [(set (match_operand:VNx16QI 0 "register_operand" "=w")
 	(unspec:VNx16QI
-	  [(match_operand:SVE_FULL_HFx2 1 "aligned_register_operand" "Uw2")
+	  [(match_operand:VNx16F_NARROW 1 "aligned_register_operand" "Uw<vector_count>")
 	   (reg:DI FPM_REGNUM)]
 	  UNSPEC_FP8FCVTN))]
-  "TARGET_SSVE_FP8"
+  "<MODE>mode == VNx16SFmode ? TARGET_SSME2_FP8 : TARGET_SSVE_FP8"
   "<b>fcvtn\t%0.b, %1"
   [(set_attr "sve_type" "sve_fp_cvt")]
 )
@@ -3654,6 +3692,16 @@
   "TARGET_SSVE_FP8"
   "fcvtnt\t%0.b, %2"
   [(set_attr "sve_type" "sve_fp_cvt")]
+)
+
+(define_insn "@aarch64_sme2_fp8_cvt<mode>"
+  [(set (match_operand:VNx16QI 0 "register_operand" "=w")
+	(unspec:VNx16QI
+	  [(match_operand:VNx16F_NARROW 1 "aligned_register_operand" "Uw<vector_count>")
+	   (reg:DI FPM_REGNUM)]
+	  UNSPEC_FCVT))]
+   "TARGET_SSME2_FP8"
+   "<b>fcvt\t%0.b, %1"
 )
 
 ;; -------------------------------------------------------------------------

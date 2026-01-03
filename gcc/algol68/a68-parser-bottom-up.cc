@@ -201,6 +201,14 @@ empty_clause (NODE_T *p)
   a68_error (p, "clause does not yield a value");
 }
 
+/* Diagnose for invalid module text.  */
+
+static void
+expected_module_text (NODE_T *p)
+{
+  a68_error (p, "expected module text in module definition");
+}
+
 /* Diagnose for missing symbol.  */
 
 static void
@@ -453,7 +461,7 @@ reduce_prelude_packet (NODE_T *p)
   /* Single module declaration.  */
   reduce (p, NO_NOTE, NO_TICK,
 	  MODULE_DECLARATION, MODULE_SYMBOL, DEFINING_MODULE_INDICANT, EQUALS_SYMBOL, MODULE_TEXT, STOP);
-  reduce (p, strange_tokens, NO_TICK,
+  reduce (p, expected_module_text, NO_TICK,
 	  MODULE_DECLARATION, MODULE_SYMBOL, DEFINING_MODULE_INDICANT, EQUALS_SYMBOL, -MODULE_TEXT, STOP);
 
 #if 0
@@ -2545,9 +2553,22 @@ reduce_enclosed_clauses (NODE_T *q, enum a68_attribute expect)
 	      reduce (s, NO_NOTE, NO_TICK, ENCLOSED_CLAUSE, LOOP_CLAUSE, STOP);
 	      reduce (s, NO_NOTE, NO_TICK, ENCLOSED_CLAUSE, ACCESS_CLAUSE, STOP);
 	    }
-	  // XXX reduce revelations
+
+	  /* Reduce revelations.  */
+
 	  reduce (p, NO_NOTE, NO_TICK,
-		  ACCESS_CLAUSE, ACCESS_SYMBOL, MODULE_INDICANT, ENCLOSED_CLAUSE, STOP);
+		  REVELATION, ACCESS_SYMBOL, MODULE_INDICANT, STOP);
+
+	  bool siga;
+	  do
+	    {
+	      siga = false;
+	      reduce (p, NO_NOTE, &siga,
+		      REVELATION, REVELATION, COMMA_SYMBOL, MODULE_INDICANT, STOP);
+	    }
+	  while (siga);
+	  reduce (p, NO_NOTE, NO_TICK,
+		  ACCESS_CLAUSE, REVELATION, ENCLOSED_CLAUSE, STOP);
 	}
       else if (IS (p, IF_SYMBOL))
 	{
@@ -2879,11 +2900,6 @@ a68_bottom_up_error_check (NODE_T *p)
 	    a68_error (p, "incorrect number of pictures for A",
 		       ATTRIBUTE (p));
 	}
-      else if (IS (p, PUBLIC_SYMBOL))
-	{
-	  /* These should have been removed by a68_bottom_up_coalesce_pub.  */
-	  gcc_unreachable ();
-	}
       else if (a68_is_one_of (p, DEFINING_INDICANT, DEFINING_IDENTIFIER, DEFINING_OPERATOR, STOP))
 	{
 	  if (PUBLICIZED (p) && !PUBLIC_RANGE (TABLE (p)))
@@ -2979,33 +2995,5 @@ a68_rearrange_goto_less_jumps (NODE_T *p)
 	    }
 	}
       a68_rearrange_goto_less_jumps (SUB (p));
-    }
-}
-
-/*
- * Remove PUBLIC_SYMBOLs resulting from reductions from the tree.  Note that
- * the defining indicants, identifiers and operators have been already marked
- * as publicized or not publicized by the extract routines.
- */
-
-void
-a68_bottom_up_coalesce_pub (NODE_T *p)
-{
-  for (; p != NO_NODE; FORWARD (p))
-    {
-      if (a68_is_one_of (p,
-			 MODE_DECLARATION, PROCEDURE_DECLARATION, PRIORITY_DECLARATION,
-			 PROCEDURE_VARIABLE_DECLARATION, BRIEF_OPERATOR_DECLARATION,
-			 OPERATOR_DECLARATION,  IDENTITY_DECLARATION,
-			 VARIABLE_DECLARATION, STOP))
-	{
-	  if (SUB (p) != NO_NODE && IS (SUB (p), PUBLIC_SYMBOL))
-	    {
-	      NODE_T *public_symbol = SUB (p);
-	      SUB (p) = NEXT (public_symbol);
-	      PREVIOUS (NEXT (public_symbol)) = NO_NODE;
-	    }
-	}
-      a68_bottom_up_coalesce_pub (SUB (p));
     }
 }

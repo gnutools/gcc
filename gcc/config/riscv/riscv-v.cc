@@ -1,6 +1,6 @@
 /* Subroutines used for code generation for RISC-V 'V' Extension for
    GNU compiler.
-   Copyright (C) 2022-2025 Free Software Foundation, Inc.
+   Copyright (C) 2022-2026 Free Software Foundation, Inc.
    Contributed by Juzhe Zhong (juzhe.zhong@rivai.ai), RiVAI Technologies Ltd.
 
    This file is part of GCC.
@@ -6041,6 +6041,8 @@ get_swapped_cmp_rtx_code (rtx_code code)
       return LTU;
     case GT:
       return LT;
+    case GEU:
+      return LEU;
     default:
       gcc_unreachable ();
     }

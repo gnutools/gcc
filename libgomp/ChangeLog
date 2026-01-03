@@ -1,3 +1,20 @@
+2026-01-01  Jakub Jelinek  <jakub@redhat.com>
+
+	* libgomp.texi: Bump @copying's copyright year.
+
+2025-12-29  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* configure: Regenerate.
+
+2025-12-24  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	* testsuite/lib/libgomp.exp (check_effective_target_omp_usm):
+	Robustify.
+
+2025-12-22  Tobias Burnus  <tburnus@baylibre.com>
+
+	* testsuite/libgomp.fortran/uses_allocators_1.f90: Update dg-error.
+
 2025-12-19  Tobias Burnus  <tburnus@baylibre.com>
 
 	* testsuite/libgomp.fortran/uses_allocators-7.f90: Add ';' test.
@@ -23669,7 +23686,7 @@
 
 	Initial implementation and checkin.
 
-Copyright (C) 2005-2025 Free Software Foundation, Inc.
+Copyright (C) 2005-2026 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

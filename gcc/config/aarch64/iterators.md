@@ -1,5 +1,5 @@
 ;; Machine description for AArch64 architecture.
-;; Copyright (C) 2009-2025 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2026 Free Software Foundation, Inc.
 ;; Contributed by ARM Ltd.
 ;;
 ;; This file is part of GCC.
@@ -712,6 +712,9 @@
 (define_mode_iterator VNx2_NARROW [VNx2QI VNx2HI VNx2SI])
 (define_mode_iterator VNx2_WIDE [VNx2DI])
 
+;; Used for narrowing SVE floating point operations.
+(define_mode_iterator VNx16F_NARROW [SVE_FULL_HFx2 VNx16SF])
+
 ;; All SVE predicate modes.
 (define_mode_iterator PRED_ALL [VNx16BI VNx8BI VNx4BI VNx2BI])
 
@@ -732,10 +735,12 @@
 (define_mode_iterator SVE_Ix24 [VNx32QI VNx16HI VNx8SI VNx4DI
 				VNx64QI VNx32HI VNx16SI VNx8DI])
 
+(define_mode_iterator SVE_Fx24_NOBF [VNx16HF VNx8SF VNx4DF
+				     VNx32HF VNx16SF VNx8DF])
+
 (define_mode_iterator SVE_Fx24 [(VNx16BF "TARGET_SSVE_B16B16")
 				(VNx32BF "TARGET_SSVE_B16B16")
-				VNx16HF VNx8SF VNx4DF
-				VNx32HF VNx16SF VNx8DF])
+				SVE_Fx24_NOBF])
 
 (define_mode_iterator SVE_SFx24 [VNx8SF VNx16SF])
 
@@ -752,6 +757,19 @@
 
 (define_mode_iterator SME_ZA_HFx124 [VNx8BF VNx16BF VNx32BF
 				     VNx8HF VNx16HF VNx32HF])
+
+(define_mode_iterator SME_ZA_F8F16 [(VNx8HI "TARGET_STREAMING_SME_F8F16")])
+(define_mode_iterator SME_ZA_F8F32 [(VNx4SI "TARGET_STREAMING_SME_F8F32")])
+
+(define_mode_iterator SME_ZA_F8F16_32 [(VNx8HI "TARGET_STREAMING_SME_F8F16")
+				       (VNx4SI "TARGET_STREAMING_SME_F8F32")])
+
+(define_mode_iterator SME_ZA_FP8_x24 [VNx32QI VNx64QI])
+
+(define_mode_iterator SME_ZA_FP8_x124 [VNx16QI VNx32QI VNx64QI])
+(define_mode_iterator SME_ZA_FP8_x1 [VNx16QI])
+(define_mode_iterator SME_ZA_FP8_x2 [VNx32QI])
+(define_mode_iterator SME_ZA_FP8_x4 [VNx64QI])
 
 (define_mode_iterator SME_ZA_HFx24 [VNx16BF VNx32BF VNx16HF VNx32HF])
 
@@ -1055,10 +1073,13 @@
     UNSPEC_EORBT	; Used in aarch64-sve2.md.
     UNSPEC_EORTB	; Used in aarch64-sve2.md.
     UNSPEC_F1CVT	; Used in aarch64-sve2.md.
+    UNSPEC_F1CVTL	; Used in aarch64-sve2.md.
     UNSPEC_F1CVTLT	; Used in aarch64-sve2.md.
     UNSPEC_F2CVT	; Used in aarch64-sve2.md.
+    UNSPEC_F2CVTL	; Used in aarch64-sve2.md.
     UNSPEC_F2CVTLT	; Used in aarch64-sve2.md.
     UNSPEC_FADDP	; Used in aarch64-sve2.md.
+    UNSPEC_FCVT		; Used in aarch64-sve2.md.
     UNSPEC_FCVTNB	; Used in aarch64-sve2.md.
     UNSPEC_FCVTNT	; Used in aarch64-sve2.md.
     UNSPEC_FMAXNMP	; Used in aarch64-sve2.md.
@@ -1255,8 +1276,13 @@
     UNSPEC_SME_BMOPS
     UNSPEC_SME_FADD
     UNSPEC_SME_FDOT
+    UNSPEC_SME_FDOT_FP8
     UNSPEC_SME_FVDOT
+    UNSPEC_SME_FVDOT_FP8
+    UNSPEC_SME_FVDOTT_FP8
+    UNSPEC_SME_FVDOTB_FP8
     UNSPEC_SME_FMLA
+    UNSPEC_SME_FMLAL
     UNSPEC_SME_FMLS
     UNSPEC_SME_FMOPA
     UNSPEC_SME_FMOPS
@@ -2674,6 +2700,10 @@
 				    (V4HF "<Vetype>[%4]") (V8HF "<Vetype>[%4]")
 				    ])
 
+(define_mode_attr za16_offset_range [(VNx16QI "0_to_14_step_2")
+				     (VNx32QI "0_to_6_step_2")
+				     (VNx64QI "0_to_6_step_2")])
+
 (define_mode_attr za32_offset_range [(VNx16QI "0_to_12_step_4")
 				     (VNx8BF "0_to_14_step_2")
 				     (VNx8HF "0_to_14_step_2")
@@ -2693,6 +2723,10 @@
 
 (define_mode_attr za32_long [(VNx16QI "ll") (VNx32QI "ll") (VNx64QI "ll")
 			     (VNx8HI "l") (VNx16HI "l") (VNx32HI "l")])
+
+(define_mode_attr za16_32_long [(VNx4SI "l")(VNx8HI "")])
+
+(define_mode_attr za16_32_last_offset [(VNx4SI "3")(VNx8HI "1")])
 
 (define_mode_attr za32_last_offset [(VNx16QI "3") (VNx32QI "3") (VNx64QI "3")
 				    (VNx8HI "1") (VNx16HI "1") (VNx32HI "1")])
@@ -2783,6 +2817,24 @@
 
 (define_mode_attr LD1_EXTENDQ_MEM [(VNx4SI "VNx1SI") (VNx4SF "VNx1SI")
 				   (VNx2DI "VNx1DI") (VNx2DF "VNx1DI")])
+
+;; Maps the output type of svscale to the corresponding int vector type in the
+;; second argument.
+(define_mode_attr SVSCALE_SINGLE_INTARG [(VNx16HF "VNx8HI") ;; f16_x2 -> s16
+					 (VNx32HF "VNx8HI") ;; f16_x4 -> s16
+					 (VNx8SF "VNx4SI") ;; f32_x2 -> s32
+					 (VNx16SF "VNx4SI") ;; f32_x4 -> s32
+					 (VNx4DF "VNx2DI") ;; f64_x2 -> s64
+					 (VNx8DF "VNx2DI") ;; f64_x4 -> s64
+])
+
+(define_mode_attr SVSCALE_INTARG [(VNx16HF "VNx16HI") ;; f16_x2 -> s16x2
+				  (VNx32HF "VNx32HI") ;; f16_x4 -> s16x4
+				  (VNx8SF "VNx8SI") ;; f32_x2 -> s32_x2
+				  (VNx16SF "VNx16SI") ;; f32_x4 -> s32_x4
+				  (VNx4DF "VNx4DI") ;; f64_x2 -> s64_x2
+				  (VNx8DF "VNx8DI") ;; f64_x4 -> s64_x4
+])
 
 ;; -------------------------------------------------------------------
 ;; Code Iterators
@@ -4023,6 +4075,14 @@
 
 (define_int_iterator SME_FP_TERNARY_SLICE [UNSPEC_SME_FMLA UNSPEC_SME_FMLS])
 
+(define_int_iterator SME_FP8_TERNARY_SLICE [UNSPEC_SME_FMLAL])
+(define_int_iterator SME_FP8_DOTPROD [UNSPEC_SME_FDOT_FP8])
+(define_int_iterator SME_FP8_FVDOT [UNSPEC_SME_FVDOT_FP8])
+(define_int_iterator SME_FP8_FVDOT_HALF [
+	UNSPEC_SME_FVDOTB_FP8
+	UNSPEC_SME_FVDOTT_FP8
+])
+
 ;; Iterators for atomic operations.
 
 (define_int_iterator ATOMIC_LDOP
@@ -4044,6 +4104,8 @@
 (define_int_iterator FP8CVT_UNS
   [UNSPEC_F1CVT
    UNSPEC_F2CVT
+   UNSPEC_F1CVTL
+   UNSPEC_F2CVTL
    UNSPEC_F1CVTLT
    UNSPEC_F2CVTLT])
 
@@ -4168,8 +4230,13 @@
 			(UNSPEC_SME_BMOPS "bmops")
 			(UNSPEC_SME_FADD "fadd")
 			(UNSPEC_SME_FDOT "fdot")
+			(UNSPEC_SME_FDOT_FP8 "fdot")
 			(UNSPEC_SME_FVDOT "fvdot")
+			(UNSPEC_SME_FVDOT_FP8 "fvdot")
+			(UNSPEC_SME_FVDOTB_FP8 "fvdotb")
+			(UNSPEC_SME_FVDOTT_FP8 "fvdott")
 			(UNSPEC_SME_FMLA "fmla")
+			(UNSPEC_SME_FMLAL "fmlal")
 			(UNSPEC_SME_FMLS "fmls")
 			(UNSPEC_SME_FMOPA "fmopa")
 			(UNSPEC_SME_FMOPS "fmops")
@@ -5187,6 +5254,8 @@
 (define_int_attr fp8_cvt_uns_op
   [(UNSPEC_F1CVT "f1cvt")
    (UNSPEC_F2CVT "f2cvt")
+   (UNSPEC_F1CVTL "f1cvtl")
+   (UNSPEC_F2CVTL "f2cvtl")
    (UNSPEC_F1CVTLT "f1cvtlt")
    (UNSPEC_F2CVTLT "f2cvtlt")])
 

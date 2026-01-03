@@ -495,9 +495,9 @@ top_down_def (NODE_T *def_p)
 
 /* Make branch of
 
-   ACCESS REVELATION [DEF_SYMBOL]
+   ACCESS REVELATIONS [DEF_SYMBOL]
    or
-   ACCESS REVELATION ENCLOSED_CLAUSE.   */
+   ACCESS REVELATIONS ENCLOSED_CLAUSE.   */
 
 static void
 top_down_access (NODE_T *p)
@@ -529,6 +529,11 @@ top_down_access (NODE_T *p)
 		  ATTRIBUTE (q) = ALT_ACCESS_SYMBOL;
 		  a68_make_sub (q, end_p, ALT_ACCESS_SYMBOL);
 		}
+	    }
+	  else if (IS (end_p, ACCESS_SYMBOL))
+	    {
+	      top_down_access (end_p);
+	      a68_make_sub (q, end_p, ACCESS_SYMBOL);
 	    }
 	  else
 	    a68_make_sub (q, end_p, ACCESS_SYMBOL);
@@ -886,9 +891,9 @@ a68_top_down_parser (NODE_T *p)
 	(void) top_down_prelude_packet (p);
       else
 	(void) top_down_particular_program (p);
-    }
 
-  top_down_loops (p);
-  top_down_formats (p);
-  top_down_access (p);
+      top_down_loops (p);
+      top_down_formats (p);
+      top_down_access (p);
+    }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Free Software Foundation, Inc.
+// Copyright (C) 2025-2026 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -121,7 +121,7 @@ ReadonlyChecker::check_variable (IdentifierPattern *pattern,
   auto hir_id = pattern->get_mappings ().get_hirid ();
   if (already_assigned_variables.count (hir_id) > 0)
     rust_error_at (assigned_loc, "assignment of read-only variable '%s'",
-		   pattern->as_string ().c_str ());
+		   pattern->to_string ().c_str ());
   already_assigned_variables.insert (hir_id);
 }
 

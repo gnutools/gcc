@@ -1,5 +1,5 @@
 /* Definitions for c-common.cc.
-   Copyright (C) 1987-2025 Free Software Foundation, Inc.
+   Copyright (C) 1987-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -748,7 +748,7 @@ enum cxx_dialect {
   cxx26
 };
 
-/* The C++ dialect being used.  C++17 is the default.  */
+/* The C++ dialect being used.  C++20 is the default.  */
 extern enum cxx_dialect cxx_dialect;
 
 /* Maximum template instantiation depth.  This limit is rather

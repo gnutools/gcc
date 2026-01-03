@@ -1,5 +1,5 @@
 /* Machine description for AArch64 architecture.
-   Copyright (C) 2009-2025 Free Software Foundation, Inc.
+   Copyright (C) 2009-2026 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GCC.
@@ -321,6 +321,14 @@ constexpr auto AARCH64_FL_DEFAULT_ISA_MODE ATTRIBUTE_UNUSED
 /* The FEAT_SME_I16I64 extension to SME, enabled through +sme-i16i64.  */
 #define TARGET_SME_I16I64 AARCH64_HAVE_ISA (SME_I16I64)
 
+/* The FEAT_SME_F8F16 extension to SME, enabled through +sme-f8f16.  */
+#define TARGET_STREAMING_SME_F8F16 \
+  (AARCH64_HAVE_ISA (SME_F8F16) && TARGET_STREAMING)
+
+/* The FEAT_SME_F8F32 extension to SME, enabled through +sme-f8f32.  */
+#define TARGET_STREAMING_SME_F8F32 \
+  (AARCH64_HAVE_ISA (SME_F8F32) && TARGET_STREAMING)
+
 /* The FEAT_SME_B16B16 extension to SME, enabled through +sme-b16b16.  */
 #define TARGET_STREAMING_SME_B16B16 \
   (AARCH64_HAVE_ISA (SME_B16B16) && TARGET_STREAMING)
@@ -537,6 +545,8 @@ through +ssve-fp8dot2.  */
 #define TARGET_SSVE_FP8DOT2 ((\
 		(TARGET_SVE2 && TARGET_FP8DOT2) || TARGET_STREAMING) \
 		&& (AARCH64_HAVE_ISA(SSVE_FP8DOT2) || TARGET_NON_STREAMING))
+
+#define TARGET_SSME2_FP8 (TARGET_FP8 && TARGET_STREAMING_SME2)
 
 /* Standard register usage.  */
 

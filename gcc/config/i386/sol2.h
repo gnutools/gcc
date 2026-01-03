@@ -1,5 +1,5 @@
 /* Target definitions for GCC for Intel 80386 running Solaris 2
-   Copyright (C) 1993-2025 Free Software Foundation, Inc.
+   Copyright (C) 1993-2026 Free Software Foundation, Inc.
    Contributed by Fred Fish (fnf@cygnus.com).
 
 This file is part of GCC.
@@ -55,7 +55,7 @@ along with GCC; see the file COPYING3.  If not see
 #define CPP_SPEC "%(cpp_subtarget)"
 
 #undef CC1_SPEC
-#define CC1_SPEC "%(cc1_cpu) " ASAN_CC1_SPEC \
+#define CC1_SPEC "%(cc1_cpu) " ASAN_CC1_SPEC SCTF_CC1_SPEC \
   " %{mx32:%e-mx32 is not supported on Solaris}"
 
 /* GNU as understands --32 and --64, but the native Solaris
@@ -68,9 +68,9 @@ along with GCC; see the file COPYING3.  If not see
 #define ASM_CPU64_DEFAULT_SPEC "-xarch=generic64"
 #endif
 
+#if !HAVE_GNU_AS
 /* Since Studio 12.6, as needs -xbrace_comment=no so its AVX512 syntax is
    fully compatible with gas.  */
-#ifdef HAVE_AS_XBRACE_COMMENT_OPTION
 #define ASM_XBRACE_COMMENT_SPEC "-xbrace_comment=no"
 #else
 #define ASM_XBRACE_COMMENT_SPEC ""

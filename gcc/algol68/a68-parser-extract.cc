@@ -168,7 +168,7 @@ a68_elaborate_bold_tags (NODE_T *p)
 static NODE_T *
 skip_pack_declarer (NODE_T *p)
 {
-  /* Skip () REF [] REF FLEX [] [] ...  */
+  /* Skip PUB () REF [] REF FLEX [] [] ...  */
   while (p != NO_NODE
 	 && (a68_is_one_of (p, SUB_SYMBOL, OPEN_SYMBOL, REF_SYMBOL,
 			    FLEX_SYMBOL, SHORT_SYMBOL, LONG_SYMBOL, STOP)))
@@ -185,23 +185,24 @@ skip_pack_declarer (NODE_T *p)
     return p;
 }
 
-/* Extract a revelation.  */
+/* Extract the revelation associated with the module MODULE.  The node Q is
+   used for symbol table and diagnostic purposes.  Publicized modules are
+   recursively extracted as well.  This call may result in one or more
+   errors.  */
 
 static void
-extract_revelation (NODE_T *q, bool is_public ATTRIBUTE_UNUSED)
+extract_revelation (NODE_T *q, const char *module, TAG_T *tag)
 {
-  /* Store in the symbol table.  */
-  TAG_T *tag = a68_add_tag (TABLE (q), MODULE_SYMBOL, q, NO_MOID, STOP);
-  gcc_assert (tag != NO_TAG);
-  EXPORTED (tag) = false; // XXX depends on PUB!
   /* Import the MOIF and install it in the tag.  */
-  MOIF_T *moif = a68_open_packet (NSYMBOL (q));
+  MOIF_T *moif = a68_open_packet (module);
   if (moif == NULL)
     {
-      a68_error (q, "cannot find module Z", NSYMBOL (q));
+      a68_error (q, "cannot find module Z", module);
       return;
     }
-  MOIF (tag) = moif; // XXX add to existing list of moifs.
+
+  if (tag != NO_TAG)
+    MOIF (tag) = moif;
 
   /* Store all the modes from the MOIF in the moid list.
 
@@ -218,9 +219,22 @@ extract_revelation (NODE_T *q, bool is_public ATTRIBUTE_UNUSED)
 	{
 	  MOID_T *r = a68_register_extra_mode (&TOP_MOID (&A68_JOB), m);
 	  if (r != m)
-	    gcc_unreachable ();
+	    {
+	      printf ("r: %s\n", a68_moid_to_string (r, 80, NO_NODE, false));
+	      printf ("m: %s\n", a68_moid_to_string (m, 80, NO_NODE, false));
+	      gcc_unreachable ();
+	    }
 	}
     }
+
+  /* Second thing to do is to extract the revelations of publicized modules in
+     this moif.  This leads to recursive calls of this function.  Note that
+     this should be done _after_ the modes get added to the global list of
+     modes so mode deduplication in a68_open_packet in the recursive
+     extract_revelation calls is properly done.  */
+
+  for (EXTRACT_T *e : MODULES (moif))
+    extract_revelation (q, EXTRACT_SYMBOL (e), NO_TAG);
 
   /* Store mode indicants from the MOIF in the symbol table,
      and also in the moid list.  */
@@ -343,17 +357,28 @@ a68_extract_indicants (NODE_T *p)
 	  do
 	    {
 	      FORWARD (q);
-	      detect_redefined_keyword (q, MODE_DECLARATION);
-	      if (IS (q, BOLD_TAG))
+	      if (q != NO_NODE)
 		{
-		  extract_revelation (q, false /* is_public */);
-		  FORWARD (q);
-		}
-	      else if (a68_whether (q, PUBLIC_SYMBOL, BOLD_TAG, STOP))
-		{
-		  extract_revelation (q, true /* is_public */);
-		  FORWARD (q);
-		  FORWARD (q);
+		  NODE_T *bold_tag = NO_NODE;
+
+		  if (IS (q, BOLD_TAG))
+		    {
+		      bold_tag = q;
+		      FORWARD (q);
+		    }
+		  else if (a68_whether (q, PUBLIC_SYMBOL, BOLD_TAG, STOP))
+		    {
+		      bold_tag = NEXT (q);
+		      FORWARD (q);
+		      FORWARD (q);
+		    }
+
+		  if (bold_tag != NO_NODE)
+		    {
+		      TAG_T *tag = a68_add_tag (TABLE (bold_tag), MODULE_SYMBOL, bold_tag, NO_MOID, STOP);
+		      gcc_assert (tag != NO_TAG);
+		      extract_revelation (bold_tag, NSYMBOL (bold_tag), tag);
+		    }
 		}
 	    }
 	  while (q != NO_NODE && IS (q, COMMA_SYMBOL));
@@ -364,21 +389,23 @@ a68_extract_indicants (NODE_T *p)
 	  do
 	    {
 	      FORWARD (q);
-	      detect_redefined_keyword (q, MODE_DECLARATION);
+	      detect_redefined_keyword (q, MODULE_DECLARATION);
 	      if (a68_whether (q, BOLD_TAG, EQUALS_SYMBOL, STOP))
 		{
-		  /* Store in the symbol table.
-		     XXX also add to global list of modules?
-		     Position of definition (q) connects to this lexical
-		     level!  */
 		  ATTRIBUTE (q) = DEFINING_MODULE_INDICANT;
-		  TAG_T *tag = a68_add_tag (TABLE (p), MODULE_SYMBOL, q, NO_MOID, STOP);
-		  gcc_assert (tag != NO_TAG);
-		  EXPORTED (tag) = true;
 		  FORWARD (q);
 		  ATTRIBUTE (q) = EQUALS_SYMBOL; /* XXX why not ALT_EQUALS_SYMBOL */
-		  q = skip_module_text (NEXT (q));
-		  FORWARD (q);
+		  if (NEXT (q) != NO_NODE && IS (NEXT (q), ACCESS_SYMBOL))
+		    {
+		      a68_error (NEXT (q),
+				 "nested access clauses not allowed in module texts");
+		      siga = false;
+		    }
+		  else
+		    {
+		      q = skip_module_text (NEXT (q));
+		      FORWARD (q);
+		    }
 		}
 	      else
 		siga = false;

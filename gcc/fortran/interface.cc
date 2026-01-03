@@ -1,5 +1,5 @@
 /* Deal with interfaces.
-   Copyright (C) 2000-2025 Free Software Foundation, Inc.
+   Copyright (C) 2000-2026 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -211,11 +211,15 @@ gfc_match_generic_spec (interface_type *type,
       *op = dtio_op (buffer);
       if (*op == INTRINSIC_FORMATTED)
 	{
+	  if (flag_default_integer)
+	    goto conflict;
 	  strcpy (name, gfc_code2string (dtio_procs, DTIO_RF));
 	  *type = INTERFACE_DTIO;
 	}
       if (*op == INTRINSIC_UNFORMATTED)
 	{
+	  if (flag_default_integer)
+	    goto conflict;
 	  strcpy (name, gfc_code2string (dtio_procs, DTIO_RUF));
 	  *type = INTERFACE_DTIO;
 	}
@@ -228,11 +232,15 @@ gfc_match_generic_spec (interface_type *type,
       *op = dtio_op (buffer);
       if (*op == INTRINSIC_FORMATTED)
 	{
+	  if (flag_default_integer)
+	    goto conflict;
 	  strcpy (name, gfc_code2string (dtio_procs, DTIO_WF));
 	  *type = INTERFACE_DTIO;
 	}
       if (*op == INTRINSIC_UNFORMATTED)
 	{
+	  if (flag_default_integer)
+	    goto conflict;
 	  strcpy (name, gfc_code2string (dtio_procs, DTIO_WUF));
 	  *type = INTERFACE_DTIO;
 	}
@@ -249,6 +257,11 @@ gfc_match_generic_spec (interface_type *type,
 
   *type = INTERFACE_NAMELESS;
   return MATCH_YES;
+
+conflict:
+  gfc_error ("Sorry: -fdefault-integer-8 option is not supported with "
+	     "user-defined input/output at %C");
+  return MATCH_ERROR;
 
 syntax:
   gfc_error ("Syntax error in generic specification at %C");
@@ -4835,6 +4848,10 @@ matching_typebound_op (gfc_expr** tb_base,
 	  }
 	else
 	  derived = base->expr->ts.u.derived;
+
+	/* A use associated derived type is resolvable during parsing.  */
+	if (derived && derived->attr.use_assoc && !gfc_current_ns->resolved)
+	  gfc_resolve_symbol (derived);
 
 	if (op == INTRINSIC_USER)
 	  {

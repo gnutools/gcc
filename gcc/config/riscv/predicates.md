@@ -1,5 +1,5 @@
 ;; Predicate description for RISC-V target.
-;; Copyright (C) 2011-2025 Free Software Foundation, Inc.
+;; Copyright (C) 2011-2026 Free Software Foundation, Inc.
 ;; Contributed by Andrew Waterman (andrew@sifive.com).
 ;; Based on MIPS target for GNU compiler.
 ;;
@@ -612,7 +612,7 @@
   (match_code "eq,ne,le,leu,gt,gtu,lt,ltu"))
 
 (define_predicate "comparison_swappable_operator"
-  (match_code "gtu,gt"))
+  (match_code "gtu,gt,geu"))
 
 (define_predicate "ge_operator"
   (match_code "ge,geu"))

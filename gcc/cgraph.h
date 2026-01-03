@@ -1,5 +1,5 @@
 /* Callgraph handling code.
-   Copyright (C) 2003-2025 Free Software Foundation, Inc.
+   Copyright (C) 2003-2026 Free Software Foundation, Inc.
    Contributed by Jan Hubicka
 
 This file is part of GCC.
@@ -1893,6 +1893,11 @@ public:
      removed and deallocated.  Return the edge that now represents the
      call.  */
   static cgraph_edge *make_direct (cgraph_edge *edge, cgraph_node *callee);
+
+  /* Returns the next speculative_id based on currently in use
+     for the given statement for the edge.
+     Returns 0 if no speculative edges exist for this statement. */
+  int get_next_speculative_id ();
 
   /* Turn edge into speculative call calling N2. Update
      the profile so the direct call is taken COUNT times

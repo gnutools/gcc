@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SME.
-   Copyright (C) 2023-2025 Free Software Foundation, Inc.
+   Copyright (C) 2023-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -628,10 +628,12 @@ FUNCTION (svcntsd, svcnts_bhwd_impl, (VNx2DImode))
 FUNCTION (svcntsh, svcnts_bhwd_impl, (VNx8HImode))
 FUNCTION (svcntsw, svcnts_bhwd_impl, (VNx4SImode))
 FUNCTION (svdot_za, sme_2mode_function, (UNSPEC_SME_SDOT, UNSPEC_SME_UDOT,
-					 UNSPEC_SME_FDOT))
+					 UNSPEC_SME_FDOT,
+					 UNSPEC_SME_FDOT_FP8))
 FUNCTION (svdot_lane_za, sme_2mode_lane_function, (UNSPEC_SME_SDOT,
 						   UNSPEC_SME_UDOT,
-						   UNSPEC_SME_FDOT))
+						   UNSPEC_SME_FDOT,
+						   UNSPEC_SME_FDOT_FP8))
 FUNCTION (svld1_hor_za, svld1_za_impl, (UNSPEC_SME_LD1_HOR))
 FUNCTION (svld1_ver_za, svld1_za_impl, (UNSPEC_SME_LD1_VER))
 FUNCTION (svldr_za, svldr_za_impl, )
@@ -640,17 +642,18 @@ FUNCTION (svluti2_lane_zt, svluti_lane_zt_impl, (2))
 FUNCTION (svluti4_lane_zt, svluti_lane_zt_impl, (4))
 FUNCTION (svluti4_zt, svluti_zt_impl, (4))
 FUNCTION (svmla_za, sme_2mode_function, (UNSPEC_SME_SMLA, UNSPEC_SME_UMLA,
-					 UNSPEC_SME_FMLA))
+					 UNSPEC_SME_FMLA, UNSPEC_SME_FMLAL))
 FUNCTION (svmla_lane_za, sme_2mode_lane_function, (UNSPEC_SME_SMLA,
 						   UNSPEC_SME_UMLA,
-						   UNSPEC_SME_FMLA))
+						   UNSPEC_SME_FMLA,
+						   UNSPEC_SME_FMLAL))
 FUNCTION (svmls_za, sme_2mode_function, (UNSPEC_SME_SMLS, UNSPEC_SME_UMLS,
 					 UNSPEC_SME_FMLS))
 FUNCTION (svmls_lane_za, sme_2mode_lane_function, (UNSPEC_SME_SMLS,
 						   UNSPEC_SME_UMLS,
 						   UNSPEC_SME_FMLS))
 FUNCTION (svmopa_za, sme_2mode_function, (UNSPEC_SME_SMOPA, UNSPEC_SME_UMOPA,
-					  UNSPEC_SME_FMOPA))
+					  UNSPEC_SME_FMOPA, UNSPEC_SME_FMOPA))
 FUNCTION (svmops_za, sme_2mode_function, (UNSPEC_SME_SMOPS, UNSPEC_SME_UMOPS,
 					  UNSPEC_SME_FMOPS))
 FUNCTION (svread_za, svread_za_impl,)
@@ -682,7 +685,12 @@ FUNCTION (svusmopa_za, sme_2mode_function, (-1, UNSPEC_SME_USMOPA, -1))
 FUNCTION (svusmops_za, sme_2mode_function, (-1, UNSPEC_SME_USMOPS, -1))
 FUNCTION (svvdot_lane_za, sme_2mode_lane_function, (UNSPEC_SME_SVDOT,
 						    UNSPEC_SME_UVDOT,
-						    UNSPEC_SME_FVDOT))
+						    UNSPEC_SME_FVDOT,
+						    UNSPEC_SME_FVDOT_FP8))
+FUNCTION (svvdotb_lane_za, svvdot_half_impl,
+	  (-1, -1, -1, UNSPEC_SME_FVDOTB_FP8))
+FUNCTION (svvdott_lane_za, svvdot_half_impl,
+	  (-1, -1, -1, UNSPEC_SME_FVDOTT_FP8))
 FUNCTION (svwrite_za, svwrite_za_impl,)
 FUNCTION (svwrite_hor_za, svwrite_za_tile_impl, (UNSPEC_SME_WRITE_HOR))
 FUNCTION (svwrite_ver_za, svwrite_za_tile_impl, (UNSPEC_SME_WRITE_VER))

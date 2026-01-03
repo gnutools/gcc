@@ -1,6 +1,6 @@
 /* Operating system specific defines to be used when targeting GCC for any
    Solaris 2 system.
-   Copyright (C) 2002-2025 Free Software Foundation, Inc.
+   Copyright (C) 2002-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -357,13 +357,29 @@ along with GCC; see the file COPYING3.  If not see
 #define LINK_CLEARCAP_SPEC ""
 #endif
 
+/* Convenience alias for Solaris CTF generation.  */
+#ifdef HAVE_LD_CTF
+#define SCTF_CC1_SPEC " %{gsctf:-gctf} %<gsctf"
+#else
+#define SCTF_CC1_SPEC " %{gsctf:%e-gsctf is not supported in this configuration}"
+#endif
+
+/* How to generate Solaris CTF.  */
+#ifdef HAVE_LD_CTF
+/* Direct linker support.  */
+#define LINK_SCTF_SPEC " %{gsctf:-z ctf}"
+#else
+#define LINK_SCTF_SPEC \
+  " %{gsctf:%e-gsctf is not supported in this configuration}"
+#endif
+
 #undef  LINK_SPEC
 #define LINK_SPEC \
   "%{h*} %{v:-V} \
    %{!shared:%{!static:%{rdynamic: " RDYNAMIC_SPEC "}}} \
    %{static:-dn -Bstatic} \
    %{shared:-G -dy %{!mimpure-text:-z text}} " \
-   LINK_LIBGCC_MAPFILE_SPEC LINK_CLEARCAP_SPEC " \
+   LINK_LIBGCC_MAPFILE_SPEC LINK_CLEARCAP_SPEC LINK_SCTF_SPEC " \
    %{symbolic:-Bsymbolic -G -dy -z text} \
    %(link_arch) \
    %{Qy:} %{!Qn:-Qy}"

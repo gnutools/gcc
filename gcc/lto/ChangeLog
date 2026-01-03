@@ -1,3 +1,7 @@
+2025-12-23  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	* Make-lang.in: Bump GCOV version to 3.
+
 2025-12-19  Jakub Jelinek  <jakub@redhat.com>
 
 	* lto-common.cc (lto_resolution_read): Fix comment typo, explicitely
@@ -6982,7 +6986,7 @@
 	* lto-tree.h: Likewise.
 	* lto-lang.c: Likewise.
 
-Copyright (C) 2006-2025 Free Software Foundation, Inc.
+Copyright (C) 2006-2026 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

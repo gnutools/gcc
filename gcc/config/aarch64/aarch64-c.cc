@@ -1,5 +1,5 @@
 /* Target-specific code for C family languages.
-   Copyright (C) 2015-2025 Free Software Foundation, Inc.
+   Copyright (C) 2015-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -294,6 +294,10 @@ aarch64_update_cpp_builtins (cpp_reader *pfile)
 
   aarch64_def_or_undef (TARGET_SME, "__ARM_FEATURE_SME", pfile);
   aarch64_def_or_undef (TARGET_SME_I16I64, "__ARM_FEATURE_SME_I16I64", pfile);
+  aarch64_def_or_undef (AARCH64_HAVE_ISA (SME_F8F16),
+			"__ARM_FEATURE_SME_F8F16", pfile);
+  aarch64_def_or_undef (AARCH64_HAVE_ISA (SME_F8F32),
+			"__ARM_FEATURE_SME_F8F32", pfile);
   aarch64_def_or_undef (AARCH64_HAVE_ISA (SME_B16B16),
 			"__ARM_FEATURE_SME_B16B16", pfile);
   aarch64_def_or_undef (AARCH64_HAVE_ISA (SME_F16F16),

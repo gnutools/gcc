@@ -1,5 +1,5 @@
 /* Expression translation
-   Copyright (C) 2002-2025 Free Software Foundation, Inc.
+   Copyright (C) 2002-2026 Free Software Foundation, Inc.
    Contributed by Paul Brook <paul@nowt.org>
    and Steven Bosscher <s.bosscher@student.tudelft.nl>
 
@@ -6653,6 +6653,14 @@ conv_dummy_value (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym,
       parmse->expr = gfc_build_wide_string_const (e->ts.kind, flen,
 						  e->value.character.string);
       parmse->string_length = build_int_cst (gfc_charlen_type_node, flen);
+
+      if (flen == 1)
+	{
+	  tree slen1 = build_int_cst (gfc_charlen_type_node, 1);
+	  gfc_conv_string_parameter (parmse);
+	  parmse->expr = gfc_string_to_single_character (slen1, parmse->expr,
+							 e->ts.kind);
+	}
 
       /* Indicate value,optional scalar dummy argument as present.  */
       if (fsym->attr.optional)

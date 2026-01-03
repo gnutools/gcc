@@ -1,3 +1,69 @@
+2026-01-02  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* sppp.awk: Avoid conditional expression.
+
+2026-01-01  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* sppp.awk: Fix non-portable uses of 'match'.
+
+2025-12-31  Pietro Monteiro  <pietro@sociotechnical.xyz>
+
+	* Makefile.in: Regenerate.
+
+2025-12-30  Jose E. Marchesi  <jose.marchesi@oracle.com>
+
+	* m4/autoconf.m4: New file.
+	* configure.ac: Expand AC_PROG_A68.
+	* configure: Regenerate.
+	* Makefile.am: Add rules to build Algol 68 sources and to
+	build the transput module.
+	* Makefile.in: Regenerate.
+	* acinclude.m4: Include m4/autoconf.m4.
+	* sppp.awk: New file.
+	* transput.a68.in: Likewise.
+
+2025-12-30  Pietro Monteiro  <pietro@sociotechnical.xyz>
+
+	* acinclude.m4: New file. Add visibility attribute test.
+	* configure.ac: Use the new test.
+	* Makefile.in: Regenerate.
+	* aclocal.m4: Likewise.
+	* config.h.in: Likewise.
+	* configure: Likewise.
+	* ga68.h (GA68_HIDDEN): New macro.
+	(_libga68_abort): Add visibility hidden attribute.
+	(_libga68_init_heap): Likewise.
+	(_libga68_malloc_internal): Likewise.
+	(_libga68_realloc): Likewise.
+	(_libga68_realloc_unchecked): Likewise.
+	(_libga68_free_internal): Likewise.
+	(_libga68_u8_uctomb): Likewise.
+	(_libga68_u8_mbtouc): Likewise.
+	(_libga68_u32_to_u8): Likewise.
+
+2025-12-29  Pietro Monteiro  <pietro@sociotechnical.xyz>
+
+	* configure.ac: New test to determine if symbol versioning is
+	supported.
+	* Makefile.am: Use result of above test to add appropriate linker
+	flags.
+	* Makefile.in: Regenerated.
+	* aclocal.m4: Likewise.
+	* configure: Likewise.
+	* ga68.map: New file.
+	* libtool-version: New file.
+
+2025-12-29  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* configure: Regenerate.
+
+2025-12-27  Pietro Monteiro  <pietro@sociotechnical.xyz>
+
+	* ga68-alloc.c: Include ga68.h before all includes.
+	* ga68-error.c: Likewise.
+	* ga68-standenv.c: Likewise.
+	* ga68-unistr.c:  Likewise.
+
 2025-12-16  Pietro Monteiro  <pietro@sociotechnical.xyz>
 
 	* ga68-unistr.c (_libga68_u32_cmp): Add `static' specifier.
@@ -25,9 +91,8 @@
 	* ga68.h: Likewise.
 	* libga68.c: Likewise.
 	* libga68.spec.in: Likewise.
-
 
-Copyright (C) 2025 Free Software Foundation, Inc.
+Copyright (C) 2025-2026 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

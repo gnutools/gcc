@@ -1,5 +1,5 @@
 /* Process declarations and variables for C compiler.
-   Copyright (C) 1988-2025 Free Software Foundation, Inc.
+   Copyright (C) 1988-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -10787,7 +10787,8 @@ start_function (struct c_declspecs *declspecs, struct c_declarator *declarator,
       tree newrt = TREE_TYPE (newtype);
       if (old_decl != NULL_TREE
 	  && TREE_CODE (oldtype) == FUNCTION_TYPE
-	  && comptypes (oldrt, newrt))
+	  && comptypes (oldrt, newrt)
+	  && !TYPE_NO_NAMED_ARGS_STDARG_P (oldtype))
 	{
 	  if (stdarg_p (oldtype))
 	    {

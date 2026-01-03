@@ -1,6 +1,6 @@
 /* Importing Algol 68 module interfaces.
    Copyright (C) 2025 Jose E. Marchesi.
-   Copyright (C) 2010-2025 Free Software Foundation, Inc.
+   Copyright (C) 2010-2026 Free Software Foundation, Inc.
 
    Written by Jose E. Marchesi.
 
@@ -69,7 +69,9 @@
 	  (W)[i++] = *((P)++);						\
 	  while (ISALPHA (*(P)) || ISDIGIT(*(P)) || (*(P)) == '_')	\
 	    {								\
-	      if ((*(P)) != '_')					\
+	      if ((*(P)) == '_')					\
+		(P)++;							\
+	      else							\
 		(W)[i++] = *((P)++);					\
 	    }								\
 	}								\
@@ -269,15 +271,57 @@ a68_find_export_data (const std::string &filename, int fd, size_t *psize)
     }
 
   char buf[A68_EXPORT_MAGIC_LEN];
-  ssize_t c = ::read(fd, buf, A68_EXPORT_MAGIC_LEN);
+  ssize_t c = read (fd, buf, A68_EXPORT_MAGIC_LEN);
   if (c < A68_EXPORT_MAGIC_LEN)
     return NULL;
 
-  /* Check for a file containing nothing but Algol 68 export data.  */
-  if (buf[0] == '\x0a' && buf[1] == '\xad')
+  if (lseek (fd, 0, SEEK_SET) < 0)
     {
-      /* XXX read whole file.  */
-      return exports;
+      a68_error (NO_NODE, "lseek Z failed", filename.c_str ());
+      return NULL;
+    }
+
+  /* Check for a file containing nothing but Algol 68 export data.  */
+  if (buf[0] == '\x0a' && buf[1] == '\x68')
+    {
+      /* read whole file.  */
+
+      char *buf;
+      ssize_t len, nread;
+
+      len = a68_file_size (fd);
+      if (len == -1)
+        {
+          a68_error (NO_NODE, "a68_file_size failed for Z",
+                     filename.c_str ());
+          return NULL;
+        }
+
+      buf = XNEWVEC (char, len);
+      if (buf == NULL)
+        {
+          a68_error (NO_NODE,
+                     "memory allocation failed while reading export data");
+          return NULL;
+        }
+
+      nread = a68_file_read (fd, buf, len);
+      if (nread < 0)
+        {
+          free (buf);
+          a68_error (NO_NODE, "read failed while reading export data");
+          return NULL;
+        }
+
+      if (nread < len)
+        {
+          free (buf);
+          a68_error (NO_NODE, "short read while reading export data");
+          return NULL;
+        }
+
+      *psize = len;
+      return buf;
     }
 
 #if 0
@@ -287,7 +331,6 @@ a68_find_export_data (const std::string &filename, int fd, size_t *psize)
 #endif
 
   return NULL;
-
 }
 
 /* Given *PFILENAME, where *PFILENAME does not exist, try various suffixes.  If
@@ -914,7 +957,7 @@ a68_replace_equivalent_mode (vec<MOID_T*,va_gc> *mode_list,
 
 static bool
 a68_decode_modes (MOIF_T *moif, encoded_modes_map_t &encoded_modes,
-		  const char *data, size_t size, size_t pos,
+		  const char *data, size_t size, size_t pos, size_t moif_pos,
 		  size_t *ppos, const char **errstr)
 {
   bool siga;
@@ -931,7 +974,7 @@ a68_decode_modes (MOIF_T *moif, encoded_modes_map_t &encoded_modes,
       int8_t sizety;
       uint8_t ndims, nmodes, nargs;
       uint16_t nfields;
-      uint64_t mode_offset = pos;
+      uint64_t mode_offset = pos - moif_pos;
       uint64_t sub, ret_mode_offset;
       struct encoded_mode *encoded_mode;
 
@@ -1063,27 +1106,8 @@ a68_decode_modes (MOIF_T *moif, encoded_modes_map_t &encoded_modes,
   for (auto entry : encoded_modes)
     {
       struct encoded_mode *em = entry.second;
+      gcc_assert (em->moid != NO_MOID);
       vec_safe_push (MODES (moif), em->moid);
-    }
-
-  /* Next step is to see if equivalent modes the any of the modes in the moif
-      DIM already exist in the compiler's mode list.  In that case, replace the
-      DIM moif's mode with the existing mode anywhere in the moif.  */
-  for (MOID_T *m : MODES (moif))
-    {
-      MOID_T *r = a68_search_equivalent_mode (m);
-      if (r != NO_MOID)
-	{
-	  a68_replace_equivalent_mode (MODES (moif), m, r);
-
-	  /* Update encoded_modes to reflect the replacement.  */
-	  for (auto entry : encoded_modes)
-	    {
-	      struct encoded_mode *em = entry.second;
-	      if (em->moid == m)
-		em->moid = r;
-	    }
-	}
     }
 
   *errstr = NULL;
@@ -1242,65 +1266,88 @@ a68_decode_extracts (MOIF_T *moif, encoded_modes_map_t &encoded_modes,
   return false;
 }
 
-/* Decode the given exports data into a moif.  If there is a decoding error
-   then put an explicative mssage in *ERRSTR and return NULL.  */
+/* Decode the given exports data into moifs, add them to the TOP_MOIF list, and
+   return true.  If there is a decoding error then put an explicative message
+   in *ERRSTR and return false.  */
 
-static MOIF_T *
-a68_decode_moif (const char *data, size_t size, const char **errstr)
+static bool
+a68_decode_moifs (const char *data, size_t size, const char **errstr)
 {
+  MOIF_T *moif_list = NO_MOIF;
   size_t pos = 0;
-  MOIF_T *moif = a68_moif_new (NULL /* name */);
-  encoded_modes_map_t encoded_modes (16);
 
   uint8_t magic1, magic2;
   uint16_t version;
   char *name, *prelude, *postlude;
 
-  DUINT8 (magic1);
-  DUINT8 (magic2);
-  if (magic1 != A68_EXPORT_MAGIC1 || magic2 != A68_EXPORT_MAGIC2)
+  while (pos < size)
     {
-      *errstr = "invalid magic number";
-      goto decode_error;
+      MOIF_T *moif = a68_moif_new (NULL /* name */);
+      NEXT (moif) = moif_list;
+      moif_list = moif;
+
+      size_t moif_pos = pos;
+      DUINT8 (magic1);
+      DUINT8 (magic2);
+      if (magic1 != A68_EXPORT_MAGIC1 || magic2 != A68_EXPORT_MAGIC2)
+	{
+	  *errstr = "invalid magic number";
+	  goto decode_error;
+	}
+
+      DUINT16 (version);
+      if (version != 1)
+	{
+	  *errstr = "invalid a68 exports version";
+	  goto decode_error;
+	}
+
+      DSTR (name);
+      DSTR (prelude);
+      DSTR (postlude);
+      NAME (moif) = name;
+      PRELUDE (moif) = prelude;
+      POSTLUDE (moif) = postlude;
+
+      encoded_modes_map_t encoded_modes (16);
+
+      /* Decode the modes table.
+	 This installs the resulting moids in MOIF.  */
+      if (!a68_decode_modes (moif, encoded_modes, data, size, pos, moif_pos, &pos, errstr))
+	goto decode_error;
+
+      /* Decode the extracts table.
+	 This installs the resulting tags in MOIF.  */
+      if (!a68_decode_extracts (moif, encoded_modes, data, size, pos, &pos, errstr))
+	goto decode_error;
+
+      /* We don't need the encoded modes anymore.  */
+      for (auto entry : encoded_modes)
+	{
+	  struct encoded_mode *em = entry.second;
+	  encoded_mode_free (em);
+	}
     }
 
-  DUINT16 (version);
-  if (version != 1)
-    {
-      *errstr = "invalid a68 exports version";
-      goto decode_error;
-    }
+  /* Add the moifs in moif_list to the global list of moifs.  */
+  /* XXX error and fail on duplicates?  */
+  {
+    MOIF_T *end = TOP_MOIF (&A68_JOB);
+    if (end == NO_MOIF)
+      TOP_MOIF (&A68_JOB) = moif_list;
+    else
+      {
+	while (NEXT (end) != NO_MOIF)
+	  FORWARD (end);
+	NEXT (end) = moif_list;
+      }
+  }
 
-  DSTR (name);
-  DSTR (prelude);
-  DSTR (postlude);
-  NAME (moif) = name;
-  PRELUDE (moif) = prelude;
-  POSTLUDE (moif) = postlude;
-
-  /* Decode the modes table.
-     This installs the resulting moids in MOIF.  */
-  if (!a68_decode_modes (moif, encoded_modes, data, size, pos, &pos, errstr))
-    goto decode_error;
-
-  /* Decode the extracts table.
-     This installs the resulting tags in MOIF.  */
-  if (!a68_decode_extracts (moif, encoded_modes, data, size, pos, &pos, errstr))
-    goto decode_error;
-
-  /* We don't need the encoded modes anymore.  */
-  for (auto entry : encoded_modes)
-    {
-      struct encoded_mode *em = entry.second;
-      encoded_mode_free (em);
-    }
-
-  /* Got some juicy exports for youuuuuu... */
-  return moif;
+  return true;
  decode_error:
   if (*errstr == NULL)
     *errstr = "premature end of data";
-  return NULL;
+  return false;
 }
 
 /* Get a moif with the exports for module named MODULE.  If no exports can be
@@ -1309,38 +1356,100 @@ a68_decode_moif (const char *data, size_t size, const char **errstr)
 MOIF_T *
 a68_open_packet (const char *module)
 {
-  /* Look in the modules location maps to see if there is an entry for MODULE.
-     If there is one, use the specified filename.  Otherwise canonicalize the
+  /* We may have a suitable moif already decoded for the requested module.  If
+     so, use it.  */
+
+  MOIF_T *moif = TOP_MOIF (&A68_JOB);
+  while (moif != NO_MOIF)
+    {
+      if (strcmp (NAME (moif), module) == 0)
+	break;
+      FORWARD (moif);
+    }
+
+  /* If we didn't find already decoded exports for the requested module, look
+     in the modules location maps to see if there is an entry for MODULE.  If
+     there is one, use the specified filename.  Otherwise canonicalize the
      module name to a file name.  */
-  char *filename;
-  const char **pfilename = A68_MODULE_FILES->get (module);
-  if (pfilename == NULL)
+
+  if (moif == NO_MOIF)
     {
-      /* Turn the module indicant in MODULE to lower-case.  */
-      filename = (char *) alloca (strlen (module) + 1);
-      size_t i = 0;
-      for (; i < strlen (module); i++)
-	filename[i] = TOLOWER (module[i]);
-      filename[i] = '\0';
-    }
-  else
-    {
-      size_t len = strlen (*pfilename) + 1;
-      filename = (char *) alloca (len);
-      memcpy (filename, *pfilename, len);
+      char *filename;
+      const char **pfilename = A68_MODULE_FILES->get (module);
+      if (pfilename == NULL)
+	{
+	  /* Turn the module indicant in MODULE to lower-case.  */
+	  filename = (char *) alloca (strlen (module) + 1);
+	  size_t i = 0;
+	  for (; i < strlen (module); i++)
+	    filename[i] = TOLOWER (module[i]);
+	  filename[i] = '\0';
+	}
+      else
+	{
+	  size_t len = strlen (*pfilename) + 1;
+	  filename = (char *) alloca (len);
+	  memcpy (filename, *pfilename, len);
+	}
+
+      /* Try to read exports data in a buffer.  */
+      char *exports_data;
+      size_t exports_data_size;
+      exports_data = a68_get_packet_exports (std::string (filename),
+					     std::string ("."),
+					     &exports_data_size);
+      if (exports_data == NULL)
+	return NULL;
+
+      /* Got some data.  Decode it into a list of moif.  */
+      const char *errstr = NULL;
+      if (!a68_decode_moifs (exports_data, exports_data_size, &errstr))
+	{
+	  a68_error (NO_NODE, "Y", errstr);
+	  return NULL;
+	}
+
+      /* The androids we are looking for are likely to be now in the global
+	 list.  */
+      moif = TOP_MOIF (&A68_JOB);
+      while (moif != NO_MOIF && strcmp (NAME (moif), module) != 0)
+	FORWARD (moif);
     }
 
-  /* Try to read exports data in a buffer.  */
-  char *exports_data;
-  size_t exports_data_size;
-  exports_data = a68_get_packet_exports (std::string (filename),
-					 std::string ("."),
-					 &exports_data_size);
-  if (exports_data == NULL)
-    return NULL;
+  /* If we got a moif, we need to make sure that it doesn't introduce new modes
+     that are equivalent to any mode in the compiler's mode list.  If it does,
+     we replace the mode everywhere in the moif.  */
 
-  /* Got some data.  Parse it into a moif.  */
-  const char *errstr = NULL;
-  MOIF_T *moif = a68_decode_moif (exports_data, exports_data_size, &errstr);
+  if (moif != NO_MOIF)
+    {
+      for (MOID_T *m : MODES (moif))
+	{
+	  MOID_T *r = a68_search_equivalent_mode (m);
+	  if (r != NO_MOID)
+	    {
+	      a68_replace_equivalent_mode (MODES (moif), m, r);
+
+	      /* Update extracts to reflect the replacement.  */
+	      for (EXTRACT_T *e : INDICANTS (moif))
+		{
+		  if (EXTRACT_MODE (e) == m)
+		    EXTRACT_MODE (e) = r;
+		}
+
+	      for (EXTRACT_T *e : IDENTIFIERS (moif))
+		{
+		  if (EXTRACT_MODE (e) == m)
+		    EXTRACT_MODE (e) = r;
+		}
+
+	      for (EXTRACT_T *e : OPERATORS (moif))
+		{
+		  if (EXTRACT_MODE (e) == m)
+		    EXTRACT_MODE (e) = r;
+		}
+	    }
+	}
+    }
+
   return moif;
 }

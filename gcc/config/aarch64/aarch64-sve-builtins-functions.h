@@ -1,5 +1,5 @@
 /* ACLE support for AArch64 SVE (function_base classes)
-   Copyright (C) 2018-2025 Free Software Foundation, Inc.
+   Copyright (C) 2018-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -462,8 +462,9 @@ public:
   using parent = read_write_za<unspec_based_function_base>;
 
   CONSTEXPR sme_2mode_function_t (int unspec_for_sint, int unspec_for_uint,
-				  int unspec_for_fp)
-    : parent (unspec_for_sint, unspec_for_uint, unspec_for_fp, -1, 1)
+				  int unspec_for_fp, int unspec_for_mfp8 = -1)
+    : parent (unspec_for_sint, unspec_for_uint, unspec_for_fp, unspec_for_mfp8,
+	      1)
   {}
 
   rtx
@@ -478,6 +479,24 @@ public:
       icode = CODE_SINGLE (unspec_for (e), za_mode, v_mode);
     else
       icode = CODE (unspec_for (e), za_mode, v_mode);
+    return e.use_exact_insn (icode);
+  }
+};
+
+class svvdot_half_impl : public read_write_za<unspec_based_function_base>
+{
+public:
+  using parent = read_write_za<unspec_based_function_base>;
+
+  CONSTEXPR svvdot_half_impl (int unspec_for_sint, int unspec_for_uint,
+			      int unspec_for_fp, int unspec_for_mfp8)
+    : parent (unspec_for_sint, unspec_for_uint, unspec_for_fp, unspec_for_mfp8,
+	      1)
+  {}
+
+  rtx expand (function_expander &e) const override
+  {
+    insn_code icode = code_for_aarch64_fvdot_half (unspec_for (e));
     return e.use_exact_insn (icode);
   }
 };

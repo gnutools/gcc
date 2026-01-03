@@ -1,5 +1,5 @@
 /* Definitions for -*- C++ -*- parsing and type checking.
-   Copyright (C) 1987-2025 Free Software Foundation, Inc.
+   Copyright (C) 1987-2026 Free Software Foundation, Inc.
    Contributed by Michael Tiemann (tiemann@cygnus.com)
 
 This file is part of GCC.
@@ -8889,8 +8889,10 @@ extern tree cxx_omp_map_array_section		(location_t, tree);
 extern bool cxx_omp_privatize_by_reference	(const_tree);
 extern bool cxx_omp_disregard_value_expr	(tree, bool);
 extern void cp_fold_function			(tree);
+extern void cp_fold_function_non_odr_use	(tree);
 extern tree cp_fold_maybe_rvalue		(tree, bool);
 extern tree cp_fold_rvalue			(tree);
+extern tree cp_fold_non_odr_use			(tree, bool);
 extern tree cp_fully_fold			(tree);
 extern tree cp_fully_fold_init			(tree);
 extern tree predeclare_vla			(tree);

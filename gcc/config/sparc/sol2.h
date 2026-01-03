@@ -1,5 +1,5 @@
 /* Definitions of target machine for GCC, for SPARC running Solaris 2
-   Copyright (C) 1992-2025 Free Software Foundation, Inc.
+   Copyright (C) 1992-2026 Free Software Foundation, Inc.
    Contributed by Ron Guilmette (rfg@netcom.com).
    Additional changes by David V. Henkel-Wallace (gumby@cygnus.com).
 
@@ -240,7 +240,7 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
 %{m64:%{m32:%emay not use both -m32 and -m64}} \
 %{m64:-mptr64 -mstack-bias -mno-v8plus \
   %{!mcpu*:-%{!mv8plus:mcpu=v9}}} \
-" ASAN_CC1_SPEC
+" ASAN_CC1_SPEC SCTF_CC1_SPEC
 #else
 #define CC1_SPEC "\
 %{m32:%{m64:%emay not use both -m32 and -m64}} \
@@ -248,7 +248,7 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
   %{!mcpu*:%{!mv8plus:-mcpu=v9}}} \
 %{mv8plus:-m32 -mptr32 -mno-stack-bias \
   %{!mcpu*:-mcpu=v9}} \
-" ASAN_CC1_SPEC
+" ASAN_CC1_SPEC SCTF_CC1_SPEC
 #endif
 
 /* Support for a compile-time default CPU, et cetera.  The rules are:

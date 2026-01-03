@@ -1,5 +1,5 @@
 /* libga68 unicode support routines.
-   Copyright (C) 2009-2025 Free Software Foundation, Inc.
+   Copyright (C) 2009-2026 Free Software Foundation, Inc.
    Copyright (C) 2025 Jose E. Marchesi.
 
    GCC is free software; you can redistribute it and/or modify it under the
@@ -23,13 +23,14 @@
 /* The code in this file has been copied from the unistr gnulib module, written
    by Bruno Haible, and adapted to support strides.  */
 
+#include "ga68.h"
+
 #include <stddef.h> /* For ptrdiff_t */
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
 
-#include "ga68.h"
 
 /* CMP (n1, n2) performs a three-valued comparison on n1 vs. n2, where
    n1 and n2 are expressions without side effects, that evaluate to real

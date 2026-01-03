@@ -1,5 +1,5 @@
 /* -*- C++ -*- Parser.
-   Copyright (C) 2000-2025 Free Software Foundation, Inc.
+   Copyright (C) 2000-2026 Free Software Foundation, Inc.
    Written by Mark Mitchell <mark@codesourcery.com>.
 
    This file is part of GCC.
@@ -4288,7 +4288,8 @@ cp_parser_skip_to_end_of_statement (cp_parser* parser)
   unsigned nesting_depth = 0;
 
   /* Unwind generic function template scope if necessary.  */
-  if (parser->fully_implicit_function_template_p)
+  if (parser->fully_implicit_function_template_p
+      && !cp_parser_parsing_tentatively (parser))
     abort_fully_implicit_template (parser);
 
   while (true)
@@ -12043,6 +12044,8 @@ cp_parser_lambda_expression (cp_parser* parser,
     bool saved_omp_array_section_p = parser->omp_array_section_p;
     bool saved_in_targ = parser->in_template_argument_list_p;
     bool saved_in_declarator_p = parser->in_declarator_p;
+    auto parmlist_sentinel
+      = make_temp_override (processing_template_parmlist, 0);
 
     parser->num_template_parameter_lists = 0;
     parser->in_statement = 0;
@@ -12746,6 +12749,9 @@ cp_parser_lambda_declarator_opt (cp_parser* parser, tree lambda_expr,
 
   if (has_param_list)
     {
+      /* Avoid ICE on lambda-requires6a.C.  */
+      auto cleanup
+	= make_temp_override (parser->fully_implicit_function_template_p);
       /* Parse optional trailing requires clause.  */
       trailing_requires_clause = cp_parser_requires_clause_opt (parser, false);
 
