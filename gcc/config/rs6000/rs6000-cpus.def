@@ -43,6 +43,15 @@
 				 | OPTION_MASK_ALTIVEC			\
 				 | OPTION_MASK_VSX)
 
+/* Determine whether to enable 16-bit floating point types on power8 systems
+   and above.  */
+#if POWERPC_FLOAT16_DEFAULT
+#define TARGET_16BIT_FLOATING_POINT	OPTION_MASK_FLOAT16
+
+#else
+#define TARGET_16BIT_FLOATING_POINT	0
+#endif
+
 /* For now, don't provide an embedded version of ISA 2.07.  Do not set power8
    fusion here, instead set it in rs6000.cc if we are tuning for a power8
    system.  */
@@ -52,7 +61,8 @@
 				 | OPTION_MASK_CRYPTO			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
 				 | OPTION_MASK_QUAD_MEMORY		\
-				 | OPTION_MASK_QUAD_MEMORY_ATOMIC)
+				 | OPTION_MASK_QUAD_MEMORY_ATOMIC	\
+				 | TARGET_16BIT_FLOATING_POINT)
 
 /* ISA masks setting fusion options.  */
 #define OTHER_FUSION_MASKS	(OPTION_MASK_P8_FUSION			\
@@ -129,6 +139,7 @@
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
 				 | OPTION_MASK_FLOAT128_HW		\
 				 | OPTION_MASK_FLOAT128_KEYWORD		\
+				 | OPTION_MASK_FLOAT16			\
 				 | OPTION_MASK_FPRND			\
 				 | OPTION_MASK_POWER10			\
 				 | OPTION_MASK_POWER11			\
