@@ -60,11 +60,27 @@
 				(V8BF "V4BF")
 				(V8HF "V4HF")])
 
+;; Binary operators for bfloat16/float16 vectorization.
+(define_code_iterator FP16_BINARY_OP [plus minus mult smax smin])
+
+;; Standard names for the unary/binary/ternary operators
+(define_code_attr fp16_names [(abs   "abs")
+                             (fma   "fma")
+                             (plus  "add")
+                             (minus "sub")
+                             (mult  "mul")
+                             (neg   "neg")
+                             (smax  "smax")
+                             (smin  "smin")])
+
 ;; UNSPEC constants
 (define_c_enum "unspec"
   [UNSPEC_BF_SHIFT_LEFT_16BIT
    UNSPEC_XXSPLTW_FP16
-   UNSPEC_XVCVSPBF16_BF])
+   UNSPEC_XVCVSPBF16_BF
+   UNSPEC_XVCVSPHP_V8HF
+   UNSPEC_XVCVSPBF16_V8BF
+   UNSPEC_CVT_FP16_TO_V4SF])
 
 ;; _Float16 and __bfloat16 moves
 (define_expand "mov<mode>"
@@ -718,3 +734,231 @@
    xxl%q3 %x0,%x1,%x2
    %q3 %0,%1,%2"
   [(set_attr "type" "veclogical,logical")])
+
+;; Add vectorization support for 16-bit floating point.
+
+;; Binary operators being vectorized.
+(define_insn_and_split "<fp16_names><mode>3"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(FP16_BINARY_OP:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (<CODE>, operands[0], operands[1], operands[2], NULL_RTX,
+		      FP16_BINARY);
+  DONE;
+})
+
+;; FMA operations being vectorized.
+(define_insn_and_split "fma<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(fma:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")
+	 (match_operand:VFP16_HW 3 "vsx_register_operand")))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_FMA);
+  DONE;
+})
+
+(define_insn_and_split "*fms<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(fma:VFP16_HW
+	 (match_operand:VFP16_HW 1 "vsx_register_operand")
+	 (match_operand:VFP16_HW 2 "vsx_register_operand")
+	 (neg:VFP16_HW
+	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_FMS);
+  DONE;
+})
+
+(define_insn_and_split "*nfma<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(neg:VFP16_HW
+	 (fma:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand")
+	  (match_operand:VFP16_HW 3 "vsx_register_operand"))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_NFMA);
+  DONE;
+})
+
+(define_insn_and_split "*nfms<mode>4"
+  [(set (match_operand:VFP16_HW 0 "vsx_register_operand")
+	(neg:VFP16_HW
+	 (fma:VFP16_HW
+	  (match_operand:VFP16_HW 1 "vsx_register_operand")
+	  (match_operand:VFP16_HW 2 "vsx_register_operand")
+	  (neg:VFP16_HW
+	   (match_operand:VFP16_HW 3 "vsx_register_operand")))))]
+  "can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(pc)]
+{
+  fp16_vectorization (FMA, operands[0], operands[1], operands[2],
+		      operands[3], FP16_NFMS);
+  DONE;
+})
+
+;; Vector Pack support.
+
+(define_expand "vec_pack_trunc_v4sf_v8hf"
+  [(match_operand:V8HF 0 "vfloat_operand")
+   (match_operand:V4SF 1 "vfloat_operand")
+   (match_operand:V4SF 2 "vfloat_operand")]
+  "TARGET_FLOAT16_HW"
+{
+  rtx r1 = gen_reg_rtx (V8HFmode);
+  rtx r2 = gen_reg_rtx (V8HFmode);
+
+  emit_insn (gen_xvcvsphp_v8hf (r1, operands[1]));
+  emit_insn (gen_xvcvsphp_v8hf (r2, operands[2]));
+  rs6000_expand_extract_even (operands[0], r1, r2);
+  DONE;
+})
+
+(define_expand "vec_pack_trunc_v4sf_v8bf"
+  [(match_operand:V8BF 0 "vfloat_operand")
+   (match_operand:V4SF 1 "vfloat_operand")
+   (match_operand:V4SF 2 "vfloat_operand")]
+  "TARGET_BFLOAT16_HW"
+{
+  rtx r1 = gen_reg_rtx (V8BFmode);
+  rtx r2 = gen_reg_rtx (V8BFmode);
+
+  emit_insn (gen_xvcvspbf16_v8bf (r1, operands[1]));
+  emit_insn (gen_xvcvspbf16_v8bf (r2, operands[2]));
+  rs6000_expand_extract_even (operands[0], r1, r2);
+  DONE;
+})
+
+;; Unfortunately the machine independent code assumes there is only one
+;; 16-bit floating point type.  This means we have to choose whether to
+;; support packing _Float16 or __bfloat16.  It looks like __bfloat16 is
+;; more popular, so we choose __bfloat16 to be the default.
+
+(define_expand "vec_pack_trunc_v4sf"
+  [(match_operand:V8BF 0 "vfloat_operand")
+   (match_operand:V4SF 1 "vfloat_operand")
+   (match_operand:V4SF 2 "vfloat_operand")]
+  "TARGET_BFLOAT16_HW"
+{
+  rtx r1 = gen_reg_rtx (V8BFmode);
+  rtx r2 = gen_reg_rtx (V8BFmode);
+
+  emit_insn (gen_xvcvspbf16_v8bf (r1, operands[1]));
+  emit_insn (gen_xvcvspbf16_v8bf (r2, operands[2]));
+  rs6000_expand_extract_even (operands[0], r1, r2);
+  DONE;
+})
+
+;; Used for vector conversion to _Float16
+(define_insn "xvcvsphp_v8hf"
+  [(set (match_operand:V8HF 0 "vsx_register_operand" "=wa")
+	(unspec:V8HF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_XVCVSPHP_V8HF))]
+  "TARGET_FLOAT16_HW"
+  "xvcvsphp %x0,%x1"
+[(set_attr "type" "vecfloat")])
+
+;; Used for vector conversion to __bfloat16
+(define_insn "xvcvspbf16_v8bf"
+  [(set (match_operand:V8BF 0 "vsx_register_operand" "=wa")
+	(unspec:V8BF [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_XVCVSPBF16_V8BF))]
+  "TARGET_BFLOAT16_HW"
+  "xvcvspbf16 %x0,%x1"
+  [(set_attr "type" "vecfloat")])
+
+;; Vector unpack support.  Given the name is for the type being
+;; unpacked, we can unpack both __bfloat16 and _Float16.
+
+;; Unpack vector _Float16
+(define_expand "vec_unpacks_hi_v8hf"
+  [(match_operand:V4SF 0 "vfloat_operand")
+   (match_operand:V8HF 1 "vfloat_operand")]
+  "TARGET_FLOAT16_HW"
+{
+  rtx reg = gen_reg_rtx (V8HFmode);
+
+  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
+  emit_insn (gen_xvcvhpsp_v8hf (operands[0], reg));
+  DONE;
+})
+
+(define_expand "vec_unpacks_lo_v8hf"
+  [(match_operand:V4SF 0 "vfloat_operand")
+   (match_operand:V8HF 1 "vfloat_operand")]
+  "TARGET_FLOAT16_HW"
+{
+  rtx reg = gen_reg_rtx (V8HFmode);
+
+  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
+  emit_insn (gen_xvcvhpsp_v8hf (operands[0], reg));
+  DONE;
+})
+
+;; Used for vector conversion from _Float16
+(define_insn "xvcvhpsp_v8hf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:V8HF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_CVT_FP16_TO_V4SF))]
+  "TARGET_FLOAT16_HW"
+  "xvcvhpsp %x0,%x1"
+  [(set_attr "type" "vecperm")])
+
+;; Unpack vector __bfloat16
+(define_expand "vec_unpacks_hi_v8bf"
+  [(match_operand:V4SF 0 "vfloat_operand")
+   (match_operand:V8BF 1 "vfloat_operand")]
+  "TARGET_BFLOAT16_HW"
+{
+  rtx reg = gen_reg_rtx (V8BFmode);
+
+  rs6000_expand_interleave (reg, operands[1], operands[1], BYTES_BIG_ENDIAN);
+  emit_insn (gen_xvcvbf16spn_v8bf (operands[0], reg));
+  DONE;
+})
+
+(define_expand "vec_unpacks_lo_v8bf"
+  [(match_operand:V4SF 0 "vfloat_operand")
+   (match_operand:V8BF 1 "vfloat_operand")]
+  "TARGET_BFLOAT16_HW"
+{
+  rtx reg = gen_reg_rtx (V8BFmode);
+
+  rs6000_expand_interleave (reg, operands[1], operands[1], !BYTES_BIG_ENDIAN);
+  emit_insn (gen_xvcvbf16spn_v8bf (operands[0], reg));
+  DONE;
+})
+
+;; Used for vector conversion from __bfloat16
+(define_insn "xvcvbf16spn_v8bf"
+  [(set (match_operand:V4SF 0 "vsx_register_operand" "=wa")
+	(unspec:V4SF [(match_operand:V8BF 1 "vsx_register_operand" "wa")]
+		     UNSPEC_CVT_FP16_TO_V4SF))]
+  "TARGET_BFLOAT16_HW"
+  "xvcvbf16spn %x0,%x1"
+  [(set_attr "type" "vecperm")])
