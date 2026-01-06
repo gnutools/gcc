@@ -1,3 +1,15 @@
+==================== Branch work233-float, patch #211 ====================
+
+Add BF/HF neg, abs operands and logical insns.
+
+2026-01-06  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/float16.md (abs<mode>2): Fix absolute value to generate
+	xxlandc.
+	(boolc<mode>3): Delete second boolc, which is incorrect.
+
 ==================== Branch work233-float, patch #210 ====================
 
 Add _Float16 and __bfloat16 tests.
