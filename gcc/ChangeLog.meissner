@@ -10,7 +10,7 @@ used.
 I have tested these patches on both big endian and little endian PowerPC
 servers, with no regressions.  Can I check these patchs into the trunk?
 
-2025-01-05  Michael Meissner  <meissner@linux.ibm.com>
+2026-01-05  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
@@ -44,7 +44,7 @@ system and there were no regressions.  On the little endian Power10
 system, I built the last run using the --with-cpu=future configuration
 option.
 
-2025-01-05  Michael Meissner  <meissner@linux.ibm.com>
+2026-01-05  Michael Meissner  <meissner@linux.ibm.com>
 
 gcc/
 
