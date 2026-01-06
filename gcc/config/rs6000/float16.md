@@ -576,8 +576,9 @@
   [(set (match_dup 2)
 	(match_dup 3))
    (set (match_dup 0)
-	(and:FP16 (match_dup 1)
-		  (not:FP16 (match_dup 2))))]
+	(and:FP16 (not:FP16 (match_dup 2))
+		  (match_dup 1)))]
+		  
 {
   if (GET_CODE (operands[2]) == SCRATCH)
     operands[2] = gen_reg_rtx (<MODE>mode);
@@ -716,17 +717,6 @@
 	(match_operator:FP16 3 "boolean_operator"
 	 [(not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))
 	  (match_operand:FP16 1 "gpc_reg_operand" "wa,r")]))]
-  "TARGET_FLOAT16"
-  "@
-   xxl%q3 %x0,%x1,%x2
-   %q3 %0,%1,%2"
-  [(set_attr "type" "veclogical,logical")])
-
-(define_insn "*boolc<mode>3"
-  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
-	(match_operator:FP16 3 "boolean_operator"
-	 [(match_operand:FP16 1 "gpc_reg_operand" "wa,r")
-	  (not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))]))]
   "TARGET_FLOAT16"
   "@
    xxl%q3 %x0,%x1,%x2
