@@ -684,6 +684,18 @@ init_cumulative_args (CUMULATIVE_ARGS *cum, tree fntype,
 	     " altivec instructions are disabled, use %qs"
 	     " to enable them", "-maltivec");
     }
+
+  /* Warn that __bfloat16 and _Float16 might be returned differently in the
+     future.  The issue is currently 16-bit floating point is returned in
+     floating point register #1 in 16-bit format.  We may or may not want to
+     return it as a scalar 64-bit value.  */
+  if (fntype && warn_psabi && !cum->libcall)
+    {
+      machine_mode ret_mode = TYPE_MODE (TREE_TYPE (fntype));
+      if (ret_mode == BFmode || ret_mode == HFmode)
+	warning (OPT_Wpsabi, "%s might be returned differently in the future",
+		 ret_mode == BFmode ? "__bfloat16" : "_Float16");
+    }
 }
 
 
@@ -1640,6 +1652,14 @@ rs6000_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
 	     IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (type))));
       return NULL_RTX;
     }
+
+  /* Warn that _Float16 and __bfloat16 might be passed differently in the
+     future.  The issue is currently 16-bit floating point values are passed in
+     floating point registers in the native 16-bit format.  We may or may not
+     want to pass the value it as a scalar 64-bit value.  */
+  if (warn_psabi && !cum->libcall && (mode == BFmode || mode == HFmode))
+    warning (OPT_Wpsabi, "%s might be passed differently in the future",
+	     mode == BFmode ? "__bfloat16" : "_Float16");
 
   /* Return a marker to indicate whether CR1 needs to set or clear the
      bit that V.4 uses to say fp args were passed in registers.
