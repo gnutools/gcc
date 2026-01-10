@@ -164,6 +164,7 @@ listing and explanation of the binary and decimal byte size prefixes.
 * Link Options::        Specifying libraries and so on.
 * Directory Options::   Where to find header files and libraries.
                         Where to find the compiler executable files.
+* Picolibc Options::    Select compile and link options when using picolibc.
 * Code Gen Options::    Specifying conventions for function calls, data layout
                         and register usage.
 * Developer Options::   Printing GCC configuration info, statistics, and
@@ -802,6 +803,11 @@ Objective-C and Objective-C++ Dialects}.
 --include-with-prefix-before=@var{prefix}
 --no-canonical-prefixes  --no-standard-includes
 --prefix=@var{prefix}  --sysroot=@var{dir}}
+
+@item Picolibc Options
+@xref{Picolibc Options,,Options for use with Picolibc}.
+@gccoptlist{--oslib=@var{library} --crt0=@r{[}none@r{|}minimal@r{|}hosted@r{|}semihost@r{]}
+--printf=@r{[}d@r{|}f@r{|}l@r{|}i@r{|}m@r{]} --scanf=@r{[}d@r{|}f@r{|}l@r{|}i@r{|}m@r{]}}
 
 @item Code Generation Options
 @xref{Code Gen Options,,Options for Code Generation Conventions}.
@@ -1746,14 +1752,20 @@ the next @option{-x} option.  Possible values for @var{language} are:
 @smallexample
 c  c-header  cpp-output
 c++  c++-header  c++-system-header c++-user-header c++-cpp-output
-objective-c  objective-c-header  objective-c-cpp-output
-objective-c++ objective-c++-header objective-c++-cpp-output
+c++-system-module
+objective-c  objective-c-header  objective-c-cpp-output  objc-cpp-output
+objective-c++  objective-c++-header  objective-c++-cpp-output
+objc++-cpp-output
 assembler  assembler-with-cpp
-ada
+ada  adascil  adawhy
 cobol
 d
-f77  f77-cpp-input f95  f95-cpp-input
+f77  f77-cpp-input  f95  f95-cpp-input
 go
+modula-2  modula-2-cpp-output
+rust
+algol68
+lto
 @end smallexample
 
 Note that @option{-x} does not imply a particular language standard.
@@ -3870,7 +3882,7 @@ specific user or system header using the include path.
 @item -flang-info-module-cmi
 @itemx -flang-info-module-cmi=@var{module}
 Inform of Compiled Module Interface pathnames.  The first will note
-all read CMI pathnames.  The @var{module} form will not reading a
+all read CMI pathnames.  The @var{module} form will note reading a
 specific module's CMI.  @var{module} may be a named module or a
 header-unit (the latter indicated by either being a pathname containing
 directory separators or enclosed in @code{<>} or @code{""}).
@@ -6291,7 +6303,8 @@ by @code{:} and one or more @var{KEY}=@var{VALUE} pairs, in this form:
 etc.
 
 Schemes, keys, or values with a name prefixed ``experimental'' may change
-or be removed without notice.
+or be removed without notice.  Keys can be per-scheme, or related to GCC
+as a whole.
 
 @var{SCHEME} can be
 
@@ -6301,7 +6314,7 @@ or be removed without notice.
 @item text
 Emit diagnostics to stderr using GCC's classic text output format.
 
-Supported keys are:
+Supported keys for the @code{text} scheme are:
 
 @table @gcctabopt
 
@@ -6331,7 +6344,7 @@ This exists for use by GCC developers.
 @item sarif
 Emit diagnostics to a file in SARIF format.
 
-Supported keys are:
+Supported keys for the @code{sarif} scheme are:
 
 @table @gcctabopt
 
@@ -6371,7 +6384,7 @@ Emit diagnostics to a file in HTML format.  This scheme is experimental,
 and may go away in future GCC releases.  The keys and details of the output
 are also subject to change.
 
-Supported keys are:
+Supported keys for the @code{experimental-html} scheme are:
 
 @table @gcctabopt
 
@@ -6417,6 +6430,20 @@ then if @code{show-state-diagrams=yes}, the generated state diagrams will
 also show a SARIF representation of the state.
 
 @end table
+
+@end table
+
+As well as scheme-specific keys, the following GCC-related key is usable
+on sinks of any scheme:
+
+@table @gcctabopt
+
+@item cfgs=@r{[}yes@r{|}no@r{]}
+If @code{cfgs=yes} for a sink, then GCC will attempt to send information
+to that sink about the control flow graphs for the functions it is compiling.
+Text sinks ignore the information.  SARIF sinks will add the graphs within
+@code{theRun.graphs}.  HTML sinks will generate SVG displaying the graphs.
+The precise form of the information is subject to change without notice.
 
 @end table
 
@@ -10146,6 +10173,10 @@ and the Fortran front end to compile @file{b.f90}.
 The latter front end diagnoses
 @samp{f951: Warning: command-line option '-fno-rtti' is valid for C++/D/ObjC++ but not for Fortran},
 which may be disabled with @option{-Wno-complain-wrong-lang}.
+
+This option can also be used to disable warnings like
+@samp{cc1plus: note: CTF debug info requested, but not supported for 'GNU C++20' frontend}
+produced by @option{-gctf} or @option{-gsctf} for unsupported languages.
 
 @opindex Wcompare-distinct-pointer-types
 @item -Wcompare-distinct-pointer-types @r{(C and Objective-C only)}
@@ -17512,6 +17543,10 @@ are evaluated for cloning.
 Percentage penalty functions containing a single call to another
 function will receive when they are evaluated for cloning.
 
+@item ipa-cp-sweeps
+The number of times the interprocedural constant propagation will traverse
+all functions to make cloning decisions.
+
 @item ipa-max-agg-items
 IPA-CP is also capable to propagate a number of scalar values passed
 in an aggregate. @option{ipa-max-agg-items} controls the maximum
@@ -20264,6 +20299,69 @@ such a suffix.
 
 @end table
 
+@node Picolibc Options
+@section Options for use with Picolibc
+@cindex picolibc options
+@cindex options, picolibc
+
+These options control compilation and linking when using picolibc:
+
+@table @gcctabopt
+@opindex oslib
+@item --oslib=@var{library}
+Search the library named @var{library} after the C library, permitting
+symbols undefined by the C library to be defined by this library. The
+C library, libgcc and this library are placed between
+@option{--start-group} and @option{--end-group} flags so that each can
+refer to symbols in the others. For many targets, picolibc provides a
+@samp{semihost} variant (specified with @option{--oslib=semihost})
+which provides enough basic OS functionality to support console and
+file I/O when run in an emulator or when using an in-circuit debugger.
+
+@opindex crt0
+@item --crt0=@r{[}none@r{|}minimal@r{|}hosted@r{|}semihost@r{]}
+Replace the default @file{crt0.o} name with
+@file{crt0-@var{variant}.o}. The @samp{none} variant provides no
+startup code at all, allowing the user to supply their
+own. @samp{minimal} performs basic memory setup but does not invoke
+any constructors. When no @option{-crt0} option is provided, the
+default initialization code adds calls to all
+constructors. @samp{hosted} adds a call to @code{exit} when
+@code{main} returns. @samp{semihost} accesses a command line parameter
+supplied via the semihosting interface and splits that into arguments
+at whitespace boundaries, passing the resulting array of strings to
+main in @code{argc} and @code{argv}. On some targets, including
+aarch64, arc, arm, loongarch, m68k, riscv, super-h and x86,
+@samp{semihost} also traps hardware exceptions and prints information
+to the console. Note that @option{--crt0=semihost} depends upon APIs
+provided by @option{--oslib=semihost}.
+
+@opindex printf
+@item --printf=@r{[}d@r{|}f@r{|}l@r{|}i@r{|}m@r{]}
+Select the printf variant. Picolibc provides five different printf
+variants which offer decreasing levels of functionality along with
+decreasing code size. @samp{d} is the default level, offering full C17
+and POSIX.1-2024 conformance. @samp{f} provides the same feature set,
+but supports @code{float} values instead of @code{double} which are
+passed using the @code{printf_float} macro. @samp{l} elides all
+floating point and POSIX positional parameter support. @samp{i} limits
+integers to those no larger than @code{long}. @samp{m} removes support
+for most formatting options including width and precision. The formats
+and arguments are still parsed correctly, but output does not respect
+those parameters.
+
+@opindex scanf
+@item --scanf=@r{[}d@r{|}f@r{|}l@r{|}i@r{|}m@r{]}
+Select the scanf variant. Picolibc provides five different scanf
+variants which offer decreasing levels of functionality along with
+decreasing code size. @samp{d} is the default level, offering full C17
+and POSIX.1-2024 conformance. @samp{f} removes support for
+@code{double} values. @samp{l} elides all floating point
+support. @samp{i} limits integers to those no larger than
+@code{long}. @samp{m} removes support for @code{%[} conversion specifiers.
+
+@end table
+
 @node Code Gen Options
 @section Options for Code Generation Conventions
 @cindex code generation conventions
@@ -22634,7 +22732,7 @@ single precision and to 32 bits for double precision.
 Enable or disable generation of additional code to track speculative
 execution through conditional branches.  The tracking state can then
 be used by the compiler when expanding calls to
-@code{__builtin_speculation_safe_copy} to permit a more efficient code
+@code{__builtin_speculation_safe_value} to permit a more efficient code
 sequence to be generated.
 
 @opindex moutline-atomics

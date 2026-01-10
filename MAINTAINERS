@@ -40,6 +40,7 @@ Michael Meissner                                <gnu@the-meissners.org>
 Jason Merrill                                   <jason@redhat.com>
 David S. Miller                                 <davem@redhat.com>
 Joseph Myers                                    <josmyers@redhat.com>
+Andrew Pinski                                   <andrew.pinski@oss.qualcomm.com>
 Richard Sandiford                               <rdsandiford@googlemail.com>
 Bernd Schmidt                                   <bernds_cb1@t-online.de>
 Ian Lance Taylor                                <ian@airs.com>
@@ -680,6 +681,7 @@ Michael Matz                    matz            <matz@suse.de>
 Greg McGary                     -               <gkm@gnu.org>
 Roland McGrath                  roland          <roland@hack.frob.com>
 Bryce McKinlay                  bryce           <mckinlay@redhat.com>
+Karl Meakin                     -               <karl.meakin@arm.com>
 Adam Megacz                     -               <adam@xwt.org>
 Bingfeng Mei                    meibf           <bmei@broadcom.com>
 Michael Meissner                meissner        <gnu@the-meissners.org>
@@ -834,7 +836,7 @@ Mike Stump                      mrs             <mikestump@comcast.net>
 Jeff Sturm                      jsturm          <jsturm@gcc.gnu.org>
 YunQiang Su                     syq             <syq@gcc.gnu.org>
 Robert Suchanek                 rts             <rsuchy84@gmail.com>
-Supers1ngular                   -               <supers1ngular@baylibre.com>
+Supers1ngular                   supers1ngular   <supers1ngular@baylibre.com>
 Andrew Sutton                   asutton         <andrew.n.sutton@gmail.com>
 Gabriele Svelto                 gsvelto         <gabriele.svelto@st.com>
 Torbjörn Svensson               azoff           <torbjorn.svensson@foss.st.com>
@@ -968,8 +970,8 @@ Matthias Kretz                                  <m.kretz@gsi.de>
 Prathamesh Kulkarni                             <prathameshk@nvidia.com>
 Tim Lange                                       <mail@tim-lange.me>
 Jeff Law                                        <jefflaw@qti.qualcomm.com>
-Jeff Law                                        <jeffreyalaw@gmail.com>
 Jeff Law                                        <jeffrey.law@oss.qualcomm.com>
+Jeff Law                                        <jeffreyalaw@gmail.com>
 Jeff Law                                        <jlaw@tachyum.com>
 Jeff Law                                        <jlaw@ventanamicro.com>
 Martin Liška                                    <martin.liska@hey.com>

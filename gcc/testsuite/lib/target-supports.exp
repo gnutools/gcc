@@ -12664,7 +12664,7 @@ set exts {
     "bf16" "cmpbr" "crc" "crypto" "dotprod" "f32mm" "f64mm" "faminmax"
     "fp" "fp8" "fp8dot2" "fp8dot4" "fp8fma" "i8mm" "ls64" "lse" "lut"
     "sb" "simd" "sve-b16b16" "sve" "sve2" "sve-sm4" "sve-aes" "sve-bitperm"
-    "sve-sha3"
+    "sve-sha3" "f8f16mm" "f8f32mm" "sve-f16f32mm"
 }
 
 # We don't support SME without SVE2, so we'll use armv9 as the base
@@ -13735,8 +13735,9 @@ proc check_effective_target_arm_v8_3a_complex_neon_ok_nocache { } {
 	    #if !defined (__ARM_FEATURE_COMPLEX)
 	    #error "__ARM_FEATURE_COMPLEX not defined"
 	    #endif
-	} "$flags $cpu_unset -march=armv8.3-a"] } {
-	    set et_arm_v8_3a_complex_neon_flags "$flags $cpu_unset -march=armv8.3-a"
+	    #include <complex.h>
+	} "$flags $cpu_unset -march=armv8.3-a+simd"] } {
+	    set et_arm_v8_3a_complex_neon_flags "$flags $cpu_unset -march=armv8.3-a+simd"
 	    return 1;
 	}
     }
@@ -13782,9 +13783,13 @@ proc check_effective_target_arm_v8_3a_fp16_complex_neon_ok_nocache { } {
 	    #if !defined (__ARM_FEATURE_COMPLEX)
 	    #error "__ARM_FEATURE_COMPLEX not defined"
 	    #endif
-	} "$flags $cpu_unset -march=armv8.3-a+fp16"] } {
+	    #if !defined (__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+	    #error "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC not defined"
+	    #endif
+	    #include <complex.h>
+	} "$flags $cpu_unset -march=armv8.3-a+fp16+simd"] } {
 	    set et_arm_v8_3a_fp16_complex_neon_flags \
-			"$flags $cpu_unset -march=armv8.3-a+fp16"
+			"$flags $cpu_unset -march=armv8.3-a+fp16+simd"
 	    return 1;
 	}
     }

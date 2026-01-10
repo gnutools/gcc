@@ -887,6 +887,9 @@ AC_MSG_RESULT($enable_multiarch$ma_msg_suffix)
 AC_SUBST(with_cpu)
 AC_SUBST(with_float)
 
+# needed for restricting the fixedincludes multilibs that we install
+AC_SUBST(with_multi_buildlist)
+
 # default stack clash protection guard size as power of twos in bytes.
 # Please keep these in sync with params.def.
 stk_clash_min=12
@@ -1220,6 +1223,9 @@ AC_ARG_WITH(multilib-generator,
 [AS_HELP_STRING([--with-multilib-generator], [Multi-libs configuration string (RISC-V only)])],
 :,
 with_multilib_generator=default)
+
+AC_ARG_WITH(picolibc,
+[AS_HELP_STRING([--with-picolibc], [Support for picolibc, including command line options and spec rules])])
 
 # -------------------------
 # Checks for other programs

@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
+#define INCLUDE_LIST
 #define INCLUDE_VECTOR
 #include "config.h"
 #include "system.h"
@@ -586,6 +587,7 @@ maybe_default_options (struct gcc_options *opts,
 static const struct default_options default_options_table[] =
   {
     /* -O1 and -Og optimizations.  */
+    { OPT_LEVELS_1_PLUS, OPT_fbit_tests, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fcombine_stack_adjustments, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fcompare_elim, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fcprop_registers, NULL, 1 },
@@ -596,6 +598,7 @@ static const struct default_options default_options_table[] =
     { OPT_LEVELS_1_PLUS, OPT_fipa_pure_const, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fipa_reference, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fipa_reference_addressable, NULL, 1 },
+    { OPT_LEVELS_1_PLUS, OPT_fjump_tables, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fmerge_constants, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_freorder_blocks, NULL, 1 },
@@ -616,7 +619,6 @@ static const struct default_options default_options_table[] =
     { OPT_LEVELS_1_PLUS, OPT_fvar_tracking, NULL, 1 },
 
     /* -O1 (and not -Og) optimizations.  */
-    { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fbit_tests, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fbranch_count_reg, NULL, 1 },
 #if DELAY_SLOTS
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fdelayed_branch, NULL, 1 },
@@ -625,7 +627,6 @@ static const struct default_options default_options_table[] =
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fif_conversion, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fif_conversion2, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_finline_functions_called_once, NULL, 1 },
-    { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fjump_tables, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fmove_loop_invariants, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fmove_loop_stores, NULL, 1 },
     { OPT_LEVELS_1_PLUS_NOT_DEBUG, OPT_fssa_phiopt, NULL, 1 },

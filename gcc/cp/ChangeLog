@@ -1,3 +1,42 @@
+2026-01-09  Jakub Jelinek  <jakub@redhat.com>
+
+	* gen-cxxapi-file.py: Update copyright year.  Separate
+	parts of Copyright word with {:s} so that it doesn't get matched
+	by update-copyright.py.
+
+2026-01-09  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/123393
+	* name-lookup.cc (make_namespace_finish): Pass from_import to
+	add_using_namespace.
+
+2026-01-07  Tobias Burnus  <tburnus@baylibre.com>
+
+	* parser.cc (OMP_GROUPPRIVATE_CLAUSE_MASK,
+	cp_parser_omp_groupprivate): New.
+	(cp_parser_pragma): Call it.
+	(cp_maybe_parse_omp_decl): Uncomment PRAGMA_OMP_GROUPPRIVATE
+	check.
+
+2026-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR libstdc++/123326
+	* class.cc (determine_key_method): Allow virtual inline/constexpr
+	non-pure virtual methods with gnu::gnu_inline attribute to be key
+	methods.
+
+2026-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123347
+	* constexpr.cc (potential_constant_expression_1): Check for
+	CLASS_TYPE_P before using TYPE_POLYMORPHIC_P on TREE_TYPE (e).
+
+2026-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123331
+	* constexpr.cc (cxx_eval_vec_init_1): Don't build INIT_EXPR if
+	eltinit is erroneous.
+
 2026-01-02  Jakub Jelinek  <jakub@redhat.com>
 
 	PR c++/123277

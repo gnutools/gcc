@@ -2730,6 +2730,8 @@ again:
   LOOP_VINFO_MUST_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
   LOOP_VINFO_USING_PARTIAL_VECTORS_P (loop_vinfo) = false;
   LOOP_VINFO_USING_SELECT_VL_P (loop_vinfo) = false;
+  LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo) = false;
+
   if (loop_vinfo->scan_map)
     loop_vinfo->scan_map->empty ();
 
@@ -6979,6 +6981,21 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 			       "invariants\n");
 	    return false;
 	  }
+	else if (SLP_TREE_DEF_TYPE (child) == vect_internal_def
+		 && !useless_type_conversion_p (SLP_TREE_VECTYPE (slp_node),
+						SLP_TREE_VECTYPE (child)))
+	  {
+	    /* With bools we can have mask and non-mask precision vectors
+	       or different non-mask precisions.  while pattern recog is
+	       supposed to guarantee consistency here, we do not have
+	       pattern stmts for PHIs (PR123316).
+	       Deal with that here instead of ICEing later.  */
+	    if (dump_enabled_p ())
+	      dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			       "incompatible vector type setup from "
+			       "bool pattern detection\n");
+	    return false;
+	  }
       /* Analysis for double-reduction is done on the outer
 	 loop PHI, nested cycles have no further restrictions.  */
       SLP_TREE_TYPE (slp_node) = cycle_phi_info_type;
@@ -7107,6 +7124,13 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 	  vdef_slp = SLP_TREE_CHILDREN (vdef_slp)[reduc_idx];
 	}
       reduc_chain_length++;
+    }
+  if (!slp_for_stmt_info)
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			 "only noop-conversions in the reduction chain.\n");
+      return false;
     }
   stmt_info = SLP_TREE_REPRESENTATIVE (slp_for_stmt_info);
 

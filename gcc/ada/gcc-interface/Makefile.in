@@ -1,5 +1,5 @@
 # Makefile for GNU Ada Compiler (GNAT).
-#   Copyright (C) 1994-2025 Free Software Foundation, Inc.
+#   Copyright (C) 1994-2026 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -331,7 +331,8 @@ GNATMAKE_OBJS = a-except.o ali.o ali-util.o aspects.o s-casuti.o alloc.o \
  uname.o urealp.o usage.o widechar.o warnsw.o \
  seinfo.o einfo-entities.o einfo-utils.o sinfo-nodes.o sinfo-utils.o \
  errid.o \
- errsw.o \
+ errid-diagnostic_repository.o \
+ errid-switch_repository.o \
  erroutc-pretty_emitter.o \
  erroutc-sarif_emitter.o \
  json_utils.o
@@ -355,6 +356,13 @@ endif
 ifeq ($(strip $(filter-out x86_64 linux-gnux32%, $(target_cpu) $(target_os))),)
   ifneq ($(strip $(MULTISUBDIR)),/64)
     target_cpu:=x32
+  endif
+endif
+
+# The x86_64-*abi32 compilers are x86_64 compilers defaulting to -m32
+ifeq ($(strip $(filter-out x86_64 %abi32, $(target_cpu) $(target_os))),)
+  ifneq ($(strip $(MULTISUBDIR)),/64)
+    target_cpu:=i686
   endif
 endif
 

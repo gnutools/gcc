@@ -108,6 +108,13 @@ __pldx (unsigned int __access, unsigned int __cache, unsigned int __rettn,
   return __builtin_aarch64_pldx (__access, __cache, __rettn, __addr);
 }
 
+__extension__ extern __inline void
+__attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+__pldir (void const volatile *__addr)
+{
+  return __builtin_aarch64_pldir (__addr);
+}
+
 __extension__ extern __inline unsigned long
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __revl (unsigned long __value)
@@ -131,6 +138,28 @@ __sqrtf (float __x)
 {
   return __builtin_aarch64_sqrtsf (__x);
 }
+
+#define __atomic_store_with_stshh(addr, value, memory_order, ret)	\
+({									\
+  __auto_type ptr = (addr);						\
+  typedef __typeof__ (*ptr) ptr_type;					\
+  _Generic ((*ptr),							\
+    char:		  __builtin_aarch64_stshh_qi,	\
+    unsigned char:	  __builtin_aarch64_stshh_qi,	\
+    signed char:	  __builtin_aarch64_stshh_qi,	\
+    unsigned short:       __builtin_aarch64_stshh_hi,	\
+    short:		  __builtin_aarch64_stshh_hi,	\
+    unsigned int:	  __builtin_aarch64_stshh_si,	\
+    int:		  __builtin_aarch64_stshh_si,	\
+    unsigned long:	  __builtin_aarch64_stshh_di,	\
+    long:		  __builtin_aarch64_stshh_di,	\
+    unsigned long long:   __builtin_aarch64_stshh_di,	\
+    long long:		  __builtin_aarch64_stshh_di,	\
+    float:		  __builtin_aarch64_stshh_sf,	\
+    double:		  __builtin_aarch64_stshh_df,	\
+    default:		  __builtin_aarch64_stshh_di	\
+  )((ptr), (ptr_type)(value), (memory_order), (ret));	\
+})
 
 #pragma GCC push_options
 #pragma GCC target ("+nothing+jscvt")

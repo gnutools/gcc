@@ -99,6 +99,7 @@
 #include "ipa-prop.h"
 #include "ipa-fnsummary.h"
 #include "hash-map.h"
+#include "ifcvt.h"
 #include "aarch64-sched-dispatch.h"
 #include "aarch64-json-tunings-printer.h"
 #include "aarch64-json-tunings-parser.h"
@@ -2267,6 +2268,115 @@ aarch64_instruction_selection (function * /* fun */, gimple_stmt_iterator *gsi)
   gsi_replace (gsi, g, false);
 
   return true;
+}
+
+/* Implement TARGET_MAX_NOCE_IFCVT_SEQ_COST.  If an explicit max was set then
+   honor it, otherwise apply a tuning specific scale to branch costs.  */
+
+static unsigned int
+aarch64_max_noce_ifcvt_seq_cost (edge e)
+{
+  bool predictable_p = predictable_edge_p (e);
+  if (predictable_p)
+    {
+      if (OPTION_SET_P (param_max_rtl_if_conversion_predictable_cost))
+	return param_max_rtl_if_conversion_predictable_cost;
+    }
+  else
+    {
+      if (OPTION_SET_P (param_max_rtl_if_conversion_unpredictable_cost))
+	return param_max_rtl_if_conversion_unpredictable_cost;
+    }
+
+  /* For modern machines with long speculative execution chains and modern
+     branch prediction the penalty of the branch misprediction needs to weighed
+     against the cost of executing the instructions unconditionally.  RISC cores
+     tend to not have that deep pipelines and so the cost of mispredictions can
+     be reasonably cheap.  */
+
+  bool speed_p = optimize_function_for_speed_p (cfun);
+  return BRANCH_COST (speed_p, predictable_p)
+	 * aarch64_tune_params.branch_costs->br_mispredict_factor;
+}
+
+/* Return true if SEQ is a good candidate as a replacement for the
+   if-convertible sequence described in IF_INFO.  AArch64 has a range of
+   branchless statements and not all of them are potentially problematic.  For
+   instance a cset is usually beneficial whereas a csel is more complicated.  */
+
+static bool
+aarch64_noce_conversion_profitable_p (rtx_insn *seq,
+				      struct noce_if_info *if_info)
+{
+  /* If not in a loop, just accept all if-conversion as the branch predictor
+     won't have anything to train on.  So assume sequences are essentially
+     unpredictable.  ce1 is in CFG mode still while ce2 is outside.  For ce2
+     accept limited if-conversion based on the shape of the instruction.  */
+  if (current_loops
+      && (!if_info->test_bb->loop_father
+	  || !if_info->test_bb->loop_father->header))
+    return true;
+
+  /* For now we only care about csel speciifcally.  */
+  bool is_csel_p = true;
+
+  if (if_info->then_simple
+      && if_info->a != NULL_RTX
+      && !REG_P (if_info->a)
+      && !SUBREG_P (if_info->a))
+    is_csel_p = false;
+
+  if (if_info->else_simple
+      && if_info->b != NULL_RTX
+      && !REG_P (if_info->b)
+      && !SUBREG_P (if_info->b))
+    is_csel_p = false;
+
+  for (rtx_insn *insn = seq; is_csel_p && insn; insn = NEXT_INSN (insn))
+    {
+      rtx set = single_set (insn);
+      if (!set)
+	continue;
+
+      rtx src = SET_SRC (set);
+      rtx dst = SET_DEST (set);
+      machine_mode mode = GET_MODE (src);
+      if (GET_MODE_CLASS (mode) != MODE_INT)
+	continue;
+
+      switch (GET_CODE (src))
+	{
+	case PLUS:
+	case MINUS:
+	  {
+	    /* Likely a CINC.  */
+	    if (REG_P (dst)
+		&& (REG_P (XEXP (src, 0)) || SUBREG_P (XEXP (src, 0)))
+		&& (XEXP (src, 1) == CONST1_RTX (mode)
+		    || XEXP (src, 1) == CONSTM1_RTX (mode)))
+	      is_csel_p = false;
+	    break;
+	  }
+	default:
+	  break;
+	}
+    }
+
+  /* For now accept every variant but csel unconditionally because CSEL usually
+     means you have to wait for two values to be computed.  */
+  if (!is_csel_p)
+    return true;
+
+  /* TODO: Add detecting of csel, cinc, cset etc and take profiling in
+	   consideration.  For now this basic costing is enough to cover
+	   most cases.  */
+  if (if_info->speed_p)
+    {
+      unsigned cost = seq_cost (seq, true);
+      return cost <= if_info->max_seq_cost;
+    }
+
+  return default_noce_conversion_profitable_p (seq, if_info);
 }
 
 /* Implement TARGET_HARD_REGNO_NREGS.  */
@@ -17378,6 +17488,15 @@ private:
      support unrolling of the inner loop independently from the outerloop during
      outer-loop vectorization which tends to lead to pipeline bubbles.  */
   bool m_loop_fully_scalar_dup = false;
+
+  /* If m_loop_fully_scalar_dup is true then this variable contains the number
+     of statements we estimate to be duplicate.  We only increase the cost of
+     the seeds because we don't want to overly pessimist the loops.  */
+  uint64_t m_num_dup_stmts = 0;
+
+  /* If m_loop_fully_scalar_dup this contains the total number of leaf stmts
+     found in the SLP tree.  */
+  uint64_t m_num_total_stmts = 0;
 };
 
 aarch64_vector_costs::aarch64_vector_costs (vec_info *vinfo,
@@ -18367,6 +18486,43 @@ aarch64_stp_sequence_cost (unsigned int count, vect_cost_for_stmt kind,
     }
 }
 
+/* Determine probabilistically whether the STMT is one tht could possible be
+   made into a by lane operation later on.  We can't be sure, but certain
+   operations have a higher chance.  */
+
+static bool
+aarch64_possible_by_lane_insn_p (vec_info *m_vinfo, gimple *stmt)
+{
+  if (!gimple_has_lhs (stmt))
+    return false;
+
+  use_operand_p use_p;
+  imm_use_iterator iter;
+  tree var = gimple_get_lhs (stmt);
+  FOR_EACH_IMM_USE_FAST (use_p, iter, var)
+    {
+      gimple *new_stmt = USE_STMT (use_p);
+      auto stmt_info = vect_stmt_to_vectorize (m_vinfo->lookup_stmt (new_stmt));
+      auto rep_stmt = STMT_VINFO_STMT (stmt_info);
+      /* Re-association is a problem here, since lane instructions are only
+	 supported as the last operand, as such we put duplicate operands
+	 last.  We could check the other operand for invariancy, but it may not
+	 be an outer-loop defined invariant.  For now just checking the last
+	 operand catches all the cases and we can expand if needed.  */
+      if (is_gimple_assign (rep_stmt))
+	switch (gimple_assign_rhs_code (rep_stmt))
+	  {
+	  case MULT_EXPR:
+	    return operand_equal_p (gimple_assign_rhs2 (new_stmt), var, 0);
+	  case DOT_PROD_EXPR:
+	    return operand_equal_p (gimple_assign_rhs3 (new_stmt), var, 0);
+	  default:
+	    continue;
+	  }
+    }
+  return false;
+}
+
 unsigned
 aarch64_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
 				     stmt_vec_info stmt_info, slp_tree node,
@@ -18399,7 +18555,10 @@ aarch64_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
 	analyze_loop_vinfo (loop_vinfo);
 
       m_analyzed_vinfo = true;
-      if (in_inner_loop_p)
+
+      /* We should only apply the heuristic for invariant values on the inner
+	 most loop in a nested loop nest.  */
+      if (in_inner_loop_p && loop_vinfo)
 	m_loop_fully_scalar_dup = true;
     }
 
@@ -18408,17 +18567,21 @@ aarch64_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
      try to vectorize.  */
   if (in_inner_loop_p
       && node
-      && m_loop_fully_scalar_dup
       && SLP_TREE_LANES (node) == 1
       && !SLP_TREE_CHILDREN (node).exists ())
     {
-      /* Check if load is a duplicate.  */
-      if (gimple_vuse (stmt_info->stmt)
-	  && SLP_TREE_MEMORY_ACCESS_TYPE (node) == VMAT_INVARIANT)
-	;
-      else if (SLP_TREE_DEF_TYPE (node) == vect_constant_def
-	       || SLP_TREE_DEF_TYPE (node) == vect_external_def)
-	;
+      m_num_total_stmts++;
+      gimple *stmt = STMT_VINFO_STMT (stmt_info);
+      /* Check if load is a duplicate that will be duplicated inside the
+	 current loop.  */
+      if (gimple_vuse (stmt)
+	  && SLP_TREE_MEMORY_ACCESS_TYPE (node) == VMAT_INVARIANT
+	  && !aarch64_possible_by_lane_insn_p (m_vinfo, stmt))
+	m_num_dup_stmts++;
+      else if ((SLP_TREE_DEF_TYPE (node) == vect_constant_def
+		|| SLP_TREE_DEF_TYPE (node) == vect_external_def)
+	       && !aarch64_possible_by_lane_insn_p (m_vinfo, stmt))
+	m_num_dup_stmts++;
       else
 	m_loop_fully_scalar_dup = false;
     }
@@ -18788,8 +18951,16 @@ adjust_body_cost (loop_vec_info loop_vinfo,
     threshold = CEIL (threshold, aarch64_estimated_sve_vq ());
 
   /* Increase the cost of the vector code if it looks like the vector code has
-     limited throughput due to outer-loop vectorization.  */
-  if (m_loop_fully_scalar_dup)
+     limited throughput due to outer-loop vectorization.  As a rough estimate we
+     require at least half the operations be a duplicate expression.  This is an
+     attempt ot strike a balance between scalar and vector costing wrt to outer
+     loop vectorization.  The vectorizer applies a rather huge penalty to scalar
+     costing when doing outer-loop vectorization (See
+     LOOP_VINFO_INNER_LOOP_COST_FACTOR) and because of this accurate costing
+     becomes rather hard.  the 50% here allows us to amortize the cost on longer
+     loop bodies where the majority of the inputs are not a broadcast.  */
+  if (m_loop_fully_scalar_dup
+      && (m_num_dup_stmts * 2 >= m_num_total_stmts))
     {
       body_cost *= estimated_vf;
       if (dump_enabled_p ())
@@ -20745,25 +20916,29 @@ static aarch64_fmv_feature_datum aarch64_fmv_feature_data[] = {
 static enum aarch_parse_opt_result
 aarch64_parse_fmv_features (string_slice str, aarch64_feature_flags *isa_flags,
 			    aarch64_fmv_feature_mask *feature_mask,
+			    unsigned int *priority,
 			    std::string *invalid_extension)
 {
   if (feature_mask)
     *feature_mask = 0ULL;
+  if (priority)
+    *priority = 0;
+
+  str = str.strip ();
 
   if (str == "default")
     return AARCH_PARSE_OK;
 
-  gcc_assert (str.is_valid ());
-
-  while (str.is_valid ())
+  /* Parse the architecture part of the string.  */
+  string_slice arch_string = string_slice::tokenize (&str, ";");
+  while (arch_string.is_valid ())
     {
       string_slice ext;
 
-      ext = string_slice::tokenize (&str, "+");
+      ext = string_slice::tokenize (&arch_string, "+");
+      ext = ext.strip ();
 
-      gcc_assert (ext.is_valid ());
-
-      if (!ext.is_valid () || ext.empty ())
+      if (ext.empty ())
 	return AARCH_PARSE_MISSING_ARG;
 
       int num_features = ARRAY_SIZE (aarch64_fmv_feature_data);
@@ -20800,6 +20975,60 @@ aarch64_parse_fmv_features (string_slice str, aarch64_feature_flags *isa_flags,
 	}
     }
 
+  /* Parse any extra arguments.  */
+  unsigned int priority_res = 0;
+  while (str.is_valid ())
+    {
+      string_slice argument = string_slice::tokenize (&str, ";").strip ();
+      /* Save the whole argument for diagnostics.  */
+      string_slice arg = argument;
+      string_slice name = string_slice::tokenize (&argument, "=").strip ();
+      argument = argument.strip ();
+      if (!argument.is_valid () || argument.empty ())
+	{
+	  *invalid_extension = std::string (arg.begin (), arg.size ());
+	  return AARCH_PARSE_INVALID_FEATURE;
+	}
+
+      /* priority=N argument (only one is allowed).  */
+      if (name == "priority" && priority_res == 0)
+	{
+	  /* Priority values can only be between 1 and 255, so any greater than
+	     3 digits long are invalid.  */
+	  if (argument.size () > 3)
+	    {
+	      *invalid_extension = std::string (arg.begin (), arg.size ());
+	      return AARCH_PARSE_INVALID_FEATURE;
+	    }
+
+	  /* Parse the string value.  */
+	  for (char c : argument)
+	    {
+	      if (!ISDIGIT (c))
+		{
+		  priority_res = 0;
+		  break;
+		}
+	      priority_res = 10 * priority_res + c - '0';
+	    }
+
+	  /* Check the entire string parsed, and that the value is in range.  */
+	  if (priority_res < 1 || priority_res > 255)
+	    {
+	      *invalid_extension = std::string (arg.begin (), arg.size ());
+	      return AARCH_PARSE_INVALID_FEATURE;
+	    }
+	  if (priority)
+	    *priority = priority_res;
+	}
+      else
+	{
+	  /* Unrecognised argument.  */
+	  *invalid_extension = std::string (arg.begin (), arg.size ());
+	  return AARCH_PARSE_INVALID_FEATURE;
+	}
+    }
+
   return AARCH_PARSE_OK;
 }
 
@@ -20831,7 +21060,7 @@ aarch64_process_target_version_attr (tree args)
   auto isa_flags = aarch64_asm_isa_flags;
 
   std::string invalid_extension;
-  parse_res = aarch64_parse_fmv_features (str, &isa_flags, NULL,
+  parse_res = aarch64_parse_fmv_features (str, &isa_flags, NULL, NULL,
 					  &invalid_extension);
 
   if (parse_res == AARCH_PARSE_OK)
@@ -20920,7 +21149,7 @@ aarch64_option_valid_version_attribute_p (tree fndecl, tree, tree args, int)
    add or remove redundant feature requirements.  */
 
 static aarch64_fmv_feature_mask
-get_feature_mask_for_version (tree decl)
+get_feature_mask_for_version (tree decl, unsigned int *priority)
 {
   tree version_attr = lookup_attribute ("target_version",
 					DECL_ATTRIBUTES (decl));
@@ -20934,7 +21163,7 @@ get_feature_mask_for_version (tree decl)
   aarch64_fmv_feature_mask feature_mask;
 
   parse_res = aarch64_parse_fmv_features (version_string, NULL,
-					  &feature_mask, NULL);
+					  &feature_mask, priority, NULL);
 
   /* We should have detected any errors before getting here.  */
   gcc_assert (parse_res == AARCH_PARSE_OK);
@@ -20970,9 +21199,13 @@ compare_feature_masks (aarch64_fmv_feature_mask mask1,
 int
 aarch64_compare_version_priority (tree decl1, tree decl2)
 {
-  auto mask1 = get_feature_mask_for_version (decl1);
-  auto mask2 = get_feature_mask_for_version (decl2);
+  unsigned int priority_1 = 0;
+  unsigned int priority_2 = 0;
+  auto mask1 = get_feature_mask_for_version (decl1, &priority_1);
+  auto mask2 = get_feature_mask_for_version (decl2, &priority_2);
 
+  if (priority_1 != priority_2)
+    return priority_1 > priority_2 ? 1 : -1;
   return compare_feature_masks (mask1, mask2);
 }
 
@@ -20989,9 +21222,9 @@ aarch64_functions_b_resolvable_from_a (tree decl_a, tree decl_b, tree baseline)
   auto a_version = get_target_version (decl_a);
   auto b_version = get_target_version (decl_b);
   if (a_version.is_valid ())
-    aarch64_parse_fmv_features (a_version, &isa_a, NULL, NULL);
+    aarch64_parse_fmv_features (a_version, &isa_a, NULL, NULL, NULL);
   if (b_version.is_valid ())
-    aarch64_parse_fmv_features (b_version, &isa_b, NULL, NULL);
+    aarch64_parse_fmv_features (b_version, &isa_b, NULL, NULL, NULL);
 
   /* Are there any bits of b that arent in a.  */
   if (isa_b & (~isa_a))
@@ -21069,7 +21302,7 @@ aarch64_mangle_decl_assembler_name (tree decl, tree id)
       else if (DECL_FUNCTION_VERSIONED (decl))
 	{
 	  aarch64_fmv_feature_mask feature_mask
-	    = get_feature_mask_for_version (decl);
+	    = get_feature_mask_for_version (decl, NULL);
 
 	  if (feature_mask == 0ULL)
 	    return clone_identifier (id, "default");
@@ -21372,7 +21605,7 @@ dispatch_function_versions (tree dispatch_decl,
   FOR_EACH_VEC_ELT_REVERSE ((*fndecls), i, version_decl)
     {
       aarch64_fmv_feature_mask feature_mask
-	= get_feature_mask_for_version (version_decl);
+	= get_feature_mask_for_version (version_decl, NULL);
       *empty_bb = add_condition_to_bb (dispatch_decl, version_decl,
 				       feature_mask, mask_var, *empty_bb);
     }
@@ -21495,23 +21728,46 @@ aarch64_get_function_versions_dispatcher (void *decl)
   return dispatch_decl;
 }
 
-/* This function returns true if STR1 and STR2 are version strings for the same
-   function.  */
+/* This function returns true if OLD_STR and NEW_STR are version strings for the
+   same function.
+   Emits a diagnostic if the new version should not be merged with the old
+   version due to a prioriy value mismatch.  */
 
 bool
-aarch64_same_function_versions (string_slice str1, string_slice str2)
+aarch64_same_function_versions (string_slice old_str, const_tree old_decl,
+				string_slice new_str, const_tree new_decl)
 {
   enum aarch_parse_opt_result parse_res;
-  aarch64_fmv_feature_mask feature_mask1;
-  aarch64_fmv_feature_mask feature_mask2;
-  parse_res = aarch64_parse_fmv_features (str1, NULL,
-					  &feature_mask1, NULL);
-  gcc_assert (parse_res == AARCH_PARSE_OK);
-  parse_res = aarch64_parse_fmv_features (str2, NULL,
-					  &feature_mask2, NULL);
+  aarch64_fmv_feature_mask old_feature_mask;
+  aarch64_fmv_feature_mask new_feature_mask;
+  unsigned int old_priority;
+  unsigned int new_priority;
+
+  parse_res = aarch64_parse_fmv_features (old_str, NULL, &old_feature_mask,
+					  &old_priority, NULL);
   gcc_assert (parse_res == AARCH_PARSE_OK);
 
-  return feature_mask1 == feature_mask2;
+  parse_res = aarch64_parse_fmv_features (new_str, NULL, &new_feature_mask,
+					  &new_priority, NULL);
+  gcc_assert (parse_res == AARCH_PARSE_OK);
+
+  if (old_feature_mask != new_feature_mask)
+    return false;
+
+  /* Accept the case where the old version had a defined priority value but the
+     new version does not, as we infer the new version inherits the same
+     priority.  */
+  if (old_decl && new_decl && old_priority != new_priority
+      && (new_priority != 0))
+    {
+      error ("%q+D has an inconsistent function multi-version priority value",
+	     new_decl);
+      inform (DECL_SOURCE_LOCATION (old_decl),
+	      "%q+D was previously declared here with priority value of %d",
+	      old_decl, old_priority);
+    }
+
+  return true;
 }
 
 /* Implement TARGET_FUNCTION_ATTRIBUTE_INLINABLE_P.  Use an opt-out
@@ -30753,6 +31009,20 @@ aarch64_merge_decl_attributes (tree olddecl, tree newdecl)
 	aarch64_check_arm_new_against_type (TREE_VALUE (new_new), newdecl);
     }
 
+  /* For target_version and target_clones, make sure we take the old version
+     as priority syntax cannot be added addetively.  */
+  tree old_target_version = lookup_attribute ("target_version", old_attrs);
+  tree new_target_version = lookup_attribute ("target_version", new_attrs);
+
+  if (old_target_version && new_target_version)
+    TREE_VALUE (new_target_version) = TREE_VALUE (old_target_version);
+
+  tree old_target_clones = lookup_attribute ("target_clones", old_attrs);
+  tree new_target_clones = lookup_attribute ("target_clones", new_attrs);
+
+  if (old_target_clones && new_target_clones)
+    TREE_VALUE (new_target_clones) = TREE_VALUE (old_target_clones);
+
   return merge_attributes (old_attrs, new_attrs);
 }
 
@@ -32768,8 +33038,8 @@ aarch64_check_target_clone_version (string_slice str, location_t *loc)
   auto isa_flags = aarch64_asm_isa_flags;
   std::string invalid_extension;
 
-  parse_res
-    = aarch64_parse_fmv_features (str, &isa_flags, NULL, &invalid_extension);
+  parse_res = aarch64_parse_fmv_features (str, &isa_flags, NULL, NULL,
+					  &invalid_extension);
 
   if (loc == NULL)
     return parse_res == AARCH_PARSE_OK;
@@ -33452,6 +33722,13 @@ aarch64_libgcc_floating_mode_supported_p
 #undef TARGET_ATOMIC_ASSIGN_EXPAND_FENV
 #define TARGET_ATOMIC_ASSIGN_EXPAND_FENV \
   aarch64_atomic_assign_expand_fenv
+
+/* If-conversion costs.  */
+#undef TARGET_MAX_NOCE_IFCVT_SEQ_COST
+#define TARGET_MAX_NOCE_IFCVT_SEQ_COST aarch64_max_noce_ifcvt_seq_cost
+
+#undef TARGET_NOCE_CONVERSION_PROFITABLE_P
+#define TARGET_NOCE_CONVERSION_PROFITABLE_P aarch64_noce_conversion_profitable_p
 
 /* Section anchor support.  */
 

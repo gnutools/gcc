@@ -1,3 +1,111 @@
+2026-01-09  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/123483
+	* trans-array.cc (gfc_deallocate_alloc_comp): Ad the new
+	finalization argument and pass it to structure_alloc_comps.
+	* trans-array.h (gfc_deallocate_alloc_comp): Add a finalization
+	flag that can be passed by gfc_conv_procedure_call.
+	* trans-expr.cc (gfc_conv_procedure_call): Use the new
+	finalization flag.
+
+2026-01-08  Steve Kargl  <kargl@gcc.gnu.org>
+
+	PR fortran/123321
+	* trans-io.cc (transfer_namelist_element):  Adjust the
+	conditions determining when to use the local name or
+	the var name to build the object name.
+
+2026-01-08  Steve Kargl  <kargl@gcc.gnu.org>
+
+	PR fortran/123012
+	* trans-io.cc (transfer_namelist_element): Adjust the
+	conditions determining when to use the local name or
+	the var name to build the object name.
+
+2026-01-07  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/123071
+	PR fortran/90218
+	* resolve.cc (resolve_typebound_function): If a generic
+	typebound procedure is marked as overridable and all the
+	specific procedures are non-overridable, it is safe to resolve
+	the compcall.
+	* trans-array.cc (gfc_trans_array_constructor_value): PDT
+	structure constructor elements must be finalized.
+	(trans_array_constructor): Set 'finalize_required' for PDT
+	constructors.
+	* trans-decl.cc (gfc_get_symbol_decl): PDT initialization is
+	required in contained namespaces as long as the parent is not
+	a module.
+	(gfc_init_default_pdt): Delete the stmtblock_t argument. Assign
+	a variable 'value' expression using gfc_trans_assignment.
+	Simplifiy the logic around the call to gfc_init_default_dt. In
+	both cases return a tree expression or null tree.
+	(gfc_trans_deferred_vars): Only call gfc_allocate_pdt_comp if
+	gfc_init_default_pdt returns null tree.
+	* trans-expr.cc (gfc_trans_alloc_subarray_assign): Add a static
+	stmtblock_t pointer 'final_block'. Free 'dest' data pointer and
+	add to final_block.
+	(gfc_conv_structure): Set 'final_block' to the se's finalblock.
+	(gfc_trans_assignment_1): Do not deallocate PDT array ctrs.
+	trans-stmt.cc (gfc_trans_allocate): Also deallocate PDT expr3
+	allocatable components.
+	(gfc_trans_deallocate): Add PDT deallocation to se.pre instead
+	of block.
+	* trans-stmt.cc (gfc_trans_allocate): Free the allocatable
+	components of a PDT expr3.
+	(gfc_trans_deallocate): Add 'tmp' to se.pre rather than block.
+
+2026-01-06  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/123029
+	* io.cc (check_open_constraints): Delete erroneous check.
+
+2026-01-06  Thomas Koenig  <tkoenig@gcc.gnu.org>
+
+	* libgfortran.h: Add enum for new LIBERROR_RECURSIVE_IO.
+
+2026-01-06  supers1ngular  <supers1ngular@baylibre.com>
+
+	* openmp.cc (gfc_match_omp_clauses): New diagnostic logic.
+
+2026-01-05  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/123071
+	* resolve.cc (resolve_typebound_function): Make sure that the
+	class declared type is resolved.
+	(resolve_allocate_deallocate): Any kind of expr3 array ref will
+	need resolution not just constant size refs.
+	* trans-decl.cc (gfc_trans_deferred_vars): Exclude vtabs from
+	initialization.
+	(emit_not_set_warning): New function using code extracted from
+	gfc_generate_function_code.
+	(gfc_generate_function_code): PDT module procedures results
+	that have not been referenced must have the fake_result_decl
+	added to the symbol and emit_not_set_warning called. Likewise
+	replace explicit code with call to emit_not_set_warning.
+
+2026-01-03  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/123352
+	* gfortran.h: Add prototype for gfc_resolve_symbol.
+	* interface.cc (matching_typebound_op): If the current
+	namespace has not been resolved and the derived type is use
+	associated, resolve the derived type with gfc_resolve_symbol.
+	* match.cc (match_association_list): If the associate name is
+	unknown type and the selector is an operator expression, copy
+	the selector and call gfc_extend_expr. Replace the selector if
+	there is a match, otherwise free the copy.
+	* resolve.cc (gfc_resolve_symbol): New function.
+
+2026-01-03  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Revert:
+	2026-01-01  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR libfortran/119136
+	* libgfortran.h: Add enum for new LIBERROR_RECURSIVE_IO.
+
 2026-01-02  Steven G. Kargl  <kargl@gcc.gnu.org>
 
 	PR fortran/101399

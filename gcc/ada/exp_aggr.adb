@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2025, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2026, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -27,7 +27,6 @@ with Aspects;        use Aspects;
 with Atree;          use Atree;
 with Checks;         use Checks;
 with Debug;          use Debug;
-with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
 with Einfo.Utils;    use Einfo.Utils;
 with Elists;         use Elists;
@@ -64,7 +63,6 @@ with Sem_Res;        use Sem_Res;
 with Sem_Type;       use Sem_Type;
 with Sem_Util;       use Sem_Util;
                      use Sem_Util.Storage_Model_Support;
-with Sinfo;          use Sinfo;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Sinfo.Utils;    use Sinfo.Utils;
 with Snames;         use Snames;
@@ -3715,20 +3713,13 @@ package body Exp_Aggr is
    begin
       if Has_Default_Init_Comps (Aggr) then
          declare
-            Init_Stmts : constant List_Id := Late_Expansion (Aggr, Typ, Occ);
+            Stmts : constant List_Id := Late_Expansion (Aggr, Typ, Occ);
 
          begin
             if Has_Task (Typ) then
-               declare
-                  Actions : constant List_Id := New_List;
-
-               begin
-                  Build_Task_Allocate_Block (Actions, Aggr, Init_Stmts);
-                  Insert_Actions (N, Actions);
-               end;
-
+               Insert_Actions (N, Build_Task_Allocate_Block (Aggr, Stmts));
             else
-               Insert_Actions (N, Init_Stmts);
+               Insert_Actions (N, Stmts);
             end if;
          end;
 

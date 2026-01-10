@@ -653,6 +653,9 @@ else
   endif
 endif
 
+# Multilib control
+with_multi_buildlist = @with_multi_buildlist@
+
 # ------------------------
 # Installation directories
 # ------------------------
@@ -1746,6 +1749,7 @@ OBJS = \
 	tree-data-ref.o \
 	tree-dfa.o \
 	tree-diagnostic.o \
+	tree-diagnostic-cfg.o \
 	tree-diagnostic-client-data-hooks.o \
 	tree-dump.o \
 	tree-eh.o \
@@ -1866,6 +1870,7 @@ OBJS = \
 # Objects in libcommon.a, potentially used by all host binaries and with
 # no target dependencies.
 OBJS-libcommon = \
+	custom-sarif-properties/cfg.o \
 	custom-sarif-properties/digraphs.o \
 	custom-sarif-properties/state-graphs.o \
 	diagnostic-global-context.o \
@@ -1875,6 +1880,8 @@ OBJS-libcommon = \
 	diagnostics/context.o \
 	diagnostics/digraphs.o \
 	diagnostics/dumping.o \
+	diagnostics/digraphs-to-dot.o \
+	diagnostics/digraphs-to-dot-from-cfg.o \
 	diagnostics/file-cache.o \
 	diagnostics/output-spec.o \
 	diagnostics/html-sink.o \
@@ -1896,6 +1903,7 @@ OBJS-libcommon = \
 	graphviz.o pex.o \
 	pretty-print.o intl.o \
 	json.o json-parsing.o \
+	pub-sub.o \
 	xml.o \
 	sbitmap.o \
 	vec.o input.o hash-table.o ggc-none.o memory-block.o \
@@ -2528,11 +2536,12 @@ s-mlib: $(srcdir)/genmultilib Makefile
 	    "$(MULTILIB_REQUIRED)" \
 	    "$(if $(MULTILIB_OSDIRNAMES),,$(MULTIARCH_DIRNAME))" \
 	    "$(MULTILIB_REUSE)" \
+	    "$(if $(with_multi_buildlist),true,false)" \
 	    "@enable_multilib@" \
 	    > tmp-mlib.h; \
 	else \
 	  $(SHELL) $(srcdir)/genmultilib '' '' '' '' '' '' '' '' \
-	    "$(MULTIARCH_DIRNAME)" '' no \
+	    "$(MULTIARCH_DIRNAME)" '' 'false' no \
 	    > tmp-mlib.h; \
 	fi
 	$(SHELL) $(srcdir)/../move-if-change tmp-mlib.h multilib.h
@@ -3632,10 +3641,23 @@ fixinc_list: s-fixinc_list; @true
 s-fixinc_list : $(GCC_PASSES)
 # Build up a list of multilib directories and corresponding sysroot
 # suffixes, in form sysroot;multilib.
+# Use a filtered multilib list if requested.
 	if $(GCC_FOR_TARGET) -print-sysroot-headers-suffix > /dev/null 2>&1; then \
 	  set -e; for ml in `$(GCC_FOR_TARGET) -print-multi-lib`; do \
 	    multi_dir=`echo $${ml} | sed -e 's/;.*$$//'`; \
 	    flags=`echo $${ml} | sed -e 's/^[^;]*;//' -e 's/@/ -/g'`; \
+	    if [ x$(with_multi_buildlist) != x ]; then \
+	      if [ ! -f $(with_multi_buildlist) ]; then \
+		echo "fixinc_list: Failed to find $(with_multi_buildlist)"; \
+		exit 1; \
+	      fi; \
+	      set +e; \
+	      found=`grep "^$${multi_dir}$$" $(with_multi_buildlist)`; \
+	      set -e; \
+	      if [ -z "$$found" ]; then \
+		continue; \
+	      fi; \
+	    fi; \
 	    sfx=`$(GCC_FOR_TARGET) $${flags} -print-sysroot-headers-suffix`; \
 	    if [ "$${multi_dir}" = "." ]; \
 	      then multi_dir=""; \

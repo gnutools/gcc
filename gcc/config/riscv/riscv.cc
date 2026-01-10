@@ -12582,9 +12582,7 @@ riscv_conditional_register_usage (void)
 	call_used_regs[regno] = 1;
     }
 
-  if (TARGET_VECTOR)
-    global_regs[VXRM_REGNUM] = 1;
-  else
+  if (!TARGET_VECTOR)
     {
       for (int regno = V_REG_FIRST; regno <= V_REG_LAST; regno++)
 	fixed_regs[regno] = call_used_regs[regno] = 1;
@@ -14871,7 +14869,8 @@ compare_fmv_features (const struct riscv_feature_bits &mask1,
    version.  */
 
 bool
-riscv_same_function_versions (string_slice v1, string_slice v2)
+riscv_same_function_versions (string_slice v1, const_tree, string_slice v2,
+			      const_tree)
 {
   struct riscv_feature_bits mask1, mask2;
   int prio1, prio2;

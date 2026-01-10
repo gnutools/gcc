@@ -7743,6 +7743,9 @@ resolve_typebound_function (gfc_expr* e)
 	 is present.  */
       ts = expr->ts;
       declared = ts.u.derived;
+      if (!resolve_fl_derived (declared))
+	return false;
+
       c = gfc_find_component (declared, "_vptr", true, true, NULL);
       if (c->ts.u.derived == NULL)
 	c->ts.u.derived = gfc_find_derived_vtab (declared);
@@ -7782,6 +7785,22 @@ resolve_typebound_function (gfc_expr* e)
 
   if (!gfc_resolve_ref (e))
     return false;
+
+  /* It can happen that a generic, typebound procedure is marked as overridable
+     with all of the specific procedures being non-overridable. If this is the
+     case, it is safe to resolve the compcall.  */
+  if (!expr && overridable
+      && e->value.compcall.tbp->is_generic
+      && e->value.compcall.tbp->u.generic->specific
+      && e->value.compcall.tbp->u.generic->specific->non_overridable)
+    {
+      gfc_tbp_generic *g = e->value.compcall.tbp->u.generic;
+      for (; g; g = g->next)
+	if (!g->specific->non_overridable)
+	  break;
+      if (g == NULL && resolve_compcall (e, &name))
+	return true;
+    }
 
   /* Get the CLASS declared type.  */
   declared = get_declared_from_expr (&class_ref, &new_ref, e, true);
@@ -9799,10 +9818,9 @@ done_errmsg:
       /* Resolving the expr3 in the loop over all objects to allocate would
 	 execute loop invariant code for each loop item.  Therefore do it just
 	 once here.  */
-      mpz_t nelem;
       if (code->expr3 && code->expr3->mold
 	  && code->expr3->ts.type == BT_DERIVED
-	  && !(code->expr3->ref && gfc_array_size (code->expr3, &nelem)))
+	  && !(code->expr3->ref && code->expr3->ref->type == REF_ARRAY))
 	{
 	  /* Default initialization via MOLD (non-polymorphic).  */
 	  gfc_expr *rhs = gfc_default_initializer (&code->expr3->ts);

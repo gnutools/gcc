@@ -1666,6 +1666,11 @@ comptypes_internal (const_tree type1, const_tree type2,
       || TREE_CODE (t1) == ERROR_MARK || TREE_CODE (t2) == ERROR_MARK)
     return true;
 
+  /* Qualifiers must match. C99 6.7.3p9 */
+
+  if (TYPE_QUALS (t1) != TYPE_QUALS (t2))
+    return false;
+
   /* Enumerated types are compatible with integer types, but this is
      not transitive: two enumerated types in the same translation unit
      are compatible with each other only if they are the same type.  */
@@ -1699,11 +1704,6 @@ comptypes_internal (const_tree type1, const_tree type2,
   /* Different classes of types can't be compatible.  */
 
   if (TREE_CODE (t1) != TREE_CODE (t2))
-    return false;
-
-  /* Qualifiers must match. C99 6.7.3p9 */
-
-  if (TYPE_QUALS (t1) != TYPE_QUALS (t2))
     return false;
 
   /* Allow for two different type nodes which have essentially the same
@@ -2590,6 +2590,19 @@ maybe_get_constexpr_init (tree expr)
   return build_zero_cst (TREE_TYPE (expr));
 }
 
+/* Helper function for convert_lvalue_to_rvalue called via
+   walk_tree_without_duplicates.  Find DATA inside of the expression.  */
+
+static tree
+c_find_var_r (tree *tp, int *walk_subtrees, void *data)
+{
+  if (TYPE_P (*tp))
+    *walk_subtrees = 0;
+  else if (*tp == (tree) data)
+    return *tp;
+  return NULL_TREE;
+}
+
 /* Convert expression EXP (location LOC) from lvalue to rvalue,
    including converting functions and arrays to pointers if CONVERT_P.
    If READ_P, also mark the expression as having been read.  If
@@ -2663,6 +2676,25 @@ convert_lvalue_to_rvalue (location_t loc, struct c_expr exp,
 
       /* EXPR is always read.  */
       mark_exp_read (exp.value);
+
+      /* Optimize the common case where c_build_function_call_vec
+	 immediately folds __atomic_load (&expr, &tmp, SEQ_CST); into
+	 tmp = __atomic_load_<N> (&expr, SEQ_CST);
+	 In that case tmp is not addressable and can be initialized
+	 fully by the rhs of the MODIFY_EXPR.  */
+      tree tem = func_call;
+      if (CONVERT_EXPR_P (tem) && VOID_TYPE_P (TREE_TYPE (tem)))
+	{
+	  tem = TREE_OPERAND (tem, 0);
+	  if (TREE_CODE (tem) == MODIFY_EXPR
+	      && TREE_OPERAND (tem, 0) == tmp
+	      && !walk_tree_without_duplicates (&TREE_OPERAND (tem, 1),
+						c_find_var_r, tmp))
+	    {
+	      TREE_ADDRESSABLE (tmp) = 0;
+	      func_call = TREE_OPERAND (tem, 1);
+	    }
+	}
 
       /* Return tmp which contains the value loaded.  */
       exp.value = build4 (TARGET_EXPR, nonatomic_type, tmp, func_call,

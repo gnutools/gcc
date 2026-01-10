@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2025, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2026, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -31,7 +31,6 @@ with Atree;          use Atree;
 with Casing;         use Casing;
 with Checks;         use Checks;
 with Debug;          use Debug;
-with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
 with Einfo.Utils;    use Einfo.Utils;
 with Elists;         use Elists;
@@ -72,7 +71,6 @@ with Sem_Type;       use Sem_Type;
 with Sem_Util;       use Sem_Util;
 with Sem_Warn;
 with Stand;          use Stand;
-with Sinfo;          use Sinfo;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Sinfo.Utils;    use Sinfo.Utils;
 with Sinput;         use Sinput;
@@ -3325,6 +3323,13 @@ package body Sem_Attr is
          E1 := Empty;
          E2 := Empty;
 
+      elsif Aname = Name_From_Address then
+         --  Number and types of expected arguments depends on prefix type,
+         --  so analyze arguments later.
+
+         E1 := Empty;
+         E2 := Empty;
+
       elsif Aname /= Name_Make then
          E1 := First (Exprs);
 
@@ -4194,6 +4199,13 @@ package body Sem_Attr is
 
          Set_Etype (N, Universal_Integer);
 
+      ----------------
+      -- Destructor --
+      ----------------
+
+      when Attribute_Destructor =>
+         Error_Attr_P ("attribute% can only be used to define destructors");
+
       ------------
       -- Digits --
       ------------
@@ -4484,6 +4496,84 @@ package body Sem_Attr is
       --------------
 
       --  Shares processing with Ceiling attribute
+
+      ------------------
+      -- From_Address --
+      ------------------
+
+      when Attribute_From_Address =>
+         Set_Etype (N, P_Base_Type);
+
+         if not Is_Type (Entity (P))
+           or else Ekind (P_Base_Type) /= E_General_Access_Type
+           or else not Is_Array_Type (Designated_Type (P_Base_Type))
+         then
+            Error_Attr
+              ("attribute % must apply to general access-to-array type", P);
+         end if;
+
+         declare
+            Array_Subtype : constant Entity_Id :=
+              Designated_Type (P_Base_Type);
+
+            Arg : Node_Id := First (Exprs);
+
+            procedure Analyze_Next_Arg
+              (Arg : in out Node_Id; Typ : Entity_Id);
+            --  Analyze an actual parameter
+
+            ----------------------
+            -- Analyze_Next_Arg --
+            ----------------------
+
+            procedure Analyze_Next_Arg
+              (Arg : in out Node_Id; Typ : Entity_Id)
+            is
+
+            begin
+               if No (Arg) then
+                  Error_Attr ("missing argument for % attribute", N);
+               else
+                  --  Base_Type call needed to deal with null ranges
+                  Analyze_And_Resolve (Arg, Base_Type (Typ));
+                  Next (Arg);
+               end if;
+            end Analyze_Next_Arg;
+         begin
+            --  First parameter is of type Address. If designated subtype is
+            --  unconstrained, then subsequent parameters are of the
+            --  index subtypes (usually 2 per dimension, for low and high,
+            --  but low is omitted in the fixed-lower-bound case).
+            --  No subsequent parameters if designated subtype is constrained.
+
+            Analyze_Next_Arg (Arg, RTE (RE_Address));
+            if not Is_Constrained (Array_Subtype) then
+               if not Is_Extended_Access_Type (P_Base_Type) then
+                  --  For the unconstrained case (where bounds need to be
+                  --  stored as part of the access value), the access type
+                  --  is required to be an extended access type.
+                  Error_Attr
+                    ("attribute % must apply to an extended access type"
+                     & " because designated subtype is unconstrained", P);
+               end if;
+
+               declare
+                  Index : Node_Id := First_Index (Array_Subtype);
+               begin
+                  for Dim in 1 .. Number_Dimensions (Array_Subtype) loop
+                     if not Is_Fixed_Lower_Bound_Index_Subtype (Etype (Index))
+                     then
+                        Analyze_Next_Arg (Arg, Etype (Index)); --  low bound
+                     end if;
+                     Analyze_Next_Arg (Arg, Etype (Index)); --  high bound
+                     Next_Index (Index);
+                  end loop;
+               end;
+            end if;
+            if Present (Arg) then
+               Error_Attr ("too many arguments for % attribute", N);
+            end if;
+         end;
 
       --------------
       -- From_Any --
@@ -5194,12 +5284,8 @@ package body Sem_Attr is
          Check_Type;
          Set_Etype (N, Etype (P));
 
-         if not Needs_Construction (Entity (P)) then
-            Error_Msg_NE ("no available constructor for&", N, Entity (P));
-         end if;
-
-         if Present (Expressions (N)) then
-            Expr := First (Expressions (N));
+         if Present (Exprs) then
+            Expr := First (Exprs);
             while Present (Expr) loop
                if Nkind (Expr) = N_Parameter_Association then
                   Analyze (Explicit_Actual_Parameter (Expr));
@@ -5210,8 +5296,34 @@ package body Sem_Attr is
                Next (Expr);
             end loop;
 
-         elsif not Has_Default_Constructor (Entity (P)) then
-            Error_Msg_NE ("no default constructor for&", N, Entity (P));
+            if not Needs_Construction (Entity (P)) then
+               Error_Msg_NE ("no available constructor for&", N, Entity (P));
+            end if;
+
+         elsif not Needs_Construction (Entity (P))
+           or else not Has_Parameterless_Constructor (Entity (P))
+         then
+            Error_Msg_NE ("no parameterless constructor for&", N, Entity (P));
+
+            --  In case the parameterless constructor was explicitly removed, a
+            --  more specific error message is provided.
+
+            if Has_Parameterless_Constructor (Entity (P),
+                                              Allow_Removed => True)
+            then
+               declare
+                  function Find_Parameterless_Constructor
+                  is new Find_Matching_Constructor
+                           (Is_Parameterless_Constructor);
+
+                  Removed_Parameterless : constant Entity_Id :=
+                    Find_Parameterless_Constructor (Entity (P),
+                                                    Allow_Removed => True);
+               begin
+                  Error_Msg_NE ("//explicitly removed at#",
+                                N, Removed_Parameterless);
+               end;
+            end if;
          end if;
       end;
 
@@ -11152,7 +11264,8 @@ package body Sem_Attr is
 
       --  The following attributes denote functions that cannot be folded
 
-      when Attribute_From_Any
+      when Attribute_From_Address
+         | Attribute_From_Any
          | Attribute_To_Any
          | Attribute_TypeCode
       =>
@@ -11183,6 +11296,7 @@ package body Sem_Attr is
          | Attribute_Default_Bit_Order
          | Attribute_Default_Scalar_Storage_Order
          | Attribute_Deref
+         | Attribute_Destructor
          | Attribute_Elaborated
          | Attribute_Elab_Body
          | Attribute_Elab_Spec
@@ -11933,15 +12047,6 @@ package body Sem_Attr is
 
                             or else Nkind (Associated_Node_For_Itype (Btyp)) =
                                                         N_Object_Declaration)
-
-                 --  Verify that static checking is OK (namely that we aren't
-                 --  in a specific context requiring dynamic checks on
-                 --  expicitly aliased parameters), and then check the level.
-
-                 --  Otherwise a check will be generated later when the return
-                 --  statement gets expanded.
-
-                 and then not Is_Special_Aliased_Formal_Access (N)
                  and then
                    Static_Accessibility_Level (N, Zero_On_Dynamic_Level) >
                      Deepest_Type_Access_Level (Btyp)

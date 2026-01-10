@@ -35,6 +35,8 @@
 #include "digraph.h"
 #include "analyzer/supergraph.h"
 #include "sbitmap.h"
+#include "context.h"
+#include "channels.h"
 #include "analyzer/call-string.h"
 #include "analyzer/program-point.h"
 #include "analyzer/store.h"
@@ -1178,33 +1180,53 @@ sorry_no_cpython_plugin ()
 	 "Python/C API", "#include <Python.h>");
 }
 
-static void
-cpython_analyzer_init_cb (void *gcc_data, void * /*user_data */)
+namespace analyzer_events = ::gcc::topics::analyzer_events;
+
+class cpython_analyzer_events_subscriber : public analyzer_events::subscriber
 {
-  ana::plugin_analyzer_init_iface *iface
-      = (ana::plugin_analyzer_init_iface *)gcc_data;
-  LOG_SCOPE (iface->get_logger ());
-  if (0)
-    inform (input_location, "got here: cpython_analyzer_init_cb");
+public:
+  void
+  on_message (const analyzer_events::on_tu_finished &msg) final override
+  {
+    LOG_SCOPE (msg.m_logger);
+    stash_named_types (msg.m_logger, msg.m_tu);
+    stash_global_vars (msg.m_logger, msg.m_tu);
+  }
 
-  init_py_structs ();
+  void
+  on_message (const analyzer_events::on_ana_init &m) final override
+  {
+    LOG_SCOPE (m.get_logger ());
 
-  if (pyobj_record == NULL_TREE)
-    {
-      sorry_no_cpython_plugin ();
-      return;
-    }
+    init_py_structs ();
 
-  iface->register_known_function ("PyList_Append",
-                                  std::make_unique<kf_PyList_Append> ());
-  iface->register_known_function ("PyList_New", std::make_unique<kf_PyList_New> ());
-  iface->register_known_function ("PyLong_FromLong",
-                                  std::make_unique<kf_PyLong_FromLong> ());
+    if (pyobj_record == NULL_TREE)
+      {
+	sorry_no_cpython_plugin ();
+	return;
+      }
 
-  iface->register_known_function (
-      "__analyzer_cpython_dump_refcounts",
-      std::make_unique<kf_analyzer_cpython_dump_refcounts> ());
-}
+    m.register_known_function ("PyList_Append",
+			       std::make_unique<kf_PyList_Append> ());
+    m.register_known_function ("PyList_New",
+			       std::make_unique<kf_PyList_New> ());
+    m.register_known_function ("PyLong_FromLong",
+			       std::make_unique<kf_PyLong_FromLong> ());
+    m.register_known_function
+      ("__analyzer_cpython_dump_refcounts",
+       std::make_unique<kf_analyzer_cpython_dump_refcounts> ());
+  }
+
+  void
+  on_message (const analyzer_events::on_frame_popped &msg) final override
+  {
+    pyobj_refcnt_checker (msg.m_new_model,
+			  msg.m_old_model,
+			  msg.m_retval,
+			  msg.m_ctxt);
+  }
+} cpython_sub;
+
 } // namespace ana
 
 #endif /* #if ENABLE_ANALYZER */
@@ -1217,12 +1239,7 @@ plugin_init (struct plugin_name_args *plugin_info,
   const char *plugin_name = plugin_info->base_name;
   if (0)
     inform (input_location, "got here; %qs", plugin_name);
-  register_finish_translation_unit_callback (&stash_named_types);
-  register_finish_translation_unit_callback (&stash_global_vars);
-  region_model::register_pop_frame_callback(pyobj_refcnt_checker);
-  register_callback (plugin_info->base_name, PLUGIN_ANALYZER_INIT,
-                     ana::cpython_analyzer_init_cb,
-                     NULL); /* void *user_data */
+  g->get_channels ().analyzer_events_channel.add_subscriber (ana::cpython_sub);
 #else
   sorry_no_analyzer ();
 #endif

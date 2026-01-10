@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2025, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2026, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -28,7 +28,6 @@ with Atree;          use Atree;
 with Checks;         use Checks;
 with Contracts;      use Contracts;
 with Debug;          use Debug;
-with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
 with Einfo.Utils;    use Einfo.Utils;
 with Elists;         use Elists;
@@ -63,7 +62,6 @@ with Sem_Mech;       use Sem_Mech;
 with Sem_Prag;       use Sem_Prag;
 with Sem_Res;        use Sem_Res;
 with Sem_Util;       use Sem_Util;
-with Sinfo;          use Sinfo;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Sinfo.Utils;    use Sinfo.Utils;
 with Snames;         use Snames;
@@ -932,10 +930,15 @@ package body Freeze is
          elsif Is_Record_Type (T) then
 
             --  A subtype of a variant record must not have non-static
-            --  discriminated components.
+            --  discriminants that influence the size. We don't do all that we
+            --  could to determine whether a non-static discriminant value can
+            --  make the size vary, but we handle the special case of unchecked
+            --  unions where all objects have the same size (see RM B.3.3
+            --  (14/2)).
 
             if T /= Base_Type (T)
               and then not Static_Discriminated_Components (T)
+              and then not Is_Unchecked_Union (T)
             then
                return False;
 
@@ -7251,35 +7254,6 @@ package body Freeze is
             end if;
 
             Inherit_Aspects_At_Freeze_Point (E);
-
-            --  Destructor legality check
-
-            if Present (Primitive_Operations (E)) then
-               declare
-                  Subp             : Entity_Id;
-                  Parent_Operation : Entity_Id;
-
-                  Elmt : Elmt_Id := First_Elmt (Primitive_Operations (E));
-
-               begin
-                  while Present (Elmt) loop
-                     Subp := Node (Elmt);
-
-                     if Present (Overridden_Operation (Subp)) then
-                        Parent_Operation := Overridden_Operation (Subp);
-
-                        if Ekind (Parent_Operation) = E_Procedure
-                          and then Is_Destructor (Parent_Operation)
-                        then
-                           Error_Msg_N ("cannot override destructor", Subp);
-                        end if;
-                     end if;
-
-                     Next_Elmt (Elmt);
-                  end loop;
-               end;
-            end if;
-
          end if;
 
          --  Case of array type

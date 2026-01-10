@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2025, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2026, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -27,14 +27,12 @@ with Aspects;        use Aspects;
 with Atree;          use Atree;
 with Contracts;      use Contracts;
 with Debug;          use Debug;
-with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
 with Einfo.Utils;    use Einfo.Utils;
 with Elists;         use Elists;
 with Errout;         use Errout;
 with Expander;       use Expander;
 with Exp_Dbug;       use Exp_Dbug;
-with Fname;          use Fname;
 with Fname.UF;       use Fname.UF;
 with Freeze;         use Freeze;
 with Ghost;          use Ghost;
@@ -70,7 +68,6 @@ with Sem_Type;       use Sem_Type;
 with Sem_Util;       use Sem_Util;
 with Sem_Warn;       use Sem_Warn;
 with Stand;          use Stand;
-with Sinfo;          use Sinfo;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Sinfo.Utils;    use Sinfo.Utils;
 with Sinfo.CN;       use Sinfo.CN;
@@ -18667,27 +18664,6 @@ package body Sem_Ch12 is
 
       Save_References (Templ);
    end Save_Global_References;
-
-   ---------------------------------------
-   -- Save_Global_References_In_Aspects --
-   ---------------------------------------
-
-   procedure Save_Global_References_In_Aspects (N : Node_Id) is
-      Asp  : Node_Id;
-      Expr : Node_Id;
-
-   begin
-      Asp := First (Aspect_Specifications (N));
-      while Present (Asp) loop
-         Expr := Expression (Asp);
-
-         if Present (Expr) then
-            Save_Global_References (Expr);
-         end if;
-
-         Next (Asp);
-      end loop;
-   end Save_Global_References_In_Aspects;
 
    ------------------------------------------
    -- Set_Copied_Sloc_For_Inherited_Pragma --

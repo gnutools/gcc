@@ -3054,9 +3054,19 @@ s390_logical_operator_ok_p (rtx *operands)
   /* If the destination operand is in memory, it needs to coincide
      with one of the source operands.  After reload, it has to be
      the first source operand.  */
-  if (GET_CODE (operands[0]) == MEM)
-    return rtx_equal_p (operands[0], operands[1])
-	   || (!reload_completed && rtx_equal_p (operands[0], operands[2]));
+  if (MEM_P (operands[0]))
+    {
+      /* Volatile loads/stores must be implemented via a single access of the
+	 entire object.  Therefore, do not fold operations into instructions
+	 like NI or NC.  */
+      if (GET_MODE (operands[0]) != QImode
+	  && (MEM_VOLATILE_P (operands[0])
+	      || (MEM_P (operands[1]) && MEM_VOLATILE_P (operands[1]))
+	      || (MEM_P (operands[2]) && MEM_VOLATILE_P (operands[2]))))
+	return false;
+      return rtx_equal_p (operands[0], operands[1])
+	     || (!reload_completed && rtx_equal_p (operands[0], operands[2]));
+    }
 
   return true;
 }
@@ -3700,7 +3710,7 @@ s390_mem_constraint (const char *str, rtx op)
     {
     case 'A':
       /* Check for offsettable variants of memory constraints.  */
-      if (!MEM_P (op) || MEM_VOLATILE_P (op))
+      if (!MEM_P (op))
 	return 0;
       if ((reload_completed || reload_in_progress)
 	  ? !offsettable_memref_p (op) : !offsettable_nonstrict_memref_p (op))
@@ -8885,7 +8895,6 @@ print_operand_address (FILE *file, rtx addr)
 	 operand).
 
     'b': print integer X as if it's an unsigned byte.
-    'c': print integer X as if it's an signed byte.
     'e': "end" contiguous bitmask X in either DImode or vector inner mode.
     'f': "end" contiguous bitmask X in SImode.
     'h': print integer X as if it's a signed halfword.
@@ -9180,12 +9189,10 @@ print_operand (FILE *file, rtx x, int code)
       switch (code)
 	{
 	case 0:
+	case 'c':
 	  break;
 	case 'b':
 	  ival &= 0xff;
-	  break;
-	case 'c':
-	  ival = ((ival & 0xff) ^ 0x80) - 0x80;
 	  break;
 	case 'x':
 	  ival &= 0xffff;
