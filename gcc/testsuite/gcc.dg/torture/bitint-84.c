@@ -1,23 +1,19 @@
-/* PR middle-end/114332 */
+/* A simple variant of gcc.dg/torture/bitint-64.c */
 /* { dg-do run { target bitint } } */
 /* { dg-require-effective-target sync_char_short } */
-/* { dg-options "-std=c23 -fwrapv" } */
+/* { dg-options "-std=c23" } */
 /* { dg-skip-if "" { ! run_expensive_tests }  { "*" } { "-O0" "-O2" } } */
 /* { dg-skip-if "" { ! run_expensive_tests } { "-flto" } { "" } } */
 
-enum E { E22 = 22 } e = E22;
+#include "../bitintext.h"
 
-_BitInt (5)
-foo (void)
-{
-  _Atomic _BitInt (5) b = 0;
-  b += e;
-  return b;
-}
+enum E : char { E22 = 22 } e = E22;
 
 int
 main ()
 {
-  if (foo () != -10)
-    __builtin_abort ();
+  _Atomic _BitInt (5) b = 0;
+  b += e;
+  BEXTC (b);
+  return 0;
 }
