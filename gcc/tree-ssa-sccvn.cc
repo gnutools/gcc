@@ -3615,7 +3615,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
 	  if (i > 0)
 	    {
 	      int temi = i - 1;
-	      extra_off = vr->operands[i].off;
+	      poly_int64 tem_extra_off = extra_off + vr->operands[i].off;
 	      while (temi >= 0
 		     && known_ne (vr->operands[temi].off, -1))
 		{
@@ -3627,20 +3627,21 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
 		      i = temi;
 		      /* Strip the component that was type matched to
 			 the MEM_REF.  */
-		      extra_off += vr->operands[i].off - lhs_ops[j].off;
+		      extra_off = (tem_extra_off
+				   + vr->operands[i].off - lhs_ops[j].off);
 		      i--, j--;
 		      /* Strip further equal components.  */
 		      found = true;
 		      break;
 		    }
-		  extra_off += vr->operands[temi].off;
+		  tem_extra_off += vr->operands[temi].off;
 		  temi--;
 		}
 	    }
 	  if (!found && j > 0)
 	    {
 	      int temj = j - 1;
-	      extra_off = -lhs_ops[j].off;
+	      poly_int64 tem_extra_off = extra_off - lhs_ops[j].off;
 	      while (temj >= 0
 		     && known_ne (lhs_ops[temj].off, -1))
 		{
@@ -3652,24 +3653,43 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
 		      j = temj;
 		      /* Strip the component that was type matched to
 			 the MEM_REF.  */
-		      extra_off += vr->operands[i].off - lhs_ops[j].off;
+		      extra_off = (tem_extra_off
+				   + vr->operands[i].off - lhs_ops[j].off);
 		      i--, j--;
 		      /* Strip further equal components.  */
 		      found = true;
 		      break;
 		    }
-		  extra_off += -lhs_ops[temj].off;
+		  tem_extra_off += -lhs_ops[temj].off;
 		  temj--;
 		}
 	    }
-	  /* When the LHS is already at the outermost level simply
-	     adjust for any offset difference.  Further lookups
-	     will fail when there's too gross of a type compatibility
-	     issue.  */
-	  if (!found && j == 0)
+	  /* When we cannot find a common base to reconstruct the full
+	     reference instead try to reduce the lookup to the new
+	     base plus a constant offset.  */
+	  if (!found)
 	    {
-	      extra_off = vr->operands[i].off - lhs_ops[j].off;
-	      i--, j--;
+	      while (j >= 0
+		     && known_ne (lhs_ops[j].off, -1))
+		{
+		  extra_off += -lhs_ops[j].off;
+		  j--;
+		}
+	      if (j != -1)
+		return (void *)-1;
+	      while (i >= 0
+		     && known_ne (vr->operands[i].off, -1))
+		{
+		  /* Punt if the additional ops contain a storage order
+		     barrier.  */
+		  if (vr->operands[i].opcode == VIEW_CONVERT_EXPR
+		      && vr->operands[i].reverse)
+		    break;
+		  extra_off += vr->operands[i].off;
+		  i--;
+		}
+	      if (i != -1)
+		return (void *)-1;
 	      found = true;
 	    }
 	  /* If we did find a match we'd eventually append a MEM_REF
@@ -3686,17 +3706,6 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
 	     && vn_reference_op_eq (&vr->operands[i], &lhs_ops[j]))
 	{
 	  i--;
-	  j--;
-	}
-
-      /* When we still didn't manage to strip off all components from
-	 lhs_op, opportunistically continue for those we can handle
-	 via extra_off.  Note this is an attempt to fixup secondary
-	 copies after we hit the !found && j == 0 case above.  */
-      while (j != -1
-	     && known_ne (lhs_ops[j].off, -1))
-	{
-	  extra_off += -lhs_ops[j].off;
 	  j--;
 	}
 

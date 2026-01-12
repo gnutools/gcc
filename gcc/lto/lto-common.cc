@@ -2948,6 +2948,9 @@ read_cgraph_and_symbols (unsigned nfiles, const char **fnames)
   if (tree_with_vars)
     ggc_free (tree_with_vars);
   tree_with_vars = NULL;
+
+  input_toplevel_asms ();
+
   /* During WPA we want to prevent ggc collecting by default.  Grow limits
      until after the IPA summaries are streamed in.  Basically all IPA memory
      is explcitly managed by ggc_free and ggc collect is not useful.
@@ -2998,6 +3001,7 @@ read_cgraph_and_symbols (unsigned nfiles, const char **fnames)
 	  symtab->dump (dump_file);
 	}
       lto_symtab_merge_symbols ();
+      analyze_toplevel_extended_asm ();
       /* Removal of unreachable symbols is needed to make verify_symtab to pass;
 	 we are still having duplicated comdat groups containing local statics.
 	 We could also just remove them while merging.  */
