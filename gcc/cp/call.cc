@@ -4261,9 +4261,8 @@ print_z_candidates (location_t loc, struct z_candidate *candidates,
       ++num_candidates;
     }
 
-  inform_n (loc,
-	    num_candidates, "there is %i candidate", "there are %i candidates",
-	    num_candidates);
+  inform_num_candidates (loc, num_candidates);
+
   auto_diagnostic_nesting_level sentinel2;
 
   int candidate_idx = 0;
@@ -8598,6 +8597,9 @@ get_fndecl_argument_location (tree fndecl, int argnum)
   /* The locations of implicitly-declared functions are likely to be
      more meaningful than those of their parameters.  */
   if (DECL_ARTIFICIAL (fndecl))
+    return DECL_SOURCE_LOCATION (fndecl);
+
+  if (argnum == -1)
     return DECL_SOURCE_LOCATION (fndecl);
 
   int i;

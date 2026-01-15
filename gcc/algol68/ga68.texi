@@ -187,9 +187,9 @@ programs.  @xref{Stropping regimes}.
 @opindex fbrackets
 @opindex fno-brackets
 @item -fbrackets
-This option controls whether @code{[ .. ]} and @code{@{ .. @}} are
-considered equivalent to @code{( .. )}.  This syntactic variation is
-blessed by the Revised Report and is still strict Algol 68.
+This option controls whether @code{[ .. ]} is considered equivalent to
+@code{( .. )}.  This syntactic variation is blessed by the Revised
+Report and is still strict Algol 68.
 
 This option is disabled by default.
 @end table
@@ -3071,7 +3071,7 @@ error condition, this procedure yields -1 and @code{errno} is set
 appropriately.
 @end deftypefn
 
-@deftypefn Procedure {} {lseek} {= (@B{int} fd, @B{long int} offset, @B{int} whence) @B{long long int}}
+@deftypefn Procedure {} {lseek} {= (@B{int} fd, @B{long long int} offset, @B{int} whence) @B{long long int}}
 Set the file offset of the file characterized by the file descriptor @code{fd}
 depending on the values of @code{offset} and @code{whence}.  On success, the
 resulting offset, as measured in bytes from the beginning of the file, is

@@ -53,6 +53,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-inline.h"
 #include "escaped_string.h"
 #include "contracts.h"
+#include "gcc-rich-location.h"
+#include "tree-pretty-print-markup.h"
 
 /* Id for dumping the raw trees.  */
 int raw_dump_id;
@@ -770,6 +772,207 @@ check_member_template (tree tmpl)
     error ("template declaration of %q#D", decl);
 }
 
+/* A struct for conveniently working with the parameter types of a
+   fndecl.  */
+
+struct fndecl_signature
+{
+  fndecl_signature (tree fndecl)
+  : m_fndecl (fndecl),
+    m_num_artificial_parms (num_artificial_parms_for (fndecl)),
+    m_variadic (true)
+  {
+    function_args_iterator iter;
+    tree argtype;
+    FOREACH_FUNCTION_ARGS (TREE_TYPE (fndecl), argtype, iter)
+      {
+	/* A trailing "void" type means that FNDECL is non-variadic.  */
+	if (VOID_TYPE_P (argtype))
+	  {
+	    gcc_assert (!TREE_CHAIN (iter.next));
+	    m_variadic = false;
+	    break;
+	  }
+	m_parm_types.safe_push (argtype);
+      }
+    gcc_assert (m_parm_types.length () >= (size_t)m_num_artificial_parms);
+    m_num_user_parms = m_parm_types.length () - m_num_artificial_parms;
+  }
+
+  /* Convert from index within DECL_ARGUMENTS to 0-based user-written
+     parameter, or -1 for "this".  */
+  int
+  get_argno_from_idx (size_t idx) const
+  {
+    return static_cast<int> (idx) - m_num_artificial_parms;
+  }
+
+  location_t
+  get_argno_location (int argno) const
+  {
+    return get_fndecl_argument_location (m_fndecl, argno);
+  }
+
+  tree m_fndecl;
+  int m_num_artificial_parms;
+  auto_vec<tree> m_parm_types;
+  size_t m_num_user_parms;
+  bool m_variadic;
+};
+
+/* A rich_location subclass that highlights a given argno
+   within FNDECL_SIG using HIGHLIGHT_COLOR in the quoted source.  */
+
+class parm_rich_location : public gcc_rich_location
+{
+public:
+  parm_rich_location (const fndecl_signature &fndecl_sig,
+		      int argno,
+		      const char *highlight_color)
+  : gcc_rich_location (fndecl_sig.get_argno_location (argno),
+		       nullptr,
+		       highlight_color)
+  {
+  }
+};
+
+/* A class for comparing a pair of fndecls and emitting diagnostic notes
+   about the differences between them, if they are sufficiently close.  */
+
+class fndecl_comparison
+{
+public:
+  fndecl_comparison (tree decl_a,
+		     tree decl_b)
+  : m_decl_a (decl_a),
+    m_decl_b (decl_b)
+  {
+    gcc_assert (TREE_CODE (decl_a) == FUNCTION_DECL);
+    gcc_assert (TREE_CODE (decl_b) == FUNCTION_DECL);
+  }
+
+  /* Attempt to emit diagnostic notes describing the differences between
+     the fndecls, when they are a sufficiently close match.  */
+  void
+  maybe_emit_notes_for_close_match () const
+  {
+    /* If there's a difference in "variadicness", don't attempt to emit
+       any notes.  */
+    if (m_decl_a.m_variadic != m_decl_b.m_variadic)
+      return;
+
+    auto_vec<parm_difference> differences = get_differences ();
+    if (differences.length () == 1)
+      {
+	auto_diagnostic_nesting_level sentinel;
+	print_parm_type_difference (differences[0]);
+      }
+  }
+
+private:
+  struct parm_difference
+  {
+    size_t m_parm_idx_a;
+    size_t m_parm_idx_b;
+  };
+
+  /* If we have a close match, return the differences between the two
+     fndecls.  Otherwise return an empty vector.  */
+  auto_vec<parm_difference>
+  get_differences () const
+  {
+    auto_vec<parm_difference> differences;
+
+    /* For now, just handle the case where the "user parm" count is
+       equal.  */
+    if (m_decl_a.m_num_user_parms != m_decl_b.m_num_user_parms)
+      return differences;
+
+    /* Ideally we'd check the edit distance, and thus report on close
+       matches which are missing a param, have transposed params, etc.
+       For now, just iterate through the params, finding differences
+       elementwise.  */
+
+    /* Find differences in artificial params, if they are comparable.
+       This should find e.g. const vs non-const differences in "this".  */
+    if (m_decl_a.m_num_artificial_parms == m_decl_b.m_num_artificial_parms)
+      for (int parm_idx = 0;
+	   parm_idx < m_decl_a.m_num_artificial_parms;
+	   ++parm_idx)
+	compare (parm_idx, parm_idx, differences);
+
+    /* Find differences in user-provided params.  */
+    for (size_t user_parm_idx = 0;
+	 user_parm_idx < m_decl_a.m_num_user_parms;
+	 ++user_parm_idx)
+      {
+	const size_t idx_a = m_decl_a.m_num_artificial_parms + user_parm_idx;
+	const size_t idx_b = m_decl_b.m_num_artificial_parms + user_parm_idx;
+	compare (idx_a, idx_b, differences);
+      }
+
+    return differences;
+  }
+
+  void
+  compare (size_t idx_a, size_t idx_b,
+	   auto_vec<parm_difference> &differences) const
+  {
+    if (!same_type_p (m_decl_a.m_parm_types[idx_a],
+		      m_decl_b.m_parm_types[idx_b]))
+      differences.safe_push (parm_difference {idx_a, idx_b});
+  }
+
+  void
+  print_parm_type_difference (const parm_difference &diff) const
+  {
+    const char * const highlight_a = "highlight-a";
+    pp_markup::element_quoted_type type_of_parm_a
+      (m_decl_a.m_parm_types[diff.m_parm_idx_a],
+       highlight_a);
+    const int argno_a = m_decl_a.get_argno_from_idx (diff.m_parm_idx_a);
+    parm_rich_location rich_loc_a (m_decl_a, argno_a, highlight_a);
+    inform (&rich_loc_a,
+	    "parameter %P of candidate has type %e...",
+	    argno_a, &type_of_parm_a);
+
+    const char * const highlight_b = "highlight-b";
+    pp_markup::element_quoted_type type_of_parm_b
+      (m_decl_b.m_parm_types[diff.m_parm_idx_b],
+       highlight_b);
+    const int argno_b = m_decl_b.get_argno_from_idx (diff.m_parm_idx_b);
+    parm_rich_location rich_loc_b (m_decl_b, argno_b, highlight_b);
+    inform (&rich_loc_b,
+	    "...which does not match type %e",
+	    &type_of_parm_b);
+  }
+
+  fndecl_signature m_decl_a;
+  fndecl_signature m_decl_b;
+};
+
+class decl_mismatch_context : public candidate_context
+{
+public:
+  decl_mismatch_context (tree function)
+  : m_function (function)
+  {
+    gcc_assert (TREE_CODE (function) == FUNCTION_DECL);
+  }
+
+  void
+  emit_any_notes_for_candidate (tree cand) final override
+  {
+    if (TREE_CODE (cand) == FUNCTION_DECL)
+      {
+	fndecl_comparison diff (cand, m_function);
+	diff.maybe_emit_notes_for_close_match ();
+      }
+  }
+private:
+  tree m_function;
+};
+
 /* Sanity check: report error if this function FUNCTION is not
    really a member of the class (CTYPE) it is supposed to belong to.
    TEMPLATE_PARMS is used to specify the template parameters of a member
@@ -917,7 +1120,10 @@ check_classfn (tree ctype, tree function, tree template_parms)
 	  error_at (DECL_SOURCE_LOCATION (function),
 		    "no declaration matches %q#D", function);
 	  if (fns)
-	    print_candidates (fns);
+	    {
+	      decl_mismatch_context ctxt (function);
+	      print_candidates (DECL_SOURCE_LOCATION (function), fns, &ctxt);
+	    }
 	  else if (DECL_CONV_FN_P (function))
 	    inform (DECL_SOURCE_LOCATION (function),
 		    "no conversion operators declared");
@@ -1472,6 +1678,11 @@ is_late_template_attribute (tree attr, tree decl)
     = lookup_attribute_spec (TREE_PURPOSE (attr));
   tree arg;
 
+  /* Handle all annotations as late, so that they aren't incorrectly
+     reordered if some have dependent expressions and others don't.  */
+  if (annotation_p (attr))
+    return true;
+
   if (!spec)
     /* Unknown attribute.  */
     return false;
@@ -1748,6 +1959,10 @@ cp_check_const_attributes (tree attributes)
   for (attr = attributes; attr; attr = TREE_CHAIN (attr))
     {
       if (cxx_contract_attribute_p (attr))
+	continue;
+
+      /* Annotation arguments are handled in handle_annotation_attribute.  */
+      if (annotation_p (attr))
 	continue;
 
       tree arg;
@@ -2460,6 +2675,10 @@ maybe_make_one_only (tree decl)
   if (! flag_weak)
     return;
 
+  /* These are not to be output.  */
+  if (consteval_only_p (decl))
+    return;
+
   /* We can't set DECL_COMDAT on functions, or cp_finish_file will think
      we can get away with not emitting them if they aren't used.  We need
      to for variables so that cp_finish_decl will update their linkage,
@@ -2616,6 +2835,10 @@ var_finalized_p (tree var)
 void
 mark_needed (tree decl)
 {
+  /* These are not to be output.  */
+  if (consteval_only_p (decl))
+    return;
+
   TREE_USED (decl) = 1;
   if (TREE_CODE (decl) == FUNCTION_DECL)
     {
@@ -2834,7 +3057,7 @@ min_vis_r (tree *tp, int *walk_subtrees, void *data)
 /* walk_tree helper function for expr_visibility.  */
 
 static tree
-min_vis_expr_r (tree *tp, int */*walk_subtrees*/, void *data)
+min_vis_expr_r (tree *tp, int *walk_subtrees, void *data)
 {
   int *vis_p = (int *)data;
   int tpvis = VISIBILITY_DEFAULT;
@@ -2904,6 +3127,59 @@ min_vis_expr_r (tree *tp, int */*walk_subtrees*/, void *data)
 
     case FIELD_DECL:
       tpvis = type_visibility (DECL_CONTEXT (t));
+      break;
+
+    case REFLECT_EXPR:
+      tree r;
+      r = REFLECT_EXPR_HANDLE (t);
+      switch (REFLECT_EXPR_KIND (t))
+	{
+	case REFLECT_BASE:
+	  /* For direct base class relationship, determine visibility
+	     from both D and B types.  */
+	  tpvis = type_visibility (BINFO_TYPE (r));
+	  if (tpvis > *vis_p)
+	    *vis_p = tpvis;
+	  tpvis = type_visibility (direct_base_parent (r));
+	  *walk_subtrees = 0;
+	  break;
+	case REFLECT_DATA_MEMBER_SPEC:
+	  /* For data member description determine visibility
+	     from the type.  */
+	  tpvis = type_visibility (TREE_VEC_ELT (r, 0));
+	  *walk_subtrees = 0;
+	  break;
+	case REFLECT_PARM:
+	  /* For function parameter reflection determine visibility
+	     based on parent_of.  */
+	  tpvis = expr_visibility (DECL_CONTEXT (r));
+	  *walk_subtrees = 0;
+	  break;
+	case REFLECT_ANNOTATION:
+	  /* Annotations are always local to the TU.  */
+	  tpvis = VISIBILITY_ANON;
+	  *walk_subtrees = 0;
+	  break;
+	case REFLECT_OBJECT:
+	  r = get_base_address (r);
+	  gcc_fallthrough ();
+	default:
+	  if (TYPE_P (r))
+	    {
+	      tpvis = type_visibility (r);
+	      *walk_subtrees = 0;
+	      break;
+	    }
+	  if ((VAR_P (r) && decl_function_context (r))
+	      || TREE_CODE (r) == PARM_DECL)
+	    {
+	      /* Block scope variables are local to the TU.  */
+	      tpvis = VISIBILITY_ANON;
+	      *walk_subtrees = 0;
+	      break;
+	    }
+	  break;
+	}
       break;
 
     default:
@@ -4788,6 +5064,14 @@ prune_vars_needing_no_initialization (tree *vars)
 	  continue;
 	}
 
+      /* Reflections are consteval-only types and we don't want them
+	 to survive until gimplification.  */
+      if (consteval_only_p (decl))
+	{
+	  var = &TREE_CHAIN (t);
+	  continue;
+	}
+
       /* This variable is going to need initialization and/or
 	 finalization, so we add it to the list.  */
       *var = TREE_CHAIN (t);
@@ -5134,6 +5418,12 @@ no_linkage_error (tree decl)
 
   if (DECL_LANG_SPECIFIC (decl) && DECL_MODULE_IMPORT_P (decl))
     /* An imported decl is ok.  */
+    return;
+
+  /* Metafunctions are magic and should be considered defined even though
+     they have no bodies.  ??? This can't be checked in decl_defined_p;
+     we'd get redefinition errors for some of our metafunctions.  */
+  if (TREE_CODE (decl) == FUNCTION_DECL && metafunction_p (decl))
     return;
 
   tree t = no_linkage_check (TREE_TYPE (decl), /*relaxed_p=*/false);
@@ -5810,7 +6100,9 @@ c_parse_final_cleanups (void)
       /* Static data members are just like namespace-scope globals.  */
       FOR_EACH_VEC_SAFE_ELT (pending_statics, i, decl)
 	{
-	  if (var_finalized_p (decl) || DECL_REALLY_EXTERN (decl)
+	  if (consteval_only_p (decl)
+	      || var_finalized_p (decl)
+	      || DECL_REALLY_EXTERN (decl)
 	      /* Don't write it out if we haven't seen a definition.  */
 	      || DECL_IN_AGGR_P (decl))
 	    continue;
@@ -5852,6 +6144,8 @@ c_parse_final_cleanups (void)
 	     should have synthesized it above.)  */
 	  && !(header_module_p ()
 	       && (DECL_DEFAULTED_FN (decl) || decl_tls_wrapper_p (decl)))
+	  /* Metafunctions are never defined.  */
+	  && !metafunction_p (decl)
 	  /* Don't complain if the template was defined.  */
 	  && !(DECL_TEMPLOID_INSTANTIATION (decl)
 	       && DECL_INITIAL (DECL_TEMPLATE_RESULT

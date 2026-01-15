@@ -4915,6 +4915,26 @@ aarch64_move_imm (unsigned HOST_WIDE_INT val, machine_mode mode)
 }
 
 
+/* Return true is VAL is a move immediate that can be created by add/sub of the
+   12-bit shifted immediate VAL2.  If GENERATE is true, emit the sequence.  */
+static inline bool
+aarch64_check_mov_add_imm12 (rtx dest, unsigned HOST_WIDE_INT val,
+			     unsigned HOST_WIDE_INT val2, bool generate)
+{
+  if (!aarch64_move_imm (val - val2, DImode))
+    {
+      val2 = val2 < 0x1000000 ? val2 - 0x1000000 : val2 + 0x1000000;
+      if (!aarch64_move_imm (val - val2, DImode))
+	return false;
+    }
+  if (generate)
+    {
+      emit_insn (gen_rtx_SET (dest, GEN_INT (val - val2)));
+      emit_insn (gen_adddi3 (dest, dest, GEN_INT (val2)));
+    }
+  return true;
+}
+
 static int
 aarch64_internal_mov_immediate (rtx dest, rtx imm, bool generate,
 				machine_mode mode)
@@ -5003,6 +5023,14 @@ aarch64_internal_mov_immediate (rtx dest, rtx imm, bool generate,
 	    }
 	  return 2;
 	}
+
+      /* Try a mov/bitmask immediate with a shifted add/sub.  */
+      val2 = val & 0xfff000;
+      val3 = val2 - ((val >> 32) & 0xfff000);
+      if (aarch64_check_mov_add_imm12 (dest, val, val2, generate)
+	  || aarch64_check_mov_add_imm12 (dest, val, val2 - 0xfff000, generate)
+	  || aarch64_check_mov_add_imm12 (dest, val, val3, generate))
+	return 2;
     }
 
   /* Try a bitmask plus 2 movk to generate the immediate in 3 instructions.  */
@@ -5073,7 +5101,7 @@ aarch64_internal_mov_immediate (rtx dest, rtx imm, bool generate,
       if (generate)
 	emit_insn (gen_insv_immdi (dest, GEN_INT (i),
 				   GEN_INT ((val >> i) & 0xffff)));
-      num_insns ++;
+      num_insns++;
     }
 
   return num_insns;
@@ -14287,6 +14315,10 @@ aarch64_select_rtx_section (machine_mode mode,
   if (aarch64_can_use_per_function_literal_pools_p ())
     return function_section (current_function_decl);
 
+  /* When using anchors for constants use the readonly section.  */
+  if (known_le (GET_MODE_SIZE (mode), 8))
+    return readonly_data_section;
+
   return default_elf_select_rtx_section (mode, x, align);
 }
 
@@ -15241,11 +15273,13 @@ aarch64_rtx_costs (rtx x, machine_mode mode, int outer ATTRIBUTE_UNUSED,
 	    *cost += extra_cost->fp[mode == DFmode || mode == DDmode].fpconst;
 	  else if (!aarch64_float_const_zero_rtx_p (x))
 	    {
-	      /* This will be a load from memory.  */
+	      /* Load from constdata - the cost of CONST_DOUBLE should be
+		 higher than the cost of a MEM so that later optimizations
+		 won't deoptimize an anchor load into a non-anchor load.  */
 	      if (mode == DFmode || mode == DDmode)
-		*cost += extra_cost->ldst.loadd;
+		*cost += extra_cost->ldst.loadd + 1;
 	      else
-		*cost += extra_cost->ldst.loadf;
+		*cost += extra_cost->ldst.loadf + 1;
 	    }
 	  else
 	    /* Otherwise this is +0.0.  We get this using MOVI d0, #0
