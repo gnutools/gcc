@@ -1410,6 +1410,26 @@ fold_const_fold_left (tree type, tree arg0, tree arg1, tree_code code)
   return arg0;
 }
 
+/* Fold a call to IFN_VEC_EXTRACT (ARG0, ARG1), returning a value
+   of type TYPE.
+
+   Right now this is only handling uniform vectors, so ARG1 is not
+   used.  But it could be easily adjusted in the future to handle
+   non-uniform vectors by extracting the relevant element.  */
+
+static tree
+fold_const_vec_extract (tree, tree arg0, tree)
+{
+  if (TREE_CODE (arg0) != VECTOR_CST)
+    return NULL_TREE;
+
+  /* vec_extract ( dup(CST), CST) -> dup (CST). */
+  if (tree elem = uniform_vector_p (arg0))
+    return elem;
+
+  return NULL_TREE;
+}
+
 /* Try to evaluate:
 
       *RESULT = FN (*ARG0, *ARG1)
@@ -1806,6 +1826,9 @@ fold_const_call (combined_fn fn, tree type, tree arg0, tree arg1)
 
     case CFN_FOLD_LEFT_PLUS:
       return fold_const_fold_left (type, arg0, arg1, PLUS_EXPR);
+
+    case CFN_VEC_EXTRACT:
+      return fold_const_vec_extract (type, arg0, arg1);
 
     case CFN_UBSAN_CHECK_ADD:
     case CFN_ADD_OVERFLOW:
