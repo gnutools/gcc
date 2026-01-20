@@ -1,3 +1,94 @@
+2026-01-17  Eric Botcazou  <ebotcazou@adacore.com>
+	    Lisa Felidae  <lisa@felidae.bam.moe>
+
+	PR ada/68179
+	PR ada/123589
+	* exp_ch3.adb (Expand_Freeze_Array_Type): Build an initialization
+	procedure for a bit-packed array type if Has_Default_Aspect is set
+	on the base type, but make sure not to build it twice.  Also test
+	Has_Default_Aspect for a type derived from String.
+
+2026-01-17  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/68179
+	* exp_ch3.adb (Expand_Freeze_Array_Type): Build an initialization
+	procedure for a type derived from String declared with the aspect
+	Default_Aspect_Component_Value.
+
+2026-01-03  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123371
+	* sem_aggr.adb (Resolve_Iterated_Association): Call Preanalyze
+	instead of Analyze consistently, as well as Copy_Separate_Tree
+	instead of New_Copy_Tree.
+
+2025-12-27  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123306
+	* sem_ch12.adb (Analyze_One_Association): Immediately freeze the
+	root type of mutably tagged types used as actual type parameters.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123088
+	* sem_aggr.adb (Resolve_Record_Aggregate): Add more robust guard.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123302
+	* sem_ch12.adb (Save_Global_Reference.Save_References_In_Aggregate):
+	Recurse on the scope of the type to find one that is visible, in the
+	case of an actual in a subprogram call with a local type.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123289
+	* sem_ch13.adb (Resolve_Aspect_Aggregate.Resolve_Operation): Give
+	an error if the operation's name denotes more than one subprogram.
+
+2025-12-25  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123185
+	* sem_ch4.adb (Analyze_Overloaded_Selected_Component): Go to the
+	root when the prefix has a class-wide type.
+	* sem_res.adb (Resolve_Selected_Component): Likewise.
+
+2025-12-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Streamline.
+
+2025-12-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Preserve the alias
+	sets present on the old pointer and old reference, if any.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123138
+	* exp_attr.adb (Expand_N_Attribute_Reference) <Attribute_Reduce>:
+	Override a universal numeric type only if the prefix is not an
+	aggregate.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Synthesize a new
+	TYPE_CANONICAL for the old pointer type in the case where there
+	is no new pointer type.  Likewise for references.
+
+2025-12-11  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123096
+	* exp_put_image.adb (Build_Record_Put_Image_Procedure): Call
+	Incomplete_Or_Partial_View with Partial_Only set to True.
+
+2025-12-11  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123088
+	* sem_aggr.adb (Resolve_Record_Aggregate): Add missing guard.
+
 2025-12-08  Eric Botcazou  <ebotcazou@adacore.com>
 
 	PR ada/123037

@@ -45,7 +45,7 @@ msgstr ""
 "Project-Id-Version: gcc 15.2.0\n"
 "Report-Msgid-Bugs-To: https://gcc.gnu.org/bugs/\n"
 "POT-Creation-Date: 2025-08-01 17:58+0000\n"
-"PO-Revision-Date: 2025-11-08 22:02+0100\n"
+"PO-Revision-Date: 2026-01-17 19:30+0100\n"
 "Last-Translator: Antonio Ceballos Roa <aceballos@gmail.com>\n"
 "Language-Team: Spanish <es@tp.org.es>\n"
 "Language: es\n"
@@ -6691,10 +6691,9 @@ msgid "Param to control which writeback opportunities we try to handle in the lo
 msgstr "Parámetro para controlar qué oportunidades de retroescritura intentamos manejar en los pasos de fusión load/store.  Un valor de cero deshabilita el manejo de la retroescritura. Uno significa que intentamos formar pares implicando uno o más accesos de retroescritura individuales existentes cuando sea posible.  Un valor de dos significa que también intentamos oportunísticamente formar oportunidades de retroescritura incorporando actualizaciones destructivas residuales del registro base utilizado por un par."
 
 #: config/aarch64/aarch64.opt:437
-#, fuzzy, no-c-format
-#| msgid "Warn about underflow of numerical constant expressions."
+#, no-c-format
 msgid "Warn about usage of experimental Function Multi Versioning."
-msgstr "Avisa sobre desbordamiento por debajo de expresiones numéricas constantes."
+msgstr "Avisa sobre el uso del multiversionado de funciones experimental."
 
 #: config/linux.opt:24
 #, no-c-format
@@ -6983,10 +6982,9 @@ msgid "Don't use any of r32..r63."
 msgstr "No usa ninguno de r32..r63."
 
 #: config/epiphany/epiphany.opt:28
-#, fuzzy, no-c-format
-#| msgid "preferentially allocate registers that allow short instruction generation."
+#, no-c-format
 msgid "Preferentially allocate registers that allow short instruction generation."
-msgstr "aloja de preferencia registros que permitan la generación de instrucciones short."
+msgstr "Reserva preferente de registros que permitan la generación de instrucciones short."
 
 #: config/epiphany/epiphany.opt:32
 #, no-c-format
@@ -6994,16 +6992,14 @@ msgid "Set branch cost."
 msgstr "Establece el costo de ramificación."
 
 #: config/epiphany/epiphany.opt:36
-#, fuzzy, no-c-format
-#| msgid "enable conditional move instruction usage."
+#, no-c-format
 msgid "Enable conditional move instruction usage."
-msgstr "activa el uso de la instrucción move condicional."
+msgstr "Activa el uso de la instrucción move condicional."
 
 #: config/epiphany/epiphany.opt:40
-#, fuzzy, no-c-format
-#| msgid "set number of nops to emit before each insn pattern."
+#, no-c-format
 msgid "Set number of nops to emit before each insn pattern."
-msgstr "establece el número de nops a emitir antes de cada patrón insn."
+msgstr "Establece el número de nops a emitir antes de cada patrón insn."
 
 #: config/epiphany/epiphany.opt:52
 #, no-c-format
@@ -7076,40 +7072,34 @@ msgid "Set register to hold -1."
 msgstr "Establece el registro para conservar -1."
 
 #: config/ft32/ft32.opt:23
-#, fuzzy, no-c-format
-#| msgid "target the software simulator."
+#, no-c-format
 msgid "Target the software simulator."
-msgstr "destina al simulador software."
+msgstr "Destina al simulador software."
 
 #: config/ft32/ft32.opt:27
-#, fuzzy, no-c-format
-#| msgid "Does nothing. Preserved for backward compatibility."
+#, no-c-format
 msgid "Ignored, but preserved for backward compatibility."
-msgstr "No hace nada. Preservado por compatibilidad hacia atrás."
+msgstr "Descartado, pero conservado por compatibilidad hacia atrás."
 
 #: config/ft32/ft32.opt:31
-#, fuzzy, no-c-format
-#| msgid "Avoid use of the DIV and MOD instructions"
+#, no-c-format
 msgid "Avoid use of the DIV and MOD instructions."
-msgstr "Evita el uso de las instrucciones DIV y MOD"
+msgstr "Evita el uso de las instrucciones DIV y MOD."
 
 #: config/ft32/ft32.opt:35
-#, fuzzy, no-c-format
-#| msgid "target the FT32B architecture"
+#, no-c-format
 msgid "Target the FT32B architecture."
-msgstr "destina a la arquitectura FT32B"
+msgstr "Destina a la arquitectura FT32B"
 
 #: config/ft32/ft32.opt:39
-#, fuzzy, no-c-format
-#| msgid "enable FT32B code compression"
+#, no-c-format
 msgid "Enable FT32B code compression."
 msgstr "Activa código de compresión FT32B."
 
 #: config/ft32/ft32.opt:43
-#, fuzzy, no-c-format
-#| msgid "Avoid placing any readable data in program memory"
+#, no-c-format
 msgid "Avoid placing any readable data in program memory."
-msgstr "Evita colocar cualquier dato legible en memoria de programa"
+msgstr "Evita colocar cualquier dato legible en memoria de programa."
 
 #: config/h8300/h8300.opt:23
 #, no-c-format
@@ -7174,30 +7164,27 @@ msgstr "No empuja los registros extendidos a la pila en las funciones de monitor
 #: config/pru/pru.opt:31
 #, no-c-format
 msgid "-mmcu=MCU\tSelect the target System-On-Chip variant that embeds this PRU."
-msgstr ""
+msgstr "-mmcu=MCU\tSelecciona el objetivo de la variante System-On-Chip incluida en esta PRU."
 
 #: config/pru/pru.opt:35
 #, no-c-format
 msgid "Make GCC pass the --no-relax command-line option to the linker instead of the --relax option."
-msgstr ""
+msgstr "Hace que GCC pase la opción de línea de órdenes --no-relax al enlazador en lugar de la opción --relax."
 
 #: config/pru/pru.opt:40
-#, fuzzy, no-c-format
-#| msgid "Allow gcc to generate LIW instructions."
+#, no-c-format
 msgid "Allow (or do not allow) gcc to use the LOOP instruction."
-msgstr "Permite a gcc generar instrucciones LIW."
+msgstr "Permite (o no permite) a gcc utilizar la instrucción LOOP."
 
 #: config/pru/pru.opt:44
-#, fuzzy, no-c-format
-#| msgid "Set the target VM version."
+#, no-c-format
 msgid "Select target ABI variant."
-msgstr "Establece la versión de la MV destino."
+msgstr "Selecciona la variante ABI del objetivo."
 
 #: config/pru/pru.opt:48
-#, fuzzy, no-c-format
-#| msgid "Known ABIs (for use with the -mabi= option):"
+#, no-c-format
 msgid "ABI variant code generation (for use with -mabi= option):"
-msgstr "ABIs conocidas (para usar con la opción -mabi=):"
+msgstr "Generación de código de la variante ABI (para usar con la opción -mabi=):"
 
 #: config/pdp11/pdp11.opt:23
 #, no-c-format
@@ -7225,10 +7212,9 @@ msgid "Use the DEC assembler syntax."
 msgstr "Usa la sintaxis de ensamblador DEC."
 
 #: config/pdp11/pdp11.opt:43
-#, fuzzy, no-c-format
-#| msgid "Use the DEC assembler syntax."
+#, no-c-format
 msgid "Use the GNU assembler syntax."
-msgstr "Usa la sintaxis de ensamblador DEC."
+msgstr "Usa la sintaxis de ensamblador de GNU."
 
 #: config/pdp11/pdp11.opt:47 config/rs6000/rs6000.opt:183
 #: config/frv/frv.opt:158
@@ -7262,10 +7248,9 @@ msgid "Use UNIX assembler syntax."
 msgstr "Usa sintaxis de ensamblador UNIX."
 
 #: config/pdp11/pdp11.opt:71
-#, fuzzy, no-c-format
-#| msgid "Use integrated register allocator."
+#, no-c-format
 msgid "Use LRA register allocator."
-msgstr "Utiliza el alojador de registros integrado."
+msgstr "Utiliza el alojador de registros LRA."
 
 #: config/xtensa/xtensa.opt:26
 #, no-c-format
@@ -7285,7 +7270,7 @@ msgstr "Usa las instrucciones CALLXn indirectas para programas grandes."
 #: config/xtensa/xtensa.opt:38
 #, no-c-format
 msgid "Set extra memory access cost for L32R instruction, in clock-cycle units."
-msgstr ""
+msgstr "Establece un coste extra de acceso a memoria a la instrucción L32R, en unidades de ciclos de reloj."
 
 #: config/xtensa/xtensa.opt:46
 #, no-c-format
@@ -7308,16 +7293,14 @@ msgid "-mno-serialize-volatile\tDo not serialize volatile memory references with
 msgstr "-mno-serialize-volatile\tNo serializa las referencias a memoria volátil con instrucciones MEMW."
 
 #: config/xtensa/xtensa.opt:65
-#, fuzzy, no-c-format
-#| msgid "Use EABI."
+#, no-c-format
 msgid "Use call0 ABI."
-msgstr "Usa EABI."
+msgstr "Usa la ABI call0."
 
 #: config/xtensa/xtensa.opt:69
-#, fuzzy, no-c-format
-#| msgid "Use fp registers."
+#, no-c-format
 msgid "Use windowed registers ABI."
-msgstr "Usa registros fp."
+msgstr "Usa registros ABI de ventana."
 
 #: config/i386/mingw-w64.opt:23
 #, no-c-format
@@ -7407,10 +7390,9 @@ msgid "Branches are this expensive (arbitrary units)."
 msgstr "Las ramificaciones son así de caras (unidades arbitrarias)."
 
 #: config/i386/i386.opt:300
-#, fuzzy, no-c-format
-#| msgid "-mlarge-data-threshold=<number>\tData greater than given threshold will go into .ldata section in x86-64 medium model."
+#, no-c-format
 msgid "-mlarge-data-threshold=<number>\tData greater than given threshold will go into a large data section in x86-64 medium and large code models."
-msgstr "-mlarge-data-threshold=<número>\tLos datos más grandes que el límite dado irán a la sección .ldata en el modeolo medium del x86-64."
+msgstr "-mlarge-data-threshold=<número>\tLos datos más grandes que el límite dado irán a una sección de datos grande en los modelos de código mediano y grande del x86-64."
 
 #: config/i386/i386.opt:304
 #, no-c-format
@@ -7640,7 +7622,7 @@ msgstr "Desactiva el paso de optimización de escalar a vector al transformar c�
 #: config/i386/i386.opt:622
 #, no-c-format
 msgid "The maximum number of use and def visits when discovering a STV chain before the discovery is aborted."
-msgstr ""
+msgstr "El número máximo de visitas de uso y de definición al descubrir una cadena STV antes de abortar el descubrimiento."
 
 #: config/i386/i386.opt:626
 #, no-c-format
@@ -7653,38 +7635,34 @@ msgid "Use 128-bit AVX instructions instead of 256-bit AVX instructions in the a
 msgstr "Usa instrucciones AVX de 128-bit en lugar de instrucciones AVX de 256-bit en el auto-vectorizador."
 
 #: config/i386/i386.opt:635
-#, fuzzy, no-c-format
-#| msgid "Use 128-bit AVX instructions instead of 256-bit AVX instructions in the auto-vectorizer."
+#, no-c-format
 msgid "Use given register vector width instructions instead of maximum register width in the auto-vectorizer."
-msgstr "Usa instrucciones AVX de 128-bit en lugar de instrucciones AVX de 256-bit en el auto-vectorizador."
+msgstr "Usa instrucciones de anchura de registro vectorial en lugar de la anchura máxima de registro en el auto-vectorizador."
 
 #: config/i386/i386.opt:639
-#, fuzzy, no-c-format
-#| msgid "Known preferred register vector length (to use with the -mprefer-vector-width= option)"
+#, no-c-format
 msgid "Known preferred register vector length (to use with the -mprefer-vector-width= option):"
-msgstr "Longitud de vector de registros preferida conocida (para usar con la opción -mprefer-vector-width=)"
+msgstr "Longitud de vector de registros preferida conocida (para usar con la opción -mprefer-vector-width=):"
 
 #: config/i386/i386.opt:655
 #, no-c-format
 msgid "Enable floating-point status flags setting SSE vector operations on partial vectors."
-msgstr ""
+msgstr "Habilita las opciones de estado de coma flotante poniendo operaciones vectoriales SSE en vectores parciales."
 
 #: config/i386/i386.opt:659
-#, fuzzy, no-c-format
-#| msgid "Maximum number of disambiguations to perform per memory access."
+#, no-c-format
 msgid "Maximum number of bits that can be moved from memory to memory efficiently."
-msgstr "Número máximo de desambiguaciones que realizar por cada acceso a memoria."
+msgstr "Número máximo de bits que pueden moverse de memoria a memoria de manera eficiente."
 
 #: config/i386/i386.opt:663
-#, fuzzy, no-c-format
-#| msgid "Maximum number of times that an insn could be scheduled."
+#, no-c-format
 msgid "Maximum number of bits that can be stored to memory efficiently."
-msgstr "El número máximo de veces que se puede planificar una insns."
+msgstr "El número máximo de bits que pueden almacenarse en memoria de manera eficiente."
 
 #: config/i386/i386.opt:667
 #, no-c-format
 msgid "Optimize noreturn functions by not saving callee-saved registers used in the function."
-msgstr ""
+msgstr "Optimiza funciones sin retorno no guardando registros guardados por la función llamada usados en la función."
 
 #: config/i386/i386.opt:673
 #, no-c-format
@@ -7822,10 +7800,9 @@ msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F a
 msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512BITALG."
 
 #: config/i386/i386.opt:789
-#, fuzzy, no-c-format
-#| msgid "Support AVX512VNNI built-in functions and code generation."
+#, no-c-format
 msgid "Support AVX512VP2INTERSECT built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AVX512VNNI."
+msgstr "Admite funciones internas y generación de código AVX512VP2INTERSECT."
 
 #: config/i386/i386.opt:793
 #, no-c-format
@@ -7873,16 +7850,14 @@ msgid "Support WBNOINVD built-in functions and code generation."
 msgstr "Admite funciones internas y generación de código WBNOINVD."
 
 #: config/i386/i386.opt:829
-#, fuzzy, no-c-format
-#| msgid "Support RTM built-in functions and code generation."
+#, no-c-format
 msgid "Support PTWRITE built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código RTM."
+msgstr "Admite funciones internas y generación de código PTWRITE."
 
 #: config/i386/i386.opt:833
-#, fuzzy, no-c-format
-#| msgid "Support BMI built-in functions and code generation."
+#, no-c-format
 msgid "Support UINTR built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código BMI."
+msgstr "Admite funciones internas y generación de código UINTR."
 
 #: config/i386/i386.opt:837
 #, no-c-format
@@ -7940,10 +7915,9 @@ msgid "Support PREFETCHW instruction."
 msgstr "Admite la instrucción PREFETCHW."
 
 #: config/i386/i386.opt:881
-#, fuzzy, no-c-format
-#| msgid "Support code generation of crc32 instruction."
+#, no-c-format
 msgid "Support flag-preserving add-carry instructions."
-msgstr "Admite la generación de código de la instrucción crc32."
+msgstr "Admite instrucciones de preservación del indicador de acarreo de la suma."
 
 #: config/i386/i386.opt:885
 #, no-c-format
@@ -8128,7 +8102,7 @@ msgstr "Activa la instrumentación CET para sentencias switch que usan tabla de 
 #: config/i386/i386.opt:1070
 #, no-c-format
 msgid "Insert ENDBR instruction at function entry only via cf_check attribute for CET instrumentation."
-msgstr ""
+msgstr "Inserta la instrucción ENDBR en la entrada de una función únicamente mediante el atributo cf_check para instrumentación CET."
 
 #: config/i386/i386.opt:1075
 #, no-c-format
@@ -8138,13 +8112,12 @@ msgstr "Hace indirectas todas las llamadas a función."
 #: config/i386/i386.opt:1079
 #, no-c-format
 msgid "Convert indirect call and jump to call and return thunks."
-msgstr ""
+msgstr "Convierte llamadas y saltos indirectos en «thunks» de llamadas y retornos."
 
 #: config/i386/i386.opt:1083
-#, fuzzy, no-c-format
-#| msgid "function return type cannot be function"
+#, no-c-format
 msgid "Convert function return to call and return thunk."
-msgstr "el tipo de devolución de función no puede ser función"
+msgstr "Convierte retornos a función en «thunks» de llamadas y retornos."
 
 #: config/i386/i386.opt:1087 config/s390/s390.opt:279
 #, no-c-format
@@ -8154,12 +8127,12 @@ msgstr "Opciones conocidas para ramificación indirecta (para usar con las opcio
 #: config/i386/i386.opt:1103
 #, no-c-format
 msgid "Add CS prefix to call and jmp to indirect thunk with branch target in r8-r15 registers."
-msgstr ""
+msgstr "Añade el prefijo CS a llamada y salto a «thunk» indirecto con objetivo de bifurcación en los registros r8-r16."
 
 #: config/i386/i386.opt:1107
 #, no-c-format
 msgid "Force indirect call and jump via register."
-msgstr ""
+msgstr "Fuerza la llamada y salto indirecto mediante registro."
 
 #: config/i386/i386.opt:1111
 #, no-c-format
@@ -8172,302 +8145,259 @@ msgid "Support MOVDIR64B built-in functions and code generation."
 msgstr "Admite funciones internas y generación de código MOVDIR64B."
 
 #: config/i386/i386.opt:1119
-#, fuzzy, no-c-format
-#| msgid "Support LWP built-in functions and code generation."
+#, no-c-format
 msgid "Support WAITPKG built-in functions and code generation."
-msgstr "Admite funciones internas LWP y generación de código."
+msgstr "Admite funciones internas y generación de código WAITPKG."
 
 #: config/i386/i386.opt:1123
-#, fuzzy, no-c-format
-#| msgid "Support CLZERO built-in functions and code generation."
+#, no-c-format
 msgid "Support CLDEMOTE built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código CLZERO."
+msgstr "Admite funciones internas y generación de código CLDEMOTE."
 
 #: config/i386/i386.opt:1127
-#, fuzzy, no-c-format
-#| msgid "Instrument only functions marked with bnd_instrument attribute."
+#, no-c-format
 msgid "Instrument function exit in instrumented functions with __fentry__."
-msgstr "Instrumenta solamente funciones marcadas con el atributo bnd_instrument."
+msgstr "Instrumenta la salida de una función en las funciones instrumentadas con __fentry__."
 
 #: config/i386/i386.opt:1131
 #, no-c-format
 msgid "Known choices for return instrumentation with -minstrument-return=:"
-msgstr ""
+msgstr "Opciones conocidas para instrumentación del retorno con -minstrument-return=:"
 
 #: config/i386/i386.opt:1144
-#, fuzzy, no-c-format
-#| msgid "Generate __mcount_loc section with all mcount or __fentry__ calls."
+#, no-c-format
 msgid "Generate a __return_loc section pointing to all return instrumentation code."
-msgstr "Genera sección __mcount_loc con todos los mcount o llamadas __fentry__."
+msgstr "Genera sección __return_loc apuntando a todo el código de instrumentación del retorno."
 
 #: config/i386/i386.opt:1152
 #, no-c-format
 msgid "Known choices for mitigation against straight line speculation with -mharden-sls=:"
-msgstr ""
+msgstr "Opciones conocidas para mitigar la especulación de línea directa con -mharden-sls=:"
 
 #: config/i386/i386.opt:1168
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512VBMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512BF16 built-in functions and code generation."
 msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512VBMI2."
 
 #: config/i386/i386.opt:1173
-#, fuzzy, no-c-format
-#| msgid "Support RDRND built-in functions and code generation."
+#, no-c-format
 msgid "Support ENQCMD built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código RDRND."
+msgstr "Admite funciones internas y generación de código ENQCMD."
 
 #: config/i386/i386.opt:1177
-#, fuzzy, no-c-format
-#| msgid "Support AES built-in functions and code generation."
+#, no-c-format
 msgid "Support SERIALIZE built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AES."
+msgstr "Admite funciones internas y generación de código SERIALIZE."
 
 #: config/i386/i386.opt:1181
-#, fuzzy, no-c-format
-#| msgid "Support SGX built-in functions and code generation."
+#, no-c-format
 msgid "Support TSXLDTRK built-in functions and code generation."
-msgstr "Admite funciones internas SGX y generación de código."
+msgstr "Admite funciones internas SGX y generación de TSXLDTRK."
 
 #: config/i386/i386.opt:1185
-#, fuzzy, no-c-format
-#| msgid "Support AES built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-TILE built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AES."
+msgstr "Admite funciones internas y generación de código AMX-TILE."
 
 #: config/i386/i386.opt:1189
-#, fuzzy, no-c-format
-#| msgid "Support BMI built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-INT8 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código BMI."
+msgstr "Admite funciones internas y generación de código AMX-INT8."
 
 #: config/i386/i386.opt:1193
-#, fuzzy, no-c-format
-#| msgid "Support F16C built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-BF16 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código F16C."
+msgstr "Admite funciones internas y generación de código AMX-BF16."
 
 #: config/i386/i386.opt:1197
-#, fuzzy, no-c-format
-#| msgid "Support AES built-in functions and code generation."
+#, no-c-format
 msgid "Support HRESET built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AES."
+msgstr "Admite funciones internas y generación de código HRESET."
 
 #: config/i386/i386.opt:1201
-#, fuzzy, no-c-format
-#| msgid "Support LWP built-in functions and code generation."
+#, no-c-format
 msgid "Support KL built-in functions and code generation."
-msgstr "Admite funciones internas LWP y generación de código."
+msgstr "Admite funciones internas y generación de código KL."
 
 #: config/i386/i386.opt:1205
-#, fuzzy, no-c-format
-#| msgid "Support LWP built-in functions and code generation."
+#, no-c-format
 msgid "Support WIDEKL built-in functions and code generation."
-msgstr "Admite funciones internas LWP y generación de código."
+msgstr "Admite funciones internas y generación de código WIDEKL."
 
 #: config/i386/i386.opt:1209
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and AVXVNNI built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVXVNNI."
 
 #: config/i386/i386.opt:1214
 #, no-c-format
 msgid "Emit GNU_PROPERTY_X86_ISA_1_NEEDED GNU property."
-msgstr ""
+msgstr "Emite la propiedad GNU GNU_PROPERTY_X86_ISA_1_NEEDED."
 
 #: config/i386/i386.opt:1218
-#, fuzzy, no-c-format
-#| msgid "Support MWAITX and MONITORX built-in functions and code generation."
+#, no-c-format
 msgid "Support MWAIT and MONITOR built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MWAITX y MONITORX."
+msgstr "Admite funciones internas y generación de código MWAIT y MONITOR."
 
 #: config/i386/i386.opt:1222
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512VBMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512-FP16 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512VBMI2."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512-FP16."
 
 #: config/i386/i386.opt:1226
-#, fuzzy, no-c-format
-#| msgid "Do not use the AltiVec ABI extensions."
+#, no-c-format
 msgid "Do not use GOT to access external symbols."
-msgstr "No usa las extensiones de ABI AltiVec."
+msgstr "No usa GOT para acceder a símbolos externos."
 
 #: config/i386/i386.opt:1230
 #, no-c-format
 msgid "Instructions number above which STFL stall penalty can be compensated."
-msgstr ""
+msgstr "Número de instrucciones por encima del cual la penalización por estancamiento STFL puede compensarse."
 
 #: config/i386/i386.opt:1234
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and AVXIFMA built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVXIFMA."
 
 #: config/i386/i386.opt:1239
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVXVNNIINT8 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVXVNNIINT8."
 
 #: config/i386/i386.opt:1244
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and AVXNECONVERT build-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVXNECONVERT."
 
 #: config/i386/i386.opt:1249
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and CMPCCXADD build-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y CMPCCXADD."
 
 #: config/i386/i386.opt:1254
-#, fuzzy, no-c-format
-#| msgid "Support F16C built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-FP16 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código F16C."
+msgstr "Admite funciones internas y generación de código AMX-FP16."
 
 #: config/i386/i386.opt:1258
-#, fuzzy, no-c-format
-#| msgid "Support PREFETCHWT1 built-in functions and code generation."
+#, no-c-format
 msgid "Support PREFETCHI built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código PREFETCHWT1."
+msgstr "Admite funciones internas y generación de código PREFETCHI."
 
 #: config/i386/i386.opt:1262
-#, fuzzy, no-c-format
-#| msgid "Support RTM built-in functions and code generation."
+#, no-c-format
 msgid "Support RAOINT built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código RTM."
+msgstr "Admite funciones internas y generación de código RAOINT."
 
 #: config/i386/i386.opt:1266
 #, no-c-format
 msgid "Enable conservative small loop unrolling."
-msgstr ""
+msgstr "Habilita el desenrrollamiento conservador de bucles pequeños."
 
 #: config/i386/i386.opt:1270
 #, no-c-format
 msgid "-mlam=[none|u48|u57] Instrument meta data position in user data pointers."
-msgstr ""
+msgstr "-mlam=[none|u48|u57] Instrumenta posición de metadatos en punteros de datos de usuario."
 
 #: config/i386/i386.opt:1286
-#, fuzzy, no-c-format
-#| msgid "Support XOP built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-COMPLEX built-in functions and code generation."
-msgstr "Admite funciones internas XOP y generación de código."
+msgstr "Admite funciones internas y generación de código AMX-COMPLEX."
 
 #: config/i386/i386.opt:1290
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVXVNNIINT16 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVXVNNIINT16."
 
 #: config/i386/i386.opt:1295
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and FMA built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and SM3 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y FMA."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y SM3."
 
 #: config/i386/i386.opt:1300
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and AVX2 built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and SHA512 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y AVX2."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y SHA512."
 
 #: config/i386/i386.opt:1305
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and FMA built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX and SM4 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y FMA."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX y SM4."
 
 #: config/i386/i386.opt:1310
-#, fuzzy, no-c-format
-#| msgid "Enable vectorization on trees."
+#, no-c-format
 msgid "Enable vectorization for gather instruction."
-msgstr "Activa la vectorización en árboles."
+msgstr "Activa la vectorización para la instrucción de recopilación."
 
 #: config/i386/i386.opt:1314
-#, fuzzy, no-c-format
-#| msgid "Enable vectorization on trees."
+#, no-c-format
 msgid "Enable vectorization for scatter instruction."
-msgstr "Activa la vectorización en árboles."
+msgstr "Activa la vectorización para la instrucción de dispersión."
 
 #: config/i386/i386.opt:1318
 #, no-c-format
 msgid "Support code generation for APX features, including EGPR, PUSH2POP2, NDD, PPX, NF, CCMP and ZU."
-msgstr ""
+msgstr "Admite la generación de código para características APX, incluidas EGPR, PUSH2POP2, NDD, PPX, NF, CCMP y ZU."
 
 #: config/i386/i386.opt:1356
 #, no-c-format
 msgid "Enable GPR32 in inline asm when APX_F enabled."
-msgstr ""
+msgstr "Habilita GPR32 en ensamblador en línea cuando APX_F está habilitado."
 
 #: config/i386/i386.opt:1360
-#, fuzzy, no-c-format
-#| msgid "Support BMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support 512 bit vector built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código BMI2."
+msgstr "Admite funciones internas y generación de código de vectores de 512 bits."
 
 #: config/i386/i386.opt:1364
-#, fuzzy, no-c-format
-#| msgid "Support AES built-in functions and code generation."
+#, no-c-format
 msgid "Support USER_MSR built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AES."
+msgstr "Admite funciones internas y generación de código USER_MSR."
 
 #: config/i386/i386.opt:1368
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and AVX10.1-256 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX10.1-256."
 
 #: config/i386/i386.opt:1373 config/i386/i386.opt:1378
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and AVX512F built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and AVX10.1-512 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX512F."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2 y AVX10.1-512."
 
 #: config/i386/i386.opt:1383
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512VBMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX10.1-512 and AVX10.2 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512VBMI2."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX10.1-512 y AVX10.2."
 
 #: config/i386/i386.opt:1388
-#, fuzzy, no-c-format
-#| msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F and AVX512VBMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX10.1-512, AVX10.2 and AMX-AVX512 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX512F y AVX512VBMI2."
+msgstr "Admite funciones internas y generación de código MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, AVX10.1-512, AVX10.2 y AMX-AVX512."
 
 #: config/i386/i386.opt:1393
-#, fuzzy, no-c-format
-#| msgid "Support BMI2 built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-TF32 built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código BMI2."
+msgstr "Admite funciones internas y generación de código AMX-TF32."
 
 #: config/i386/i386.opt:1397
-#, fuzzy, no-c-format
-#| msgid "Support AES built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-TRANSPOSE built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código AES."
+msgstr "Admite funciones internas y generación de código AMX-TRANSPOSE."
 
 #: config/i386/i386.opt:1401
-#, fuzzy, no-c-format
-#| msgid "Support XOP built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-FP8 built-in functions and code generation."
-msgstr "Admite funciones internas XOP y generación de código."
+msgstr "Admite funciones internas y generación de código AMX-FP8."
 
 #: config/i386/i386.opt:1405
-#, fuzzy, no-c-format
-#| msgid "Support MOVDIRI built-in functions and code generation."
+#, no-c-format
 msgid "Support MOVRS built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MOVDIRI."
+msgstr "Admite funciones internas y generación de código MOVRS."
 
 #: config/i386/i386.opt:1409
-#, fuzzy, no-c-format
-#| msgid "Support MOVDIRI built-in functions and code generation."
+#, no-c-format
 msgid "Support AMX-MOVRS built-in functions and code generation."
-msgstr "Admite funciones internas y generación de código MOVDIRI."
+msgstr "Admite funciones internas y generación de código AMX-MOVRS."
 
 #: config/pa/pa64-hpux.opt:23
 #, no-c-format
@@ -8513,23 +8443,22 @@ msgstr "Genera código PA2.0 (requiere binutils 2.10 o superior)."
 #: config/pa/pa.opt:42
 #, no-c-format
 msgid "Generate libcalls for atomic loads and stores when sync libcalls are disabled."
-msgstr ""
+msgstr "Genera llamadas a biblioteca para cargas y almacenamientos atómicos cuando las llamadas a biblioteca están deshabilitadas."
 
 #: config/pa/pa.opt:50
 #, no-c-format
 msgid "Caller copies function arguments passed by hidden reference."
-msgstr ""
+msgstr "El llamante copia los argumentos de función pasados por referencia oculta."
 
 #: config/pa/pa.opt:54
 #, no-c-format
 msgid "Use ldcw/ldcd coherent cache-control hint."
-msgstr ""
+msgstr "Utiliza indicio de control de caché coherente ldcw/ldcd."
 
 #: config/pa/pa.opt:58
-#, fuzzy, no-c-format
-#| msgid "Equivalent to -mgpopt=local."
+#, no-c-format
 msgid "Disable FP regs.  Equivalent to -msoft-float."
-msgstr "Equivalente a -mgpopt=local."
+msgstr "Deshabilita los registros FP.  Equivalente a -msoft-float."
 
 #: config/pa/pa.opt:62
 #, no-c-format
@@ -8574,7 +8503,7 @@ msgstr "Desactiva los registros de espacio."
 #: config/pa/pa.opt:107
 #, no-c-format
 msgid "Assume memory references are ordered and barriers are not needed."
-msgstr ""
+msgstr "Asume que las referencias a memoria están ordenadas y no se necesitan barreras."
 
 #: config/pa/pa.opt:123
 #, no-c-format
@@ -8592,10 +8521,9 @@ msgid "Use software floating point."
 msgstr "Usa coma flotante de software."
 
 #: config/pa/pa.opt:156
-#, fuzzy, no-c-format
-#| msgid "Use software floating point comparisons."
+#, no-c-format
 msgid "Use software integer multiplication."
-msgstr "Usa comparaciones de coma flotante de software."
+msgstr "Usa multiplicación entera de software."
 
 #: config/pa/pa.opt:164
 #, no-c-format
@@ -8769,16 +8697,14 @@ msgid "Support multi-threading."
 msgstr "Soporte para multihilos."
 
 #: config/nvptx/nvptx-gen.opt:24
-#, fuzzy, no-c-format
-#| msgid "Known ARM architectures (for use with the -march= option):"
+#, no-c-format
 msgid "Known PTX ISA target architectures (for use with the -misa= option):"
-msgstr "Arquitecturas ARM conocidas (para usar con la opción -march=):"
+msgstr "Arquitecturas objetivo ISA PTX conocidas (para usar con la opción -misa=):"
 
 #: config/nvptx/nvptx.opt:31
-#, fuzzy, no-c-format
-#| msgid "Does nothing. Preserved for backward compatibility."
+#, no-c-format
 msgid "Ignored, but preserved for backward compatibility.  Only 64-bit ABI is supported."
-msgstr "No hace nada. Preservado por compatibilidad hacia atrás."
+msgstr "Se descarta, pero preservado por compatibilidad hacia atrás.  Solo se admite ABI de 64 bits."
 
 #: config/nvptx/nvptx.opt:36
 #, no-c-format
@@ -8798,7 +8724,7 @@ msgstr "Usa pilas personalizadas en lugar de memoria local para almacenamiento a
 #: config/nvptx/nvptx.opt:48
 #, no-c-format
 msgid "Specify size of .local memory used for stack when the exact amount is not known."
-msgstr ""
+msgstr "Especifica el tamaños de ña memory .local utilizado para la pila cuando no se conoce la cantidad exacta."
 
 #: config/nvptx/nvptx.opt:52
 #, no-c-format
@@ -8812,32 +8738,29 @@ msgstr "Genera código para descarga OpenMP: permite -msoft-stack y -muniform-si
 
 #: config/nvptx/nvptx.opt:60
 #, fuzzy, no-c-format
-#| msgid "Specify the name of the target architecture."
+#| msgid "Specify the ISA PTX target architecture to use."
 msgid "Specify the PTX ISA target architecture to use."
-msgstr "Especifica el nombre de la arquitectura destino."
+msgstr "Especifica la arquitectura destino PTX ISA que se usará."
 
 #: config/nvptx/nvptx.opt:64
 #, no-c-format
 msgid "Alias:"
-msgstr ""
+msgstr "Alias:"
 
 #: config/nvptx/nvptx.opt:125
-#, fuzzy, no-c-format
-#| msgid "Known MIPS ISA levels (for use with the -mips option):"
+#, no-c-format
 msgid "Known PTX ISA versions (for use with the -mptx= option):"
-msgstr "Niveles ISA MIPS conocidos (para uso con la opción -mips):"
+msgstr "Versiones ISA PTX conocidas (para uso con la opción -mptx=):"
 
 #: config/nvptx/nvptx.opt:159
-#, fuzzy, no-c-format
-#| msgid "The version of the C++ ABI in use."
+#, no-c-format
 msgid "Specify the PTX ISA version to use."
-msgstr "La versión de la ABI de C++ que se está usando."
+msgstr "Especifica la versión de ISA PTX que se usará."
 
 #: config/nvptx/nvptx.opt:163
-#, fuzzy, no-c-format
-#| msgid "Use fp registers."
+#, no-c-format
 msgid "Initialize ptx registers."
-msgstr "Usa registros fp."
+msgstr "Inicializa los registros ptx."
 
 #: config/vxworks.opt:36
 #, no-c-format
@@ -8850,64 +8773,59 @@ msgid "Assume the VxWorks vThreads environment."
 msgstr "Asume el entorno vThreads de VxWorks."
 
 #: config/avr/avr.opt:27
-#, fuzzy, no-c-format
-#| msgid "Use subroutines for function prologues and epilogues."
+#, no-c-format
 msgid "Optimization. Use subroutines for function prologues and epilogues."
-msgstr "Usa subrutinas para los prólogos y epílogos de función."
+msgstr "Optimización. Usa subrutinas para los prólogos y epílogos de función."
 
 #: config/avr/avr.opt:31
 #, no-c-format
 msgid "Use a startup code with a compact vector table."
-msgstr ""
+msgstr "Utiliza código de arranque con una tabla de vectores compacta."
 
 #: config/avr/avr.opt:35
-#, fuzzy, no-c-format
-#| msgid "-mmcu=MCU\tSelect the target MCU."
+#, no-c-format
 msgid "-mmcu=<MCU>\tSelect the target MCU."
-msgstr "-mmcu=MCU\tSelecciona el MCU destino."
+msgstr "-mmcu=<MCU>\tSelecciona el MCU destino."
 
 #: config/avr/avr.opt:39
-#, fuzzy, no-c-format
-#| msgid "Allow usage of __gcc_isr pseudo instructions in ISR prologues and epilogues."
+#, no-c-format
 msgid "Optimization. Allow usage of __gcc_isr pseudo instructions in ISR prologues and epilogues."
-msgstr "Permite el uso de pseudoinstrucciones __gcc_isr para los prólogos y epílogos de ISR."
+msgstr "Optimización. Permite el uso de pseudoinstrucciones __gcc_isr para los prólogos y epílogos de ISR."
 
 #: config/avr/avr.opt:43
-#, fuzzy, no-c-format
-#| msgid "Set the number of 64 KiB flash segments."
+#, no-c-format
 msgid "This option is used internally. Set the number of 64 KiB flash segments."
-msgstr "Establece el número de segmentos flash de 64 KiB."
+msgstr "Esta opción se utiliza internamente. Establece el número de segmentos flash de 64 KiB."
 
 #: config/avr/avr.opt:47
 #, no-c-format
 msgid "Call main and exit (default)."
-msgstr ""
+msgstr "Llama a main y termina (por defecto)."
 
 #: config/avr/avr.opt:51
 #, no-c-format
 msgid "This option is used internally. Indicate presence of a processor erratum.  Do not skip 32-bit instructions."
-msgstr ""
+msgstr "Esta opción se utiliza internamente. Indica la presencia de uan errata del procesador.  No saltar instrucciones de 32 bits."
 
 #: config/avr/avr.opt:55
-#, fuzzy, no-c-format
-#| msgid "Enable Read-Modify-Write (RMW) instructions support/use."
+#, no-c-format
 msgid "This option is used internally. Enable Read-Modify-Write (RMW) instructions support/use."
-msgstr "Activa el soporte/uso de instrucciones Leer-Modificar-Escribir (LME)."
+msgstr "Esta opción se utiliza internamente. Activa el soporte/uso de instrucciones Leer-Modificar-Escribir (LME)."
 
 #: config/avr/avr.opt:66
 #, no-c-format
 msgid "This option is on per default in order to work around PR118012."
-msgstr ""
+msgstr "Esta opción está activa por defecto para corregir PR118012."
 
 #: config/avr/avr.opt:70
 #, no-c-format
 msgid "Optimization. Allow to use nonzero_bits() in some insn conditions."
-msgstr ""
+msgstr "Optimización. Permite utilizar nonzero_bits() en algunas condiciones de instrucciones."
 
 #: config/avr/avr.opt:74
 #, no-c-format
 msgid "This option is used internally for multilib generation and selection.  Assume RJMP / RCALL can target all program memory."
-msgstr ""
+msgstr "Esta opción se utiliza internamente para generación y selección multibiblioteca.  Asume que RJMP / RCALL pueden dirigirse a toda la memoria del programa."
 
 #: config/avr/avr.opt:78
 #, no-c-format
@@ -8920,15 +8838,14 @@ msgid "Change the stack pointer without disabling interrupts."
 msgstr "Cambia el puntero de la pila sin desactivar las interrupciones."
 
 #: config/avr/avr.opt:86
-#, fuzzy, no-c-format
-#| msgid "Set the branch costs for conditional branch instructions.  Reasonable values are small, non-negative integers.  The default branch cost is 0."
+#, no-c-format
 msgid "-mbranch-cost=<cost>\tOptimization. Set the branch costs for conditional branch instructions.  Reasonable values are small, non-negative integers.  The default branch cost is 0."
-msgstr "Establece los costos de ramificación para las instrucciones de ramificación condicional.  Los valores razonables son enteros pequeños que no son negativos.  El costo de ramificación por defecto es 0."
+msgstr "-mbranch-cost=<coste>\tOptimización. Establece los costos de bifurcación para las instrucciones de bifurcación condicional.  Los valores razonables son enteros pequeños que no son negativos.  El costo de bifurcación predeterminado es 0."
 
 #: config/avr/avr.opt:90
 #, no-c-format
 msgid "Optimization. Treat main as if it had attribute OS_task."
-msgstr ""
+msgstr "Optimización. Trata main como si tuviera el atributo OS_task."
 
 #: config/avr/avr.opt:100
 #, no-c-format
@@ -8936,10 +8853,9 @@ msgid "Change only the low 8 bits of the stack pointer."
 msgstr "Cambia sólo los 8 bits bajos del puntero de pila."
 
 #: config/avr/avr.opt:104
-#, fuzzy, no-c-format
-#| msgid "Relax branches."
+#, no-c-format
 msgid "Optimization. Relax branches."
-msgstr "Relaja ramificaciones."
+msgstr "Optimización. Relaja las bifurcaciones."
 
 #: config/avr/avr.opt:108
 #, no-c-format
@@ -8948,50 +8864,49 @@ msgstr "Hace que el motor de relajación de enlace asuma que ocurre una envoltur
 
 #: config/avr/avr.opt:112
 #, fuzzy, no-c-format
-#| msgid "Accumulate outgoing function arguments and acquire/release the needed stack space for outgoing function arguments in function prologue/epilogue.  Without this option, outgoing arguments are pushed before calling a function and popped afterwards.  This option can lead to reduced code size for functions that call many functions that get their arguments on the stack like, for example printf."
+#| msgid "OptimizationAccumulate outgoing function arguments and acquire/release the needed stack space for outgoing function arguments in function prologue/epilogue.  Without this option, outgoing arguments are pushed before calling a function and popped afterwards.  This option can lead to reduced code size for functions that call many functions that get their arguments on the stack like, for example printf."
 msgid "Optimization. Accumulate outgoing function arguments and acquire/release the needed stack space for outgoing function arguments in function prologue/epilogue.  Without this option, outgoing arguments are pushed before calling a function and popped afterwards.  This option can lead to reduced code size for functions that call many functions that get their arguments on the stack like, for example printf."
-msgstr "Acumula los argumentos de función salientes y adquiere/libera el espacio de pila necesario para los argumentos de función salientes en el prólogo/epílogo de la función.  Sin esta opción, los argumentos salientes se empujan antes de llamar una función y se sacan después.  Esta opción puede conducir a tamaño de código reducido para funciones que llaman muchas funciones que obtienen sus argumentos de la pila como, por ejemplo, printf."
+msgstr "Optimización. Acumula los argumentos de función salientes y adquiere/libera el espacio de pila necesario para los argumentos de función salientes en el prólogo/epílogo de la función.  Sin esta opción, los argumentos salientes se empujan antes de llamar una función y se sacan después.  Esta opción puede conducir a tamaño de código reducido para funciones que llaman muchas funciones que obtienen sus argumentos de la pila como, por ejemplo, printf."
 
 #: config/avr/avr.opt:116
 #, no-c-format
 msgid "Optimization. Split shifts of 4-byte values into a byte shift and a residual bit shift."
-msgstr ""
+msgstr "Optimización. Parte los desplazamientos de valores de 4 bytes en un desplazamiento de byte y un desplazamientos de bits residual."
 
 #: config/avr/avr.opt:120
 #, no-c-format
 msgid "Optimization. Split most of the load and store instructions into byte load and stores."
-msgstr ""
+msgstr "Optimización. Parte la mayoría de las instrucciones de carga y almacenamiento en carga y almacenamientos de byte."
 
 #: config/avr/avr.opt:124
-#, fuzzy, no-c-format
-#| msgid "When accessing RAM, use X as imposed by the hardware, i.e. just use pre-decrement, post-increment and indirect addressing with the X register.  Without this option, the compiler may assume that there is an addressing mode X+const similar to Y+const and Z+const and emit instructions to emulate such an addressing mode for X."
+#, no-c-format
 msgid "Optimization. When accessing RAM, use X as imposed by the hardware, i.e. just use pre-decrement, post-increment and indirect addressing with the X register.  Without this option, the compiler may assume that there is an addressing mode X+const similar to Y+const and Z+const and emit instructions to emulate such an addressing mode for X."
-msgstr "Cuando se accede a la RAM, usa X como lo impone el hardware, p.e. sólo usa pre-decremento, post-incremento y direccionamiento indirecto con el registro X.  Sin esta opción, el compilador puede asumir que hay un modo de direccionamiento X+const similar a Y+const y Z+const y emite instrucciones para emular tal modo de deireccionamiento para X."
+msgstr "Optimización. Cuando se accede a la RAM, usa X como lo impone el hardware, p.e. sólo usa pre-decremento, post-incremento y direccionamiento indirecto con el registro X.  Sin esta opción, el compilador puede asumir que hay un modo de direccionamiento X+const similar a Y+const y Z+const y emite instrucciones para emular tal modo de deireccionamiento para X."
 
 #: config/avr/avr.opt:128
 #, no-c-format
 msgid "This option is used internally. The device has the bitfield NVMCTRL_CTRLB.FLMAP."
-msgstr ""
+msgstr "Esta opción se utiliza internamente. El dispositivo tiene el campo de bits NVMCTRL_CTRLB.FLMAP."
 
 #: config/avr/avr.opt:132
 #, no-c-format
 msgid "The device has the .rodata section located in the RAM area."
-msgstr ""
+msgstr "El dispositivo tiene la sección .rodata localizada en la zona RAM."
 
 #: config/avr/avr.opt:137
 #, no-c-format
 msgid "This option is used internally for multilib generation and selection. The device has no SPH special function register."
-msgstr ""
+msgstr "Esta opción se utiliza internamente para generación multilibrería y selección. El dispositivo no tiene registro de función especial SPH."
 
 #: config/avr/avr.opt:141
 #, no-c-format
 msgid "Optimization. Split register additions from load/store instructions. Most useful on Reduced Tiny."
-msgstr ""
+msgstr "Optimización. Divide las sumas de registros desde instrucciones de carga/almacenamiento. Útil, sobre todo, en «Reduced Tiny»."
 
 #: config/avr/avr.opt:145
 #, no-c-format
 msgid "-mfuse-add=<0,2>\tOptimization. Split register additions from load/store instructions. Most useful on Reduced Tiny."
-msgstr ""
+msgstr "-mfuse-add=<0,2>\tOptimización. Divide las sumas de registros desde instrucciones de carga/almacenamiento. Útil, sobre todo, en «Reduced Tiny»."
 
 #: config/avr/avr.opt:149
 #, no-c-format
@@ -9011,33 +8926,32 @@ msgstr "Permite truncar en lugar de redondear a cero los tipos de fracciones de 
 #: config/avr/avr.opt:161
 #, no-c-format
 msgid "Optimization. Run a post-reload pass that tweaks move instructions."
-msgstr ""
+msgstr "Optimización. Corre un paso de post recarga que ajusta las instruccions move."
 
 #: config/avr/avr.opt:165
 #, no-c-format
 msgid "-mfuse-move=<0,23>\tOptimization. Run a post-reload pass that tweaks move instructions."
-msgstr ""
+msgstr "-mfuse-move=<0,23>\tOptimización. Corre un paso de post recarga que ajusta las instruccions move."
 
 #: config/avr/avr.opt:169
 #, no-c-format
 msgid "Optimization. Fuse some move insns after insn combine."
-msgstr ""
+msgstr "Optimización. Fusiona algunas instrucciones move después de combinar instrucciones."
 
 #: config/avr/avr.opt:173
-#, fuzzy, no-c-format
-#| msgid "Assume that all data in static storage can be accessed by LDS / STS.  This option is only useful for reduced Tiny devices."
+#, no-c-format
 msgid "Assume that all data in static storage can be accessed by LDS / STS instructions.  This option is only useful for reduced Tiny devices like ATtiny40."
-msgstr "Asume que se puede acceder a todos los datos en el almacenamiento estático por LDS / STS.  Esta opción solo es útil para dispositivos Tiny reducidos."
+msgstr "Asume que se puede acceder a todos los datos en el almacenamiento estático mediante instrucciones LDS / STS.  Esta opción solo es útil para dispositivos Tiny reducidos como el ATtiny40."
 
 #: config/avr/avr.opt:177
 #, no-c-format
 msgid "-mdouble=<BITS>\tUse <BITS> bits wide double type."
-msgstr ""
+msgstr "-mdouble=<BITS>\tUtiliza un tipo double de <BITS> bits de tamaño."
 
 #: config/avr/avr.opt:181
 #, no-c-format
 msgid "-mlong-double=<BITS>\tUse <BITS> bits wide long double type."
-msgstr ""
+msgstr "-mlong-double=<BITS>\tUtiliza un tipo long double de <BITS> bits de tamaño."
 
 #: config/avr/avr.opt:185
 #, no-c-format
@@ -9045,15 +8959,14 @@ msgid "Do not link against the device-specific library lib<MCU>.a."
 msgstr "No enlaza contra la biblioteca específica de dispositivo lib<MCU>.a."
 
 #: config/avr/avr.opt:189
-#, fuzzy, no-c-format
-#| msgid "Do not link against the device-specific library lib<MCU>.a."
+#, no-c-format
 msgid "Do not use the device-specific specs file device-specs/specs-<MCU>."
-msgstr "No enlaza contra la biblioteca específica de dispositivo lib<MCU>.a."
+msgstr "No utiliza el fichero de especificaciones específico de dispositivo device-specs/specs-<MCU>."
 
 #: config/avr/avr.opt:193
 #, no-c-format
 msgid "Available BITS selections:"
-msgstr ""
+msgstr "Selecciones de BITS disponibles:"
 
 #: config/m32r/m32r.opt:34
 #, no-c-format
@@ -9288,64 +9201,62 @@ msgstr "Asume que los segmentos de datos son relativos a los segmentos de texto.
 #: config/s390/s390.opt:245
 #, no-c-format
 msgid "Wrap all indirect branches into execute in order to disable branch prediction."
-msgstr ""
+msgstr "Envuelve todas las ramificaciones indirectas en ejecuciones para deshabilitar la predicción de bifurcación."
 
 #: config/s390/s390.opt:250
 #, no-c-format
 msgid "Wrap indirect table jumps and computed gotos into execute in order to disable branch prediction.  Using thunk or thunk-extern with this option requires the thunks to be considered signal handlers to order to generate correct CFI.  For environments where unwinding (e.g. for exceptions) is required please use thunk-inline instead."
-msgstr ""
+msgstr "Envuelve los saltos de tabla indirectos y los gotos calculados en ejecuciones para deshabilitar la predicción de bifurcación.  Utilizando «thunk» o «thunk-extern» con esta opción requiere considerar los «thunks» como manejadores de señales para ordenar para generar CFI correctos.  Para entornos en los que se requiera desenrollamiento (por ejemplo, para excepciones), utilícese «thunk-inline» en su lugar."
 
 #: config/s390/s390.opt:258
 #, no-c-format
 msgid "Wrap all indirect calls into execute in order to disable branch prediction."
-msgstr ""
+msgstr "Envuelve todas las llamadas indirectas en ejecuciones para deshabilitar la predicción de bifurcación."
 
 #: config/s390/s390.opt:262
 #, no-c-format
 msgid "Wrap all indirect return branches into execute in order to disable branch prediction."
-msgstr ""
+msgstr "Envuelve todas las bifurcaciones return indirectas en ejecuciones para deshabilitar la predicción de bifurcación."
 
 #: config/s390/s390.opt:267
 #, no-c-format
 msgid "Wrap indirect return branches into execute in order to disable branch prediction. This affects only branches where the return address is going to be restored from memory."
-msgstr ""
+msgstr "Envuelve las bifurcaciones return indirectas en ejecuciones para deshabilitar la predicción de bifurcación. Esto solo afecta a bifurcaciones en las que la dirección de retorno va a restaurarse desde memoria."
 
 #: config/s390/s390.opt:273
 #, no-c-format
 msgid "Wrap indirect return branches into execute in order to disable branch prediction. This affects only branches where the return address doesn't need to be restored from memory."
-msgstr ""
+msgstr "Envuelve las bifurcaciones return indirectas en ejecuciones para deshabilitar la predicción de bifurcación. Esto solo afecta a bifurcaciones en las que la dirección de retorno no necesita restaurarse desde memoria."
 
 #: config/s390/s390.opt:295
 #, no-c-format
 msgid "Generate sections .s390_indirect_jump, .s390_indirect_call, .s390_return_reg, and .s390_return_mem to contain the indirect branch locations which have been patched as part of using one of the -mindirect-branch* or -mfunction-return* options.  The sections consist of an array of 32 bit elements. Each entry holds the offset from the entry to the patched location."
-msgstr ""
+msgstr "Genera secciones .s390_indirect_jump, .s390_indirect_call, .s390_return_reg y .s390_return_mem para alojar las localizaciones de ramificaciones indirectas que se han parcheado como para de utilizar una de las opciones -mindirect-branch* o -mfunction-return*.  Las secciones constan de una lista de elementos de 32 bits. Cada entrada guarda el desplazamiento desde la entrada a la localización parcehada."
 
 #: config/s390/s390.opt:304
-#, fuzzy, no-c-format
-#| msgid "Emit profiling counter call at function entry before prologue."
+#, no-c-format
 msgid "Emit profiling counter call at function entry before prologue. The compiled code will require a 64-bit CPU and glibc 2.29 or newer to run."
-msgstr "Emite llamada a contador de perfil en la entrada de función antes del prólogo."
+msgstr "Emite llamada a contador de perfil en la entrada de función antes del prólogo. El código compilado requerirá una CPU de 64 btis y glib 2.29 o superior para correr."
 
 #: config/s390/s390.opt:309
-#, fuzzy, no-c-format
-#| msgid "Generate __mcount_loc section with all mcount or __fentry__ calls."
+#, no-c-format
 msgid "Generate __mcount_loc section with all _mcount and __fentry__ calls."
-msgstr "Genera sección __mcount_loc con todos los mcount o llamadas __fentry__."
+msgstr "Genera sección __mcount_loc con todos las llamadas a _mcount y __fentry__."
 
 #: config/s390/s390.opt:318
 #, no-c-format
 msgid "Emit fused multiply-add instructions for long doubles in vector registers (wfmaxb, wfmsxb, wfnmaxb, wfnmsxb).  Reassociation pass does not handle fused multiply-adds, therefore code generated by the middle-end is prone to having long fused multiply-add chains.  This is not pipeline-friendly, and the default behavior is to emit separate multiplication and addition instructions for long doubles in vector registers, because measurements show that this improves performance.  This option allows overriding it for testing purposes."
-msgstr ""
+msgstr "Emite instrucciones multiplicación-adición fusionadas para long doubles en los registros vectoriales (wfmaxb, wfmsxb, wfnmaxb, wfnmsxb).  El pase de reasociación no maneja multiplicaciones-adiciones fusionadas; por lo tanto, el código generado hacia el medio-final es proclive a tener cadenas largas de multiplicaciones-adiciones fusionadas.  Esto no facilita las «pipelines», por lo que el comportamiento predefinido es emitir instrucciones de multiplicación y adición separadas para long doubles en registros vectoriales, ya que las mediciones reflejan que esto mejora el rendimiento.  Esta opción puede anularse con fines de test."
 
 #: config/s390/s390.opt:333
 #, no-c-format
 msgid "Store all argument registers on the stack."
-msgstr ""
+msgstr "Almacena todos los registros de los argumentos en la pila."
 
 #: config/s390/s390.opt:337
 #, no-c-format
 msgid "Assume external symbols, whose natural alignment would be 1, to be potentially unaligned.  By default all symbols without explicit alignment are assumed to reside on a 2 byte boundary as mandated by the IBM Z ABI."
-msgstr ""
+msgstr "Asume que los símbolos externos, cuyo alineamienta natural sería 1, puedan estar desalineados.  Lo predefindo es asumir que todos los símbolos sin alineamiento explícito residan en contornos de 2 bytes, como prescribe el ABI del IBM Z."
 
 #: config/rl78/rl78.opt:27 config/rx/elf.opt:26 config/csky/csky.opt:198
 #, no-c-format
@@ -9570,7 +9481,7 @@ msgstr "Ajusta el código para el procesador dado."
 #: config/arm/arm.opt:255
 #, no-c-format
 msgid "Print CPU tuning information as comment in assembler file.  This is an option used only for regression testing of the compiler and not intended for ordinary use in compiling code."
-msgstr ""
+msgstr "Imprime información de ajuste de la CPU como comentario en el fichero ensamblador.  Esta es una opción que solo se utiliza para pruebas de regresión del compilador y no se destinan al uso ordinario en compilación de código."
 
 #: config/arm/arm.opt:266
 #, no-c-format
@@ -9585,7 +9496,7 @@ msgstr "Usa los registros double-word Neon (en lugar de quad-word) para la vecto
 #: config/arm/arm.opt:274
 #, no-c-format
 msgid "Enable more verbose RTX cost dumps during debug.  For GCC developers use only."
-msgstr ""
+msgstr "Habilita volcados más prolijos sobre el coste RTX.  Solo para desarrolladores de GCC."
 
 #: config/arm/arm.opt:278
 #, no-c-format
@@ -9605,17 +9516,17 @@ msgstr "Evita el traslape en registros de destino y dirección en las instruccio
 #: config/arm/arm.opt:291
 #, no-c-format
 msgid "Mitigate issues with VLLDM on some M-profile devices (CVE-2021-35465)."
-msgstr ""
+msgstr "Mitiga problemas con VLLDM en algunos dispositivos N-profile (CVE-2021-35465)."
 
 #: config/arm/arm.opt:295
 #, no-c-format
 msgid "Mitigate issues with AES instructions on Cortex-A57 and Cortex-A72 (Arm erratum #1742098)."
-msgstr ""
+msgstr "Mitiga problemas con instrucciones AES en Cortex-A57 y Cortex-A72 (Arm errata #1742098)."
 
 #: config/arm/arm.opt:300
 #, no-c-format
 msgid "Mitigate issues with AES instructions on Cortex-A57 and Cortex-A72 (Arm erratum #1655431)."
-msgstr ""
+msgstr "Mitiga problemas con instrucciones AES en Cortex-A57 y Cortex-A72 (Arm errata #1655431)."
 
 #: config/arm/arm.opt:305 config/nds32/nds32.opt:461 config/arc/arc.opt:495
 #, no-c-format
@@ -9623,10 +9534,9 @@ msgid "Enable unaligned word and halfword accesses to packed data."
 msgstr "Activa los accesos word sin alinear y halfword para los datos packed."
 
 #: config/arm/arm.opt:309
-#, fuzzy, no-c-format
-#| msgid "This switch is deprecated; do not use."
+#, no-c-format
 msgid "This option is deprecated and has no effect."
-msgstr "Esta opción es obsoleta; no lo utilice."
+msgstr "Esta opción es obsoleta y no tiene ningún efecto."
 
 #: config/arm/arm.opt:313
 #, no-c-format
@@ -9646,12 +9556,12 @@ msgstr "No permite que los datos constantes se pongan en secciones de código."
 #: config/arm/arm.opt:325
 #, no-c-format
 msgid "When linking for big-endian targets, generate a BE8 format image."
-msgstr ""
+msgstr "Cuando se enlaza para objetivos «big endian», genera una imagen en formato BE8."
 
 #: config/arm/arm.opt:329
 #, no-c-format
 msgid "When linking for big-endian targets, generate a legacy BE32 format image."
-msgstr ""
+msgstr "Cuando se enlaza para objetivos «big endian», genera una imagen en el formato antiguo BE32."
 
 #: config/arm/arm.opt:333 config/sh/sh.opt:195
 #, no-c-format
@@ -9659,15 +9569,14 @@ msgid "Cost to assume for a branch insn."
 msgstr "Costo de asumir una ramificación de insn."
 
 #: config/arm/arm.opt:341
-#, fuzzy, no-c-format
-#| msgid "Generate code which uses only the general registers."
+#, no-c-format
 msgid "Generate code which uses the core registers only (r0-r14)."
-msgstr "Genera código que usa solo los registros generales."
+msgstr "Genera código que usa solo los registros del núcleo (r0-r14)."
 
 #: config/arm/arm.opt:363
 #, no-c-format
 msgid "Use an immediate to offset from the TLS register. This option is for use with fstack-protector-guard=tls and not for use in user-land code."
-msgstr ""
+msgstr "Utiliza un inmediato para desplazar desde el registro TLS.  Esta opción es para utilizar con fstack-protector-guard=tls y no para utilizar en código de usuario."
 
 #: config/sparc/sparc.opt:30 config/sparc/sparc.opt:34
 #: config/visium/visium.opt:37
@@ -9726,10 +9635,9 @@ msgid "Use UltraSPARC Visual Instruction Set version 3.0 extensions."
 msgstr "Usa las extensiones del Conjunto de Instrucciones Visuales de UltraSPARC versión 3.0."
 
 #: config/sparc/sparc.opt:78
-#, fuzzy, no-c-format
-#| msgid "Use additional VIS instructions introduced in OSA2017."
+#, no-c-format
 msgid "Use additional VIS 3 instructions introduced in OSA2011."
-msgstr "Usa las instrucciones adicionales de VIS introducidas en OSA2017."
+msgstr "Usa las instrucciones adicionales de VIS 3 introducidas en OSA2011."
 
 #: config/sparc/sparc.opt:82
 #, no-c-format
@@ -9737,10 +9645,9 @@ msgid "Use UltraSPARC Visual Instruction Set version 4.0 extensions."
 msgstr "Usa las extensiones del Conjunto de Instrucciones Visuales de UltraSPARC versión 4.0."
 
 #: config/sparc/sparc.opt:86
-#, fuzzy, no-c-format
-#| msgid "Use additional VIS instructions introduced in OSA2017."
+#, no-c-format
 msgid "Use additional VIS 4 instructions introduced in OSA2017."
-msgstr "Usa las instrucciones adicionales de VIS introducidas en OSA2017."
+msgstr "Usa las instrucciones adicionales de VIS 4 introducidas en OSA2017."
 
 #: config/sparc/sparc.opt:90
 #, no-c-format
@@ -9808,10 +9715,9 @@ msgid "Do not generate code that can only run in supervisor mode (default)."
 msgstr "No genera código que solo pueda correr en modo supervisor (predeterminado)."
 
 #: config/sparc/sparc.opt:142
-#, fuzzy, no-c-format
-#| msgid "Use features of and schedule code for given CPU."
+#, no-c-format
 msgid "Use instructions of and schedule code for given CPU."
-msgstr "Usa las características y el código de planificador para el CPU dado."
+msgstr "Usa las instrucciones y el código de planificador para la CPU dada."
 
 #: config/sparc/sparc.opt:228
 #, no-c-format
@@ -10051,7 +9957,7 @@ msgstr "Coloca todo en la TOC normal."
 #: config/rs6000/rs6000.opt:305
 #, no-c-format
 msgid "Emit NOPs before global and after local entry point for -fpatchable-function-entry."
-msgstr ""
+msgstr "Emite NOPs antes del punto de entrada global y después del local para -fpatchable-function-entry."
 
 #: config/rs6000/rs6000.opt:309
 #, no-c-format
@@ -10076,12 +9982,12 @@ msgstr "Máx. número de bytes para mover y poner en línea."
 #: config/rs6000/rs6000.opt:325
 #, no-c-format
 msgid "Generate unaligned VSX load/store for inline expansion of memcpy/memmove."
-msgstr ""
+msgstr "Genera carga/almacenamiento VSX desalineadas para expansión en línea de memcpy/memmove."
 
 #: config/rs6000/rs6000.opt:329
 #, no-c-format
 msgid "Generate unaligned VSX vector pair load/store for inline expansion of memcpy/memmove."
-msgstr ""
+msgstr "Genera carga/almacenamiento de parejas de vectores VSX desalineadas para expansión en línea de memcpy/memmove."
 
 #: config/rs6000/rs6000.opt:333
 #, no-c-format
@@ -10094,10 +10000,9 @@ msgid "Max number of bytes to compare with loops."
 msgstr "El número máximo de bytes para comparar con bucles."
 
 #: config/rs6000/rs6000.opt:341
-#, fuzzy, no-c-format
-#| msgid "Max number of bytes to compare with loops."
+#, no-c-format
 msgid "Max number of bytes to compare."
-msgstr "El número máximo de bytes para comparar con bucles."
+msgstr "El número máximo de bytes para comparar."
 
 #: config/rs6000/rs6000.opt:345
 #, no-c-format
@@ -10122,13 +10027,12 @@ msgstr "No usa las extensiones de ABI AltiVec."
 #: config/rs6000/rs6000.opt:363
 #, no-c-format
 msgid "Use the AIX Vector Extended ABI."
-msgstr ""
+msgstr "Utiliza la ABI extendida vectorial de AIX."
 
 #: config/rs6000/rs6000.opt:367
-#, fuzzy, no-c-format
-#| msgid "Do not use the AltiVec ABI extensions."
+#, no-c-format
 msgid "Do not use the AIX Vector Extended ABI."
-msgstr "No usa las extensiones de ABI AltiVec."
+msgstr "No utiliza la ABI extendida vectorial de AIX."
 
 #: config/rs6000/rs6000.opt:372
 #, no-c-format
@@ -10221,10 +10125,9 @@ msgid "Use vector and scalar instructions added in ISA 2.07."
 msgstr "Usa las instrucciones de vectores y escalares añadidas en ISA 2.07."
 
 #: config/rs6000/rs6000.opt:495
-#, fuzzy, no-c-format
-#| msgid "Fuse certain integer operations together for better performance on power8."
+#, no-c-format
 msgid "Fuse certain integer operations together for better performance on power10."
-msgstr "Fusiona ciertas operaciones de enteros para un mejor rendimiento en power8."
+msgstr "Fusiona ciertas operaciones de enteros para un mejor rendimiento en power10."
 
 #: config/rs6000/rs6000.opt:499
 #, no-c-format
@@ -10292,97 +10195,89 @@ msgid "Enable default conversions between __float128 & long double."
 msgstr "Activa las conversiones predefinidas entre __float128 y long double."
 
 #: config/rs6000/rs6000.opt:600
-#, fuzzy, no-c-format
-#| msgid "Generate the quad word memory instructions (lq/stq)."
+#, no-c-format
 msgid "Generate (do not generate) prefixed memory instructions."
-msgstr "Genera instrucciones de memoria quad word (lq/stq)."
+msgstr "Genera (no genera) instrucciones de memoria prefijadas."
 
 #: config/rs6000/rs6000.opt:604
-#, fuzzy, no-c-format
-#| msgid "Do not generate unaligned memory accesses."
+#, no-c-format
 msgid "Generate (do not generate) pc-relative memory addressing."
-msgstr "No genera accessos a memoria sin alinear"
+msgstr "Genera (no genera) direccionamiento de memoria relativo a pc."
 
 #: config/rs6000/rs6000.opt:608
-#, fuzzy, no-c-format
-#| msgid "Do not generate unaligned memory accesses."
+#, no-c-format
 msgid "Generate (do not generate) pc-relative memory optimizations for externals."
-msgstr "No genera accessos a memoria sin alinear"
+msgstr "Genera (no genera) optimizaciones de memoria relativas a pc para externos."
 
 #: config/rs6000/rs6000.opt:612
-#, fuzzy, no-c-format
-#| msgid "Generate the quad word memory instructions (lq/stq)."
+#, no-c-format
 msgid "Generate (do not generate) MMA instructions."
-msgstr "Genera instrucciones de memoria quad word (lq/stq)."
+msgstr "Genera (no genera) instrucciones MMA."
 
 #: config/rs6000/rs6000.opt:619
 #, no-c-format
 msgid "Enable instructions that guard against return-oriented programming attacks."
-msgstr ""
+msgstr "Habilita instrucciones que protegen de ataques de programación orientados a retorno."
 
 #: config/rs6000/rs6000.opt:623
-#, fuzzy, no-c-format
-#| msgid "Generate code in 32 bit ARM state."
+#, no-c-format
 msgid "Generate code that will run in privileged state."
-msgstr "Genera código en el estado ARM de 32 bit."
+msgstr "Genera código correrá en estado privilegiado."
 
 #: config/rs6000/rs6000.opt:627
-#, fuzzy, no-c-format
-#| msgid "Generate the quad word memory instructions (lq/stq)."
+#, no-c-format
 msgid "Generate (do not generate) code that uses the XXSPLTIW instruction."
-msgstr "Genera instrucciones de memoria quad word (lq/stq)."
+msgstr "Genera (no genera) que utiliza la instrucción XXSPLTIW."
 
 #: config/rs6000/rs6000.opt:631
-#, fuzzy, no-c-format
-#| msgid "Generate the quad word memory instructions (lq/stq)."
+#, no-c-format
 msgid "Generate (do not generate) code that uses the XXSPLTIDP instruction."
-msgstr "Genera instrucciones de memoria quad word (lq/stq)."
+msgstr "Genera (no genera) que utiliza la instrucción XXSPLTIDP."
 
 #: config/rs6000/rs6000.opt:635
-#, fuzzy, no-c-format
-#| msgid "Generate the quad word memory instructions (lq/stq)."
+#, no-c-format
 msgid "Generate (do not generate) code that uses the LXVKQ instruction."
-msgstr "Genera instrucciones de memoria quad word (lq/stq)."
+msgstr "Genera (no genera) que utiliza la instrucción LXVKQ."
 
 #: config/rs6000/rs6000.opt:641
 #, no-c-format
 msgid "Used to limit unroll factor which indicates how much the autovectorizer may unroll a loop.  The default value is 4."
-msgstr ""
+msgstr "Utilizado para limitar el factor de desenrollamiento que indica cuánto puede desenrrollar los bucles el autovectorizador.  El valor predefinido es 4."
 
 #: config/rs6000/rs6000.opt:647
 #, no-c-format
 msgid "When costing for loop vectorization, we probably need to penalize the loop body cost if the existing cost model may not adequately reflect delays from unavailable vector resources.  We collect the cost for vectorized statements and non-vectorized statements separately, check the proportion of vec_cost to total cost of vec_cost and non vec_cost, and penalize only if the proportion exceeds the threshold specified by this parameter.  The default value is 85."
-msgstr ""
+msgstr "Cuando se calcula el coste de vectorización de bucles, probablemente necesitemos penalizar el coste del cuerpo del bucle si el modelo de coste existente no puede reflejar adecuadamente los retardos causados por los recursos vectoriales no disponibles.  Recopilamos por separado el coste de sentencias vectorizadas y no vectorizadas, comprobamos la proporción de coste_vec frente al total del coste_vec y coste_no_vec, y penalizamos únicamente si la proporción sobrepasa el umbral especificado por este parámetro.  El valor predefinidos es 85."
 
 #: config/rs6000/rs6000.opt:656
 #, no-c-format
 msgid "Like parameter rs6000-density-pct-threshold, we also check the total sum of vec_cost and non vec_cost, and penalize only if the sum exceeds the threshold specified by this parameter.  The default value is 70."
-msgstr ""
+msgstr "Igual que el parámetro rs6000-density-pct-threshold, también comprobamos la suma total de coste_vec y coste_no_vec, y penalizamos únicamente si la suma sobrepasa el umbral especificado por este parámetro.  El valor predefinido es 70."
 
 #: config/rs6000/rs6000.opt:662
 #, no-c-format
 msgid "When both heuristics with rs6000-density-pct-threshold and rs6000-density-size-threshold are satisfied, we decide to penalize the loop body cost by the value which is specified by this parameter.  The default value is 10."
-msgstr ""
+msgstr "Cuando los heurísticos con rs6000-density-pct-threshold y rs6000-density-size-threshold se satisfacen ambos, decidimos penalizar el coste del cuerpo del bucle con el valor especificado por este parámetro.  El valor predefinido es 10."
 
 #: config/rs6000/rs6000.opt:669
 #, no-c-format
 msgid "When costing for loop vectorization, we probably need to penalize the loop body cost by accounting for excess strided or elementwise loads.  We collect the numbers for general statements and load statements according to the information for statements to be vectorized, check the proportion of load statements, and penalize only if the proportion exceeds the threshold specified by this parameter.  The default value is 45."
-msgstr ""
+msgstr "Cuando se calcula el coste de vectorización de bucles, probablemente necesitemos penalizar el coste del cuerpo del bucle contabilizando el exceso de cargas por pasos o por elementos.  Recopilamos el número de sentencias generales y el de sentencias de carga según la información sobre sentencias que se van a vectorizar, comprobamos la proporción de de sentencias de carga, y penalizamos únicamente si la proporción sobrepasa el umbral especificado por este parámetro.  El valor predefinidos es 45."
 
 #: config/rs6000/rs6000.opt:678
 #, no-c-format
 msgid "Like parameter rs6000-density-load-pct-threshold, we also check if the total number of load statements exceeds the threshold specified by this parameter, and penalize only if it's satisfied.  The default value is 20."
-msgstr ""
+msgstr "Igual que el parámetro rs6000-density-load-pct-threshold, también comprobamos si el número total de sentencias de carga sobrepasa el umbral especificado por este parámetro, y penalizamos únicamente si se satisface.  El valor predefinido es 20."
 
 #: config/rs6000/rs6000.opt:684 config/loongarch/loongarch.opt:306
 #, no-c-format
 msgid "Indicate how many non memory access vector instructions can be issued per cycle, it's used in unroll factor determination for autovectorizer.  The default value is 4."
-msgstr ""
+msgstr "Indica cuántas instrucciones vectoriales de acceso a memoria se pueden generar por ciclo; se utiliza para determinar el factor de desenrollamiento para el autovectorizador.  El valor predefinido es 4."
 
 #: config/rs6000/rs6000.opt:690
 #, no-c-format
 msgid "When reduction factor computed for a loop exceeds the threshold specified by this parameter, prefer to unroll this loop.  The default value is 1."
-msgstr ""
+msgstr "Cuando el factor de reducción calculado para un bucle sobrepasa el umbral especificado por este parámetro, es preferible desenrollar este bucle.  El valor predefinido es 1."
 
 #: config/rs6000/sysv4.opt:24
 #, no-c-format
@@ -10432,10 +10327,9 @@ msgstr "Produce código big endian."
 #: config/rs6000/sysv4.opt:86 config/rs6000/sysv4.opt:90
 #: config/rs6000/sysv4.opt:99 config/rs6000/sysv4.opt:141
 #: config/rs6000/sysv4.opt:153
-#, fuzzy, no-c-format
-#| msgid "no description yet."
+#, no-c-format
 msgid "No description yet."
-msgstr "sin descripción aún."
+msgstr "Sin descripción aún."
 
 #: config/rs6000/sysv4.opt:94
 #, no-c-format
@@ -10655,18 +10549,17 @@ msgstr "Activa las instrucciones definidas por el usuario."
 #: config/loongarch/loongarch.opt:41
 #, no-c-format
 msgid "Basic ISAs of LoongArch:"
-msgstr ""
+msgstr "ISAs básicos de LoongArch:"
 
 #: config/loongarch/loongarch.opt:49
 #, no-c-format
 msgid "FPU types of LoongArch:"
-msgstr ""
+msgstr "Tipos de FPU de LoongArch:"
 
 #: config/loongarch/loongarch.opt:62
-#, fuzzy, no-c-format
-#| msgid "-march=ISA\tGenerate code for the given ISA."
+#, no-c-format
 msgid "-mfpu=FPU\tGenerate code for the given FPU."
-msgstr "-march=ISA\tGenera código para el ISA dado."
+msgstr "-mfpu=FPU\tGenera código para la FPU dada."
 
 #: config/loongarch/loongarch.opt:69 config/mips/mips.opt:398
 #, no-c-format
@@ -10686,56 +10579,52 @@ msgstr "Permite que las instrucciones de coma flotante de hardware cubran tanto 
 #: config/loongarch/loongarch.opt:81
 #, no-c-format
 msgid "SIMD extension levels of LoongArch:"
-msgstr ""
+msgstr "Niveles de extensión SIMD de LoongArch:"
 
 #: config/loongarch/loongarch.opt:94
-#, fuzzy, no-c-format
-#| msgid "-march=ISA\tGenerate code for the given ISA."
+#, no-c-format
 msgid "-msimd=SIMD\tGenerate code for the given SIMD extension."
-msgstr "-march=ISA\tGenera código para el ISA dado."
+msgstr "-msimd=SIMD\tGenera código para la extensión SIMD dada."
 
 #: config/loongarch/loongarch.opt:98
 #, no-c-format
 msgid "Enable LoongArch SIMD Extension (LSX, 128-bit)."
-msgstr ""
+msgstr "Habilita la Extensión SIMD de LongArch (LSX, 128 bits)."
 
 #: config/loongarch/loongarch.opt:102
 #, no-c-format
 msgid "Enable LoongArch Advanced SIMD Extension (LASX, 256-bit)."
-msgstr ""
+msgstr "Habilita la Extensión SIMD Avanzada de LongArch (LASX, 256 bits)."
 
 #: config/loongarch/loongarch.opt:107
 #, no-c-format
 msgid "LoongArch ARCH presets:"
-msgstr ""
+msgstr "Configuración predefinida de ARCH de LoongArch:"
 
 #: config/loongarch/loongarch.opt:132
-#, fuzzy, no-c-format
-#| msgid "-march=ISA\tGenerate code for the given ISA."
+#, no-c-format
 msgid "-march=PROCESSOR\tGenerate code for the given PROCESSOR ISA."
-msgstr "-march=ISA\tGenera código para el ISA dado."
+msgstr "-march=PROCESADOR\tGenera código para el ISA del PROCESADOR dado."
 
 #: config/loongarch/loongarch.opt:136
 #, no-c-format
 msgid "LoongArch TUNE presets:"
-msgstr ""
+msgstr "Configuración predefinida de TUNE de LoongArch:"
 
 #: config/loongarch/loongarch.opt:155
-#, fuzzy, no-c-format
-#| msgid "-mtune=PROCESSOR\tOptimize the output for PROCESSOR."
+#, no-c-format
 msgid "-mtune=PROCESSOR\tGenerate optimized code for PROCESSOR."
-msgstr "-mtune=PROCESADOR\tOptimiza la salida para el PROCESADOR."
+msgstr "-mtune=PROCESADOR\tGenera código optimizado para el PROCESADOR."
 
 #: config/loongarch/loongarch.opt:164
 #, no-c-format
 msgid "Base ABI types for LoongArch:"
-msgstr ""
+msgstr "Tipos de ABI base para LoongArch:"
 
 #: config/loongarch/loongarch.opt:177
-#, fuzzy, no-c-format
-#| msgid "-mabi=ABI\tGenerate code that conforms to the given ABI."
+#, no-c-format
 msgid "-mabi=BASEABI\tGenerate code that conforms to the given BASEABI."
-msgstr "-mabi=ABI\tGenera código que cumpla con la ABI dada."
+msgstr "-mabi=ABIBASE\tGenera código que cumpla con la ABIBASE dada."
 
 #: config/loongarch/loongarch.opt:186 config/mips/mips.opt:71
 #, no-c-format
@@ -10745,7 +10634,7 @@ msgstr "-mbranch-cost=COSTO\tEstablece el costo de las ramificaciones aproximada
 #: config/loongarch/loongarch.opt:190
 #, no-c-format
 msgid "-maddr-reg-reg-cost=COST  Set the cost of ADDRESS_REG_REG to the value calculated by COST."
-msgstr ""
+msgstr "-maddr-reg-reg-cost=COSTE  Establece el coste de ADDRESS_REG_REG en el valor calculado por COSTE."
 
 #: config/loongarch/loongarch.opt:194 config/mips/mips.opt:83
 #, no-c-format
@@ -10755,90 +10644,82 @@ msgstr "Atrapa la división entera por cero."
 #: config/loongarch/loongarch.opt:198
 #, no-c-format
 msgid "Conditional moves for integral are enabled."
-msgstr ""
+msgstr "Los movimientos condicionales para enteros están habilitados."
 
 #: config/loongarch/loongarch.opt:202
 #, no-c-format
 msgid "Conditional moves for float are enabled."
-msgstr ""
+msgstr "Los movimientos condicionales para coma flotante están habilitados."
 
 #: config/loongarch/loongarch.opt:206
 #, no-c-format
 msgid "Prevent optimizing block moves, which is also the default behavior of -Os."
-msgstr ""
+msgstr "Evita optimizar movimientos de bloques, que es también el comportamiento predefinido de -Os."
 
 #: config/loongarch/loongarch.opt:214
 #, no-c-format
 msgid "-mmax-inline-memcpy-size=SIZE\tSet the max size of memcpy to inline, default is 1024."
-msgstr ""
+msgstr "-mmax-inline-memcpy-size=TAMAÑO\tEstablece el tamaño máximo de memcpy para en línea; predefinido a 1024."
 
 #: config/loongarch/loongarch.opt:218 config/mips/mips.opt:150
-#, fuzzy, no-c-format
-#| msgid "The code model option names for -mcmodel:"
+#, no-c-format
 msgid "The code model option names for -mexplicit-relocs:"
-msgstr "Los nombres de las opciones de modelos de código para -mcmodel:"
+msgstr "Los nombres de las opciones de modelos de código para -mexplicit-relocs:"
 
 #: config/loongarch/loongarch.opt:231 config/mips/mips.opt:163
-#, fuzzy, no-c-format
-#| msgid "Use NewABI-style %reloc() assembly operators."
+#, no-c-format
 msgid "Use %reloc() assembly operators."
-msgstr "Usa los operadores de ensamblador %reloc() del estilo NewABI."
+msgstr "Usa los operadores de ensamblador %reloc()."
 
 #: config/loongarch/loongarch.opt:235 config/mips/mips.opt:167
-#, fuzzy, no-c-format
-#| msgid "Only retained for backward compatibility."
+#, no-c-format
 msgid "Use %reloc() assembly operators (for backward compatibility)."
-msgstr "Preservado por compatibilidad hacia atrás."
+msgstr "Usa los operadores de ensamblador %reloc() (para compatibilidad hacia atrás)."
 
 #: config/loongarch/loongarch.opt:243
-#, fuzzy, no-c-format
-#| msgid "Generate software reciprocal divide and square root for better throughput."
+#, no-c-format
 msgid "Generate approximate reciprocal divide and square root for better throughput."
-msgstr "Genera división recíproca y raíz cuadrada de software para mejor salida."
+msgstr "Genera división recíproca y raíz cuadrada de software aproximandas para mejor rendimiento."
 
 #: config/loongarch/loongarch.opt:274
 #, no-c-format
 msgid "Avoid using the GOT to access external symbols."
-msgstr ""
+msgstr "Evita utilizar el GOT para acceder a símbolos externos."
 
 #: config/loongarch/loongarch.opt:283
-#, fuzzy, no-c-format
-#| msgid "Enable relaxing in the assembler."
+#, no-c-format
 msgid "Pass -mrelax or -mno-relax option to the assembler."
-msgstr "Activar la relajación en el ensamblador."
+msgstr "Pasa la opción -mrelax o -mno-relax al ensamblador."
 
 #: config/loongarch/loongarch.opt:301
 #, no-c-format
 msgid "Used to limit unroll factor which indicates how much the autovectorizer may unroll a loop.  The default value is 6."
-msgstr ""
+msgstr "Utilizado para limitar el factor de desenrollamiento que indica cuánto puede desenrollar los bucles el autovectorizador.  El valor predefinido es 6."
 
 #: config/loongarch/loongarch.opt:319
 #, no-c-format
 msgid "Annotate table jump instruction (jr {reg}) to correlate it with the jump table."
-msgstr ""
+msgstr "Anota la instrucción de salto en tabla (jr {reg}) para correlarla con la tabla de saltos."
 
 #: config/loongarch/loongarch.opt:323
-#, fuzzy, no-c-format
-#| msgid "Support code generation of crc32 instruction."
+#, no-c-format
 msgid "Support frecipe.{s/d} and frsqrte.{s/d} instructions."
-msgstr "Admite la generación de código de la instrucción crc32."
+msgstr "Admite las instrucciones frecipe.{s/d} y frsqrte.{s/d}."
 
 #: config/loongarch/loongarch.opt:327
 #, no-c-format
 msgid "Support div.w[u] and mod.w[u] instructions with inputs not sign-extended."
-msgstr ""
+msgstr "Admite las instrucciones div.w[u] y mod.w[u] con entradas no extendidas con signo."
 
 #: config/loongarch/loongarch.opt:331
-#, fuzzy, no-c-format
-#| msgid "Support XSAVEC instructions."
+#, no-c-format
 msgid "Support am{swap/add}[_db].{b/h} instructions."
-msgstr "Admite las instrucciones XSAVEC."
+msgstr "Admite las instrucciones am{swap/add}[_db].{b/h}."
 
 #: config/loongarch/loongarch.opt:335
-#, fuzzy, no-c-format
-#| msgid "Support XSAVEC instructions."
+#, no-c-format
 msgid "Support amcas[_db].{b/h/w/d} instructions."
-msgstr "Admite las instrucciones XSAVEC."
+msgstr "Admite las instrucciones amcas[_db].{b/h/w/d}."
 
 #: config/loongarch/loongarch.opt:339
 #, no-c-format
@@ -10858,52 +10739,50 @@ msgstr ""
 #: config/or1k/or1k.opt:29
 #, no-c-format
 msgid "Enable generation of hardware divide (l.div, l.divu) instructions.  This is the default; use -msoft-div to override."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de dividir por hardware (l.div, l.divu).  Es lo predeterminado; utilice -msoft-div para alterarlo."
 
 #: config/or1k/or1k.opt:34
 #, no-c-format
 msgid "Enable generation of binaries which use functions from libgcc to perform divide operations.  The default is -mhard-div."
-msgstr ""
+msgstr "Habilita la generación de binarios que utilizan las funciones de libgcc para realizar operaciones de dividir.  Lo predeterminado es -mhard-div."
 
 #: config/or1k/or1k.opt:39
 #, no-c-format
 msgid "Enable generation of hardware multiply instructions (l.mul, l.muli) instructions. This is the default; use -msoft-mul to override."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de multiplicar por hardware (l.mul, l.muli).  Es lo predeterminado; utilice -msoft-mul para alterarlo."
 
 #: config/or1k/or1k.opt:44
 #, no-c-format
 msgid "Enable generation of binaries which use functions from libgcc to perform multiply operations. The default is -mhard-mul."
-msgstr ""
+msgstr "Habilita la generación de binarios que utilizan las funciones de libgcc para realizar operaciones de multiplicar.  Lo predeterminado es -mhard-mul."
 
 #: config/or1k/or1k.opt:49
 #, no-c-format
 msgid "Enable generation of binaries which use functions from libgcc to perform floating point operations.  This is the default; use -mhard-float to override."
-msgstr ""
+msgstr "Habilita la generación de binarios que utilizan las funciones de libgcc para realizar operaciones de coma flotante.  Es lo predeterminado utilice -mhard-float para alterarlo."
 
 #: config/or1k/or1k.opt:54
-#, fuzzy, no-c-format
-#| msgid "Use hardware floating point instructions."
+#, no-c-format
 msgid "Enable generation of hardware floating point instructions. The default is -msoft-float."
-msgstr "Usa instrucciones de coma flotante por hardware."
+msgstr "Habilita la generación de instrucciones de coma flotante por hardware. Lo predeterminado es -msoft-float."
 
 #: config/or1k/or1k.opt:59
 #, no-c-format
 msgid "When -mhard-float is selected, enables generation of double-precision floating point instructions.  By default functions from libgcc are used to perform double-precision floating point operations."
-msgstr ""
+msgstr "Cuando se selecciona -mhard-float, habilita la generación de instrucciones de coma flotante de precisión doble.  Lo predeterminado es utilizar funciones de libgcc para realizar operaciones de coma flotante de precisión doble."
 
 #: config/or1k/or1k.opt:65
 #, no-c-format
 msgid "When -mhard-float is selected, enables generation of unordered floating point compare and set flag (lf.sfun*) instructions.  By default functions from libgcc are used to perform unordered floating point compare and set flag operations."
-msgstr ""
+msgstr "Cuando se selecciona -mhard-float, habilita la generación de instrucciones de comparación de coma flotante sin orden y de poner banderas (lf.sfun*) de precisión doble.  Lo predeterminado es utilizar funciones de libgcc para realizar operaciones de coma flotante de precisión doble."
 
 #: config/or1k/or1k.opt:71
 #, no-c-format
 msgid "Specify the code model used for accessing memory addresses.  Specifying large enables generating binaries with large global offset tables.  By default the value is small."
-msgstr ""
+msgstr "Especifica el modelo de código utilizado para acceder a direcciones de memoria.  Especificando «large» (grande) se habilita la generación de binarios con tablas de desplazamiento global grande.  El valor predeterminado es «small» (pequeño)."
 
 #: config/or1k/or1k.opt:77
-#, fuzzy, no-c-format
-#| msgid "Known cmodel types (for use with the -mcmodel= option):"
+#, no-c-format
 msgid "Known code model types (for use with the -mcmodel= option):"
 msgstr "Tipos de modelos de código conocidos (para uso con la opción -mcmodel=):"
 
@@ -10915,31 +10794,30 @@ msgstr ""
 #: config/or1k/or1k.opt:92
 #, no-c-format
 msgid "Enable generation of rotate right (l.ror) instructions.  By default functions from libgcc are used to perform rotate right operations."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de rotación derecha (l.ror).  Lo predeterminado es usar funciones de libgcc para hacer operaciones de rotación derecha."
 
 #: config/or1k/or1k.opt:97
 #, no-c-format
 msgid "Enable generation of rotate right with immediate (l.rori) instructions.  By default functions from libgcc are used to perform rotate right with immediate operations."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de rotación derecha con inmediato (l.rori).  Lo predeterminado es usar funciones de libgcc para hacer operaciones de rotación derecha con inmediato."
 
 #: config/or1k/or1k.opt:103
 #, no-c-format
 msgid "Enable generation of sign extension (l.ext*) instructions.  By default memory loads are used to perform sign extension."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de extensión de signo (l.ext*).  Lo predeterminado es usar cargas de memoria para hacer extensiones de signo."
 
 #: config/or1k/or1k.opt:108
 #, no-c-format
 msgid "Enable generation of compare and set flag with immediate (l.sf*i) instructions. By default extra instructions will be generated to store the immediate to a register first."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de comparar y poner banderas con inmediato (l.sf*i).  Lo predeterminado es generar instrucciones extra para almacenar primero el inmediato en un registro."
 
 #: config/or1k/or1k.opt:114
 #, no-c-format
 msgid "Enable generation of shift with immediate (l.srai, l.srli, l.slli) instructions. By default extra instructions will be generated to store the immediate to a register first."
-msgstr ""
+msgstr "Habilita la generación de instrucciones de desplazamiento con inmediato (l.srai, l.srli, l.slli).  Lo predeterminado es generar instrucciones extra para almacenar primero el inmediato en un registro."
 
 #: config/rx/elf.opt:32
-#, fuzzy, no-c-format
-#| msgid "Generate assembler output that is compatible with the Renesas AS100 assembler.  This may restrict some of the compiler's capabilities.  The default is to generate GAS compatible syntax."
+#, no-c-format
 msgid "Generate assembler output that is compatible with the Renesas AS100 assembler.  This may restrict some of the compiler's capabilities.  The default is to generate GAS compatible syntax."
 msgstr "Genera salida de ensamblador que es compatible con el ensamblador AS100 de Renesas.  Esto puede restringir algunas de las capacidades del compilador.  Por defecto se genera sintaxis compatible con GAS."
 
@@ -10964,10 +10842,9 @@ msgid "Stores doubles in 32 bits.  This is the default."
 msgstr "Almacena dobles en 32 bits.  Este es el valor por defecto."
 
 #: config/rx/rx.opt:37
-#, fuzzy, no-c-format
-#| msgid "Disable the use of RX FPU instructions.  "
+#, no-c-format
 msgid "Disable the use of RX FPU instructions."
-msgstr "Desactiva el uso de las instrucciones de FPU RX.  "
+msgstr "Desactiva el uso de las instrucciones de FPU RX."
 
 #: config/rx/rx.opt:44
 #, no-c-format
@@ -11190,25 +11067,22 @@ msgid "Description for mxl-mode-novectors."
 msgstr "Descripción para mxl-mode-novectors."
 
 #: config/microblaze/microblaze.opt:128
-#, fuzzy, no-c-format
-#| msgid "Use hardware prefetch instruction"
+#, no-c-format
 msgid "Use hardware prefetch instruction."
-msgstr "Usa instrucciones de precargado de hardware"
+msgstr "Usa instrucción de precargado de hardware."
 
 #: config/microblaze/microblaze.opt:132
 #, no-c-format
 msgid "Data referenced by offset from start of text instead of GOT (with -fPIC/-fPIE)."
-msgstr ""
+msgstr "Datos referenciados por desplazamiento desde el comienzo del texto en lugar de GOT (con -fPIC/-fPIE)."
 
 #: config/vax/vax.opt:23 config/vax/vax.opt:27
-#, fuzzy, no-c-format
-#| msgid "Generate GFLOAT double precision code."
+#, no-c-format
 msgid "Generate DFLOAT double-precision code."
-msgstr "Genera código GFLOAT de doble precisión."
+msgstr "Genera código DFLOAT de doble precisión."
 
 #: config/vax/vax.opt:31 config/vax/vax.opt:35
-#, fuzzy, no-c-format
-#| msgid "Generate GFLOAT double precision code."
+#, no-c-format
 msgid "Generate GFLOAT double-precision code."
 msgstr "Genera código GFLOAT de doble precisión."
 
@@ -11478,16 +11352,14 @@ msgid "Generate code in little-endian mode."
 msgstr "Genera código en modo little endian."
 
 #: config/nds32/nds32.opt:37
-#, fuzzy, no-c-format
-#| msgid "Perform cross-jumping optimization."
+#, no-c-format
 msgid "Force performing fp-as-gp optimization."
-msgstr "Realiza optimizaciones de saltos cruzados."
+msgstr "Fuerza optimización fp-as-gp."
 
 #: config/nds32/nds32.opt:41
-#, fuzzy, no-c-format
-#| msgid "Perform cross-jumping optimization."
+#, no-c-format
 msgid "Forbid performing fp-as-gp optimization."
-msgstr "Realiza optimizaciones de saltos cruzados."
+msgstr "Prohibe optimización fp-as-gp."
 
 #: config/nds32/nds32.opt:47
 #, no-c-format
@@ -11520,32 +11392,29 @@ msgid "Always align function entry, jump target and return address."
 msgstr ""
 
 #: config/nds32/nds32.opt:85
-#, fuzzy, no-c-format
-#| msgid "Use alternate leaf function entries"
+#, no-c-format
 msgid "Align function entry to 4 byte."
-msgstr "Usar entradas de función hojas alternadas"
+msgstr "Alinea la entrada de función a 4 bytes"
 
 #: config/nds32/nds32.opt:97
 #, no-c-format
 msgid "Prevent $fp being allocated during register allocation so that compiler is able to force performing fp-as-gp optimization."
-msgstr ""
+msgstr "Evita que $fp sea reservado durante la reserva de registros, de modo que el compilador pueda forzar optimización fp-as-gp."
 
 #: config/nds32/nds32.opt:101
 #, no-c-format
 msgid "Forbid using $fp to access static and global variables.  This option strictly forbids fp-as-gp optimization regardless of '-mforce-fp-as-gp'."
-msgstr ""
+msgstr "Prohíbe usar $fp para acceder a variables estáticas y globales.  Esta opción prohíbe estrictamente la optimización fp-as-gp independientemente de '-mforce-fp-as-gp'."
 
 #: config/nds32/nds32.opt:105
-#, fuzzy, no-c-format
-#| msgid "Specify the address generation strategy for code model."
+#, no-c-format
 msgid "Specify the address generation strategy for ICT call's code model."
-msgstr "Especifica la estrategia de generación de direcciones para modelo de código."
+msgstr "Especifica la estrategia de generación de direcciones para el modelo de código de llamada ICT."
 
 #: config/nds32/nds32.opt:109
-#, fuzzy, no-c-format
-#| msgid "Known cmodel types (for use with the -mcmodel= option):"
+#, no-c-format
 msgid "Known cmodel types (for use with the -mict-model= option):"
-msgstr "Tipos de modelos de código conocidos (para uso con la opción -mcmodel=):"
+msgstr "Tipos de modelos de código conocidos (para uso con la opción -mict-model=):"
 
 #: config/nds32/nds32.opt:119
 #, no-c-format
@@ -11553,10 +11422,9 @@ msgid "Generate conditional move instructions."
 msgstr "Genera instrucciones move condicionales."
 
 #: config/nds32/nds32.opt:123
-#, fuzzy, no-c-format
-#| msgid "Generate bit instructions."
+#, no-c-format
 msgid "Generate hardware abs instructions."
-msgstr "Genera instrucciones de bit."
+msgstr "Genera instrucciones abs hardware."
 
 #: config/nds32/nds32.opt:127
 #, no-c-format
@@ -11574,10 +11442,9 @@ msgid "Generate string extension instructions."
 msgstr "Genera instrucciones de extensión de cadenas."
 
 #: config/nds32/nds32.opt:139
-#, fuzzy, no-c-format
-#| msgid "Generate string extension instructions."
+#, no-c-format
 msgid "Generate DSP extension instructions."
-msgstr "Genera instrucciones de extensión de cadenas."
+msgstr "Genera instrucciones de extensión de cadenas DSP."
 
 #: config/nds32/nds32.opt:143
 #, no-c-format
@@ -11592,7 +11459,7 @@ msgstr "Genera instrucciones de 16 bits."
 #: config/nds32/nds32.opt:151
 #, no-c-format
 msgid "Insert relax hint for linker to do relaxation."
-msgstr ""
+msgstr "Inserta pista de relajación para que el enlazador haga relajación."
 
 #: config/nds32/nds32.opt:155
 #, no-c-format
@@ -11605,10 +11472,9 @@ msgid "Specify the size of each interrupt vector, which must be 4 or 16."
 msgstr "Especifica el tamaño de cada vector de interrupciones, que ha de ser 4 o 16."
 
 #: config/nds32/nds32.opt:163
-#, fuzzy, no-c-format
-#| msgid "Specify the memory model in effect for the program."
+#, no-c-format
 msgid "Specify the security level of c-isr for the whole file."
-msgstr "Especifica el modelo de memoria en efecto para el programa."
+msgstr "Especifica el nivel de seguridad de c-isr para todo el fichero."
 
 #: config/nds32/nds32.opt:167
 #, no-c-format
@@ -11661,10 +11527,9 @@ msgid "Guide linker to relax instructions."
 msgstr "Guía al enlazador para que relaje las instrucciones."
 
 #: config/nds32/nds32.opt:433
-#, fuzzy, no-c-format
-#| msgid "Generate floating point mathematics using given instruction set."
+#, no-c-format
 msgid "Generate floating-point multiply-accumulation instructions."
-msgstr "Genera matemáticas de coma flotante usando el conjunto de instrucciones dado."
+msgstr "Genera instrucciones de multiplicar-acumular de coma flotante."
 
 #: config/nds32/nds32.opt:437
 #, no-c-format
@@ -11682,16 +11547,14 @@ msgid "Force disable hardware loop, even use -mext-dsp."
 msgstr ""
 
 #: config/nds32/nds32.opt:449
-#, fuzzy, no-c-format
-#| msgid "Permit scheduling of a function's prologue sequence."
+#, no-c-format
 msgid "Permit scheduling of a function's prologue and epilogue sequence."
-msgstr "Permite la planificación de la secuencia de prólogo de funciones."
+msgstr "Permite la planificación de la secuencia de prólogo y epílogo de funciones."
 
 #: config/nds32/nds32.opt:453
-#, fuzzy, no-c-format
-#| msgid "Generate cld instruction in the function prologue."
+#, no-c-format
 msgid "Generate return instruction in naked function."
-msgstr "Genera la instrucción cld en el prólogo de función."
+msgstr "Genera instrucción de retorno en función desnuda."
 
 #: config/nds32/nds32.opt:457
 #, no-c-format
@@ -11701,7 +11564,7 @@ msgstr "Siempre guarda $lp en la pila."
 #: config/nds32/nds32.opt:465
 #, no-c-format
 msgid "Allow use r15 for inline ASM."
-msgstr ""
+msgstr "Permite usar r15 para ASM en línea."
 
 #: config/iq2000/iq2000.opt:31
 #, no-c-format
@@ -11734,10 +11597,9 @@ msgid "Put uninitialized constants in ROM (needs -membedded-data)."
 msgstr "Pone las constantes sin inicializar en ROM (necesita -membedded-data)."
 
 #: config/csky/csky.opt:34
-#, fuzzy, no-c-format
-#| msgid "Specify the name of the target architecture."
+#, no-c-format
 msgid "Specify the target architecture."
-msgstr "Especifica el nombre de la arquitectura destino."
+msgstr "Especifica la arquitectura de destino."
 
 #: config/csky/csky.opt:38
 #, fuzzy, no-c-format

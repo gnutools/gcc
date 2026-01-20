@@ -17196,7 +17196,7 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	    f = TREE_TYPE (f);
 	  }
 
-	if (TREE_CODE (f) != TYPENAME_TYPE)
+	if (!WILDCARD_TYPE_P (f))
 	  {
 	    if (TYPENAME_IS_ENUM_P (t) && TREE_CODE (f) != ENUMERAL_TYPE)
 	      {
@@ -22023,7 +22023,8 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	  if (r == NULL_TREE && TREE_CODE (t) == PARM_DECL)
 	    {
 	      /* We get here for a use of 'this' in an NSDMI.  */
-	      if (DECL_NAME (t) == this_identifier && current_class_ptr)
+	      if (DECL_NAME (t) == this_identifier && current_class_ptr
+		  && !LAMBDA_TYPE_P (TREE_TYPE (TREE_TYPE (current_class_ptr))))
 		RETURN (current_class_ptr);
 
 	      /* This can happen for a parameter name used later in a function
@@ -28755,7 +28756,16 @@ dependent_scope_p (tree scope)
 bool
 dependentish_scope_p (tree scope)
 {
-  return dependent_scope_p (scope) || any_dependent_bases_p (scope);
+  return dependent_scope_p (scope) || any_dependent_bases_p (scope)
+    /* A noexcept-spec is a complete-class context, so this should never hold.
+       But since we don't implement deferred noexcept-spec parsing of a friend
+       declaration (PR114764) we compensate by treating the current
+       instantiation as dependent to avoid bogus name lookup failures in this
+       case (PR122668).  */
+    || (cp_noexcept_operand
+	&& CLASS_TYPE_P (scope)
+	&& TYPE_BEING_DEFINED (scope)
+	&& dependent_type_p (scope));
 }
 
 /* T is a SCOPE_REF.  Return whether it represents a non-static member of
