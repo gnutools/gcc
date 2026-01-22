@@ -4986,6 +4986,52 @@
   { operands[3] = GEN_INT (BITS_PER_WORD
 			   - exact_log2 (INTVAL (operands[3]) + 1)); })
 
+;; pr80770
+;; op1 reg = op 3 reg
+;;   vs REG_P (operands[1]) && REG_P (operands[3])
+;;      && REGNO (operands[1]) == REGNO (operands[3])
+;; relationship between mask and bit to be inverted
+;;   maybe check that the bit to be inverted is off in the mask? 
+
+
+;; check that specifically last bit is to be inverted?
+;;   && INTVAL (operands[4]) == 1
+;;   no instead check that binv mask is exactly one bit on
+
+;; check for mask?
+;;   small constant p: SMALL_OPERAND vs CONST_INT_P
+;;   not passing SMALL_OPERAND, passing CONST_INT_P
+;; to generate 255(new mask), I add op[2] + op[4]
+
+;; do I need to specify modes (DI for matching part, SI for code gen
+;;   as is on bugzilla)
+
+;; generalizations:
+;;   bit to be flipped will move around (op[4])
+;;   op[2] will also change accordingly
+;;   check that bit to be flipped is off in mask
+;;     op[4] + op[2] must equal 255
+
+;; registers are same
+;; op [4] - mask for flipped bit - must be one bit on
+;; bit to be flipped (op[4]) is off in op[2] mask - op[4] + op[2] = 255
+;; op[2] - mask - is a small const
+
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(ior:X (and:X (match_operand:X 1 "register_operand")
+		      (match_operand 2 "const_int_operand"))
+	       (and:X (not:X (match_operand:X 3 "register_operand"))
+		      (match_operand 4 "const_int_operand"))))]
+  "(operands[1] == operands[3]
+    && exact_log2 (INTVAL (operands[4])) >= 0
+    && (INTVAL (operands[4]) + INTVAL (operands[2])) == 255
+    && CONST_INT_P (operands[2])
+    && SMALL_OPERAND (INTVAL (operands[2])))"
+  [(set (match_dup 0) (xor:X (match_dup 1) (match_dup 4)))
+   (set (match_dup 0) (and:X (match_dup 0) (match_dup 3)))]
+  { operands[3] = GEN_INT (INTVAL (operands[2]) + INTVAL (operands[4])); })
+
 ;; Standard extensions and pattern for optimization
 (include "bitmanip.md")
 (include "crypto.md")
