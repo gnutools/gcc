@@ -3308,9 +3308,35 @@
   "TARGET_SFB_ALU || TARGET_XTHEADCONDMOV || TARGET_ZICOND_LIKE
    || TARGET_MOVCC || TARGET_XMIPSCMOV"
 {
+  /* Prior to reload if we are given a sub-word input, go ahead and
+     convert it (via sign extension) to WORD_MODE and use a low-part
+     extraction to pull the result out of a WORD_MODE temporary.  */
+  rtx orig_dest = NULL_RTX;
+  if (TARGET_64BIT && <MODE>mode == SImode)
+    {
+      if (!CONST_INT_P (operands[2]))
+        operands[2] = convert_modes (word_mode, SImode, operands[2], false);
+      if (!CONST_INT_P (operands[3]))
+        operands[3] = convert_modes (word_mode, SImode, operands[3], false);
+
+      orig_dest = operands[0];
+      operands[0] = gen_reg_rtx (word_mode);
+    }
+
   if (riscv_expand_conditional_move (operands[0], operands[1],
 				     operands[2], operands[3]))
-    DONE;
+    {
+      /* If ORIG_DEST is non-null, copy the temporary destination to
+         the real destination using a lowpart extraction.  */
+      if (orig_dest)
+        {
+          rtx t = gen_lowpart (SImode, operands[0]);
+          SUBREG_PROMOTED_VAR_P (t) = 1;
+          SUBREG_PROMOTED_SET (t, SRP_SIGNED);
+          emit_move_insn (orig_dest, t);
+        }
+      DONE;
+    }
   else
     FAIL;
 })
