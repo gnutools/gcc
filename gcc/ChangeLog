@@ -1,3 +1,716 @@
+2026-01-21  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	PR target/122781
+	* config/s390/vector.md: Don't emulate vec_cmpgtu for 128-bit
+	integers for VXE3.
+
+2026-01-20  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	PR rtl-optimization/123380
+	* combine.cc (gen_lowpart_for_combine): Don't try to create a
+	paradoxical SUBREG if it's going to be rejected by validate_subreg.
+
+2026-01-20  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	PR target/123626
+	* config/riscv/vector.md (vxrm_mode): Handle CALL_INSNs, which set
+	the attribute to the new VXRM_MODE_CLOBBER state.
+	* config/riscv/riscv.cc (riscv_emit_mode_set): Don't emit code when
+	VXRM's state changes to VXRM_MODE_CLOBBER.
+
+2026-01-20  Andrew MacLeod  <amacleod@redhat.com>
+
+	PR tree-optimization/123314
+	* gimple-range.cc (gimple_ranger::range_on_entry): Do not check
+	ranger cache for an SSA_NAME with no BB.
+	(gimple_ranger::prefill_stmt_dependencies): Stop filling
+	dependencies when an out-of IL name is encountered.
+
+2026-01-20  supers1ngular  <supers1ngular@baylibre.com>
+
+	* doc/extend.texi: Swap samp fields to fix overfull hbox.
+	* doc/invoke.texi: Ditto.
+
+2026-01-20  Giuseppe D'Angelo  <giuseppe.dangelo@kdab.com>
+
+	PR c++/123639
+	* doc/invoke.texi: Add @item for -Wsfinae-incomplete.
+
+2026-01-20  Nathan Sidwell  <nathan@acm.org>
+
+	* diagnostics/context.cc (context::action_after_output): Print
+	invocation on ICE.
+
+2026-01-20  David Malcolm  <dmalcolm@redhat.com>
+
+	PR sarif-replay/123056
+	* libsarifreplay.cc (struct embedded_link): Move decl earlier.
+	(sarif_replayer::append_embeddded_link): New.
+	(sarif_replayer::make_plain_text_within_result_message): Move the
+	link-replay logic to the above, and skip the link part of
+	intra-sarif links.
+
+2026-01-20  Georg-Johann Lay  <avr@gjlay.de>
+
+	* config/avr/avr.cc (TARGET_SETJMP_PRESERVES_NONVOLATILE_REGS_P):
+	Return true when WITH_AVRLIBC.
+
+2026-01-20  Alfie Richards  <alfie.richards@arm.com>
+
+	* config/aarch64/aarch64.md: Update comment.
+	* config/aarch64/aarch64-simd.md: Change comment to refer to
+	aarch64.md.
+	* config/aarch64/aarch64-sme.md: Likewise.
+	* config/aarch64/aarch64-sve.md: Likewise.
+	* config/aarch64/aarch64-sve2.md: Likewise.
+	* config/aarch64/aarch64-sve-builtins.def: Update comment.
+	* config/aarch64/aarch64-sve-builtins-base.def: Update to refer
+	to aarch64-sve-builtins.def.
+	* config/aarch64/aarch64-sve-builtins-sme.def: Likewise.
+	* config/aarch64/aarch64-sve-builtins-sve2.def: Likewise.
+
+2026-01-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/123724
+	* config/aarch64/aarch64.cc (aarch64_possible_by_lane_insn_p): Ignore
+	debug stmts.
+
+2026-01-20  Roger Sayle  <roger@nextmovesoftware.com>
+
+	PR rtl-optimization/123585
+	* simplify-rtx.cc (simplify_context::simplify_binary_operation_1)
+	<case VEC_SELECT>: Correct gcc_assert when optimizing a vec_select
+	of a vec_select with differing vector lengths.
+
+2026-01-20  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/123584
+	* config/aarch64/aarch64-sve2.md (@aarch64_sve2_xar<mode>): Use
+	aarch64_simd_rshift_imm predicate for rotate amount.
+
+2026-01-20  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/123584
+	* config/aarch64/aarch64-simd.md (aarch64_xarqv2di): Leave zero
+	rotate amounts as zero during expansion.
+	(*aarch64_xarqv2di_insn): Account for zero rotate amounts.  Print #
+	in rotate immediate.
+
+2026-01-20  Prachi Godbole  <pgodbole@nvidia.com>
+
+	* flag-types.h (enum lto_locality_heuristics): New enum.
+	* ipa-locality-cloning.cc (struct templ_info): New struct.
+	(struct locality_info): Add templ_info field.
+	(templ_hash_map): New hash_map.
+	(callee_templ_cmp): Ditto.
+	(static_profile_templ_cmp): Ditto.
+	(sort_templ_hashes_cmp): Ditto.
+	(order_templ_hashes): Ditto.
+	(locality_dc_template_p): Ditto.
+	(populate_templ_info): Ditto.
+	(create_locality_info): Call populate_templ_info.
+	(partition_callchain): Call callee_templ_cmp.
+	(locality_determine_static_order): Populate and sort templ_hash_map.
+	(locality_partition_and_clone): Handle lto_locality_heuristics.
+	(lc_execute): Initialize templ_hash_map.
+	* params.opt: New param.
+
+2026-01-20  Prachi Godbole  <pgodbole@nvidia.com>
+
+	* ipa-locality-cloning.cc (struct locality_callee_info): New struct.
+	(struct locality_info): Ditto.
+	(loc_infos): Ditto.
+	(get_locality_info): New function.
+	(sort_all_callees_default): Ditto.
+	(callee_default_cmp): Ditto.
+	(populate_callee_locality_info): Ditto.
+	(populate_caller_locality_info): Ditto.
+	(create_locality_info): Ditto.
+	(adjust_recursive_callees): Access node_to_clone by reference.
+	(inline_clones): Access node_to_clone and clone_to_node by reference.
+	(clone_node_as_needed): Ditto.
+	(accumulate_incoming_edge_frequency): Remove function.
+	(clone_node_p): New function.
+	(partition_callchain): Refactor the function.
+	(is_entry_node_p): Call local_p ().
+	(locality_determine_ipa_order): Call create_locality_info ().
+	(locality_determine_static_order): Ditto.
+	(locality_partition_and_clone): Update call to partition_callchain ()
+	according prototype.
+	(lc_execute): Allocate and free node_to_ch_info, node_to_clone,
+	clone_to_node.
+
+2026-01-20  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/123697
+	* gimple-fold.cc (gimple_fold_partial_load_store): Use an
+	empty CTOR for a zero else value in .MASK_LOAD_LANES.
+
+2026-01-20  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123729
+	* tree-vect-loop.cc (vect_create_epilog_for_reduction): Set
+	SSA_NAME_OCCURS_IN_ABNORMAL_PHI if the reduction flows
+	across an abnomal edge.
+
+2026-01-20  Richard Biener  <rguenther@suse.de>
+
+	* tree-phinodes.h (phi_arg_index_from_use): Use gphi *.
+	(phi_arg_edge_from_use): New helper composing
+	phi_arg_index_from_use and gimple_phi_arg_edge.
+
+2026-01-19  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	PR rtl-optimization/121787
+	* config/riscv/riscv-vsetvl.cc (pre_vsetvl): Adjust call to
+	loop_optimizer_init to avoid making CFG changes.
+
+2026-01-19  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* config/sol2.opt.urls: Regenerate.
+	* config/darwin.opt.urls: Likewise.
+	* config/dragonfly.opt.urls: Likewise.
+	* config/freebsd.opt.urls: Likewise.
+	* config/gnu-user.opt.urls: Likewise.
+	* config/hpux11.opt.urls: Likewise.
+	* config/i386/cygwin.opt.urls: Likewise.
+	* config/mingw/mingw.opt.urls: Likewise.
+	* config/netbsd.opt.urls: Likewise.
+	* config/openbsd.opt.urls: Likewise.
+	* config/rs6000/aix64.opt.urls: Likewise.
+	* config/rtems.opt.urls: Likewise.
+
+2026-01-19  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* config/sol2.h (CPP_SUBTARGET_SPEC): Remove.
+	* config/sol2.opt (pthread): Ignore.
+	(pthreads): Likewise.
+	* config/i386/sol2.h (CPP_SPEC): Remove.
+	(SUBTARGET_CPU_EXTRA_SPECS): Remove cpp_subtarget.
+	* doc/invoke.texi (Solaris 2 Options, pthread): Remove.
+
+2026-01-19  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+	    Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR target/113666
+	* fold-const-call.cc (fold_const_vec_extract): New function.
+	(fold_const_call, case CFN_VEC_EXTRACT): Call it.
+	* match.pd (IFN_VEC_EXTRACT): Handle extraction from a uniform
+	vector.
+
+2026-01-19  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123061
+	PR tree-optimization/123636
+	* tree-ssa-loop-im.cc (fill_always_executed_in_1): Change
+	outer-to-inner to inner-to-outer iteration.  Update inner
+	loop state only when always executed in an immediately
+	nested loop.
+
+2026-01-19  Tobias Burnus  <tburnus@baylibre.com>
+
+	* doc/install.texi (GCN): gfx9-4-generic requires LLVM 20.
+
+2026-01-19  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123602
+	* tree-ssa-pre.cc (find_or_generate_expression): Do not
+	generate references to abnormal SSA names.
+
+2026-01-19  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	* config.gcc: Deprecate -m31.
+	* doc/invoke.texi: Deprecate -m31.
+
+2026-01-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/123656
+	* tree-vect-generic.cc (expand_vector_mult): Fix up alg_sub_factor
+	handling.  Fix up formatting in alg_add_t_m2 handling.
+
+2026-01-19  Richard Biener  <rguenther@suse.de>
+
+	PR target/123603
+	* config/i386/i386.opt (-param=ix86-vect-compare-costs=): Add.
+	* config/i386/i386.cc (ix86_autovectorize_vector_modes): Honor it.
+	* doc/invoke.texi (ix86-vect-compare-costs): Document.
+
+2026-01-19  Lulu Cheng  <chenglulu@loongson.cn>
+
+	PR target/117575
+	* config/loongarch/lasx.md: Modify the range of operand1.
+
+2026-01-18  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/123645
+	* tree-ssa-phiopt.cc (cond_removal_in_builtin_zero_pattern): Rewrite
+	the canonicalization of the args code based on e1/e2 being edges into
+	the join block.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	* config/darwin.opt.urls: Regenerated.
+	* config/dragonfly.opt.urls: Regenerated.
+	* config/freebsd.opt.urls: Regenerated.
+	* config/gnu-user.opt.urls: Regenerated.
+	* config/hpux11.opt.urls: Regenerated.
+	* config/i386/cygwin.opt.urls: Regenerated.
+	* config/i386/i386.opt.urls: Regenerated.
+	* config/mingw/mingw.opt.urls: Regenerated.
+	* config/nds32/nds32.opt.urls: Regenerated.
+	* config/netbsd.opt.urls: Regenerated.
+	* config/nvptx/nvptx.opt.urls: Regenerated.
+	* config/openbsd.opt.urls: Regenerated.
+	* config/pru/pru.opt.urls: Regenerated.
+	* config/riscv/riscv.opt.urls: Regenerated.
+	* config/rl78/rl78.opt.urls: Regenerated.
+	* config/rs6000/aix64.opt.urls: Regenerated.
+	* config/rs6000/rs6000.opt.urls: Regenerated.
+	* config/rs6000/sysv4.opt.urls: Regenerated.
+	* config/rtems.opt.urls: Regenerated.
+	* config/rx/rx.opt.urls: Regenerated.
+	* config/s390/s390.opt.urls: Regenerated.
+	* config/s390/tpf.opt.urls: Regenerated.
+	* config/sh/sh.opt.urls: Regenerated.
+	* config/sol2.opt.urls: Regenerated.
+	* config/sparc/sparc.opt.urls: Regenerated.
+	* config/v850/v850.opt.urls: Regenerated.
+	* config/vax/vax.opt.urls: Regenerated.
+	* config/vxworks.opt.urls: Regenerated.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/nds32/nds32.opt: Tidy documentation strings.
+	(mbig-endian, mlittle-endian): Remove "Undocumented" flag since
+	these are, in fact, documented.
+	* doc/invoke.texi (Option Summary) <NDS32 Options>: Document
+	-EB, -EL, -mabi, -mfloat-abi, -malways-align, -malign-functions,
+	-mfp-as-gp, -mext-dsp, -mext-fpu-fma, -mext-fpu-sp, -mext-fpu-dp,
+	-misr-vector-size, -misr-secure, -mcpu, -mconfig-fpu,
+	-mconfig-mul, -mconfig-register-ports, -mrelax-hint,
+	-msched-prolog-epilog, -mno-ret-in-naked-func, -malways-save-lp,
+	-munaligned-access, and -minline-asm-r15.
+	(NDS32 Options): Likewise.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/xtensa/uclinux.opt (elf2flt, elf2flt=): Mark as Undocumented.
+	* config/xtensa/xtensa.opt (mlra): Likewise.
+	* doc/invoke.texi (Option Summary) <Xtensa Options>: Remove
+	redundant negative forms plus obsolete -mfused-madd option.
+	(Xtensa Options): Likewise undocument -mfused-madd.  List
+	negative form of -mforce-no-pic.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/i386/i386.opt (malign-functions): Mark undocumented/unused
+	option as Undocumented.
+	(malign-jumps): Likewise.
+	(malign-loops): Likewise.
+	(mbranch-cost, mforce-drap): Mark undocumented options likely
+	intended for developer use only as Undocumented.
+	(mstv): Correct sense of option in doc string.
+	(mavx512cd): Remove extra "and" from doc string.
+	(mavx512dq): Likewise.
+	(mavx512bw): Likewise.
+	(mavx512vl): Likewise.
+	(mavx512ifma): Likewise.
+	(mavx512bvmi): Likewise.
+	* doc/invoke.texi (Options Summary) <x86 Options>: Add
+	missing options.  Correct whitespace and re-wrap long lines.
+	Remove -mthreads which is now classed as a MinGW option.
+	(Cygwin and MinGW Options): Replace existing documentation of
+	-mthreads with the more detailed text moved from x86 Options.
+	(x86 Options): Move introductory text about ISA extensions before
+	the individual options instead of after.  Document them all
+	individually instead of as a group, and move immediately after
+	-march/-mtune documentation.  Rewrap long lines.  Document
+	interaction between SSE and AVX with -mfpmath=sse.  Move -masm
+	documentation farther down instead of grouped with options
+	affecting floating-point behavior.  Add missing @opindex
+	entries.  Rewrite the -mdaz-ftz documentation.  Document
+	-mstack-arg-probe.  Copy-editing.  Document -mstv.  Remove
+	obsolete warning about -mskip-rax-setup in very old GCC versions.
+	Rewrite the -mapx-inline-asm-use-gpr32 documentation.
+	Document -mgather and -mscatter.  Split -miamcu documentation
+	from -m32/-m64/etc.  Rewrite -munroll-only-small-loops documentation.
+	Document -mdispatch-scheduler.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* doc/invoke.texi (Option Summary) <VxWorks Options>: Add -mvthreads.
+	(VxWorks Options): Likewise.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/vms/vms.opt (map): Mark as Undocumented.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/visium/visium.opt (menable-trampolines): Mark Undocumented.
+	* doc/invoke.texi (Options Summary) <Visium Options>: Remove
+	redundant -mno- option.
+	(Visium Options): Copy-editing to put in active voice and add markup.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/vax/elf.opt (mno-asm-pic): Mark as Undocumented.
+	* doc/invoke.texi (Option Summary) <VAX Options>: Add
+	-mvaxc-alignment and -mqmath.
+	(VAX Options): Likewise.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/v850/v850.opt: Copy-edit documentation strings.
+	(mdebug): Make Undocumented.
+	(mno-strict-align): Add RejectNegative.
+	(mUS-bit-set): Make Undocumented.
+	* doc/invoke.texi (Option Summary) <V850 Options>: Remove
+	redundant -mno- forms from list.  Add missing entries.
+	(V850 Options): Add @opindex for negative forms.  Combine
+	entries for -mapp-regs and -mno-app-regs.  Document -msmall-sld,
+	-mno-strict-align, and -mjump-tables-in-data-section.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* doc/invoke.texi (Option Summary) <SPARC Options>: Remove
+	redundant -mno- forms from the list.  Add -mptr32 and -mptr64.
+	(SPARC Options): Document -mptr32 and -mptr64.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* doc/invoke.texi (Option Summary) <Solaris 2 Options>:
+	Remove redundant negative option forms from list.  List both
+	-pthread and -pthreads.
+	(Solaris 2 Options): Index and list the negative forms here.
+	Combine the two @table environments.  Document both -pthread
+	and -pthreads.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/sh/sh.opt (mhitachi, mpadstruct): Mark obsolete options
+	as Undocumented.
+	* doc/invoke.texi (Option Summary) <SH Options>: Add missing
+	entries for -m4-* and other options.  Remove redundant -mno- entries
+	and obsolete options.  Add missing options -mfdpic, -mlra.
+	(SH Options): Combine entries for -mrenesas and -mno-renesas.
+	Index and list -mno- forms for other options that have them.
+	Remove documentation for obsolete options -mpadstruct and
+	-mfused-madd.  Add documentation for -mlra.  Copy-edit and wrap long
+	lines throughout the section.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/s390/s390.opt (mbranch-cost): Mark as Undocumented.
+	* config/s390/tpf.opt (mtpf-trace-hook-prologue-check=): Likewise.
+	(mtpf-trace-hook-prologue-target=): Likewise.
+	(mtpf-trace-hook-epilogue-check=): Likewise.
+	(mtpf-trace-hook-epilogue-target=): Likewise.
+	* doc/invoke.texi (Option Summary) <S/390 and zSeries Options>:
+	Remove redundant -mno- entries and add missing options.  Make
+	entries with arguments match the syntax in the main documentation.
+	(S/390 and zSeries Options): Light copy-editing.  Wrap overly-long
+	lines.  Add missing @opindex entries.  Add documention for
+	-mmain, -mno-pic-data-is-text-relative, -mindirect-branch,
+	-mindirect-branch-jump, -mindirect-branch-call,
+	-mfunction-return, -mfunction-return-mem, -mfunction-return-reg,
+	-mindirect-branch-table, -mfentry, -mrecord-mcount, -mnop-mcount,
+	-mpreserve-args, and -munaligned-symbols.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/rx/rx.opt (mgcc-abi, mrx-abi): Mark as Undocumented.
+	* doc/invoke.texi (Option Summary) <RX Options>: Remove redundant
+	entries for -mno-forms, correct name of -msmall-data-limit option,
+	add -mlra, clean up formatting.
+	(RX Options): Minor copy-editing, add -mlra.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	* config/rs6000/darwin.opt (Waltivec-long-deprecated): Mark as
+	Undocumented.
+	(faltivec, ffix-and-continue, findirect-data): Likewise.
+	* config/rs6000/rs6000.opt (mvrsave): Likewise.
+	* config/rs6000/sysv4.opt (mno-toc, mtoc, mno-traceback): Likewise.
+	(mshlib, mnewlib): Likewise.
+	* doc/invoke.texi (Option Summary) <RS/6000 and PowerPC Options>:
+	Document only one form of each option.  Add missing options.
+	Correct whitespace.
+	(RS/6000 and PowerPC Options): Separately document -mpowerpc-gpopt,
+	-mpowerpc-gfxopt, -mpowerpc64, -mmfcrf, -mpopcntb, -mpopcntd,
+	-mfprnd, -mcmpb, and -mhard-dfp and move their documentation after
+	-mcpu=.  Remove documentation for -mtoc which is unimplemented.
+	Add missing @opindex entries.  Minor copy-editing and whitespace
+	fixes.
+
+2026-01-17  Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR other/122243
+	PR target/71340
+	* doc/invoke.texi (Option Summary) <RL78 Options>: Remove
+	never-implemented -m64bit-doubles and -m32bit-doubles options.
+	Add missing entries for -mrelax, -mes0, -mmul=rl78, -mcpu=rl78,
+	and -mrl78.
+	(RL78 Options): Likewise.  Add missing @opindex entries.
+	Light copy-editing.
+
+2026-01-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/123513
+	* tree.cc (valid_new_delete_pair_p): If new_name[3] or delete_name[3]
+	is 'I', return false with *pcertain set to false rather than true.
+
+2026-01-16  Kugan Vivekanandarajah  <kvivekananda@nvidia.com>
+
+	* hierarchical_discriminator.cc (init_copyid_allocator): Walks the function
+	body to find existing max copyids per location.
+	(record_existing_copyid): New.
+
+2026-01-16  Alice Carlotti  <alice.carlotti@arm.com>
+
+	PR target/123460
+	* config.gcc: Accept hyphens in aarch64 --with-arch extensions.
+
+2026-01-16  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/123145
+	* timevar.def (TV_ANALYZER_SUPERGRAPH): Rename to...
+	(TV_ANALYZER_SUPERGRAPH_CREATION): ...this.
+	(TV_ANALYZER_SUPERGRAPH_FIXUP_LOCATIONS): New.
+	(TV_ANALYZER_SUPERGRAPH_SIMPLIFY): New.
+	(TV_ANALYZER_SUPERGRAPH_SORTING): New.
+
+2026-01-16  Vladimir N. Makarov  <vmakarov@redhat.com>
+
+	PR target/123092
+	* lra-constraints.cc (lra_constraints): Push insn on processing
+	stack after equivalence substitution.
+
+2026-01-16  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR pch/110746
+	* config/host-freebsd.cc: New file.
+	* config.host <*-*-freebsd*>: Use it.
+	* config/x-freebsd: New file.
+
+2026-01-16  Martin Jambor  <mjambor@suse.cz>
+
+	PR ipa/123412
+	* ipa-cp.cc (devirtualization_time_bonus): Do add the indirect
+	edge frequency at least once even for targets which cannot be
+	inlined.
+
+2026-01-16  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/123607
+	* config/i386/i386.md (movhf_mask): Change constraint on
+	match_operand 2's second alternative from 0C to 0.
+
+2026-01-16  Lulu Cheng  <chenglulu@loongson.cn>
+
+	PR target/123521
+	* config/loongarch/loongarch.cc
+	(loongarch_expand_vector_init_same): Fixed a bug in the
+	vector initialization section..
+
+2026-01-16  David Guillen Fandos  <david@davidgf.net>
+
+	* config/mips/mips.h (ISA_HAS_FMIN_FMAX): Add R5900;
+	note that, R5900 is not IEEE754 fully compatiable.
+
+2026-01-15  Marek Polacek  <polacek@redhat.com>
+	    Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120775
+	PR c++/123081
+	PR c++/122634
+	* attribs.cc (attribute_value_equal): Return false if either attribute
+	is ATTR_UNIQUE_VALUE_P.
+	(merge_attributes): Handle lists with ATTR_UNIQUE_VALUE_P values.
+	* doc/invoke.texi: Document -freflection.
+	* dwarf2out.cc (is_base_type) <case default>: Check
+	TREE_CODE >= LAST_AND_UNUSED_TREE_CODE instead of is_cxx_auto.
+	(gen_type_die_with_usage): For TREE_CODE >= LAST_AND_UNUSED_TREE_CODE
+	trees use use DW_TAG_unspecified_type.
+	* tree-core.h (struct tree_base): Update a comment.
+	* tree.h (ATTR_UNIQUE_VALUE_P): Define.
+	(BINFO_BASE_ACCESSES): Update the comment.
+
+2026-01-15  Peter Damianov  <peter0x44@disroot.org>
+
+	PR driver/123504
+	* config/i386/cygming.h (EXTRA_DEFAULT_COMPILERS): Comment out
+	.res spec to allow COFF files with .res extension to pass
+	through to the linker.
+	* config/aarch64/cygming.h (EXTRA_DEFAULT_COMPILERS): Likewise.
+
+2026-01-15  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	* ira-lives.cc (ira_implicitly_set_insn_hard_regs): Honor hard
+	register constraints.
+	* ira.cc (ira_setup_alts): Ditto.
+
+2026-01-15  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	* doc/extend.texi: Document current limitations of hard register
+	constraints.
+	* stmt.cc (parse_output_constraint): Reject multiple hard
+	register constraints or a combination of hard register
+	constraints and regular register constraints in one alternative.
+	(parse_input_constraint): Ditto.
+
+2026-01-15  Alfie Richards  <alfie.richards@arm.com>
+
+	* config/aarch64/aarch64-simd.md: Add comment.
+	* config/aarch64/aarch64-sme.md: Likewise.
+	* config/aarch64/aarch64-sve-builtins-base.def: Likewise.
+	* config/aarch64/aarch64-sve-builtins-sme.def: Likewise.
+	* config/aarch64/aarch64-sve-builtins-sve2.def: Likewise.
+	* config/aarch64/aarch64-sve-builtins.def: Likewise.
+	* config/aarch64/aarch64-sve.md: Likewise.
+	* config/aarch64/aarch64-sve2.md: Likewise.
+	* config/aarch64/aarch64.md: Likewise.
+
+2026-01-15  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* config/sparc/sparc.h (TARGET_SUN_TLS): Remove.
+	* config/sparc/sol2.h (TARGET_SUN_TLS): Likewise.
+	* config/sparc/sparc.cc (TARGET_ASM_OUTPUT_DWARF_DTPREL): Guard
+	with HAVE_GNU_AS.
+	(sparc_tls_got): Guard with !HAVE_GNU_AS.
+	(sparc_legitimize_tls_address): Likewise.
+	* config/sparc/sparc.md ("tls_delay_slot"): Likewise.
+	("@tie_add<P:mode>"): Likewise.
+
+2026-01-15  Jakub Jelinek  <jakub@redhat.com>
+
+	PR debug/121045
+	* tree-pretty-print.h (dump_location): Add new dump_flags_t
+	argument defaulted to TDF_NONE.
+	* tree-pretty-print.cc (dump_location): Add flags argument.  Don't
+	print discriminator if TDF_COMPARE_DEBUG bit is set in flags.
+	(dump_block_node, dump_generic_node): Pass through flags to
+	dump_location.
+	* gimple-pretty-print.cc (dump_gimple_phi, pp_gimple_stmt_1,
+	dump_implicit_edges): Likewise.
+	(gimple_dump_bb_as_sarif_properties): Pass dump_flags to
+	dump_location.
+	* print-rtl.cc (rtx_writer::print_rtx_operand_code_L): If dump_flags
+	has TDF_COMPARE_DEBUG bit set, don't print discriminators.
+
+2026-01-15  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* config/i386/sol2.h [!HAVE_GNU_AS] (ASM_CPU32_DEFAULT_SPEC): Use -m32.
+	(ASM_CPU64_DEFAULT_SPEC): Use -m64.
+
+2026-01-15  Josef Melcr  <josef.melcr@suse.com>
+
+	PR ipa/122852
+	* cgraph.cc (cgraph_node::verify_node): Verify that callback
+	edges are unreachable when the carrying edge is unreachable.
+	* ipa-fnsummary.cc (redirect_to_unreachable): Redirect callback
+	edges to unreachable when redirecting the carrying edge.
+
+2026-01-15  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* configure.ac (gcc_cv_as_sparc_ua_pcrel): Remove.
+	(gcc_cv_as_sparc_ua_pcrel_hidden): Likewise.
+	* configure: Regenerate.
+	* config.in: Regenerate.
+	* config/sparc/sparc.h (ASM_PREFERRED_EH_DATA_FORMAT): Remove
+	!HAVE_AS_SPARC_UA_PCREL, !HAVE_AS_SPARC_UA_PCREL_HIDDEN support.
+	* config/sparc/sol2.h (ASM_PREFERRED_EH_DATA_FORMAT): Remove.
+	* config/sparc/sparc.cc (TARGET_ASM_OUTPUT_DWARF_DTPREL): Remove
+	HAVE_AS_SPARC_UA_PCREL guard.
+
+2026-01-15  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* config/sparc/sparc.h (TARGET_TLS): Define as HAVE_AS_TLS.
+	Update comment.
+	(TARGET_SUN_TLS): Define as 0.
+	(TARGET_GNU_TLS): Remove.
+	* config/sparc/freebsd.h (TARGET_SUN_TLS): Remove.
+	(TARGET_GNU_TLS): Remove.
+	* config/sparc/linux.h: Likewise.
+	* config/sparc/linux64.h: Likewise.
+	* config/sparc/sol2.h (TARGET_SUN_TLS): Redefine as 1.
+	Guard with HAVE_AS_TLS && !HAVE_GNU_AS.
+	(TARGET_GNU_TLS): Remove.
+	* config/sparc/sparc.cc (TARGET_ASM_OUTPUT_DWARF_DTPREL): Use
+	!TARGET_SUN_TLS in guard.
+	with !TARGET_SUN_TLS only.
+	* config/sparc/sparc.md ("tls_delay_slot"): Guard with
+	!TARGET_SUN_TLS.
+
+2026-01-15  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR target/38118
+	* config/sparc/sol2.h (ASM_OUTPUT_ALIGNED_COMMON): Remove.
+
+2026-01-15  Kugan Vivekanandarajah  <kvivekananda@nvidia.com>
+
+	* cfgloopmanip.cc (duplicate_loop_body_to_header_edge): Assign
+	hierarchical discriminators for loop unrolling.
+	* cfgloopmanip.h (DLTHE_RECORD_HIERARCHICAL_DISCRIMINATOR): New flag.
+	* tree-ssa-loop-ivcanon.cc (try_unroll_loop_completely): Pass flag
+	to enable hierarchical discriminator assignment.
+	(try_peel_loop): Likewise.
+
+2026-01-15  Kugan Vivekanandarajah  <kvivekananda@nvidia.com>
+
+	* gimple-loop-versioning.cc (loop_versioning::version_loop): Assign
+	copyid discriminators to distinguish different loop versions.
+
+2026-01-15  Kugan Vivekanandarajah  <kvivekananda@nvidia.com>
+
+	* tree-vect-loop-manip.cc (vect_loop_versioning): Assign copyid
+	discriminators for vectorized and scalar loop versions.
+	* tree-vect-loop.cc (vect_transform_loop): Assign copyid
+	discriminators for vectorized and scalar loop versions.
+
+2026-01-15  Kugan Vivekanandarajah  <kvivekananda@nvidia.com>
+
+	* Makefile.in: Add hierarchical_discriminator.o to OBJS.
+	* hierarchical_discriminator.cc: New file.
+	* hierarchical_discriminator.h: New file.
+	* function.h (copyid_alloc): New.
+	* input.cc (location_with_discriminator_components): New function.
+	(get_discriminator_components_from_loc): Likewise.
+	* input.h (DISCR_BASE_BITS): New constant.
+	(DISCR_MULTIPLICITY_BITS): Likewise.
+	(DISCR_COPYID_BITS): Likewise.
+	(DISCR_UNUSED_BITS): Likewise.
+	(DISCR_BASE_MASK): Likewise.
+	(DISCR_MULTIPLICITY_MASK): Likewise.
+	(DISCR_COPYID_MASK): Likewise.
+	(DISCR_BASE_SHIFT): Likewise.
+	(DISCR_MULTIPLICITY_SHIFT): Likewise.
+	(DISCR_COPYID_SHIFT): Likewise.
+	(DISCR_BASE_MAX): Likewise.
+	(DISCR_MULTIPLICITY_MAX): Likewise.
+	(DISCR_COPYID_MAX): Likewise.
+	(location_with_discriminator_components): New function declaration.
+	(get_discriminator_components_from_loc): Likewise.
+
+2026-01-15  DengJianbo  <dengjianbo@loongson.cn>
+
+	* config/loongarch/loongarch.md: Remove condition in template
+	movdi_symbolic_off64.
+
 2026-01-14  Peter Bergner  <bergner@tenstorrent.com>
 
 	PR target/123092

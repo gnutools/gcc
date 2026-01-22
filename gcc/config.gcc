@@ -292,6 +292,15 @@ case ${target} in
     fi;;
 esac
 
+case ${target} in
+  s390-*)
+    if test "x$enable_obsolete" != xyes; then
+      echo "*** Configuration ${target} is deprecated and will be removed." >&2
+      echo "*** Specify --enable-obsolete to build it anyway." >&2
+      exit 1
+    fi;;
+esac
+
 # Unsupported targets list.  Do not put an entry in this list unless
 # it would otherwise be caught by a more permissive pattern.  The list
 # should be in alphabetical order.
@@ -4394,7 +4403,7 @@ case "${target}" in
 				  echo "Unknown extension used in --with-$which=$val" 1>&2
 				  exit 1
 				fi
-				ext_val=`echo $ext_val | sed -E -e 's/[a-z0-9]+//'`
+				ext_val=`echo $ext_val | sed -E -e 's/[a-z0-9-]+//'`
 			  done
 
 			  true

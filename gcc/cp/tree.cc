@@ -2782,7 +2782,7 @@ maybe_get_fns (tree from)
   if (OVL_P (from))
     return from;
 
-  return NULL;
+  return NULL_TREE;
 }
 
 /* FROM refers to an overload set.  Return that set (or die).  */
@@ -2802,6 +2802,17 @@ tree
 get_first_fn (tree from)
 {
   return OVL_FIRST (get_fns (from));
+}
+
+/* Return the first function of the overload set FROM refers to if
+   there is an overload set, otherwise return FROM unchanged.  */
+
+tree
+maybe_get_first_fn (tree from)
+{
+  if (tree res = maybe_get_fns (from))
+    return OVL_FIRST (res);
+  return from;
 }
 
 /* Return the scope where the overloaded functions OVL were found.  */
@@ -3849,7 +3860,8 @@ build_min_non_dep_op_overload (enum tree_code op,
 
 	  if (TREE_CODE (non_dep) != CALL_EXPR)
 	    {
-	      gcc_checking_assert (COMPARISON_CLASS_P (non_dep));
+	      gcc_checking_assert (COMPARISON_CLASS_P (non_dep)
+				   || TREE_CODE (non_dep) == SPACESHIP_EXPR);
 	      if (reversed)
 		std::swap (op0, op1);
 	      return build_min_non_dep (TREE_CODE (non_dep), non_dep, op0, op1);
@@ -6440,10 +6452,13 @@ decl_linkage (tree decl)
     {
       /* But this could be a typedef name for linkage purposes, in which
 	 case we're interested in the linkage of the main decl.  */
-      if (decl == TYPE_NAME (TYPE_MAIN_VARIANT (TREE_TYPE (decl)))
-	  /* Likewise for the injected-class-name.  */
-	  || DECL_SELF_REFERENCE_P (decl))
-	decl = TYPE_MAIN_DECL (TREE_TYPE (decl));
+      tree type = TREE_TYPE (decl);
+      if (type == error_mark_node)
+	return lk_none;
+      else if (decl == TYPE_NAME (TYPE_MAIN_VARIANT (type))
+	       /* Likewise for the injected-class-name.  */
+	       || DECL_SELF_REFERENCE_P (decl))
+	decl = TYPE_MAIN_DECL (type);
       else
 	return lk_none;
     }

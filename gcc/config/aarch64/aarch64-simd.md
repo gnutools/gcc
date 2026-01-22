@@ -18,23 +18,7 @@
 ;; along with GCC; see the file COPYING3.  If not see
 ;; <http://www.gnu.org/licenses/>.
 
-;; Code organisation:
-;
-;; The lines of is an instruction is aarch64, simd, sve, sve2, or sme are
-;; a little blurry.
-;;
-;; Therefore code is organised by the following rough principles:
-;;
-;; - aarch64.md: For shared parts of the architecture (such as defining
-;;     registers and constants) and for instructions that operate on non-SIMD
-;;     registers.
-;; - aarch64-simd.md: For instructions that operate on non-scaling SIMD
-;;     registers.
-;; - aarch64-sve.md for SVE instructions that are pre SVE2.
-;; - aarch64-sme.md for any scalable SIMD instruction that is incompatible with
-;;     non-streaming mode. This usually means it uses the ZA or ZT register.
-;; - aarch64-sve2.md for any scalable SIMD instruction that either is
-;;     streaming compatible, or theoretically could be later.
+;; Code organization: See block comment at the top of aarch64.md.
 
 ;; The following define_subst rules are used to produce patterns representing
 ;; the implicit zeroing effect of 64-bit Advanced SIMD operations, in effect
@@ -9579,9 +9563,13 @@
 	 (match_operand:V2DI 3 "aarch64_simd_lshift_imm" "Dl")))]
   "TARGET_SHA3"
   {
+    /* Translate the RTL left-rotate amount into the assembly right-rotate
+       amount.  Modulo by 64 to ensure that a left-rotate of 0 is emitted
+       as a right-rotate of 0 as accepted by the assembly instruction.  */
     operands[3]
-      = GEN_INT (64 - INTVAL (unwrap_const_vec_duplicate (operands[3])));
-    return "xar\\t%0.2d, %1.2d, %2.2d, %3";
+      = GEN_INT ((64 - INTVAL (unwrap_const_vec_duplicate (operands[3])))
+		  % 64);
+    return "xar\\t%0.2d, %1.2d, %2.2d, #%3";
   }
   [(set_attr "type" "crypto_sha3")]
 )
@@ -9601,9 +9589,12 @@
 	 (match_operand:SI 3 "aarch64_simd_shift_imm_di")))]
   "TARGET_SHA3"
   {
-    operands[3]
-      = aarch64_simd_gen_const_vector_dup (V2DImode,
-					   64 - INTVAL (operands[3]));
+      operands[3]
+        = aarch64_simd_gen_const_vector_dup (V2DImode,
+					     /* In the edge case of a 0 rotate
+						amount leave as is.  */
+					     operands[3] == CONST0_RTX (SImode)
+					       ? 0 : 64 - INTVAL (operands[3]));
   }
 )
 

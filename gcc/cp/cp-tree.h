@@ -8638,6 +8638,7 @@ extern tree call_expr_dependent_name		(tree);
 extern tree maybe_get_fns			(tree) ATTRIBUTE_PURE;
 extern tree get_fns				(tree) ATTRIBUTE_PURE;
 extern tree get_first_fn			(tree) ATTRIBUTE_PURE;
+extern tree maybe_get_first_fn			(tree) ATTRIBUTE_PURE;
 extern tree ovl_scope				(tree);
 extern const char *cxx_printable_name		(tree, int);
 extern const char *cxx_printable_name_translate	(tree, int);
@@ -9334,7 +9335,7 @@ extern void coro_set_ramp_function		(tree, tree);
 /* In reflect.cc */
 extern void init_reflection ();
 extern bool metafunction_p (tree) ATTRIBUTE_PURE;
-extern tree direct_base_parent (tree) ATTRIBUTE_PURE;
+extern tree direct_base_derived (tree) ATTRIBUTE_PURE;
 extern tree process_metafunction (const constexpr_ctx *, tree, tree,
 				  bool *, bool *, tree *);
 extern tree get_reflection (location_t, tree, reflect_kind = REFLECT_UNDEF);

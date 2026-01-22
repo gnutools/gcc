@@ -6287,8 +6287,17 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
           scalar_result = scalar_results[k];
           FOR_EACH_IMM_USE_STMT (use_stmt, imm_iter, orig_name)
 	    {
+	      gphi *use_phi = dyn_cast <gphi *> (use_stmt);
 	      FOR_EACH_IMM_USE_ON_STMT (use_p, imm_iter)
-		SET_USE (use_p, scalar_result);
+		{
+		  if (use_phi
+		      && (phi_arg_edge_from_use (use_p)->flags & EDGE_ABNORMAL))
+		    {
+		      gcc_assert (SSA_NAME_OCCURS_IN_ABNORMAL_PHI (orig_name));
+		      SSA_NAME_OCCURS_IN_ABNORMAL_PHI (scalar_result) = 1;
+		    }
+		  SET_USE (use_p, scalar_result);
+		}
 	      update_stmt (use_stmt);
 	    }
         }
@@ -8224,11 +8233,8 @@ vect_transform_reduction (loop_vec_info loop_vinfo,
 						 vop[2], vop[reduc_index]);
 	    }
 	  else
-	    {
-	      gcc_assert (code.is_tree_code ());
-	      call = gimple_build_call_internal (cond_fn, 4, mask, vop[0],
-						 vop[1], vop[reduc_index]);
-	    }
+	    call = gimple_build_call_internal (cond_fn, 4, mask, vop[0],
+					       vop[1], vop[reduc_index]);
 	  new_temp = make_ssa_name (vec_dest, call);
 	  gimple_call_set_lhs (call, new_temp);
 	  gimple_call_set_nothrow (call, true);

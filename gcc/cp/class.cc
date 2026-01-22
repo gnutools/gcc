@@ -347,7 +347,10 @@ build_base_path (enum tree_code code,
 		 || processing_template_decl
 		 || in_template_context);
 
-  fixed_type_p = resolves_to_fixed_type_p (expr, &nonnull);
+  if (!uneval)
+    fixed_type_p = resolves_to_fixed_type_p (expr, &nonnull);
+  else
+    fixed_type_p = 0;
 
   /* Do we need to look in the vtable for the real offset?  */
   virtual_access = (v_binfo && fixed_type_p <= 0);
@@ -5723,7 +5726,7 @@ in_class_defaulted_default_constructor (tree t)
 }
 
 /* Returns true iff FN is a user-provided function, i.e. user-declared
-   and not defaulted at its first declaration.  */
+   and not explicitly defaulted or deleted on its first declaration.  */
 
 bool
 user_provided_p (tree fn)
@@ -5731,7 +5734,12 @@ user_provided_p (tree fn)
   fn = STRIP_TEMPLATE (fn);
   return (!DECL_ARTIFICIAL (fn)
 	  && !(DECL_INITIALIZED_IN_CLASS_P (fn)
-	       && (DECL_DEFAULTED_FN (fn) || DECL_DELETED_FN (fn))));
+	       && (DECL_DEFAULTED_FN (fn) || DECL_DELETED_FN (fn)))
+	  /* At namespace scope,
+	      void f () = delete;
+	    is *not* user-provided (and any function deleted after its first
+	    declaration is ill-formed).  */
+	  && !(DECL_NAMESPACE_SCOPE_P (fn) && DECL_DELETED_FN (fn)));
 }
 
 /* Returns true iff class T has a user-provided constructor.  */
@@ -8347,6 +8355,11 @@ finish_struct (tree t, tree attributes)
       /* Lambdas are defined by the LAMBDA_EXPR.  */
       && !LAMBDA_TYPE_P (t))
     add_stmt (build_min (TAG_DEFN, t));
+
+  /* Lambdas will be keyed by their LAMBDA_TYPE_EXTRA_SCOPE when that
+     gets set; other local types might need keying anyway though.  */
+  if (at_function_scope_p () && !LAMBDA_TYPE_P (t))
+    maybe_key_decl (current_scope (), TYPE_NAME (t));
 
   return t;
 }

@@ -3721,7 +3721,7 @@ vectorizable_call (vec_info *vinfo,
 
       if (loop_vinfo
 	  && LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo)
-	  && (reduc_idx >= 0 || mask_opno >= 0))
+	  && (reduc_idx >= 0 || could_trap || mask_opno >= 0))
 	{
 	  if (reduc_idx >= 0
 	      && (cond_fn == IFN_LAST
@@ -8694,7 +8694,7 @@ vectorizable_store (vec_info *vinfo,
 					    memory_access_type, loop_lens);
     }
 
-  if (mask_node && !costing_p)
+  if (loop_vinfo && mask_node && !costing_p)
     LOOP_VINFO_HAS_MASK_STORE (loop_vinfo) = true;
 
   /* In case the vectorization factor (VF) is bigger than the number
