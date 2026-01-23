@@ -1,3 +1,45 @@
+2026-01-22  Richard Earnshaw  <rearnsha@arm.com>
+
+	Backported from master:
+	2026-01-22  Richard Earnshaw  <rearnsha@arm.com>
+
+	PR target/123742
+	* gcc.target/arm/neon-smax16.c: New test.
+	* gcc.target/arm/neon-smin16.c: New test.
+
+2026-01-21  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/generic_inst16.adb: New test.
+	* gnat.dg/generic_inst16_pkg.ads: New helper.
+	* gnat.dg/generic_inst16_pkg-child.ads: Likewise.
+	* gnat.dg/generic_inst16_pkg-child-grandchild.ads: Likewise.
+	* gnat.dg/generic_inst16_proc.ads: Likewise.
+	* gnat.dg/generic_inst16_proc.adb: Likewise.
+
+2026-01-20  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	Backported from master:
+	2025-12-23  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	PR c++/122550
+	* g++.dg/cpp2a/concepts-friend18.C: New test.
+	* g++.dg/cpp2a/concepts-friend18a.C: New test.
+
+2026-01-20  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	Backported from master:
+	2025-12-18  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+		    Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122070
+	* g++.dg/cpp23/class-deduction-inherited10.C: New test.
+	* g++.dg/cpp23/class-deduction-inherited9.C: New test.
+
+2026-01-20  Vladimir N. Makarov  <vmakarov@redhat.com>
+
+	PR rtl-optimization/122215
+	* sparseset.supp: New.
+
 2026-01-19  Vladimir N. Makarov  <vmakarov@redhat.com>
 
 	Backported from master:
