@@ -7206,7 +7206,7 @@ can_extract_member_or_function_p (tree T, tree r, reflect_kind kind)
       tree F = TREE_TYPE (r);
       F = build_pointer_type (F);
       F = build_ptrmemfunc_type (F);
-      if (same_type_p (T, F))
+      if (same_type_p (T, F) || fnptr_conv_p (T, F))
 	return true;
       return false;
     }
@@ -7214,7 +7214,7 @@ can_extract_member_or_function_p (tree T, tree r, reflect_kind kind)
     {
       tree F = TREE_TYPE (r);
       F = build_pointer_type (F);
-      if (same_type_p (T, F))
+      if (same_type_p (T, F) || fnptr_conv_p (T, F))
 	return true;
       return false;
     }
@@ -7250,7 +7250,10 @@ extract_member_or_function (location_t loc, const constexpr_ctx *ctx,
 
   const tsubst_flags_t complain = complain_flags (ctx);
   if (POINTER_TYPE_P (T))
-    return cp_build_addr_expr (r, complain);
+    {
+      r = cp_build_addr_expr (r, complain);
+      return perform_implicit_conversion (T, r, complain);
+    }
   else
     {
       if (!mark_used (r, complain))
@@ -8392,20 +8395,21 @@ check_splice_expr (location_t loc, location_t start_loc, tree t,
      -- a local entity such that there is a lambda scope that intervenes
      between the expression and the point at which S was introduced"
      This also checks ODR violations (reflect/odr1.C).  */
-  if (outer_automatic_var_p (t)
-      && process_outer_var_ref (t, tf_none) == error_mark_node)
-    {
-      /* Not letting process_outer_var_ref emit the error so that we can
-	 say "in a splice expression".  */
-      if (complain_p)
+  if (outer_automatic_var_p (t))
+    if (tree r = process_outer_var_ref (t, tf_none))
+      if (r == error_mark_node || is_capture_proxy (r))
 	{
-	  auto_diagnostic_group d;
-	  error_at (loc, "use of local variable with automatic storage from "
-		    "containing function in a splice expression");
-	  inform (DECL_SOURCE_LOCATION (t), "%q#D declared here", t);
+	  /* Not letting process_outer_var_ref emit the error so that we can
+	     say "in a splice expression".  */
+	  if (complain_p)
+	    {
+	      auto_diagnostic_group d;
+	      error_at (loc, "use of local variable with automatic storage "
+			"from containing function in a splice expression");
+	      inform (DECL_SOURCE_LOCATION (t), "%q#D declared here", t);
+	    }
+	  return false;
 	}
-      return false;
-    }
 
   /* If we had a reflect_kind here, we could just check for
      REFLECT_ANNOTATION and be done with it.  But we don't have it yet (TODO),

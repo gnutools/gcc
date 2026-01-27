@@ -12132,10 +12132,24 @@ cp_parser_expression (cp_parser* parser, cp_id_kind * pidk,
 	     and one CPP_NUMBER plus CPP_COMMA before it and one
 	     CPP_COMMA plus CPP_NUMBER after it is guaranteed by
 	     the preprocessor.  Thus, parse the whole CPP_EMBED just
-	     as a single INTEGER_CST, the last byte in it.  */
+	     as a single INTEGER_CST, the last byte in it.  Though,
+	     don't use that shortcut if the comma operator could be
+	     overloaded.  */
 	  tree raw_data = cp_lexer_peek_token (parser->lexer)->u.value;
 	  location_t loc = cp_lexer_peek_token (parser->lexer)->location;
 	  cp_lexer_consume_token (parser->lexer);
+	  if (OVERLOAD_TYPE_P (TREE_TYPE (expression))
+	      || type_dependent_expression_p (expression))
+	    for (unsigned i = 0; i < RAW_DATA_LENGTH (raw_data) - 1U; ++i)
+	      {
+		assignment_expression
+		  = *raw_data_iterator (raw_data, i);
+		assignment_expression.set_location (loc);
+		expression
+		  = build_x_compound_expr (loc, expression,
+					   assignment_expression, NULL_TREE,
+					   complain_flags (decltype_p));
+	      }
 	  assignment_expression
 	    = *raw_data_iterator (raw_data, RAW_DATA_LENGTH (raw_data) - 1);
 	  assignment_expression.set_location (loc);
@@ -22263,7 +22277,7 @@ cp_parser_type_specifier (cp_parser* parser,
       /* Fall through.  */
     case RID_TYPENAME:
       /* If we see 'typename [:', this could be a typename-specifier.
-	 But if there's no '::' after the '[:x:]' then it is probably
+	 But if there's no '::' after the '[:x:]' then it is
 	 a simple-type-specifier.  */
       if (keyword == RID_TYPENAME
 	  && cp_parser_nth_token_starts_splice_without_nns_p (parser, 2))
@@ -27647,7 +27661,6 @@ cp_parser_type_id_1 (cp_parser *parser, cp_parser_flags flags,
 {
   cp_decl_specifier_seq type_specifier_seq;
   cp_declarator *abstract_declarator;
-  cp_token *next = nullptr;
 
   /* Parse the type-specifier-seq.  */
   cp_parser_type_specifier_seq (parser, flags,
@@ -27656,17 +27669,6 @@ cp_parser_type_id_1 (cp_parser *parser, cp_parser_flags flags,
 				&type_specifier_seq);
   if (type_location)
     *type_location = type_specifier_seq.locations[ds_type_spec];
-
-  /* If there is just ds_type_spec specified, this could be a type alias.  */
-  if (type_alias_p && is_typedef_decl (type_specifier_seq.type))
-    {
-      int i;
-      for (i = ds_first; i < ds_last; ++i)
-	if (i != ds_type_spec && type_specifier_seq.locations[i])
-	  break;
-      if (i == ds_last)
-	next = cp_lexer_peek_token (parser->lexer);
-    }
 
   if (is_template_arg && type_specifier_seq.type
       && TREE_CODE (type_specifier_seq.type) == TEMPLATE_TYPE_PARM
@@ -27693,12 +27695,19 @@ cp_parser_type_id_1 (cp_parser *parser, cp_parser_flags flags,
 			    /*static_p=*/false);
   /* Check to see if there really was a declarator.  */
   if (!cp_parser_parse_definitely (parser))
-    abstract_declarator = NULL;
+    abstract_declarator = nullptr;
 
   /* If we found * or & and similar after the type-specifier, it's not
      a type alias.  */
   if (type_alias_p)
-    *type_alias_p = cp_lexer_peek_token (parser->lexer) == next;
+    *type_alias_p = [&] {
+      if (abstract_declarator || !is_typedef_decl (type_specifier_seq.type))
+	return false;
+      for (int i = ds_first; i < ds_last; ++i)
+	if (i != ds_type_spec && type_specifier_seq.locations[i])
+	  return false;
+      return true;
+    } ();
 
   bool auto_typeid_ok = false;
   /* DR 625 prohibits use of auto as a template-argument.  We allow 'auto'
@@ -49853,6 +49862,9 @@ substitute_in_tree_walker (tree *tp, int *walk_subtrees ATTRIBUTE_UNUSED,
   else if (TREE_CODE (*tp) == BIND_EXPR
 	   && BIND_EXPR_BODY (*tp) == sit->orig
 	   && !BIND_EXPR_VARS (*tp)
+	   /* BIND_EXPRs in templates likely have NULL BIND_EXPR_VARS,
+	      are created by begin_compound_stmt and are not redundant.  */
+	   && !processing_template_decl
 	   && (sit->flatten || TREE_CODE (sit->repl) == BIND_EXPR))
     {
       *tp = sit->repl;
@@ -49897,7 +49909,12 @@ substitute_in_tree (tree *context, tree orig, tree repl, bool flatten)
   struct sit_data data;
 
   gcc_assert (*context && orig && repl);
-  if (TREE_CODE (repl) == BIND_EXPR && !BIND_EXPR_VARS (repl))
+  /* Look through redundant BIND_EXPR.  BIND_EXPRs in templates likely have
+     NULL BIND_EXPR_VARS, are created by begin_compound_stmt and are not
+     redundant.  */
+  if (TREE_CODE (repl) == BIND_EXPR
+      && !BIND_EXPR_VARS (repl)
+      && !processing_template_decl)
     repl = BIND_EXPR_BODY (repl);
   data.orig = orig;
   data.repl = repl;

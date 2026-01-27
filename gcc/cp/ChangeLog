@@ -1,3 +1,98 @@
+2026-01-26  Marek Polacek  <polacek@redhat.com>
+
+	* reflect.cc (check_splice_expr): Check if process_outer_var_ref
+	returned a capture, and give an error if so.
+
+2026-01-26  Marek Polacek  <polacek@redhat.com>
+
+	* parser.cc (cp_parser_type_specifier): Adjust comment.
+	(cp_parser_type_id_1): Simplify setting of type_alias_p.
+	Use nullptr instead of NULL.
+
+2026-01-26  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/123620
+	* reflect.cc (can_extract_member_or_function_p): Also check
+	fnptr_conv_p.
+	(extract_member_or_function): Call perform_implicit_conversion.
+
+2026-01-26  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/123663
+	PR c++/123354
+	* name-lookup.cc (struct local_state_t): New flag has_cfun.
+	(local_state_t::save_and_clear): Set has_cfun, call
+	push_function_context iff there's a cfun to save.
+	(local_state_t::restore): call pop_function_context if
+	has_cfun is set.
+	(maybe_push_to_top_level): Delegte push_function_context to
+	local_state_t::save_and_clear.
+	(maybe_pop_from_top_level): Delegate pop_function_context to
+	local_state_t::restore.
+
+2026-01-25  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* cp-gimplify.cc (cp_genericize_r): Do not mark STATEMENT_LISTs
+	as visited.
+
+2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123737
+	* parser.cc (cp_parser_expression): Don't handle CPP_EMBED just
+	as the last byte in it if expression has or might have overloaded
+	type.  In that case call build_x_compound_expr for each byte
+	in CPP_EMBED separately.
+
+2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123667
+	* semantics.cc (finish_decltype_type): Allow a structured binding
+	for ptds.saved to have DECL_HAS_VALUE_EXPR_P cleared, if it is
+	not within current_function_decl, but in that case assert that
+	lookup_decomp_type succeeded.
+
+2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123684
+	* name-lookup.cc (handle_namespace_attrs): Only handle visibility and
+	abi_tag attributes in the gnu namespace and deprecated attribute in
+	the standard or gnu namespaces.
+
+2026-01-23  Marek Polacek  <polacek@redhat.com>
+
+	* tree.cc (handle_annotation_attribute): Use build_stub_type.
+
+2026-01-23  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123597
+	* parser.cc (substitute_in_tree_walker, substitute_in_tree): Don't
+	consider BIND_EXPRs with !BIND_EXPR_VARS redundant if
+	processing_template_decl.
+
+2026-01-22  Marek Polacek  <polacek@redhat.com>
+
+	* reflect.cc (class_members_of): Update a comment to mention
+	finish_member_declaration.
+
+2026-01-22  Marek Polacek  <polacek@redhat.com>
+	    Jason Merrill  <jason@redhat.com>
+
+	* reflect.cc (type_linkage_name): Rename to...
+	(reflection_type_linkage_name): ...this.
+	(eval_has_internal_linkage): Call reflection_type_linkage_name instead
+	of type_linkage_name.
+	(eval_has_module_linkage): Likewise.
+	(eval_has_external_linkage): Likewise.
+	(eval_has_c_language_linkage): Likewise.
+	(eval_has_linkage): Likewise.
+
+2026-01-22  Marek Polacek  <polacek@redhat.com>
+
+	* class.cc (user_provided_p): Return false for a deleted
+	namespace-scope function.
+	* reflect.cc (eval_is_user_provided): Don't check
+	DECL_NAMESPACE_SCOPE_P or DECL_DELETED_FN.
+
 2026-01-21  Marek Polacek  <polacek@redhat.com>
 
 	* cp-tree.h (maybe_get_first_fn): Declare.
