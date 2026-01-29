@@ -1,0 +1,14 @@
+==================== Branch work235-bugs, baseline ====================
+
+2026-01-29   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.bugs and update REVISION.
+
+2026-01-29  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* ChangeLog.bugs: New file for branch.
+	* REVISION: Update.
+
+	Clone branch
