@@ -1397,7 +1397,7 @@ See RS/6000 and PowerPC Options.
 -mpointers-to-nested-functions  -msave-toc-indirect  -mpower8-fusion
 -mcrypto  -mhtm  -mquad-memory  -mquad-memory-atomic
 -mcompat-align-parm
--mfloat128  -mfloat128-hardware
+-mfloat128  -mfloat128-hardware -mfloat16
 -mgnu-attribute
 -mstack-protector-guard=@var{guard}  -mstack-protector-guard-reg=@var{reg}
 -mstack-protector-guard-offset=@var{offset}  -mprefixed
@@ -33503,6 +33503,28 @@ Enable/disable using ISA 3.0 hardware instructions to support the
 The default for @option{-mfloat128-hardware} is enabled on PowerPC
 Linux systems using the ISA 3.0 instruction set, and disabled on other
 systems.
+
+
+@opindex mfloat16
+@opindex mno-float16
+@item -mfloat16
+@itemx -mno-float16
+Enable/disable both the @code{_Float16} and @code{__bfloat16} keywords
+for using 16-bit floating point.
+
+The @code{_Float16} keyword is for IEEE 16-bit floating point and GCC
+generates either software emulation for IEEE 16-bit floating point or
+hardware instructions.
+
+The @code{__bfloat16} keyword is for Google brain 16-bit floating
+point and GCC generates either software emulation for Google brain
+16-bit floating point or hardware instructions.
+
+At the current time, 16-bit floating point support is experimental,
+and support may be changed in future releases.  If you pass or return
+a 16-bit floating point value, GCC will issue a warning that the ABI
+may change in the future unless you use the @option{-Wno-psabi}
+option.
 
 @opindex m32
 @opindex m64
