@@ -976,6 +976,8 @@ enum data_align { align_abi, align_opt, align_both };
 #define ALTIVEC_VECTOR_MODE(MODE)					\
   ((MODE) == V16QImode							\
    || (MODE) == V8HImode						\
+   || (MODE) == V8HFmode						\
+   || (MODE) == V8BFmode						\
    || (MODE) == V4SFmode						\
    || (MODE) == V4SImode						\
    || VECTOR_ALIGNMENT_P (MODE))
