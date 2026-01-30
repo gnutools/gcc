@@ -5904,6 +5904,24 @@ case "${target}" in
 		elif test x$with_long_double_format = xibm; then
 		    tm_defines="${tm_defines} TARGET_IEEEQUAD_DEFAULT=0"
 		fi
+
+		# Test if we should enable 16-bit floating point on the platforms
+		# where we can support __bfloat16 and _Float16.
+		if test x$with_powerpc_float16 = xyes; then
+		    tm_defines="${tm_defines} POWERPC_FLOAT16_DEFAULT=1"
+
+		elif test x$with_powerpc_16bit_floating_point = xyes; then
+		    tm_defines="${tm_defines} POWERPC_FLOAT16_DEFAULT=0"
+		fi
+
+		# Test if we should disable the warning about passing
+		# and returning 16-bit floating point values.
+		if test x$with_powerpc_float16_disable_warning = xyes; then
+		    tm_defines="${tm_defines} POWERPC_FLOAT16_DISABLE_WARNING=1"
+
+		elif test x$with_powerpc_float16_disable_warning = xno; then
+		    tm_defines="${tm_defines} POWERPC_FLOAT16_DISABLE_WARNING=0"
+		fi
 		;;
 
 	s390*-*-*)
