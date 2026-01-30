@@ -255,6 +255,7 @@ sub gen_logical_addsubf
       "vorc_vnand"  => 244,
       "veqv_vnand"  => 246,
       "vnor_vnand"  => 247,
+      "vor_vnand"   => 248,
     );
 
     KIND: foreach $kind ('scalar','vector') {
