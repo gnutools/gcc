@@ -34384,6 +34384,13 @@ This option is enabled by default.
 Enable or disable warnings about deprecated @samp{vector long ...} Altivec
 type usage.  This option is enabled by default.
 
+@opindex mdense-math
+@opindex mno-dense-math
+@item -mdense-math
+@itemx -mno-dense-math
+Generate (do not generate) code that uses the dense math registers.
+This option is enabled by default.
+
 @item --param rs6000-vect-unroll-limit=
 The vectorizer checks with target information to determine whether it
 would be beneficial to unroll the main vectorized loop and by how much.  This
