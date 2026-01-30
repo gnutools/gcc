@@ -591,6 +591,9 @@ rs6000_target_modify_macros (bool define_p, HOST_WIDE_INT flags)
 
       if ((flags & OPTION_MASK_P9_VECTOR) != 0)
 	rs6000_define_or_undefine_macro (define_p, "__FLOAT16_HW__");
+
+      if ((flags & OPTION_MASK_POWER10) != 0)
+	rs6000_define_or_undefine_macro (define_p, "__BFLOAT16_HW__");
     }
   /* Tell the user if we are targeting CELL.  */
   if (rs6000_cpu == PROCESSOR_CELL)
