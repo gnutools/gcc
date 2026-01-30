@@ -548,6 +548,10 @@
 ;; If dense math registers are not available, these operations will use
 ;; accumulators that are overlaid on top of the FPR registers.
 
+;; Instructions:
+;; xvi4ger8   xvi8ger4 xvi16ger2 xvi16ger2s xvf16ger2
+;; xvbf16ger2 xvf32ger
+
 (define_insn "mma_<vv>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
@@ -556,6 +560,12 @@
   "TARGET_MMA"
   "<vv> %A0,%x1,%x2"
   [(set_attr "type" "mma")])
+
+;; Instructions:
+;; xvi4ger8pp   xvi8ger4pp  xvi8ger4spp   xvi16ger2pp xvi16ger2spp
+;; xvf16ger2pp  xvf16ger2pn  xvf16ger2np  xvf16ger2nn xvbf16ger2pp
+;; xvbf16ger2pn xvbf16ger2np xvbf16ger2nn xvf32gerpp  xvf32gerpn
+;; xvf32gernp   xvf32gernn
 
 (define_insn "mma_<avv>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -567,6 +577,8 @@
   "<avv> %A0,%x2,%x3"
   [(set_attr "type" "mma")])
 
+;; Instruction: xvf64ger
+
 (define_insn "mma_<pv>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:OO 1 "vsx_register_operand" "v,?wa")
@@ -575,6 +587,8 @@
   "TARGET_MMA"
   "<pv> %A0,%x1,%x2"
   [(set_attr "type" "mma")])
+
+;; Instructions: xvf64gerpp xvf64gerpn xvf64gernp xvf64gernn
 
 (define_insn "mma_<apv>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -585,6 +599,8 @@
   "TARGET_MMA"
   "<apv> %A0,%x2,%x3"
   [(set_attr "type" "mma")])
+
+;; Instruction: pmxvi4ger8
 
 (define_insn "mma_<vvi4i4i8>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -598,6 +614,8 @@
   "<vvi4i4i8> %A0,%x1,%x2,%3,%4,%5"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
+
+;; Instruction: pmxvi4ger8pp
 
 (define_insn "mma_<avvi4i4i8>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -613,6 +631,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
+;; Instructions:
+;; pmxvi16ger2 pmxvi16ger2s pmxvf16ger2 pmxvbf16ger2
+
 (define_insn "mma_<vvi4i4i2>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
@@ -625,6 +646,11 @@
   "<vvi4i4i2> %A0,%x1,%x2,%3,%4,%5"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
+
+;; Instructions:
+;; pmxvi16ger2pp  pmxvi16ger2spp pmxvf16ger2pp  pmxvf16ger2pn
+;; pmxvf16ger2np  pmxvf16ger2nn  pmxvbf16ger2pp pmxvbf16ger2pn
+;; pmxvbf16ger2np pmxvbf16ger2nn
 
 (define_insn "mma_<avvi4i4i2>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -640,6 +666,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
+;; Instruction: pmxvf32ger
+
 (define_insn "mma_<vvi4i4>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
@@ -651,6 +679,8 @@
   "<vvi4i4> %A0,%x1,%x2,%3,%4"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
+
+;; Instructions: pmxvf32gerpp pmxvf32gerpn pmxvf32gernp pmxvf32gernn
 
 (define_insn "mma_<avvi4i4>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -665,6 +695,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
+;; Instruction: pmxvf64ger
+
 (define_insn "mma_<pvi4i2>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:OO 1 "vsx_register_operand" "v,?wa")
@@ -676,6 +708,8 @@
   "<pvi4i2> %A0,%x1,%x2,%3,%4"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
+
+;; Instructions: pmxvf64gerpp pmxvf64gerpn pmxvf64gernp pmxvf64gernn
 
 (define_insn "mma_<apvi4i2>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
@@ -690,6 +724,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
+;; Instruction: pmxvi8ger4
+
 (define_insn "mma_<vvi4i4i4>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
@@ -702,6 +738,8 @@
   "<vvi4i4i4> %A0,%x1,%x2,%3,%4,%5"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
+
+;; Instructions: pmxvi8ger4pp pmxvi8ger4spp
 
 (define_insn "mma_<avvi4i4i4>"
   [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
