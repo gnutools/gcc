@@ -500,6 +500,10 @@ extern int rs6000_vector_align[];
 #define TARGET_MINMAX	(TARGET_HARD_FLOAT && TARGET_PPC_GFXOPT		\
 			 && (TARGET_P9_MINMAX || !flag_trapping_math))
 
+/* Enable XXEVAL support if we support prefixed instructions and at least
+   power10.  */
+#define TARGET_XXEVAL  (TARGET_POWER10 && TARGET_PREFIXED)
+
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
    options that have not yet been replaced by their OPTION_MASK_<xxx>
