@@ -515,3 +515,206 @@
   emit_insn (gen_fixuns_truncdf<GPR:mode>2 (operands[0], df_tmp));
   DONE;
 })
+
+;; Negate 16-bit floating point by XOR with -0.0.
+
+(define_insn_and_split "neg<mode>2"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(neg:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  "TARGET_FLOAT16"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(xor:FP16 (match_dup 1)
+		  (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+;; 16-bit floating point absolute value
+
+(define_insn_and_split "abs<mode>2"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(abs:FP16
+	 (match_operand:FP16 1 "gpc_reg_operand" "wa,wr")))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  "TARGET_FLOAT16"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(and:FP16 (not:FP16 (match_dup 2))
+		  (match_dup 1)))]
+		  
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+;; 16-bit negative floating point absolute value
+
+(define_insn_and_split "*nabs<mode>2"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,?wr")
+	(neg:FP16
+	 (abs:FP16
+	  (match_operand:FP16 1 "gpc_reg_operand" "wa,wr"))))
+   (clobber (match_scratch:FP16 2 "=&wa,&r"))]
+  "TARGET_FLOAT16"
+  "#"
+  "&& 1"
+  [(set (match_dup 2)
+	(match_dup 3))
+   (set (match_dup 0)
+	(ior:FP16 (match_dup 1)
+		  (match_dup 2)))]
+{
+  if (GET_CODE (operands[2]) == SCRATCH)
+    operands[2] = gen_reg_rtx (<MODE>mode);
+
+  REAL_VALUE_TYPE dconst;
+
+  gcc_assert (real_from_string (&dconst, "-0.0") == 0);
+  rtx rc = const_double_from_real_value (dconst, <MODE>mode);
+
+  if (!TARGET_PREFIXED)
+    rc = force_const_mem (<MODE>mode, rc);
+
+  operands[3] = rc;
+}
+  [(set_attr "type" "veclogical,integer")
+   (set_attr "length" "16")])
+
+;; Add logical operations for 16-bit floating point types that are used
+;; for things like negate, abs, and negative abs.  Possibly in the
+;; future we might need logical operators for extracting exponents and
+;; mantissas.
+(define_expand "and<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(and:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  "TARGET_FLOAT16"
+  "")
+
+(define_expand "ior<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (ior:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  "TARGET_FLOAT16"
+  "")
+
+(define_expand "xor<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (xor:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		  (match_operand:FP16 2 "gpc_reg_operand")))]
+  "TARGET_FLOAT16"
+  "")
+
+(define_expand "nor<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(and:FP16
+	 (not:FP16 (match_operand:FP16 1 "gpc_reg_operand"))
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))))]
+  "TARGET_FLOAT16"
+  "")
+
+(define_expand "andn<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+        (and:FP16
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))
+	 (match_operand:FP16 1 "gpc_reg_operand")))]
+  "TARGET_FLOAT16"
+  "")
+
+(define_expand "eqv<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(not:FP16
+	 (xor:FP16 (match_operand:FP16 1 "gpc_reg_operand")
+		   (match_operand:FP16 2 "gpc_reg_operand"))))]
+  "TARGET_FLOAT16"
+  "")
+
+;; Rewrite nand into canonical form
+(define_expand "nand<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(ior:FP16
+	 (not:FP16 (match_operand:FP16 1 "gpc_reg_operand"))
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))))]
+  "TARGET_FLOAT16"
+  "")
+
+;; The canonical form is to have the negated element first, so we need to
+;; reverse arguments.
+(define_expand "iorn<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand")
+	(ior:FP16
+	 (not:FP16 (match_operand:FP16 2 "gpc_reg_operand"))
+	 (match_operand:FP16 1 "gpc_reg_operand")))]
+  "TARGET_FLOAT16"
+  "")
+
+;; AND, IOR, and XOR insns.  Unlike HImode operations prefer using
+;; floating point/vector registers over GPRs.
+(define_insn "*bool<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(match_operand:FP16 1 "gpc_reg_operand" "wa,r")
+	  (match_operand:FP16 2 "gpc_reg_operand" "wa,r")]))]
+  "TARGET_FLOAT16"
+  "@
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+;; ANDC, IORC, and EQV insns.
+(define_insn "*boolc<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))
+	  (match_operand:FP16 1 "gpc_reg_operand" "wa,r")]))]
+  "TARGET_FLOAT16"
+  "@
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
+
+;; NOR and NAND insns.
+(define_insn "*boolcc<mode>3"
+  [(set (match_operand:FP16 0 "gpc_reg_operand" "=wa,r")
+	(match_operator:FP16 3 "boolean_operator"
+	 [(not:FP16 (match_operand:FP16 1 "gpc_reg_operand" "wa,r"))
+	  (not:FP16 (match_operand:FP16 2 "gpc_reg_operand" "wa,r"))]))]
+  "TARGET_FLOAT16"
+  "@
+   xxl%q3 %x0,%x1,%x2
+   %q3 %0,%1,%2"
+  [(set_attr "type" "veclogical,logical")])
