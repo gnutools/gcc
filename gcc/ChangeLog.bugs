@@ -1,3 +1,334 @@
+==================== Branch work235-bugs, patch #300 ====================
+
+PR target/120681 - allow -mcmodel=large with PC relative addressing
+
+When I implemented the pc-relative support for power10 in GCC, I
+disabled using pc-relative support for -mcmodel=large.  At the time, I
+didn't want to dig into the issues.  It is now time to allow
+-mcmodel=large to generate pc-relative code.
+
+This patch allows -mcmodel=large to use prefixed addressing on power10,
+power11, and possibly other future PowerPC processors in addition to
+the current -mcmodel=medium support.
+
+2026-01-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120681
+	* config/rs6000/linux64.h (PCREL_SUPPORTED_BY_OS): Allow large
+	code model as well as medium code model.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal):
+	Likewise.
+	(rs6000_elf_declare_function_name): Don't create the
+	local/non-local labels for large code model if we are using
+	PC-relative addressing.
+
+gcc/testsuite/
+
+	PR target/120681
+	* gcc.target/powerpc/pr120681.c: New test.
+
+==================== Branch work235-bugs, patch #300 ====================
+
+PR target/108958 -- simplify mtvsrdd to zero extend GPR DImode to VSX TImode
+
+Before this patch GCC would zero extend a DImode GPR value to TImode by first
+zero extending the DImode value into a GPR TImode register pair, and then do a
+MTVSRDD to move this value to a VSX register.
+
+For example, consider the following code:
+
+	#ifndef TYPE
+	#define TYPE unsigned long long
+	#endif
+
+	void
+	gpr_to_vsx (TYPE x, __uint128_t *p)
+	{
+	  __uint128_t y = x;
+	  __asm__ (" # %x0" : "+wa" (y));
+	  *p = y;
+	}
+
+Currently GCC generates:
+
+	gpr_to_vsx:
+		mr 10,3
+		li 11,0
+		mtvsrdd 0,11,10
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+I.e. the mr and li instructions create the zero extended TImode value
+in a GPR, and then the mtvsrdd instruction moves both registers into a
+single vector register.
+
+Instead, GCC should generate the following code.  Since the mtvsrdd
+instruction will clear the upper 64 bits if the 2nd argument is 0
+(non-zero values are a GPR to put in the upper 64 bits):
+
+	gpr_to_vsx:
+		mtvsrdd 0,0,3
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+Originally, I posted a patch that added the zero_extendsiti2 insn.  I
+got some pushback about using reload_completed in the split portion of
+the define_insn_and_split.  However, this is a case where you
+absolutely have to use the reload_completed test, because if you split
+the code before register allocation to handle the normal, the split
+insns will not be compiled to generate the appropriate mtvsrdd without
+creating the TImode value in the GPR register.  I can imagine there
+might be concern about favoring generating code using the vector
+registers instead of using the GPR registers if the code does not
+require the TImode value to be in a vector register.
+
+I completely rewrote the patch.  This patch creates a peephole2 to
+catch this case, and it eliminates creating the TImode variable.
+Instead it just does the MTVSRDD instruction directly.  That way it
+will not influence register allocation, and the code will only be
+generated in the specific case where we need the TImode value in a
+vector register.
+
+I have built GCC with the patches in this patch set applied on both
+little and big endian PowerPC systems and there were no regressions.
+Can I apply this patch to GCC 16?
+
+2026-01-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/108958
+	* config/rs6000/rs6000.md (UNSPEC_ZERO_EXTEND): New unspec.
+	(zero_extendsiti2 peephole2): Add a peephole2 to simplify zero
+	extend between DImode value in a GPR to a TImode target in a
+	vector register.
+	(zero_extendsiti2_vsx): New insn.
+
+gcc/testsuite/
+
+	PR target/108958
+	* gcc.target/powerpc/pr108958.c: New test.
+
+==================== Branch work235-bugs, patch #300 ====================
+
+PR target/120528 -- Simplify zero extend from memory to VSX register on power10
+
+Previously GCC would zero extend a DImode value in memory to a TImode
+target in a vector register by firt zero extending the DImode value
+into a GPR TImode register pair, and then do a MTVSRDD to move this
+value to a VSX register.
+
+For example, consider the following code:
+
+	#ifndef TYPE
+	#define TYPE unsigned long long
+	#endif
+
+	void
+	mem_to_vsx (TYPE *p, __uint128_t *q)
+	{
+	  /* lxvrdx 0,0,3
+	     stxv 0,0(4)  */
+
+	  __uint128_t x = *p;
+	  __asm__ (" # %x0" : "+wa" (x));
+	  *q = x;
+	}
+
+It currently generates the following code on power10:
+
+	mem_to_vsx:
+		ld 10,0(3)
+		li 11,0
+		mtvsrdd 0,11,10
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+Instead it could generate:
+
+	mem_to_vsx:
+		lxvrdx 0,0,3
+	#APP
+		 # 0
+	#NO_APP
+		stxv 0,0(4)
+		blr
+
+The lxvr{b,h,w,d}x instructions were added in power10, and they load up
+a vector register with a byte, half-word, word, or double-word value in
+the right most bits, and fill the remaining bits to 0.  I noticed this
+code when working on PR target/108958 (which I just posted the patch).
+
+This patch creates a peephole2 to catch this case, and it eliminates
+creating the TImode variable.  Instead it just does the LXVR{B,H,W,D}x
+instruction directly.
+
+I have built GCC with the patches in this patch set applied on both
+little and big endian PowerPC systems and there were no regressions.
+Can I apply this patch to GCC 16?
+
+2026-01-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/120528
+	* config/rs6000/rs6000.md (zero_extend??ti2 peephole2): Add a
+	peephole2 to simplify zero extending a QI/HI/SI/DImode value in
+	memory to a TImode target in a vector register to use the
+	LXVR{B,H,W,D}X instructins.
+
+gcc/testsuite/
+
+	PR target/120528
+	* gcc.target/powerpc/pr120528.c: New test.
+
+==================== Branch work235-bugs, patch #300 ====================
+
+PR 992493: Optimize splat of a V2DF/V2DI extract with constant element
+
+We had optimizations for splat of a vector extract for the other vector
+types, but we missed having one for V2DI and V2DF.  This patch adds a
+combiner insn to do this optimization.
+
+In looking at the source, we had similar optimizations for V4SI and V4SF
+extract and splats, but we missed doing V2DI/V2DF.
+
+Without the patch for the code:
+
+	vector long long splat_dup_l_0 (vector long long v)
+	{
+	  return __builtin_vec_splats (__builtin_vec_extract (v, 0));
+	}
+
+the compiler generates (on a little endian power9):
+
+	splat_dup_l_0:
+		mfvsrld 9,34
+	        mtvsrdd 34,9,9
+		blr
+
+Now it generates:
+
+	splat_dup_l_0:
+		xxpermdi 34,34,34,3
+	        blr
+
+2026-01-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/99293
+	* config/rs6000/vsx.md (vsx_splat_extract_<mode>): New insn.
+
+gcc/testsuite/
+
+	PR target/99293
+	* gcc.target/powerpc/pr99293.c: New test.
+
+==================== Branch work235-bugs, patch #300 ====================
+
+Add power9 and power10 float to logical optimizations.
+
+I was answering an email from a co-worker and I pointed him to work I had done
+for the Power8 era that optimizes the 32-bit float math library in Glibc.  In
+doing so, I discovered with the Power9 and later computers, this optimization is
+no longer taking place.
+
+The glibc 32-bit floating point math functions have code that looks like:
+
+	union u {
+	  float f;
+	  uint32_t u32;
+	};
+
+	float
+	math_foo (float x, unsigned int mask)
+	{
+	  union u arg;
+	  float x2;
+
+	  arg.f = x;
+	  arg.u32 &= mask;
+
+	  x2 = arg.f;
+	  /* ... */
+	}
+
+On power8 with the optimization it generates:
+
+        xscvdpspn 0,1
+        sldi 9,4,32
+        mtvsrd 32,9
+        xxland 1,0,32
+        xscvspdpn 1,1
+
+I.e., it converts the SFmode to the memory format (instead of the DFmode that is
+used within the register), converts the mask so that it is in the vector
+register in the upper 32-bits, and does a XXLAND (i.e. there is only one direct
+move from GPR to vector register).  Then after doing this, it converts the
+upper 32-bits back to DFmode.
+
+If the XSCVSPDN instruction took the value in the normal 32-bit scalar in a
+vector register, we wouldn't have needed the SLDI of the mask.
+
+On power9/power10/power11 it currently generates:
+
+        xscvdpspn 0,1
+        mfvsrwz 2,0
+        and 2,2,4
+        mtvsrws 1,2
+        xscvspdpn 1,1
+        blr
+
+I.e convert to SFmode representation, move the value to a GPR, do an AND
+operation, move the 32-bit value with a splat, and then convert it back to
+DFmode format.
+
+With this patch, it now generates:
+
+        xscvdpspn 0,1
+        mtvsrwz 32,2
+        xxland 32,0,32
+        xxspltw 1,32,1
+        xscvspdpn 1,1
+        blr
+
+I.e. convert to SFmode representation, move the mask to the vector register, do
+the operation using XXLAND.  Splat the value to get the value in the correct
+location, and then convert back to DFmode.
+
+I have built GCC with the patches in this patch set applied on both little and
+big endian PowerPC systems and there were no regressions.  Can I apply
+this patch to the trunk?
+
+2026-01-30  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	PR target/117487
+	* config/rs6000/vsx.md (SFmode logical peephoole): Update comments in
+	the original code that supports power8.
+	(SFBOOL2_*): New constants.
+	(power9/power10 define_peephol2): Add a new define_peephole2 to optimize
+	float and logical operations on power9/power10/power11 similar to the
+	optimiztion that is done on power8.
+
+gcc/testsuite/
+
+	PR target/117487
+	* gcc.target/powerpc/pr117487.c: New test.
+
 ==================== Branch work235-bugs, baseline ====================
 
 2026-01-29   Michael Meissner  <meissner@linux.ibm.com>
