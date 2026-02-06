@@ -253,6 +253,7 @@ sub gen_logical_addsubf
       "vnand_vor"   => 239,
       "vnand_vnand" => 241,
       "vorc_vnand"  => 244,
+      "vandc_vorc"  => 244,
       "veqv_vnand"  => 246,
       "vnor_vnand"  => 247,
       "vor_vnand"   => 248,
