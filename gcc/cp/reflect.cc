@@ -1576,7 +1576,7 @@ static tree
 eval_has_static_storage_duration (const_tree r, reflect_kind kind)
 {
   if (eval_is_variable (r, kind) == boolean_true_node
-      && decl_storage_duration (CONST_CAST_TREE (r)) == dk_static)
+      && decl_storage_duration (const_cast<tree> (r)) == dk_static)
     return boolean_true_node;
   /* This includes DECL_NTTP_OBJECT_P objects.  */
   else if (eval_is_object (kind) == boolean_true_node)
@@ -1593,7 +1593,7 @@ static tree
 eval_has_thread_storage_duration (const_tree r, reflect_kind kind)
 {
   if (eval_is_variable (r, kind) == boolean_true_node
-      && decl_storage_duration (CONST_CAST_TREE (r)) == dk_thread)
+      && decl_storage_duration (const_cast<tree> (r)) == dk_thread)
     return boolean_true_node;
   else
     return boolean_false_node;
@@ -1607,7 +1607,7 @@ static tree
 eval_has_automatic_storage_duration (const_tree r, reflect_kind kind)
 {
   if (eval_is_variable (r, kind) == boolean_true_node
-      && decl_storage_duration (CONST_CAST_TREE (r)) == dk_auto)
+      && decl_storage_duration (const_cast<tree> (r)) == dk_auto)
     return boolean_true_node;
   else
     return boolean_false_node;
@@ -2465,6 +2465,8 @@ type_of (tree r, reflect_kind kind)
     }
   else if (TREE_CODE (r) == FIELD_DECL && DECL_BIT_FIELD_TYPE (r))
     r = DECL_BIT_FIELD_TYPE (r);
+  else if (TREE_CODE (r) == FUNCTION_DECL)
+    r = static_fn_type (r);
   else
     r = TREE_TYPE (r);
   return strip_typedefs (r);
@@ -2602,7 +2604,8 @@ eval_object_of (location_t loc, const constexpr_ctx *ctx, tree r,
 		tree *jump_target, tree fun)
 {
   tree orig = r;
-  if (TYPE_REF_P (TREE_TYPE (r)))
+  tree type = TREE_TYPE (r);
+  if (type && TYPE_REF_P (type))
     r = cxx_eval_constant_expression (ctx, r, vc_prvalue, non_constant_p,
 				      overflow_p, jump_target);
   r = maybe_get_reference_referent (r);
@@ -2805,13 +2808,12 @@ static tree
 eval_has_template_arguments (tree r)
 {
   r = MAYBE_BASELINK_FUNCTIONS (r);
-  /* Presumably for
+  /* For
        typedef cls_tmpl<int> TYPE;
-     'has_template_arguments (^^TYPE)' should be false?  */
-  if (TYPE_P (r)
-      && typedef_variant_p (r)
-      && !alias_template_specialization_p (r, nt_opaque))
-    return boolean_false_node;
+     'has_template_arguments (^^TYPE)' should be false.  */
+  if (TYPE_P (r) && typedef_variant_p (r))
+    return (alias_template_specialization_p (r, nt_opaque)
+	    ? boolean_true_node : boolean_false_node);
   if (primary_template_specialization_p (r)
       || variable_template_specialization_p (r))
     return boolean_true_node;
@@ -3001,12 +3003,18 @@ eval_parameters_of (location_t loc, const constexpr_ctx *ctx, tree r,
 
   r = maybe_get_first_fn (r);
   vec<constructor_elt, va_gc> *elts = nullptr;
-  tree args = (TREE_CODE (r) == FUNCTION_DECL
-	       ? FUNCTION_FIRST_USER_PARM (r)
-	       : TYPE_ARG_TYPES (r));
-  for (tree arg = args; arg && arg != void_list_node; arg = TREE_CHAIN (arg))
-    CONSTRUCTOR_APPEND_ELT (elts, NULL_TREE,
-			    get_reflection_raw (loc, arg, REFLECT_PARM));
+  if (TREE_CODE (r) == FUNCTION_DECL)
+    for (tree arg = FUNCTION_FIRST_USER_PARM (r); arg; arg = DECL_CHAIN (arg))
+      CONSTRUCTOR_APPEND_ELT (elts, NULL_TREE,
+			      get_reflection_raw (loc, arg, REFLECT_PARM));
+  else
+    for (tree arg = TYPE_ARG_TYPES (r); arg && arg != void_list_node;
+	 arg = TREE_CHAIN (arg))
+      {
+        tree type = maybe_strip_typedefs (TREE_VALUE (arg));
+        CONSTRUCTOR_APPEND_ELT (elts, NULL_TREE,
+				get_reflection_raw (loc, type));
+      }
   return get_vector_of_info_elts (elts);
 }
 
@@ -3768,6 +3776,7 @@ eval_annotations_of (location_t loc, const constexpr_ctx *ctx, tree r,
       type = remove_const (type);
     }
 
+  r = maybe_get_first_fn (r);
   if (kind == REFLECT_BASE)
     {
       gcc_assert (TREE_CODE (r) == TREE_BINFO);
@@ -3919,6 +3928,7 @@ static tree
 eval_type_trait (location_t loc, tree type1, tree type2, cp_trait_kind kind)
 {
   tree r = finish_trait_expr (loc, kind, type1, type2);
+  gcc_checking_assert (r != error_mark_node);
   STRIP_ANY_LOCATION_WRAPPER (r);
   return r;
 }
@@ -5338,7 +5348,7 @@ eval_can_substitute (location_t loc, const constexpr_ctx *ctx,
       if (fn == error_mark_node)
 	return boolean_false_node;
       fn = resolve_nondeduced_context_or_error (fn, tf_none);
-      if (fn == error_mark_node)
+      if (fn == error_mark_node || undeduced_auto_decl (fn))
 	return boolean_false_node;
       return boolean_true_node;
     }
@@ -5702,10 +5712,10 @@ eval_data_member_spec (location_t loc, const constexpr_ctx *ctx,
 	  memset (namep, 0, l + 1);
 	  l = 0;
 	  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (f), k, field, value)
-	    if (field == NULL_TREE)
+	    if (integer_zerop (value))
+	      break;
+	    else if (field == NULL_TREE)
 	      {
-		if (integer_zerop (value))
-		  break;
 		namep[l] = tree_to_shwi (value);
 		++l;
 	      }
@@ -5713,8 +5723,6 @@ eval_data_member_spec (location_t loc, const constexpr_ctx *ctx,
 	      {
 		tree lo = TREE_OPERAND (field, 0);
 		tree hi = TREE_OPERAND (field, 1);
-		if (integer_zerop (value))
-		  break;
 		unsigned HOST_WIDE_INT m = tree_to_uhwi (hi);
 		for (l = tree_to_uhwi (lo); l <= m; ++l)
 		  namep[l] = tree_to_shwi (value);
@@ -5896,6 +5904,14 @@ eval_define_aggregate (location_t loc, const constexpr_ctx *ctx,
       *non_constant_p = true;
       return call;
     }
+  if (TYPE_BEING_DEFINED (type))
+    {
+      if (!cxx_constexpr_quiet_p (ctx))
+	error_at (loc, "first %<define_aggregate%> argument is a reflection "
+		       "of a class type %qT being defined", type);
+      *non_constant_p = true;
+      return call;
+    }
   hash_set<tree> nameset;
   for (int i = 0; i < TREE_VEC_LENGTH (rvec); ++i)
     {
@@ -5952,21 +5968,11 @@ eval_define_aggregate (location_t loc, const constexpr_ctx *ctx,
   tree cscope = NULL_TREE, tscope = NULL_TREE;
   for (tree c = TYPE_CONTEXT (CP_DECL_CONTEXT (consteval_block)); c;
        c = get_containing_scope (c))
-    {
-      if (c == type)
-	{
-	  auto_diagnostic_group d;
-	  error_at (loc, "%<define_aggregate%> evaluated from "
-			 "%<consteval%> block enclosed by %qT being "
-			 "defined", type);
-	  inform (DECL_SOURCE_LOCATION (consteval_block),
-		  "%<consteval%> block defined here");
-	  return get_reflection_raw (loc, orig_type);
-	}
-      if (cscope == NULL_TREE
-	  && (TYPE_P (c) || TREE_CODE (c) == FUNCTION_DECL))
+    if (TYPE_P (c) || TREE_CODE (c) == FUNCTION_DECL)
+      {
 	cscope = c;
-    }
+	break;
+      }
   for (tree c = TYPE_CONTEXT (type); c; c = get_containing_scope (c))
     {
       if (c == consteval_block)
@@ -6563,7 +6569,7 @@ class_members_of (location_t loc, const constexpr_ctx *ctx, tree r,
     {
       tree m = field;
       if (TREE_CODE (field) == FIELD_DECL && DECL_ARTIFICIAL (field))
-	continue; /* Ignore bases.  */
+	continue; /* Ignore bases and the vptr.  */
       else if (DECL_SELF_REFERENCE_P (field))
 	continue;
       else if (TREE_CODE (field) == TYPE_DECL)
@@ -7991,9 +7997,17 @@ splice (tree refl)
     refl = fold_non_dependent_expr (refl, tf_warning_or_error, true);
   else
     refl = cxx_constant_value (refl);
+  if (refl == error_mark_node)
+    {
+      gcc_checking_assert (seen_error ());
+      return error_mark_node;
+    }
   if (!REFLECT_EXPR_P (refl))
-    /* I don't wanna do your dirty work no more.  */
-    return error_mark_node;
+    {
+      error_at (cp_expr_loc_or_input_loc (refl), "splice argument must be an "
+		"expression of type %qs", "std::meta::info");
+      return error_mark_node;
+    }
 
   /* We are bringing some entity from the unevaluated expressions world
      to possibly outside of that, mark it used.  */
@@ -8146,11 +8160,9 @@ check_out_of_consteval_use (tree expr, bool complain/*=true*/)
       if (!consteval_only_p (t))
 	return NULL_TREE;
 
+      /* Already escalated?  */
       if (current_function_decl
-	  /* Already escalated.  */
-	  && (DECL_IMMEDIATE_FUNCTION_P (current_function_decl)
-	      /* These functions are magic.  */
-	      || is_std_allocator_allocate (current_function_decl)))
+	  && DECL_IMMEDIATE_FUNCTION_P (current_function_decl))
 	{
 	  *walk_subtrees = false;
 	  return NULL_TREE;
@@ -8224,6 +8236,9 @@ compare_reflections (tree lhs, tree rhs)
   // ??? Can we do something better?
   lhs = maybe_get_first_fn (lhs);
   rhs = maybe_get_first_fn (rhs);
+
+  /* First handle reflection-specific comparisons, then fall back to
+     cp_tree_equal.  */
   if (lkind == REFLECT_PARM)
     {
       lhs = maybe_update_function_parm (lhs);
@@ -8237,27 +8252,19 @@ compare_reflections (tree lhs, tree rhs)
 	    && tree_int_cst_equal (TREE_VEC_ELT (lhs, 3),
 				   TREE_VEC_ELT (rhs, 3))
 	    && TREE_VEC_ELT (lhs, 4) == TREE_VEC_ELT (rhs, 4));
-
-  if (lhs == rhs)
-    return true;
-
-  /* Some trees are not shared.  */
-  if (TREE_CODE (lhs) == TREE_CODE (rhs))
-    switch (TREE_CODE (lhs))
-      {
-      case ARRAY_REF:
-      case COMPONENT_REF:
-      case REAL_CST:
-	return cp_tree_equal (lhs, rhs);
-      default:
-	break;
-      }
-
-  if (TYPE_P (lhs) && TYPE_P (rhs))
-    if (!typedef_variant_p (lhs) && !typedef_variant_p (rhs))
+  else if (lkind == REFLECT_ANNOTATION)
+    return lhs == rhs;
+  else if (TYPE_P (lhs) && TYPE_P (rhs))
+    {
+      /* Given "using A = int;", "^^int != ^^A" should hold.  */
+      if (typedef_variant_p (lhs) != typedef_variant_p (rhs))
+	return false;
+      /* This is for comparing function types.  E.g.,
+	  auto fn() -> int; type_of(^^fn) == ^^auto()->int;  */
       return same_type_p (lhs, rhs);
+    }
 
-  return false;
+  return cp_tree_equal (lhs, rhs);
 }
 
 /* Return true if T is a valid splice-type-specifier.
@@ -8297,8 +8304,7 @@ check_consteval_only_fn (tree decl)
   if (!DECL_IMMEDIATE_FUNCTION_P (decl)
       && consteval_only_p (decl)
       /* But if the function can be escalated, merrily we roll along.  */
-      && !immediate_escalating_function_p (decl)
-      && !is_std_allocator_allocate (decl))
+      && !immediate_escalating_function_p (decl))
     error_at (DECL_SOURCE_LOCATION (decl),
 	      "function of consteval-only type must be declared %qs",
 	      "consteval");

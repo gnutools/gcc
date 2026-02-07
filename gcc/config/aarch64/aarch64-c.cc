@@ -275,6 +275,8 @@ aarch64_update_cpp_builtins (cpp_reader *pfile)
 			"__ARM_FEATURE_BF16", pfile);
   aarch64_def_or_undef (TARGET_SVE_BF16,
 			"__ARM_FEATURE_SVE_BF16", pfile);
+  aarch64_def_or_undef (TARGET_SVE_BFSCALE,
+			"__ARM_FEATURE_SVE_BFSCALE", pfile);
 
   aarch64_def_or_undef (TARGET_LUT, "__ARM_FEATURE_LUT", pfile);
   aarch64_def_or_undef (TARGET_SME_LUTv2, "__ARM_FEATURE_SME_LUTv2", pfile);
@@ -429,8 +431,9 @@ aarch64_resolve_overloaded_builtin (location_t location,
   switch (code & AARCH64_BUILTIN_CLASS)
     {
     case AARCH64_BUILTIN_GENERAL:
-      return aarch64_resolve_overloaded_builtin_general (location, fndecl,
+      new_fndecl = aarch64_resolve_overloaded_builtin_general (location, fndecl,
 							 uncast_arglist);
+      break;
     case AARCH64_BUILTIN_SVE:
       new_fndecl = aarch64_sve::resolve_overloaded_builtin (location, subcode,
 							    arglist);

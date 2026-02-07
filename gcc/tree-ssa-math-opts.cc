@@ -118,6 +118,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssa-math-opts.h"
 #include "dbgcnt.h"
 #include "cfghooks.h"
+#include "gimple-match.h"
 
 /* This structure represents one basic block that either computes a
    division, or is a common dominator for basic block that compute a
@@ -2029,6 +2030,9 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
 	  || REAL_VALUE_ISSIGNALING_NAN (TREE_REAL_CST (arg1))))
     return NULL_TREE;
 
+  if (flag_errno_math)
+    return NULL_TREE;
+
   /* If the exponent is equivalent to an integer, expand to an optimal
      multiplication sequence when profitable.  */
   c = TREE_REAL_CST (arg1);
@@ -3105,7 +3109,6 @@ convert_plusminus_to_widen (gimple_stmt_iterator *gsi, gimple *stmt,
 static void
 convert_mult_to_fma_1 (tree mul_result, tree op1, tree op2)
 {
-  tree type = TREE_TYPE (mul_result);
   gimple *use_stmt;
   imm_use_iterator imm_iter;
   gcall *fma_stmt;
@@ -3167,14 +3170,14 @@ convert_mult_to_fma_1 (tree mul_result, tree op1, tree op2)
 	{
 	  if (ops[0] == result)
 	    /* a * b - c -> a * b + (-c)  */
-	    addop = gimple_build (&seq, NEGATE_EXPR, type, addop);
+	    addop = gimple_build (&seq, NEGATE_EXPR, TREE_TYPE (addop), addop);
 	  else
 	    /* a - b * c -> (-b) * c + a */
 	    negate_p = !negate_p;
 	}
 
       if (negate_p)
-	mulop1 = gimple_build (&seq, NEGATE_EXPR, type, mulop1);
+	mulop1 = gimple_build (&seq, NEGATE_EXPR, TREE_TYPE (mulop1), mulop1);
 
       if (seq)
 	gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
@@ -3354,6 +3357,26 @@ last_fma_candidate_feeds_initial_phi (fma_deferring_state *state,
   return false;
 }
 
+/* If ARG is a convert that only changes the sign then strip the outer
+   conversion away.  It does not strip conversions recursively.  Otherwise
+   return ARG.  */
+
+static tree
+strip_nop_view_converts (tree arg)
+{
+  if (TREE_CODE (arg) != SSA_NAME)
+    return arg;
+
+  gimple *assign = SSA_NAME_DEF_STMT (arg);
+  gimple_match_op res_op;
+  if (gimple_extract_op (assign, &res_op)
+      && (CONVERT_EXPR_CODE_P (res_op.code) || res_op.code == VIEW_CONVERT_EXPR)
+      && tree_nop_conversion_p (TREE_TYPE (res_op.ops[0]), TREE_TYPE (arg)))
+    return res_op.ops[0];
+
+  return arg;
+}
+
 /* Combine the multiplication at MUL_STMT with operands MULOP1 and MULOP2
    with uses in additions and subtractions to form fused multiply-add
    operations.  Returns true if successful and MUL_STMT should be removed.
@@ -3458,6 +3481,7 @@ convert_mult_to_fma (gimple *mul_stmt, tree op1, tree op2,
 	  use_operand_p tmp_use_p;
 	  if (single_imm_use (cast_lhs, &tmp_use_p, &tmp_use))
 	    use_stmt = tmp_use;
+	  result = cast_lhs;
 	}
 
       /* For now restrict this operations to single basic blocks.  In theory
@@ -3510,6 +3534,10 @@ convert_mult_to_fma (gimple *mul_stmt, tree op1, tree op2,
       tree_code code;
       if (!can_interpret_as_conditional_op_p (use_stmt, &cond, &code, ops,
 					      &else_value, &len, &bias))
+	return false;
+
+      /* The multiplication result must be one of the addition operands.  */
+      if (ops[0] != result && ops[1] != result)
 	return false;
 
       switch (code)
@@ -3614,11 +3642,11 @@ convert_mult_to_fma (gimple *mul_stmt, tree op1, tree op2,
 	    {
 	      gcc_checking_assert (!state->m_initial_phi);
 	      gphi *phi;
-	      if (ops[0] == result)
+	      if (strip_nop_view_converts (ops[0]) == result)
 		phi = result_of_phi (ops[1]);
 	      else
 		{
-		  gcc_assert (ops[1] == result);
+		  gcc_assert (strip_nop_view_converts (ops[1]) == result);
 		  phi = result_of_phi (ops[0]);
 		}
 
@@ -5411,7 +5439,11 @@ match_uaddc_usubc (gimple_stmt_iterator *gsi, gimple *stmt, tree_code code)
 			TYPE_MODE (type)) == CODE_FOR_nothing
       || (rhs[2]
 	  && optab_handler (code == PLUS_EXPR ? uaddc5_optab : usubc5_optab,
-			    TYPE_MODE (type)) == CODE_FOR_nothing))
+			    TYPE_MODE (type)) == CODE_FOR_nothing)
+      || !types_compatible_p (type,
+			      TREE_TYPE (TREE_TYPE (gimple_call_lhs (ovf1))))
+      || !types_compatible_p (type,
+			      TREE_TYPE (TREE_TYPE (gimple_call_lhs (ovf2)))))
     return false;
   tree arg1, arg2, arg3 = NULL_TREE;
   gimple *re1 = NULL, *re2 = NULL;
@@ -6591,25 +6623,6 @@ math_opts_dom_walker::after_dom_children (basic_block bb)
 	{
 	  switch (gimple_call_combined_fn (stmt))
 	    {
-	    CASE_CFN_POW:
-	      if (gimple_call_lhs (stmt)
-		  && TREE_CODE (gimple_call_arg (stmt, 1)) == REAL_CST
-		  && real_equal (&TREE_REAL_CST (gimple_call_arg (stmt, 1)),
-				 &dconst2)
-		  && convert_mult_to_fma (stmt,
-					  gimple_call_arg (stmt, 0),
-					  gimple_call_arg (stmt, 0),
-					  &fma_state))
-		{
-		  unlink_stmt_vdef (stmt);
-		  if (gsi_remove (&gsi, true)
-		      && gimple_purge_dead_eh_edges (bb))
-		    *m_cfg_changed_p = true;
-		  release_defs (stmt);
-		  continue;
-		}
-	      break;
-
 	    case CFN_COND_MUL:
 	      if (convert_mult_to_fma (stmt,
 				       gimple_call_arg (stmt, 1),

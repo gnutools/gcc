@@ -570,6 +570,12 @@ export namespace std
   using std::atomic_fetch_sub_explicit;
   using std::atomic_fetch_xor;
   using std::atomic_fetch_xor_explicit;
+#ifdef __cpp_lib_atomic_min_max
+  using std::atomic_fetch_min;
+  using std::atomic_fetch_min_explicit;
+  using std::atomic_fetch_max;
+  using std::atomic_fetch_max_explicit;
+#endif
   using std::atomic_flag;
   using std::atomic_flag_clear;
   using std::atomic_flag_clear_explicit;
@@ -1016,6 +1022,18 @@ export namespace std
   using std::notify_all_at_thread_exit;
 }
 #endif
+
+// 17.10.1 <contracts>
+#if __cpp_lib_contracts
+export namespace std::contracts
+{
+  using std::contracts::assertion_kind;
+  using std::contracts::evaluation_semantic;
+  using std::contracts::detection_mode;
+  using std::contracts::contract_violation;
+  using std::contracts::invoke_default_contract_violation_handler;
+}
+#endif // __cpp_lib_contracts
 
 // 17.12.2 <coroutine>
 #if __cpp_lib_coroutine

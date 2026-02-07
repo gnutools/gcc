@@ -135,7 +135,8 @@ find_tag_definition (TABLE_T *table, const char *name)
     return 0;
 }
 
-/* Fill in whether bold tag is operator, indicant or module indicant.  */
+/* Fill in whether bold tag is operator, indicant, module indicant or language
+   indicant.  */
 
 void
 a68_elaborate_bold_tags (NODE_T *p)
@@ -144,20 +145,31 @@ a68_elaborate_bold_tags (NODE_T *p)
     {
       if (IS (q, BOLD_TAG))
 	{
-	  switch (find_tag_definition (TABLE (q), NSYMBOL (q)))
+	  if (PREVIOUS (q) != NO_NODE
+	      && IS (PREVIOUS (q), FORMAL_NEST_SYMBOL))
 	    {
-	    case 0:
-	      a68_error (q, "tag S has not been declared properly");
-	      break;
-	    case INDICANT:
-	      ATTRIBUTE (q) = INDICANT;
-	      break;
-	    case OPERATOR:
-	      ATTRIBUTE (q) = OPERATOR;
-	      break;
-	    case MODULE_INDICANT:
-	      ATTRIBUTE (q) = MODULE_INDICANT;
-	      break;
+	      if (strcmp (NSYMBOL (q), "C") != 0)
+		a68_error (q, "S is not a valid language indication");
+	      else
+		ATTRIBUTE (q) = LANGUAGE_INDICANT;
+	    }
+	  else
+	    {
+	      switch (find_tag_definition (TABLE (q), NSYMBOL (q)))
+		{
+		case 0:
+		  a68_error (q, "tag S has not been declared properly");
+		  break;
+		case INDICANT:
+		  ATTRIBUTE (q) = INDICANT;
+		  break;
+		case OPERATOR:
+		  ATTRIBUTE (q) = OPERATOR;
+		  break;
+		case MODULE_INDICANT:
+		  ATTRIBUTE (q) = MODULE_INDICANT;
+		  break;
+		}
 	    }
 	}
     }
@@ -404,7 +416,10 @@ a68_extract_indicants (NODE_T *p)
 		  else
 		    {
 		      q = skip_module_text (NEXT (q));
-		      FORWARD (q);
+		      if (q == NO_NODE)
+			siga = false;
+		      else
+			FORWARD (q);
 		    }
 		}
 	      else
@@ -746,6 +761,7 @@ extract_identities (NODE_T *p)
 	      FORWARD (q);
 	    }
 
+	  NODE_T *declarer = q;
 	  do
 	    {
 	      if (a68_whether ((FORWARD (q)), IDENTIFIER, EQUALS_SYMBOL, STOP))
@@ -755,6 +771,12 @@ extract_identities (NODE_T *p)
 		    gcc_unreachable ();
 		  ATTRIBUTE (q) = DEFINING_IDENTIFIER;
 		  PUBLICIZED (q) = is_public;
+		  if (IS (SUB (declarer), PROC_SYMBOL))
+		    {
+		      NODE_T *actual_param = NEXT (NEXT (q));
+		      if (actual_param != NO_NODE && IS (actual_param, FORMAL_NEST_SYMBOL))
+			NEST_PROC (tag) = true;
+		    }
 		  FORWARD (q);
 		  ATTRIBUTE (q) = ALT_EQUALS_SYMBOL;
 		  q = skip_unit (q);

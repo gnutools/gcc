@@ -878,6 +878,16 @@
 #endif /* !defined(__cpp_lib_atomic_float) */
 #undef __glibcxx_want_atomic_float
 
+#if !defined(__cpp_lib_atomic_min_max)
+# if (__cplusplus >  202302L)
+#  define __glibcxx_atomic_min_max 202403L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_atomic_min_max)
+#   define __cpp_lib_atomic_min_max 202403L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_atomic_min_max) */
+#undef __glibcxx_want_atomic_min_max
+
 #if !defined(__cpp_lib_atomic_lock_free_type_aliases)
 # if (__cplusplus >= 202002L) && ((__GCC_ATOMIC_INT_LOCK_FREE | __GCC_ATOMIC_LONG_LOCK_FREE | __GCC_ATOMIC_CHAR_LOCK_FREE) & 2)
 #  define __glibcxx_atomic_lock_free_type_aliases 201907L
@@ -1791,6 +1801,16 @@
 #endif /* !defined(__cpp_lib_invoke_r) */
 #undef __glibcxx_want_invoke_r
 
+#if !defined(__cpp_lib_associative_heterogeneous_erasure)
+# if (__cplusplus >= 202100L)
+#  define __glibcxx_associative_heterogeneous_erasure 202110L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_associative_heterogeneous_erasure)
+#   define __cpp_lib_associative_heterogeneous_erasure 202110L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_associative_heterogeneous_erasure) */
+#undef __glibcxx_want_associative_heterogeneous_erasure
+
 #if !defined(__cpp_lib_is_scoped_enum)
 # if (__cplusplus >= 202100L)
 #  define __glibcxx_is_scoped_enum 202011L
@@ -2536,6 +2556,16 @@
 #endif /* !defined(__cpp_lib_reflection) */
 #undef __glibcxx_want_reflection
 
+#if !defined(__cpp_lib_define_static)
+# if (__cplusplus >  202302L) && _GLIBCXX_USE_CXX11_ABI && (__cpp_impl_reflection >= 202506L)
+#  define __glibcxx_define_static 202506L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_define_static)
+#   define __cpp_lib_define_static 202506L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_define_static) */
+#undef __glibcxx_want_define_static
+
 #if !defined(__cpp_lib_is_implicit_lifetime)
 # if (__cplusplus >= 202100L) && (__has_builtin(__builtin_is_implicit_lifetime))
 #  define __glibcxx_is_implicit_lifetime 202302L
@@ -2545,5 +2575,15 @@
 # endif
 #endif /* !defined(__cpp_lib_is_implicit_lifetime) */
 #undef __glibcxx_want_is_implicit_lifetime
+
+#if !defined(__cpp_lib_contracts)
+# if (__cplusplus >  202302L) && (__cpp_contracts >= 202502L)
+#  define __glibcxx_contracts 202502L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_contracts)
+#   define __cpp_lib_contracts 202502L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_contracts) */
+#undef __glibcxx_want_contracts
 
 #undef __glibcxx_want_all

@@ -476,6 +476,7 @@ void a68_make_soid (SOID_T *s, int sort, MOID_T *type, int attribute);
 void a68_make_strong (NODE_T *n, MOID_T *p, MOID_T *q);
 void a68_make_uniting_coercion (NODE_T *n, MOID_T *q);
 void a68_make_void (NODE_T *p, MOID_T *q);
+bool a68_is_c_mode (MOID_T *m, int level = 0);
 
 #define A68_DEPREF true
 #define A68_NO_DEPREF false
@@ -533,9 +534,12 @@ tree a68_bits_ior (tree bits1, tree bits2);
 tree a68_bits_xor (tree bits1, tree bits2);
 tree a68_bits_elem (NODE_T *p, tree pos, tree bits);
 tree a68_bits_subset (tree bits1, tree bits2);
-tree a68_bits_shift (tree shift, tree bits);
+tree a68_bits_shift (NODE_T *p, tree shift, tree bits);
 tree a68_bits_eq (tree a, tree b, location_t loc = UNKNOWN_LOCATION);
 tree a68_bits_ne (tree a, tree b, location_t loc = UNKNOWN_LOCATION);
+tree a68_bits_set (MOID_T *m, tree bits, tree numbit, location_t loc = UNKNOWN_LOCATION);
+tree a68_bits_clear (MOID_T *m, tree bits, tree numbit, location_t loc = UNKNOWN_LOCATION);
+tree a68_bits_test (tree bits, tree numbit, location_t loc = UNKNOWN_LOCATION);
 
 /* a68-low_bools.cc  */
 
@@ -810,6 +814,7 @@ tree a68_make_variable_declaration_decl (NODE_T *identifier, const char *module_
 tree a68_make_proc_identity_declaration_decl (NODE_T *identifier, const char *module_name = NULL,
 					      bool indicant = false, bool external = false,
 					      const char *extern_symbol = NULL);
+tree a68_make_formal_hole_decl (NODE_T *p, const char *extern_symbol);
 tree a68_make_anonymous_routine_decl (MOID_T *mode);
 tree a68_get_skip_tree (MOID_T *m);
 tree a68_get_empty (void);
@@ -851,6 +856,11 @@ tree a68_union_value (MOID_T *mode, tree exp, MOID_T *exp_mode);
 tree a68_union_translate_overhead (MOID_T *from, tree from_overhead, MOID_T *to);
 bool a68_union_contains_mode (MOID_T *p, MOID_T *q);
 
+/* a68-low-holes.cc */
+
+tree a68_wrap_formal_var_hole (NODE_T *p);
+void a68_wrap_formal_proc_hole (NODE_T *p, tree fndecl);
+
 /* a68-low-units.cc  */
 
 tree a68_lower_identifier (NODE_T *p, LOW_CTX_T ctx);
@@ -873,6 +883,7 @@ tree a68_lower_assignation (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_routine_text (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_generator (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_call (NODE_T *p, LOW_CTX_T ctx);
+tree a68_lower_formal_hole (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_unit (NODE_T *p, LOW_CTX_T ctx);
 
 /* a68-low-generator.c  */
@@ -1067,6 +1078,9 @@ tree a68_lower_shortenreal2 (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_random (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_longrandom (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_longlongrandom (NODE_T *p, LOW_CTX_T ctx);
+tree a68_lower_set3 (NODE_T *p, LOW_CTX_T ctx);
+tree a68_lower_clear3 (NODE_T *p, LOW_CTX_T ctx);
+tree a68_lower_test3 (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_posixargc (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_posixargv (NODE_T *p, LOW_CTX_T ctx);
 tree a68_lower_posixputchar (NODE_T *p, LOW_CTX_T ctx);

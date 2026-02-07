@@ -202,3 +202,37 @@ void swap(T)(ref T lhs, ref T rhs)
     moveEmplace(rhs, lhs);
     moveEmplace(tmp, rhs);
 }
+
+void __doPostblit(T)(T[] arr)
+{
+    // infer static postblit type, run postblit if any
+    static if (__traits(hasPostblit, T))
+    {
+        static if (__traits(isStaticArray, T) && is(T : E[], E))
+            __doPostblit(cast(E[]) arr);
+        else
+        {
+            import core.internal.traits : Unqual;
+            foreach (ref elem; (() @trusted => cast(Unqual!T[]) arr)())
+                elem.__xpostblit();
+        }
+    }
+}
+
+// ditto, but with an index to keep track of how many elements have been postblitted
+void __doPostblit(T)(T[] arr, ref size_t i)
+{
+    // infer static postblit type, run postblit if any
+    static if (__traits(hasPostblit, T))
+    {
+        static if (__traits(isStaticArray, T) && is(T : E[], E))
+            __doPostblit(cast(E[]) arr, i);
+        else
+        {
+            i = 0;
+            import core.internal.traits : Unqual;
+            for(auto eptr = cast(Unqual!T*)&arr[0]; i < arr.length; ++i, ++eptr)
+                eptr.__xpostblit();
+        }
+    }
+}

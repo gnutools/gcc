@@ -4671,7 +4671,17 @@ lookup_name_fuzzy (tree name, enum lookup_name_fuzzy_kind kind, location_t loc)
 {
   gcc_assert (TREE_CODE (name) == IDENTIFIER_NODE);
 
-  /* First, try some well-known names in the C standard library, in case
+  /* Look up function-like macros first; maybe misusing them. */
+  auto cpp_node = cpp_lookup (parse_in,
+			      (const unsigned char*)IDENTIFIER_POINTER (name),
+			      IDENTIFIER_LENGTH (name));
+  if (cpp_node && cpp_fun_like_macro_p (cpp_node))
+    return name_hint
+      (nullptr,
+       std::make_unique<macro_like_function_used> (loc,
+						   IDENTIFIER_POINTER (name)));
+
+  /* Next, try some well-known names in the C standard library, in case
      the user forgot a #include.  */
   const char *header_hint
     = get_c_stdlib_header_for_name (IDENTIFIER_POINTER (name));
@@ -5005,7 +5015,7 @@ c_make_fname_decl (location_t loc, tree id, int type_dep)
   DECL_ARTIFICIAL (decl) = 1;
 
   init = build_string (length + 1, name);
-  free (CONST_CAST (char *, name));
+  free (const_cast<char *> (name));
   TREE_TYPE (init) = type;
   DECL_INITIAL (decl) = init;
 
@@ -13669,25 +13679,22 @@ c_write_global_declarations_1 (tree globals)
       if (TREE_CODE (decl) == FUNCTION_DECL
 	  && DECL_INITIAL (decl) == NULL_TREE
 	  && DECL_EXTERNAL (decl)
-	  && !TREE_PUBLIC (decl))
+	  && !TREE_PUBLIC (decl)
+	  && !warning_suppressed_p (decl, OPT_Wunused))
 	{
 	  if (C_DECL_USED (decl))
 	    {
-	      /* TODO: Add OPT_Wundefined-inline.  */
 	      if (pedwarn (input_location, 0, "%q+F used but never defined",
 			   decl))
-		suppress_warning (decl /* OPT_Wundefined-inline.  */);
+		suppress_warning (decl, OPT_Wunused);
 	    }
 	  /* For -Wunused-function warn about unused static prototypes.  */
 	  else if (warn_unused_function
 		   && ! DECL_ARTIFICIAL (decl)
-		   && ! warning_suppressed_p (decl, OPT_Wunused_function))
-	    {
-	      if (warning (OPT_Wunused_function,
-			   "%q+F declared %<static%> but never defined",
-			   decl))
-		suppress_warning (decl, OPT_Wunused_function);
-	    }
+		   && warning (OPT_Wunused_function,
+			       "%q+F declared %<static%> but never defined",
+			       decl))
+	    suppress_warning (decl, OPT_Wunused);
 	}
 
       wrapup_global_declaration_1 (decl);

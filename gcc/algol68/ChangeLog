@@ -1,3 +1,134 @@
+2026-02-06  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-low-units.cc (a68_lower_denotation): Fix call to
+	a68_u8_mbtouc.
+
+2026-02-06  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* Make-lang.in (ALGOL68_OBJS): Add algol68/a68-low-holes.o.
+	* a68.h: Update prototypes.
+	* a68-types.h (struct TAG_T): New field nest_proc.
+	(NEST_PROC): Define.
+	* a68-parser.cc (a68_new_tag): Initialize NEST_PROC.
+	* a68-parser-extract.cc (extract_identities): Use NEST_PROC
+	instead of IN_PROC for taxes for defining-identifiers in identity
+	declarations of proc modes with formal holes as actual parameters.
+	* a68-moids-misc.cc (a68_is_c_mode): Modified to allow strings as
+	direct parameters.
+	* a68-low.cc (a68_make_proc_formal_hole_decl): Remove.
+	* a68-low-units.cc (a68_lower_identifier): Improve commentary.
+	(a68_lower_formal_hole): Factorize.
+	* a68-low-holes.cc: New file.
+	* a68-low-decls.cc (a68_lower_identity_declaration): Optimize
+	identity declarations of proc mode with formal holes as actual
+	parameters.
+	* a68-exports.cc (a68_add_identifier_to_moif): Honor NEST_PROC.
+	* ga68.texi (Communicating with C): Strings can now be passed as
+	parameters in formal holes.
+
+2026-02-05  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-low-clauses.cc (a68_lower_revelation_ludes): Fix function
+	type for fdecl.
+
+2026-02-05  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-low-bits.cc (a68_bits_set): Make bit number zero-based rathe
+	than one-based.
+	(a68_bits_clear): Likewise.
+	(a68_bits_test): Likewise.
+	* ga68.texi (Extended bits operators): Adapt documentation
+	accordingly.
+
+2026-02-05  Jose E. Marchesi  <jemarch@gnu.org>
+
+	PR algol68/123959
+	* a68.h: Expand prototype of a68_bits_shift to get a node argument
+	for location purposes.
+	* a68-low-bits.cc (a68_bits_shift): Implement RR compatible
+	semantics.
+	* a68-low-prelude.cc (a68_lower_shl3): Fix call to a68_bit_shift.
+	(a68_lower_shr3): Likewise.
+	* ga68.texi (Bits operators): Fix documentation of SHR and SHL.
+
+2026-02-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* a68-parser-extract.cc (a68_extract_indicants): Don't call FORWARD if
+	skip_module_text returns NO_NODE.
+
+2026-02-01  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-low-bits.cc (a68_bits_test): Do not get a parameter with the
+	result moid.
+	* a68.h: Adapt prototype of a68_bits_test accordingly.
+	* a68-low-prelude.cc (a68_lower_test3): Adjust call accordingly.
+
+2026-02-01  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68.h: Prototype for a68_make_proc_formal_hole_decl.
+	* a68-parser-extract.cc (extract_identities): Mark identity
+	declarations of proc modes whose actual parameter is a formal hole
+	as "inproc".
+	* a68-low.cc (a68_make_proc_formal_hole_decl): New function.
+	* a68-low-units.cc (a68_lower_formal_hole): Call
+	a68_make_proc_formal_hole_decl whenever necessary.
+
+2026-01-31  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68.h: Prototypes for a68_bits_test and a68_lower_test3.
+	* a68-low-bits.cc (a68_bits_test): New function.
+	* a68-low-prelude.cc (a68_lower_test3): Likewise.
+	* a68-parser-prelude.cc (gnu_prelude): Declare TEST operators and
+	their priority.
+	* ga68.texi (Extended bits operators): New section.
+
+2026-01-31  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* ga68.texi (POSIX files): Document SET and CLEAR operators.
+	* a68.h: Prototypes for a68_bits_set, a68_bits_clear,
+	a68_lower_set3 and a68_lower_clear3.
+	* a68-low-bits.cc (a68_bits_set): New function.
+	(a68_bits_clear): Likewise.
+	* a68-low-prelude.cc (a68_lower_set3): Likewise.
+	(a68_lower_clear3): Likewise.
+	* a68-parser-prelude.cc (gnu_prelude): Declare operators SET and
+	CLEAR and their priorities.
+
+2026-01-30  Marc Poulhiès  <dkm@kataplop.net>
+
+	* ga68-coding-guidelines.texi: Typo fix.
+
+2026-01-29  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* ga68.vw: Update formal grammar to express the GNU extension.
+	* a68-parser.cc (a68_dont_mark_here): Likewise.
+	* a68-parser-scanner.cc (SINGLE_QUOTE_CHAR): Define.
+	(get_next_token): Recognize ' as QUOTE_SYMBOL.
+	(tokenise_source): Acknowledge QUOTE_SYMBOL.
+	* a68-parser-keywords.cc (a68_set_up_tables): Likewise.
+	* a68-parser-bottom-up.cc (reduce_primary_parts): Adjust parser to
+	brief form of selection.
+	* a68-parser-attrs.def (QUOTE_SYMBOL): New attribute.
+	* ga68.texi (Brief selection): New section.
+
+2026-01-29  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* ga68.vw: Fix grammar for formal holes.
+	* ga68.texi (Particular programs): New section.
+	(Comments): Likewise.
+	* a68.h: Prototypes for a68_is_c_mode, a68_make_fomal_hole_decl,
+	a68_lower_formal_hole.
+	* a68-parser-attrs.def (FORMAL_HOLE): New attribute.
+	(LANGUAGE_INDICANT): Likewise.
+	* a68-parser-extract.cc (a68_elaborate_bold_tags): Elaborate
+	language indicants.
+	* a68-parser-moids-check.cc (mode_check_unit): Check mode in
+	formal holes.
+	* a68-low-units.cc (a68_lower_formal_hole): New function.
+	* a68-low.cc (a68_make_formal_hole_decl): Likewise.
+	* a68-moids-misc.cc (a68_is_c_mode): Likewise.
+	* a68-parser-bottom-up.cc (reduce_formal_holes): Likewise.
+
 2026-01-24  Jose E. Marchesi  <jemarch@gnu.org>
 
 	PR algol68/123733

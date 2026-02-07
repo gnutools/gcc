@@ -839,6 +839,9 @@ static const scoped_attribute_specs *const arm_attribute_table[] =
 
 #undef TARGET_VECTORIZE_GET_MASK_MODE
 #define TARGET_VECTORIZE_GET_MASK_MODE arm_get_mask_mode
+
+#undef TARGET_FLAGS_REGNUM
+#define TARGET_FLAGS_REGNUM CC_REGNUM
 
 /* Obstack for minipool constant handling.  */
 static struct obstack minipool_obstack;
@@ -6345,9 +6348,9 @@ arm_get_pcs_model (const_tree type, const_tree decl ATTRIBUTE_UNUSED)
 	  /* Local functions never leak outside this compilation unit,
 	     so we are free to use whatever conventions are
 	     appropriate.  */
-	  /* FIXME: remove CONST_CAST_TREE when cgraph is constified.  */
+	  /* FIXME: remove const_cast<tree> when cgraph is constified.  */
 	  cgraph_node *local_info_node
-	    = cgraph_node::local_info_node (CONST_CAST_TREE (decl));
+	    = cgraph_node::local_info_node (const_cast<tree> (decl));
 	  if (local_info_node && local_info_node->local)
 	    return ARM_PCS_AAPCS_LOCAL;
 	}
@@ -30574,7 +30577,7 @@ arm_mangle_type (const_tree type)
   /* The ARM ABI documents (10th October 2008) say that "__va_list"
      has to be managled as if it is in the "std" namespace.  */
   if (TARGET_AAPCS_BASED
-      && lang_hooks.types_compatible_p (CONST_CAST_TREE (type), va_list_type))
+      && lang_hooks.types_compatible_p (const_cast<tree> (type), va_list_type))
     return "St9__va_list";
 
   /* Half-precision floating point types.  */
@@ -32001,7 +32004,7 @@ arm_evpc_neon_vext (struct expand_vec_perm_d *d)
   return true;
 }
 
-/* The NEON VTBL instruction is a fully variable permuation that's even
+/* The NEON VTBL instruction is a fully variable permutation that's even
    stronger than what we expose via VEC_PERM_EXPR.  What it doesn't do
    is mask the index operand as VEC_PERM_EXPR requires.  Therefore we
    can do slightly better by expanding this as a constant where we don't

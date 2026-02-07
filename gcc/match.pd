@@ -214,7 +214,9 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 (simplify (abs (convert @0))
  (if (ANY_INTEGRAL_TYPE_P (TREE_TYPE (@0))
       && !TYPE_UNSIGNED (TREE_TYPE (@0))
-      && element_precision (type) > element_precision (TREE_TYPE (@0)))
+      && element_precision (type) > element_precision (TREE_TYPE (@0))
+      && (!VECTOR_TYPE_P (type)
+	  || target_supports_op_p (TREE_TYPE (@0), ABSU_EXPR, optab_vector)))
   (with { tree utype = unsigned_type_for (TREE_TYPE (@0)); }
    (convert (absu:utype @0)))))
 
@@ -5176,7 +5178,8 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
         (op:c @2 @1))
   (if (INTEGRAL_TYPE_P (type)
        && TYPE_PRECISION (type) > 1
-       && (INTEGRAL_TYPE_P (TREE_TYPE (@0))))
+       && INTEGRAL_TYPE_P (TREE_TYPE (@0))
+       && expr_no_side_effects_p (@2))
        (op (mult (convert:type @0) @2) @1))))
 
 /* (zero_one != 0) ? z <op> y : y -> ((typeof(y))zero_one * z) <op> y */
@@ -5188,7 +5191,8 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
         @1)
   (if (INTEGRAL_TYPE_P (type)
        && TYPE_PRECISION (type) > 1
-       && (INTEGRAL_TYPE_P (TREE_TYPE (@0))))
+       && INTEGRAL_TYPE_P (TREE_TYPE (@0))
+       && expr_no_side_effects_p (@2))
        (op (mult (convert:type @0) @2) @1))))
 
 /* ?: Value replacement. */
@@ -6466,7 +6470,9 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    (eqne (cnd @0 @1 @2) (cnd @3 @1 @2))
     (if (!HONOR_NANS (@1)
 	 && types_match (TREE_TYPE (@0), TREE_TYPE (@3))
-         && types_match (type, TREE_TYPE (@0)))
+         && types_match (type, TREE_TYPE (@0))
+	 && expr_no_side_effects_p (@1)
+	 && expr_no_side_effects_p (@2))
      (cnd (bit_and (bit_xor @0 @3) (ne:type @1 @2))
       { constant_boolean_node (eqne == NE_EXPR, type); }
       { constant_boolean_node (eqne != NE_EXPR, type); })))
@@ -6474,7 +6480,9 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    (eqne (cnd @0 @1 @2) (cnd @3 @2 @1))
     (if (!HONOR_NANS (@1)
 	 && types_match (TREE_TYPE (@0), TREE_TYPE (@3))
-         && types_match (type, TREE_TYPE (@0)))
+         && types_match (type, TREE_TYPE (@0))
+	 && expr_no_side_effects_p (@1)
+	 && expr_no_side_effects_p (@2))
      (cnd (bit_ior (bit_xor @0 @3) (eq:type @1 @2))
       { constant_boolean_node (eqne != NE_EXPR, type); }
       { constant_boolean_node (eqne == NE_EXPR, type); })))))
@@ -8360,6 +8368,16 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
        sign extension followed by AND with C will achieve the effect.  */
     (bit_and (convert @0) @1)))))
 
+/* (A | (convert?)(A != 0)) EQ|NE 0 -> A EQ|NE 0 (PR114969)
+
+   The NE variant of this pattern is produced by the C++ code:
+
+   (bool)(std::max (ulong_A, 0) | (ulong_A ? 1 : 0)).  */
+(for cmp (eq ne)
+ (simplify
+  (cmp (bit_ior:c @0 (convert? (ne @0 integer_zerop))) integer_zerop)
+  (cmp @0 { build_zero_cst (TREE_TYPE (@0)); })))
+
 /* When the addresses are not directly of decls compare base and offset.
    This implements some remaining parts of fold_comparison address
    comparisons but still no complete part of it.  Still it is good
@@ -8796,7 +8814,7 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    (if (TYPE_UNSIGNED (TREE_TYPE (@0)))
     (convert (gt @0 (trunc_div! { TYPE_MAX_VALUE (TREE_TYPE (@0)); } @1)))
     (if (TYPE_MIN_VALUE (TREE_TYPE (@0)))
-     (if (integer_minus_onep (@1))
+     (if (!TYPE_UNSIGNED (TREE_TYPE (@1)) && integer_minus_onep (@1))
       (convert (eq @0 { TYPE_MIN_VALUE (TREE_TYPE (@0)); }))
       (with
        {
@@ -11415,10 +11433,11 @@ and,
 	    unsigned int elt_bits = tree_to_uhwi (TYPE_SIZE (elt_type));
 	    tree size = bitsize_int (elt_bits);
 	    tree pos = bitsize_int (elt_bits * i); }
-     (view_convert
-      (bit_and:elt_type
-       (BIT_FIELD_REF:elt_type @0 { size; } { pos; })
-       { elt; })))))))
+     (if (compare_tree_int (TYPE_SIZE (type), elt_bits) == 0)
+      (view_convert
+       (bit_and:elt_type
+        (BIT_FIELD_REF:elt_type @0 { size; } { pos; })
+        { elt; }))))))))
 
 /* Fold reduction of a single nonzero element constructor.  */
 (for reduc (IFN_REDUC_PLUS IFN_REDUC_IOR IFN_REDUC_XOR)
@@ -12235,3 +12254,8 @@ and,
    long as the requested element is within range.  */
 (simplify (IFN_VEC_EXTRACT (vec_duplicate @0) INTEGER_CST@1)
  @0)
+
+/* Strip nop-conversions __builtin_constant_p arguments.  */
+(simplify
+ (BUILT_IN_CONSTANT_P (nop_convert@1 @0))
+ (BUILT_IN_CONSTANT_P @0))

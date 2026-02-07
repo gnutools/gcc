@@ -18,7 +18,6 @@ import core.stdc.stdio;
 
 import dmd.astenums;
 import dmd.attrib;
-import dmd.gluelayer;
 import dmd.declaration;
 import dmd.dsymbol;
 import dmd.expression;
@@ -62,7 +61,7 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
     import dmd.common.bitfields : generateBitFields;
     mixin(generateBitFields!(BitFields, ubyte));
 
-    Symbol* sinit;
+    void* sinit;
 
     extern (D) this(Loc loc, Identifier ident, Type memtype)
     {
@@ -80,11 +79,6 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
         auto ed = new EnumDeclaration(loc, ident, memtype ? memtype.syntaxCopy() : null);
         ScopeDsymbol.syntaxCopy(ed);
         return ed;
-    }
-
-    override Type getType()
-    {
-        return type;
     }
 
     override const(char)* kind() const

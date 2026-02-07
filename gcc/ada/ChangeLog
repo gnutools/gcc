@@ -1,9 +1,87 @@
+2026-02-03  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* checks.adb (Apply_Discriminant_Check): Bail out for a source type
+	that is a class-wide type whose root type has no discriminants.
+	* exp_ch4.adb (Expand_N_Type_Conversion): If the target type is an
+	access type, emit null access checks before accessibility checks.
+	* sem_util.adb (In_Return_Value): Deal again with assignments to
+	return objects.
+
+2026-02-02  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/89159
+	* sem_ch6.adb (Conforming_Types.Is_Matching_Limited_View): Return
+	true when the type is an incomplete view of the non-limited view.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/123902
+	* sem_ch4.adb (Analyze_Selected_Component): Also test
+	Core_Extensions_Allowed for discriminated private types.
+	Rework and augment commentary throughout the procedure.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/121316
+	* exp_ch5.adb (Expand_Iterator_Loop_Over_Array): Minor tweak.
+	(Expand_Iterator_Loop_Over_Container): Likewise.
+	(Expand_N_Loop_Statement): Use Statements (N) throughout.
+
+2026-01-30  Gary Dismukes  <dismukes@adacore.com>
+
+	* sem_ch8.adb (End_Use_Type): Remove test of Prev_Use_Clause as
+	as a condition for resetting In_Use and Current_Use_Clause, and
+	change setting of that flag and field based on Prev_Use_Clause
+	rather than setting them to Empty. Revise preceding comment.
+
+2026-01-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123867
+	* sem_ch10.adb (Analyze_Compilation_Unit): Output info message
+	when -gnatdi is specified.
+	(Install_Parents): Likewise.  Set the Is_Visible_Lib_Unit flag
+	on the unit.
+	(Install_Private_With_Clauses): Do not output info message here.
+	(Remove_Parents): Output info message when -gnatdi is specified
+	and clear the Is_Visible_Lib_Unit flag on the unit.
+
+2026-01-29  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123861
+	* sem_type.adb (Covers): Fix couple of typos in comment.
+	(Specific_Type): Adjust to Covers' handling of types declared
+	with the Aggregate aspect in Ada 2022.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123857
+	* checks.adb (Apply_Parameter_Validity_Checks.Add_Validity_Check):
+	Set Is_Checked on the generated {Pre,Post}_Condition pragma and
+	bail out if the parameter is of an Unchecked_Union type.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123832
+	* exp_imgv.adb: Add with and use clauses for Exp_Ch7.
+	(Expand_Image_Attribute): Establish a transient scope before
+	rewriting the attribute as a call to Put_Image.
+	(Expand_Wide_Image_Attribute): Likewise.
+	(Expand_Wide_Wide_Image_Attribute): Likewise.
+	* exp_put_image.ads (Build_Image_Call): Add note about the
+	need for a transient scope when the function is invoked.
+	* exp_put_image.adb (Build_Image_Call): Call Insert_Actions
+	to immediately insert the actions instead of wrapping them
+	in an Expression_With_Actions node.
+
 2026-01-25  Sandra Loosemore  <sloosemore@baylibre.com>
 
 	* gcc-interface/lang.opt.urls: Regenerated.
 
 2026-01-21  Eric Botcazou  <ebotcazou@adacore.com>
 
+	PR ada/123580
 	* sem_ch13.adb (Analyze_Aspects_At_Freeze_Point): Replace call to
 	Scope_Within_Or_Same (Current_Scope, S) with In_Open_Scopes (S) to
 	test whether S is open in the current scope.

@@ -1,3 +1,51 @@
+2026-02-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* src/MERGE: Merge upstream phobos f7249cf45.
+
+2026-02-05  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* libdruntime/Makefile.am (DRUNTIME_DSOURCES): Add
+	core/internal/vararg/gnu.d.
+	(DRUNTIME_DSOURCES_LINUX): Add core/sys/linux/hdlc/ioctl.d,
+	core/sys/linux/net/if_.d.
+	(DRUNTIME_DSOURCES_SOLARIS): Add core/sys/solaris/sys/procfs.d,
+	core/sys/solaris/sys/regset.d, core/sys/solaris/thread.d.
+	* libdruntime/Makefile.in: Regenerate.
+
+2026-02-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* libdruntime/MERGE: Merge upstream druntime 24a41073c2.
+	* libdruntime/__importc_builtins.di: Reimplement.
+	* src/MERGE: Merge upstream phobos 808314eb2.
+	* testsuite/libphobos.aa/test_aa.d: Adjust test.
+	* testsuite/libphobos.gc/forkgc2.d: Removed.
+	* testsuite/libphobos.thread/filterthrownglobal.d: New test.
+	* testsuite/libphobos.thread/filterthrownmethod.d: New test.
+
+2026-01-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* libdruntime/MERGE: Merge upstream druntime e1f6680f50.
+	* libdruntime/Makefile.am (DRUNTIME_DSOURCES): Add
+	core/internal/cast_.d.  Remove rt/aaA.d, rt/adi.d, rt/cast_.d.
+	(DRUNTIME_DSOURCES_POSIX): Add core/sys/posix/endian.d.
+	* libdruntime/Makefile.in: Regenerate.
+	* src/MERGE: Merge upstream phobos f87979028.
+	* src/Makefile.am (PHOBOS_DSOURCES): Add std/internal/entropy.d.
+	* src/Makefile.in: Regenerate.
+	* testsuite/libphobos.aa/test_aa.d: Adjust test.
+	* testsuite/libphobos.init_fini/custom_gc.d: Likewise.
+
+2026-01-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* libdruntime/MERGE: Merge upstream druntime 1017635a96.
+	* libdruntime/Makefile.am (DRUNTIME_DSOURCES_LINUX): Add
+	core/sys/linux/sys/syscall.d, core/sys/linux/syscall.d.
+	* libdruntime/Makefile.in: Regenerate.
+	* src/MERGE: Merge upstream phobos 5a142da0a.
+	* src/Makefile.am (PHOBOS_DSOURCES): Remove
+	std/internal/windows/bcrypt.d.
+	* src/Makefile.in: Regenerate.
+
 2026-01-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 
 	PR d/122800

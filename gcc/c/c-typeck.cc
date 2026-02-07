@@ -7455,7 +7455,8 @@ build_c_cast (location_t loc, tree type, tree expr)
 	warning_at (loc, OPT_Wpointer_to_int_cast,
 		    "cast from pointer to integer of different size");
 
-      if (TREE_CODE (value) == CALL_EXPR
+      if ((TREE_CODE (value) == CALL_EXPR
+	   && !is_access_with_size_p (value))
 	  && TREE_CODE (type) != TREE_CODE (otype))
 	warning_at (loc, OPT_Wbad_function_cast,
 		    "cast from function call of type %qT "
@@ -13169,6 +13170,8 @@ build_asm_expr (location_t loc, tree string, tree outputs, tree inputs,
 				 "of a function or non-automatic variable");
 		  input = error_mark_node;
 		}
+	      else if (TREE_CODE (TREE_OPERAND (t, 0)) == FUNCTION_DECL)
+		suppress_warning (TREE_OPERAND (t, 0), OPT_Wunused);
 	    }
 	}
       else

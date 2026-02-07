@@ -17,12 +17,10 @@ import core.stdc.string;
 import core.stdc.stdlib;
 
 import dmd.aggregate;
-import dmd.aliasthis;
 import dmd.arraytypes;
 import dmd.attrib;
 import dmd.astenums;
 import dmd.ast_node;
-import dmd.gluelayer;
 import dmd.dclass;
 import dmd.declaration;
 import dmd.denum;
@@ -35,11 +33,7 @@ import dmd.dtemplate;
 import dmd.errors;
 import dmd.expression;
 import dmd.func;
-import dmd.globals;
-import dmd.id;
 import dmd.identifier;
-import dmd.init;
-import dmd.lexer;
 import dmd.location;
 import dmd.mtype;
 import dmd.nspace;
@@ -51,7 +45,6 @@ import dmd.statement;
 import dmd.staticassert;
 import dmd.tokens;
 import dmd.visitor;
-import dmd.dsymbolsem;
 
 import dmd.common.outbuffer;
 
@@ -104,22 +97,6 @@ void foreachDsymbol(Dsymbols* symbols, scope void delegate(Dsymbol) dg)
             Dsymbol s = (*symbols)[i];
             dg(s);
         }
-    }
-}
-
-
-struct Ungag
-{
-    uint oldgag;
-
-    extern (D) this(uint old) nothrow @safe
-    {
-        this.oldgag = old;
-    }
-
-    extern (C++) ~this() nothrow
-    {
-        global.gag = oldgag;
     }
 }
 
@@ -198,8 +175,8 @@ enum PASS : ubyte
     semantic2done,  // semantic2() done
     semantic3,      // semantic3() started
     semantic3done,  // semantic3() done
-    inline,         // inline started
-    inlinedone,     // inline done
+    inlinePragma,   // inline pragma(inline, true) functions started
+    inlineAll,      // inline all functions started
     obj,            // toObjFile() run
 }
 
@@ -335,7 +312,7 @@ extern (C++) class Dsymbol : ASTNode
 {
     Identifier ident;
     Dsymbol parent;
-    Symbol* csym;           // symbol for code generator
+    void* csym;             // symbol for code generator
     Scope* _scope;          // !=null means context to use for semantic()
     private DsymbolAttributes* atts; /// attached attribute declarations
     const Loc loc;          // where defined
@@ -344,6 +321,11 @@ extern (C++) class Dsymbol : ASTNode
     {
         bool errors;            // this symbol failed to pass semantic()
         PASS semanticRun = PASS.initial;
+
+        // Queued for deferred semantics:
+        bool deferred;  // In Module.deferred
+        bool deferred2; // In Module.deferred2
+        bool deferred3; // In Module.deferred3
     }
     import dmd.common.bitfields;
     mixin(generateBitFields!(BitFields, ubyte));
@@ -423,21 +405,6 @@ extern (C++) class Dsymbol : ASTNode
     const(char)* toPrettyCharsHelper()
     {
         return toChars();
-    }
-
-    override bool equals(const RootObject o) const
-    {
-        if (this == o)
-            return true;
-        const s = o.isDsymbol();
-        if (!s)
-            return false;
-        // Overload sets don't have an ident
-        // Function-local declarations may have identical names
-        // if they are declared in different scopes
-        if (s && ident && s.ident && ident.equals(s.ident) && localNum == s.localNum)
-            return true;
-        return false;
     }
 
     final bool isAnonymous() const
@@ -604,16 +571,6 @@ extern (C++) class Dsymbol : ASTNode
         return parent.toParentDeclImpl(localOnly);
     }
 
-    /**
-     * Returns the declaration scope scope of `this` unless any of the symbols
-     * `p1` or `p2` resides in its enclosing instantiation scope then the
-     * latter is returned.
-     */
-    final Dsymbol toParentP(Dsymbol p1, Dsymbol p2 = null)
-    {
-        return followInstantiationContext(p1, p2) ? toParent2() : toParentLocal();
-    }
-
     final inout(TemplateInstance) isInstantiated() inout
     {
         if (!parent)
@@ -622,50 +579,6 @@ extern (C++) class Dsymbol : ASTNode
         if (ti && !ti.isTemplateMixin())
             return ti;
         return parent.isInstantiated();
-    }
-
-    /***
-     * Returns true if any of the symbols `p1` or `p2` resides in the enclosing
-     * instantiation scope of `this`.
-     */
-    final bool followInstantiationContext(Dsymbol p1, Dsymbol p2 = null)
-    {
-        static bool has2This(Dsymbol s)
-        {
-            if (auto f = s.isFuncDeclaration())
-                return f.hasDualContext();
-            if (auto ad = s.isAggregateDeclaration())
-                return ad.vthis2 !is null;
-            return false;
-        }
-
-        if (has2This(this))
-        {
-            assert(p1);
-            auto outer = toParent();
-            while (outer)
-            {
-                auto ti = outer.isTemplateInstance();
-                if (!ti)
-                    break;
-                foreach (oarg; *ti.tiargs)
-                {
-                    auto sa = getDsymbol(oarg);
-                    if (!sa)
-                        continue;
-                    sa = sa.toAlias().toParent2();
-                    if (!sa)
-                        continue;
-                    if (sa == p1)
-                        return true;
-                    if (p2 && sa == p2)
-                        return true;
-                }
-                outer = ti.tempdecl.toParent();
-            }
-            return false;
-        }
-        return false;
     }
 
     // Check if this function is a member of a template which has only been
@@ -682,14 +595,6 @@ extern (C++) class Dsymbol : ASTNode
         if (!parent.toParent())
             return null;
         return parent.isSpeculative();
-    }
-
-    final Ungag ungagSpeculative() const
-    {
-        const oldgag = global.gag;
-        if (global.gag && !isSpeculative() && !toParent2().isFuncDeclaration())
-            global.gag = 0;
-        return Ungag(oldgag);
     }
 
     // kludge for template.isSymbol()
@@ -751,40 +656,6 @@ extern (C++) class Dsymbol : ASTNode
     const(char)* kind() const pure nothrow @nogc @safe
     {
         return "symbol";
-    }
-
-    /*********************************
-     * If this symbol is really an alias for another,
-     * return that other.
-     * If needed, semantic() is invoked due to resolve forward reference.
-     */
-    Dsymbol toAlias()
-    {
-        return this;
-    }
-
-    /*********************************
-     * Resolve recursive tuple expansion in eponymous template.
-     */
-    Dsymbol toAlias2()
-    {
-        return toAlias();
-    }
-
-    bool overloadInsert(Dsymbol s)
-    {
-        //printf("Dsymbol::overloadInsert('%s')\n", s.toChars());
-        return false;
-    }
-
-    /*********************************
-     * Returns:
-     *  SIZE_INVALID when the size cannot be determined
-     */
-    uinteger_t size(Loc loc)
-    {
-        .error(loc, "%s `%s` symbol `%s` has no size", kind, toPrettyChars, toChars());
-        return SIZE_INVALID;
     }
 
     bool isforwardRef()
@@ -870,12 +741,6 @@ extern (C++) class Dsymbol : ASTNode
         return ad ? ad.isClassDeclaration() : null;
     }
 
-    // is this a type?
-    Type getType()
-    {
-        return null;
-    }
-
     // need a 'this' pointer?
     bool needThis()
     {
@@ -898,82 +763,6 @@ extern (C++) class Dsymbol : ASTNode
     {
         printf("%s %s\n", kind(), toChars());
         assert(0);
-    }
-
-    /*****************************************
-     * Same as Dsymbol::oneMember(), but look at an array of Dsymbols.
-     */
-    extern (D) static bool oneMembers(Dsymbols* members, out Dsymbol ps, Identifier ident)
-    {
-        //printf("Dsymbol::oneMembers() %d\n", members ? members.length : 0);
-        Dsymbol s = null;
-        if (!members)
-        {
-            ps = null;
-            return true;
-        }
-
-        for (size_t i = 0; i < members.length; i++)
-        {
-            Dsymbol sx = (*members)[i];
-            bool x = sx.oneMember(ps, ident); //MYTODO: this temporarily creates a new dependency to dsymbolsem, will need to extract oneMembers() later
-            //printf("\t[%d] kind %s = %d, s = %p\n", i, sx.kind(), x, *ps);
-            if (!x)
-            {
-                //printf("\tfalse 1\n");
-                assert(ps is null);
-                return false;
-            }
-            if (ps)
-            {
-                assert(ident);
-                if (!ps.ident || !ps.ident.equals(ident))
-                    continue;
-                if (!s)
-                    s = ps;
-                else if (s.isOverloadable() && ps.isOverloadable())
-                {
-                    // keep head of overload set
-                    FuncDeclaration f1 = s.isFuncDeclaration();
-                    FuncDeclaration f2 = ps.isFuncDeclaration();
-                    if (f1 && f2)
-                    {
-                        assert(!f1.isFuncAliasDeclaration());
-                        assert(!f2.isFuncAliasDeclaration());
-                        for (; f1 != f2; f1 = f1.overnext0)
-                        {
-                            if (f1.overnext0 is null)
-                            {
-                                f1.overnext0 = f2;
-                                break;
-                            }
-                        }
-                    }
-                }
-                else // more than one symbol
-                {
-                    ps = null;
-                    //printf("\tfalse 2\n");
-                    return false;
-                }
-            }
-        }
-        ps = s; // s is the one symbol, null if none
-        //printf("\ttrue\n");
-        return true;
-    }
-
-    /*****************************************
-     * Is Dsymbol a variable that contains pointers?
-     */
-    bool hasPointers()
-    {
-        //printf("Dsymbol::hasPointers() %s\n", toChars());
-        return false;
-    }
-
-    void addObjcSymbols(ClassDeclarations* classes, ClassDeclarations* categories)
-    {
     }
 
     /****************************************
@@ -1235,6 +1024,7 @@ extern (C++) class Dsymbol : ASTNode
             return null;
         }
     }
+    inout(AlignDeclaration)            isAlignDeclaration()            inout { return dsym == DSYM.alignDeclaration ? cast(inout(AlignDeclaration)) cast(void*) this : null; }
     inout(AnonDeclaration)             isAnonDeclaration()             inout { return dsym == DSYM.anonDeclaration ? cast(inout(AnonDeclaration)) cast(void*) this : null; }
     inout(CPPNamespaceDeclaration)     isCPPNamespaceDeclaration()     inout { return dsym == DSYM.cppNamespaceDeclaration ? cast(inout(CPPNamespaceDeclaration)) cast(void*) this : null; }
     inout(VisibilityDeclaration)       isVisibilityDeclaration()       inout { return dsym == DSYM.visibilityDeclaration ? cast(inout(VisibilityDeclaration)) cast(void*) this : null; }
@@ -1286,52 +1076,6 @@ public:
         sds.members = arraySyntaxCopy(members);
         sds.endlinnum = endlinnum;
         return sds;
-    }
-
-    extern (D) final OverloadSet mergeOverloadSet(Identifier ident, OverloadSet os, Dsymbol s)
-    {
-        if (!os)
-        {
-            os = new OverloadSet(ident);
-            os.parent = this;
-        }
-        if (OverloadSet os2 = s.isOverloadSet())
-        {
-            // Merge the cross-module overload set 'os2' into 'os'
-            if (os.a.length == 0)
-            {
-                os.a.setDim(os2.a.length);
-                memcpy(os.a.tdata(), os2.a.tdata(), (os.a[0]).sizeof * os2.a.length);
-            }
-            else
-            {
-                for (size_t i = 0; i < os2.a.length; i++)
-                {
-                    os = mergeOverloadSet(ident, os, os2.a[i]);
-                }
-            }
-        }
-        else
-        {
-            assert(s.isOverloadable());
-            /* Don't add to os[] if s is alias of previous sym
-             */
-            for (size_t j = 0; j < os.a.length; j++)
-            {
-                Dsymbol s2 = os.a[j];
-                if (s.toAlias() == s2.toAlias())
-                {
-                    if (s2.isDeprecated() || (s2.visible() < s.visible() && s.visible().kind != Visibility.Kind.none))
-                    {
-                        os.a[j] = s;
-                    }
-                    goto Lcontinue;
-                }
-            }
-            os.push(s);
-        Lcontinue:
-        }
-        return os;
     }
 
     void importScope(Dsymbol s, Visibility visibility) nothrow

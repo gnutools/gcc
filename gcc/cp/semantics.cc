@@ -47,6 +47,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "gimplify.h"
 #include "contracts.h"
+#include "c-family/c-pragma.h"
 
 /* There routines provide a modular interface to perform many parsing
    operations.  They may therefore be used during actual parsing, or
@@ -609,8 +610,10 @@ set_one_cleanup_loc (tree t, location_t loc)
 {
   if (!t)
     return;
+
   if (TREE_CODE (t) != POSTCONDITION_STMT)
     protected_set_expr_location (t, loc);
+
   /* Avoid locus differences for C++ cdtor calls depending on whether
      cdtor_returns_this: a conversion to void is added to discard the return
      value, and this conversion ends up carrying the location, and when it
@@ -2492,6 +2495,8 @@ finish_asm_stmt (location_t loc, int volatile_p, tree string,
 				"of a function or non-automatic variable");
 		      operand = error_mark_node;
 		    }
+		  else if (TREE_CODE (TREE_OPERAND (t, 0)) == FUNCTION_DECL)
+		    suppress_warning (TREE_OPERAND (t, 0), OPT_Wunused);
 		}
 	    }
 	  else
@@ -3665,9 +3670,9 @@ finish_this_expr (void)
   else if (fn && DECL_STATIC_FUNCTION_P (fn))
     error ("%<this%> is unavailable for static member functions");
   else if (fn && processing_contract_condition && DECL_CONSTRUCTOR_P (fn))
-    error ("invalid use of %<this%> before it is valid");
+    error ("invalid use of %<this%> in a constructor %<pre%> condition");
   else if (fn && processing_contract_condition && DECL_DESTRUCTOR_P (fn))
-    error ("invalid use of %<this%> after it is valid");
+    error ("invalid use of %<this%> in a destructor %<post%> condition");
   else if (fn)
     error ("invalid use of %<this%> in non-member function");
   else
@@ -4812,7 +4817,9 @@ finish_id_expression_1 (tree id_expression,
       /* A use in unevaluated operand might not be instantiated appropriately
 	 if tsubst_copy builds a dummy parm, or if we never instantiate a
 	 generic lambda, so mark it now.  */
-      if (processing_template_decl && cp_unevaluated_operand)
+      if (processing_template_decl
+	  && (cp_unevaluated_operand
+	      || generic_lambda_fn_p (current_function_decl)))
 	mark_type_use (decl);
 
       /* Disallow uses of local variables from containing functions, except
@@ -4884,6 +4891,10 @@ finish_id_expression_1 (tree id_expression,
 		   "integral or enumeration type", decl, TREE_TYPE (decl));
 	  *non_integral_constant_expression_p = true;
 	}
+
+      if (flag_contracts && processing_contract_condition)
+	r = constify_contract_access (r);
+
       return r;
     }
   else if (TREE_CODE (decl) == UNBOUND_CLASS_TEMPLATE)
@@ -5007,6 +5018,14 @@ finish_id_expression_1 (tree id_expression,
 	}
       else if (TREE_CODE (decl) == FIELD_DECL)
 	{
+	  if (flag_contracts && processing_contract_condition
+	      && contract_class_ptr == current_class_ptr)
+	    {
+	      error ("%qD 'this' required when accessing a member within a "
+		  "constructor precondition or destructor postcondition "
+		  "contract check", decl);
+		      return error_mark_node;
+	    }
 	  /* Since SCOPE is NULL here, this is an unqualified name.
 	     Access checking has been performed during name lookup
 	     already.  Turn off checking to avoid duplicate errors.  */
@@ -5030,6 +5049,14 @@ finish_id_expression_1 (tree id_expression,
 		      && !shared_member_p (decl))))
 	    {
 	      /* A set of member functions.  */
+	      if (flag_contracts && processing_contract_condition
+		  && contract_class_ptr == current_class_ptr)
+		{
+		  error ("%qD 'this' required when accessing a member within a "
+		      "constructor precondition or destructor postcondition "
+		      "contract check", decl);
+		  return error_mark_node;
+		}
 	      decl = maybe_dummy_object (DECL_CONTEXT (first_fn), 0);
 	      return finish_class_member_access_expr (decl, id_expression,
 						      /*template_p=*/false,
@@ -5064,6 +5091,10 @@ finish_id_expression_1 (tree id_expression,
 	  decl = convert_from_reference (decl);
 	}
     }
+
+  check_param_in_postcondition (decl, location);
+  if (flag_contracts && processing_contract_condition)
+    decl = constify_contract_access (decl);
 
   return cp_expr (decl, location);
 }
@@ -12827,6 +12858,27 @@ cexpr_str::extract (location_t location, const char * & msg, int &len)
 	      return false;
 	    }
 	}
+      /* Convert the string from execution charset to SOURCE_CHARSET.  */
+      cpp_string istr, ostr;
+      istr.len = len;
+      istr.text = (const unsigned char *) msg;
+      if (len == 0)
+	;
+      else if (!cpp_translate_string (parse_in, &istr, &ostr, CPP_STRING,
+				      true))
+	{
+	  error_at (location, "could not convert constexpr string from "
+			      "ordinary literal encoding to source character "
+			      "set");
+	  return false;
+	}
+      else
+	{
+	  if (buf)
+	    XDELETEVEC (buf);
+	  msg = buf = const_cast <char *> ((const char *) ostr.text);
+	  len = ostr.len;
+	}
     }
   else
     {
@@ -13035,6 +13087,12 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
          overloaded functions, the program is ill-formed.  */
       if (identifier_p (expr))
         expr = lookup_name (expr);
+
+      /* If e is a constified expression inside a contract assertion,
+	 strip the const wrapper. Per P2900R14, "For a function f with the
+	 return type T , the result name is an lvalue of type const T , decltype(r)
+	 is T , and decltype((r)) is const T&."  */
+      expr = strip_contract_const_wrapper (expr);
 
       if (INDIRECT_REF_P (expr)
 	  || TREE_CODE (expr) == VIEW_CONVERT_EXPR)

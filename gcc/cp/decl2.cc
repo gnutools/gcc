@@ -52,9 +52,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "omp-general.h"
 #include "tree-inline.h"
 #include "escaped_string.h"
-#include "contracts.h"
 #include "gcc-rich-location.h"
 #include "tree-pretty-print-markup.h"
+#include "contracts.h"
 
 /* Id for dumping the raw trees.  */
 int raw_dump_id;
@@ -1958,9 +1958,6 @@ cp_check_const_attributes (tree attributes)
   tree attr;
   for (attr = attributes; attr; attr = TREE_CHAIN (attr))
     {
-      if (cxx_contract_attribute_p (attr))
-	continue;
-
       /* Annotation arguments are handled in handle_annotation_attribute.  */
       if (annotation_p (attr))
 	continue;
@@ -2599,17 +2596,7 @@ void
 comdat_linkage (tree decl)
 {
   if (flag_weak)
-    {
-      make_decl_one_only (decl, cxx_comdat_group (decl));
-      if (HAVE_COMDAT_GROUP && flag_contracts && DECL_CONTRACTS (decl))
-	{
-	  symtab_node *n = symtab_node::get (decl);
-	  if (tree pre = DECL_PRE_FN (decl))
-	    cgraph_node::get_create (pre)->add_to_same_comdat_group (n);
-	  if (tree post = DECL_POST_FN (decl))
-	    cgraph_node::get_create (post)->add_to_same_comdat_group (n);
-	}
-    }
+    make_decl_one_only (decl, cxx_comdat_group (decl));
   else if (TREE_CODE (decl) == FUNCTION_DECL
 	   || (VAR_P (decl) && DECL_ARTIFICIAL (decl)))
     /* We can just emit function and compiler-generated variables
@@ -5906,6 +5893,12 @@ c_parse_final_cleanups (void)
 	   importer.  */
 	continue;
 
+      /* Emit wrappers where needed, and if that causes more to be added then
+	 make sure we account for possible additional instantiations.  */
+      if (flag_contracts)
+	if (emit_contract_wrapper_func (/*done*/false))
+	  reconsider = true;
+
       /* Write out virtual tables as required.  Writing out the
 	 virtual table for a template class may cause the
 	 instantiation of members of that class.  If we write out
@@ -6116,6 +6109,12 @@ c_parse_final_cleanups (void)
 	  && wrapup_global_declarations (pending_statics->address (),
 					 pending_statics->length ()))
 	reconsider = true;
+    }
+
+  if (flag_contracts)
+    {
+      emit_contract_wrapper_func (/*done*/true);
+      maybe_emit_violation_handler_wrappers ();
     }
 
   /* All templates have been instantiated.  */

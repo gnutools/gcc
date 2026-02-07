@@ -1533,7 +1533,8 @@ package body Checks is
 
       --  Also, if the expression is of an access type whose designated type is
       --  incomplete, then the access value must be null and we suppress the
-      --  check.
+      --  check. We also need to suppress it for a class-wide type whose root
+      --  type has no discriminants.
 
       if Known_Null (N) then
          return;
@@ -1541,7 +1542,10 @@ package body Checks is
       elsif Is_Access_Type (S_Typ) then
          S_Typ := Designated_Type (S_Typ);
 
-         if Ekind (S_Typ) = E_Incomplete_Type then
+         if Ekind (S_Typ) = E_Incomplete_Type
+           or else (Is_Class_Wide_Type (S_Typ)
+                     and then not Has_Discriminants (Root_Type (S_Typ)))
+         then
             return;
          end if;
       end if;
@@ -2584,6 +2588,10 @@ package body Checks is
                     Chars      => Name_Check,
                     Expression => Expr)));
 
+            --  The check is enabled unconditionally
+
+            Set_Is_Checked (Prag);
+
             --  Add a message unless exception messages are suppressed
 
             if not Exception_Locations_Suppressed then
@@ -2641,9 +2649,12 @@ package body Checks is
          if Is_Scalar_Type (Typ) then
             Nam := Name_Valid;
 
-         --  For any non-scalar with scalar parts, generate 'Valid_Scalars test
+         --  For non-scalars with scalar parts, generate 'Valid_Scalars test,
+         --  except for unchecked unions since we cannot know where they are.
 
-         elsif Scalar_Part_Present (Typ) then
+         elsif Scalar_Part_Present (Typ)
+           and then not Is_Unchecked_Union (Typ)
+         then
             Nam := Name_Valid_Scalars;
 
          --  No test needed for other cases (no scalars to test)
@@ -2735,8 +2746,7 @@ package body Checks is
          return;
       end if;
 
-      --  Inspect all the formals applying aliasing and scalar initialization
-      --  checks where applicable.
+      --  Apply scalar initialization checks to formals where applicable
 
       Formal := First_Formal (Subp);
       while Present (Formal) loop

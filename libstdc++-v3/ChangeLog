@@ -1,3 +1,284 @@
+2026-02-06  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/bits/hashtable.h (std::__heterogeneous_hash_key)
+	[__glibcxx_associative_heterogeneous_erasure]: Changed guard.
+	* include/bits/stl_tree.h (std::__heterogeneous_tree_key)
+	[__glibcxx_associative_heterogeneous_erasure]: Likewise.
+	* include/bits/stl_function.h: Add comment with C++ version
+	for __glibcxx_associative_heterogeneous_erasure guard.
+
+2026-02-06  Nathan Myers  <ncm@cantrip.org>
+
+	* include/bits/stl_function.h (concept __heterogeneous_key):
+	Guard with __glibcxx_associative_heterogeneous_erasure
+
+2026-02-06  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/120567
+	* acinclude.m4 (GLIBCXX_ENABLE_BACKTRACE): Include "__sync_" in
+	grep command to check for extern calls to libatomic.
+	* configure: Regenerate.
+
+2026-02-06  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/Makefile.am (new-abi-baseline): Overwrite existing
+	file instead of creating baseline_symbols.txt.new.
+	* testsuite/Makefile.in: Regenerate.
+
+2026-02-06  Nathan Myers  <ncm@cantrip.org>
+
+	* include/bits/stl_function.h (__heterogeneous_key): Use
+	C++17-defined remove_cvref<>::type instead.
+
+2026-02-05  Caolán McNamara  <caolanm@gmail.com>
+
+	* include/bits/regex.tcc (regex_traits::lookup_collatename):
+	Make __collatenames array const.
+
+2026-02-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/contracts (contract_violation::location): Use
+	source_location default constructor and then set _M_impl.
+	* include/std/source_location (source_location(const void*)):
+	Remove constructor.
+	* testsuite/18_support/contracts/includes.cc: Move to...
+	* testsuite/18_support/contracts/srcloc.cc: ...here. Test for
+	ambiguity caused by new constructor.
+
+2026-02-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	* python/libstdcxx/v6/printers.py (SharedPointerPrinter): Only
+	use gdb.Type.is_scalar if supported.
+	* testsuite/libstdc++-prettyprinters/compat.cc: Test printer for
+	old implementation of std::atomic<std::shared_ptr<T>>.
+
+2026-02-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/28_regex/algorithms/regex_match/multiline.cc: Add
+	string to static_assert.
+	* testsuite/28_regex/sub_match/lwg3204.cc: Likewise.
+
+2026-02-04  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/117404
+	* include/bits/version.def (associative_heterogeneous_erasure):
+	Define.
+	* include/bits/version.h: Regenerate.
+	* include/std/map: Request new feature from version.h.
+	* include/std/set: Same.
+	* include/std/unordered_map: Same.
+	* include/std/unordered_set: Same.
+	* include/bits/stl_map.h (extract, erase): Define overloads.
+	* include/bits/stl_set.h: Same.
+	* include/bits/stl_multimap.h: Same.
+	* include/bits/stl_multiset.h: Same.
+	* include/bits/unordered_map.h: Same, 2x.
+	* include/bits/unordered_set.h: Same, 2x.
+	* include/bits/stl_function.h (concepts __not_container_iterator,
+	__heterogeneous_key): Define.
+	* include/bits/hashtable.h (_M_find_before_node, _M_locate, extract):
+	Delegate to more-general _tr version.
+	(_M_find_before_node_tr, _M_locate_tr, _M_extract_tr, _M_erase_tr):
+	Add new members to support a heterogeneous key argument.
+	(_M_erase_some): Add new helper function.
+	(concept __heterogeneous_hash_key): Define.
+	* include/bits/stl_tree.h (_M_lower_bound_tr, _M_upper_bound_tr,
+	_M_erase_tr, _M_extract_tr): Add new members to support a
+	heterogeneous key argument.
+	(concept __heterogeneous_tree_key): Define.
+	* testsuite/23_containers/map/modifiers/hetero/erase.cc: New test.
+	* testsuite/23_containers/multimap/modifiers/hetero/erase.cc: Same.
+	* testsuite/23_containers/multiset/modifiers/hetero/erase.cc: Same.
+	* testsuite/23_containers/set/modifiers/hetero/erase.cc: Same.
+	* testsuite/23_containers/unordered_map/modifiers/hetero/erase.cc: Same.
+	* testsuite/23_containers/unordered_multimap/modifiers/hetero/erase.cc:
+	Same.
+	* testsuite/23_containers/unordered_multiset/modifiers/hetero/erase.cc:
+	Same.
+	* testsuite/23_containers/unordered_set/modifiers/hetero/erase.cc: Same.
+
+2026-02-03  Marek Polacek  <polacek@redhat.com>
+
+	* include/bits/new_allocator.h (__new_allocator::allocate,
+	__new_allocator::deallocate): Add missing constexpr.
+
+2026-02-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR libstdc++/123921
+	* include/bits/version.def (define_static): New with the
+	same values as reflection.
+	* include/bits/version.h: Regenerate.
+	* include/std/meta: Define also __glibcxx_want_define_static before
+	including bits/version.h.
+
+2026-02-02  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex_executor.tcc (_ExecutorFrameBase):
+	Zero-initialize _M_byte0.
+	(_ExecutorFrameBase::_M_end): Rename to ...
+	(_ExecutorFrameBase::_M_subexpr_end): ... this.
+	(_Executor::_M_handle_subexpr_begin): Remove now redundant
+	clearing of _M_subexpr_end.
+	(_Executor::_M_handle_subexpr_end): Adjust after renaming.
+	(_Executor::_M_dfs) <case _S_fopcode_restore_cur_results>:
+	Likewise.
+
+2026-01-31  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex_executor.tcc (_ExecutorFrameBase): Add
+	#pragma GCC diagnostic to suppress -Wpedantic warning about
+	anonymous structs.
+
+2026-01-30  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex_executor.tcc (__detail::_Executor::_M_node)
+	[__OPTIMIZE__]: Add [[gnu::always_inline]] attribute.  Declare
+	inline.
+
+2026-01-30  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/86164
+	* include/bits/regex_executor.tcc (__detail::_ExecutorFrameOpcode):
+	Remove _S_fopcode_restore_current.
+	(__detail::_Executor::_M_handle_repeat): Pass _M_current when
+	pushing a fallback_next or fallback_rep_once_more frame.
+	(__detail::_Executor::_M_handle_match): Don't push a
+	restore_current frame.
+	(__detail::_Executor::_M_handle_backref): Likewise and simplify
+	accordingly.
+	(__detail::_Executor::_M_handle_alternative): Pass _M_current when
+	pushing a fallback_next or posix_alternative frame.
+	(__detail::_Executor::_M_dfs) <case _S_fopcode_fallback_next>:
+	Restore _M_current.
+	<case _S_fopcode_fallback_rep_once_more>: Likewise.
+	<case _S_fopcode_posix_alternative>: Likewise.
+	<case _S_fopcode_restore_current>: Remove.
+
+2026-01-30  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/86164
+	* include/bits/regex.h (__detail::_Executor): Use inline
+	namespace _V2.
+	* include/bits/regex_executor.h (__detail::_ExecutorFrame):
+	Declare.
+	(__detail::_Executor): Use inline namespace _V2.
+	(__detail::_Executor::_M_node): Declare.
+	(__detail::_Executor::_M_frames): New data member.
+	* include/bits/regex_executor.tcc (__detail::_ExecutorFrameOpcode):
+	New.
+	(__detail::_ExecutorFrameBase): New.
+	(__detail::_ExecutorFrame): New.
+	(__detail::_Executor): Use inline namespace _V2.
+	(__detail::_Executor::_M_rep_once_more): Replace recursive
+	_M_dfs calls with an _S_opcode_next frame push, and any work
+	after such calls with an appropriate frame push.
+	(__detail::_M_handle_repeat): Likewise.
+	(__detail::_M_handle_subexpr_begin): Likewise.
+	(__detail::_M_handle_subexpr_end): Likewise.
+	(__detail::_M_handle_line_begin_assertion): Likewise.
+	(__detail::_M_handle_line_end_assertion): Likewise.
+	(__detail::_M_handle_word_boundary): Likewise.
+	(__detail::_M_handle_subexpr_lookahead): Likewise.
+	(__detail::_M_handle_match): Likewise.
+	(__detail::_M_handle_backref): Likewise.
+	(__detail::_M_handle_accept): Likewise.
+	(__detail::_M_handle_alternative): Likewise.
+	(__detail::_M_node): Factored out from _M_dfs.
+	(__detail::_M_dfs): Push an initial frame to _M_frames that
+	visits the starting node and pass this stack each subroutine.
+	Pop the latest _ExecutorFrame from _M_frames and handle
+	appropriately according to its _ExecutorFrameOpcode.  Loop until
+	_M_frames is empty.
+
+2026-01-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/expected (__expected::__trivially_replaceable)
+	(__expected::__usable_for_assign)
+	(__expected::__usable_for_trivial_assign)
+	(__expected::__can_reassign_type): New concepts.
+	(expected::operator=): Adjust constraints
+	on existing overloads and add defaulted overload.
+	(expected<cv void, E>::operator=): Likewise.
+	* testsuite/20_util/expected/requirements.cc: Check for trivial
+	and nothrow properties of assignments.
+
+2026-01-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/source_location: Check __glibcxx_contracts instead
+	of __cpp_lib_contracts.
+	* testsuite/18_support/contracts/includes.cc: New test.
+
+2026-01-29  vspefs  <vspefs@protonmail.com>
+
+	* src/c++23/std.cc.in (invoke_default_violation_handler): Change
+	to invoke_default_contract_violation_handler.
+
+2026-01-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/contracts: Replace non-ASCII characters.
+
+2026-01-28  Jonathan Wakely  <jwakely@redhat.com>
+
+	* src/experimental/Makefile.am: Change AM_CXXFLAGS to use C++20
+	by default.
+
+2026-01-28  Jonathan Wakely  <jwakely@redhat.com>
+
+	* src/experimental/contract26.cc: Use #error if built without
+	contracts support enabled.
+	* include/std/source_location: Remove stray whitespace.
+
+2026-01-28  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR tree-optimization/122197
+	* include/bits/shared_ptr_base.h (~_Sp_counted_deleter): Use
+	diagnostic pragam to disable -Wfree-nonheap-object false
+	positive.
+	(~_Sp_counted_ptr_inplace): Likewise for -Warray-bounds false
+	positive.
+
+2026-01-28  Jonathan Wakely  <jwakely@redhat.com>
+
+	* config/locale/gnu/ctype_members.cc (use_table): New function.
+	(ctype<wchar_t>::do_narrow): Use use_table.
+
+2026-01-28  Soumya AR  <soumyaa@nvidia.com>
+
+	* include/bits/atomic_base.h:
+	Add fetch_min and fetch_max memberfunctions.
+	* include/bits/version.def:
+	Add __cpp_lib_atomic_min_max feature test macro.
+	* include/bits/version.h (defined): Regenerate.
+	* include/std/atomic: Extend for fetch_min/max non-member functions.
+	* src/c++23/std.cc.in: Export atomic_fetch_min, atomic_fetch_max,
+	atomic_fetch_min_explicit, atomic_fetch_max_explicit.
+	* testsuite/29_atomics/atomic_integral/nonmembers_fetch_minmax.cc:
+	New test.
+	* testsuite/29_atomics/atomic_ref/integral_fetch_minmax.cc: New test.
+
+2026-01-28  Nina Ranns  <dinka.ranns@gmail.com>
+	    Iain Sandoe  <iain@sandoe.co.uk>
+	    Ville Voutilainen  <ville.voutilainen@gmail.com>
+
+	* include/Makefile.am: Add contract include.
+	* include/Makefile.in: Regenerate.
+	* include/bits/version.def: Add ftm for contracts.
+	* include/bits/version.h: Regenerate.
+	* include/precompiled/stdc++.h: Add contracts header.
+	* include/std/source_location: Befriend the contract_violation
+	class so that we can initialise a source_location from an
+	existing __impl *.
+	* src/c++23/std.cc.in: Add contracts support.
+	* src/experimental/Makefile.am: Add new contract violation
+	implementation, remove the old one.
+	* src/experimental/Makefile.in: Regenerate.
+	* include/experimental/contract: Removed.
+	* src/experimental/contract.cc: Removed.
+	* include/std/contracts: New file.
+	* src/experimental/contract26.cc: New file.
+	* testsuite/18_support/contracts/invoke_default_cvh.cc: New test.
+	* testsuite/18_support/contracts/invoke_default_cvh2.cc: New test.
+
 2026-01-23  Tomasz Kamiński  <tkaminsk@redhat.com>
 
 	PR libstdc++/123758

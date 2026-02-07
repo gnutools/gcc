@@ -43,7 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "omp-general.h"
 #include "opts.h"
 #include "gcc-urlifier.h"
-#include "contracts.h"
+#include "contracts.h" // build_contract_check ()
 
 /* Keep track of forward references to immediate-escalating functions in
    case they become consteval.  This vector contains ADDR_EXPRs and
@@ -1045,7 +1045,7 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
   return ret;
 }
 
-static inline bool
+bool
 is_invisiref_parm (const_tree t)
 {
   return ((TREE_CODE (t) == PARM_DECL || TREE_CODE (t) == RESULT_DECL)
@@ -2126,18 +2126,15 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
     case ASSERTION_STMT:
     case PRECONDITION_STMT:
     case POSTCONDITION_STMT:
-      {
-	if (tree check = build_contract_check (stmt))
-	  {
-	    *stmt_p = check;
-	    return cp_genericize_r (stmt_p, walk_subtrees, data);
-	  }
-
-	/* If we didn't build a check, replace it with void_node so we don't
-	   leak contracts into GENERIC.  */
-	*stmt_p = void_node;
-	*walk_subtrees = 0;
-      }
+      if (tree check = build_contract_check (stmt))
+	{
+	  *stmt_p = check;
+	  return cp_genericize_r (stmt_p, walk_subtrees, data);
+	}
+      /* If we didn't build a check, replace it with void_node so we don't
+	 leak contracts into GENERIC.  */
+      *stmt_p = void_node;
+      *walk_subtrees = 0;
       break;
 
     case USING_STMT:
@@ -3139,26 +3136,21 @@ cp_fold_maybe_rvalue (tree x, bool rval, fold_flags_t flags)
 {
   while (true)
     {
+      if (rval && (flags & ff_only_non_odr))
+	x = cp_fold_non_odr_use_1 (x);
       x = cp_fold (x, flags);
       if (rval)
-	x = mark_rvalue_use (x);
-      if (rval && (flags & ff_only_non_odr))
 	{
-	  tree v = cp_fold_non_odr_use_1 (x);
-	  if (v != x)
+	  x = mark_rvalue_use (x);
+	  if (!(flags & ff_only_non_odr)
+	      && DECL_P (x) && !TYPE_REF_P (TREE_TYPE (x)))
 	    {
-	      x = v;
-	      continue;
-	    }
-	}
-      else if (rval && DECL_P (x)
-	       && !TYPE_REF_P (TREE_TYPE (x)))
-	{
-	  tree v = decl_constant_value (x);
-	  if (v != x && v != error_mark_node)
-	    {
-	      x = v;
-	      continue;
+	      tree v = decl_constant_value (x);
+	      if (v != x && v != error_mark_node)
+		{
+		  x = v;
+		  continue;
+		}
 	    }
 	}
       break;
@@ -3422,9 +3414,9 @@ cp_fold (tree x, fold_flags_t flags)
 	 used as lvalues.  */
       if ((flags & ff_only_non_odr) && REFERENCE_REF_P (x))
 	{
-	  tree r = cp_fold_non_odr_use_1 (x);
-	  if (r != x)
-	    return convert_from_reference (cp_fold (r, flags));
+	  op0 = cp_fold_non_odr_use_1 (TREE_OPERAND (x, 0));
+	  if (op0 != TREE_OPERAND (x, 0))
+	    return convert_from_reference (cp_fold (op0, flags));
 	}
       goto unary;
 
@@ -3571,7 +3563,11 @@ cp_fold (tree x, fold_flags_t flags)
 	  if (op0 == error_mark_node || op1 == error_mark_node)
 	    x = error_mark_node;
 	  else if (op0 != TREE_OPERAND (x, 0) || op1 != TREE_OPERAND (x, 1))
-	    x = build2_loc (loc, code, TREE_TYPE (x), op0, op1);
+	    {
+	      if (code == INIT_EXPR && op1 != TREE_OPERAND (x, 1))
+		set_target_expr_eliding (op1);
+	      x = build2_loc (loc, code, TREE_TYPE (x), op0, op1);
+	    }
 	  break;
 	}
 
@@ -4269,6 +4265,92 @@ struct source_location_table_entry_hash
 static GTY(()) hash_table <source_location_table_entry_hash>
   *source_location_table;
 
+/* Build a std::source_location::__impl from a location_t.  */
+
+tree
+build_source_location_impl (location_t loc, tree fndecl,
+			    tree source_location_impl)
+{
+  if (source_location_table == NULL)
+    source_location_table
+      = hash_table <source_location_table_entry_hash>::create_ggc (64);
+  const line_map_ordinary *map;
+  source_location_table_entry entry;
+  entry.loc
+    = linemap_resolve_location (line_table, loc, LRK_MACRO_EXPANSION_POINT,
+				&map);
+  entry.uid = fndecl ? DECL_UID (fndecl) : -1;
+  entry.var = error_mark_node;
+  source_location_table_entry *entryp
+    = source_location_table->find_slot (entry, INSERT);
+
+  if (entryp->var)
+    return entryp->var;
+
+  tree var = build_decl (loc, VAR_DECL, generate_internal_label ("Lsrc_loc"),
+			 source_location_impl);
+  TREE_STATIC (var) = 1;
+  TREE_PUBLIC (var) = 0;
+  DECL_ARTIFICIAL (var) = 1;
+  DECL_IGNORED_P (var) = 1;
+  DECL_EXTERNAL (var) = 0;
+  DECL_DECLARED_CONSTEXPR_P (var) = 1;
+  DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (var) = 1;
+  layout_decl (var, 0);
+
+  vec<constructor_elt, va_gc> *v = NULL;
+  vec_alloc (v, 4);
+  for (tree field = TYPE_FIELDS (source_location_impl);
+	(field = next_aggregate_field (field)) != NULL_TREE;
+	field = DECL_CHAIN (field))
+    {
+      const char *n = IDENTIFIER_POINTER (DECL_NAME (field));
+      tree val = NULL_TREE;
+      if (strcmp (n, "_M_file_name") == 0)
+	{
+	  if (const char *fname = LOCATION_FILE (loc))
+	    {
+	      fname = remap_macro_filename (fname);
+	      val = build_string_literal (fname);
+	    }
+	  else
+	    val = build_string_literal ("");
+	}
+      else if (strcmp (n, "_M_function_name") == 0)
+	{
+	  const char *name = "";
+
+	  if (fndecl)
+	    {
+	      /* If this is a coroutine, we should get the name of the user
+		 function rather than the actor we generate.  */
+	      if (tree ramp = DECL_RAMP_FN (fndecl))
+		name = cxx_printable_name (ramp, 2);
+	      else
+		name = cxx_printable_name (fndecl, 2);
+	    }
+
+	  val = build_string_literal (name);
+	}
+      else if (strcmp (n, "_M_line") == 0)
+	val = build_int_cst (TREE_TYPE (field), LOCATION_LINE (loc));
+      else if (strcmp (n, "_M_column") == 0)
+	val = build_int_cst (TREE_TYPE (field), LOCATION_COLUMN (loc));
+      else
+	gcc_unreachable ();
+      CONSTRUCTOR_APPEND_ELT (v, field, val);
+    }
+
+  tree ctor = build_constructor (source_location_impl, v);
+  TREE_CONSTANT (ctor) = 1;
+  TREE_STATIC (ctor) = 1;
+  DECL_INITIAL (var) = ctor;
+  varpool_node::finalize_decl (var);
+  *entryp = entry;
+  entryp->var = var;
+  return var;
+}
+
 /* Fold the __builtin_source_location () call T.  */
 
 tree
@@ -4283,86 +4365,8 @@ fold_builtin_source_location (const_tree t)
 	      && id_equal (TYPE_IDENTIFIER (source_location_impl), "__impl"));
 
   location_t loc = EXPR_LOCATION (t);
-  if (source_location_table == NULL)
-    source_location_table
-      = hash_table <source_location_table_entry_hash>::create_ggc (64);
-  const line_map_ordinary *map;
-  source_location_table_entry entry;
-  entry.loc
-    = linemap_resolve_location (line_table, loc, LRK_MACRO_EXPANSION_POINT,
-				&map);
-  entry.uid = current_function_decl ? DECL_UID (current_function_decl) : -1;
-  entry.var = error_mark_node;
-  source_location_table_entry *entryp
-    = source_location_table->find_slot (entry, INSERT);
-  tree var;
-  if (entryp->var)
-    var = entryp->var;
-  else
-    {
-      var = build_decl (loc, VAR_DECL, generate_internal_label ("Lsrc_loc"),
-			source_location_impl);
-      TREE_STATIC (var) = 1;
-      TREE_PUBLIC (var) = 0;
-      DECL_ARTIFICIAL (var) = 1;
-      DECL_IGNORED_P (var) = 1;
-      DECL_EXTERNAL (var) = 0;
-      DECL_DECLARED_CONSTEXPR_P (var) = 1;
-      DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (var) = 1;
-      layout_decl (var, 0);
-
-      vec<constructor_elt, va_gc> *v = NULL;
-      vec_alloc (v, 4);
-      for (tree field = TYPE_FIELDS (source_location_impl);
-	   (field = next_aggregate_field (field)) != NULL_TREE;
-	   field = DECL_CHAIN (field))
-	{
-	  const char *n = IDENTIFIER_POINTER (DECL_NAME (field));
-	  tree val = NULL_TREE;
-	  if (strcmp (n, "_M_file_name") == 0)
-	    {
-	      if (const char *fname = LOCATION_FILE (loc))
-		{
-		  fname = remap_macro_filename (fname);
-		  val = build_string_literal (fname);
-		}
-	      else
-		val = build_string_literal ("");
-	    }
-	  else if (strcmp (n, "_M_function_name") == 0)
-	    {
-	      const char *name = "";
-
-	      if (current_function_decl)
-		{
-		  /* If this is a coroutine, we should get the name of the user
-		     function rather than the actor we generate.  */
-		  if (tree ramp = DECL_RAMP_FN (current_function_decl))
-		    name = cxx_printable_name (ramp, 2);
-		  else
-		    name = cxx_printable_name (current_function_decl, 2);
-		}
-
-	      val = build_string_literal (name);
-	    }
-	  else if (strcmp (n, "_M_line") == 0)
-	    val = build_int_cst (TREE_TYPE (field), LOCATION_LINE (loc));
-	  else if (strcmp (n, "_M_column") == 0)
-	    val = build_int_cst (TREE_TYPE (field), LOCATION_COLUMN (loc));
-	  else
-	    gcc_unreachable ();
-	  CONSTRUCTOR_APPEND_ELT (v, field, val);
-	}
-
-      tree ctor = build_constructor (source_location_impl, v);
-      TREE_CONSTANT (ctor) = 1;
-      TREE_STATIC (ctor) = 1;
-      DECL_INITIAL (var) = ctor;
-      varpool_node::finalize_decl (var);
-      *entryp = entry;
-      entryp->var = var;
-    }
-
+  tree var = build_source_location_impl (loc, current_function_decl,
+					 source_location_impl);
   return build_fold_addr_expr_with_type_loc (loc, var, TREE_TYPE (t));
 }
 

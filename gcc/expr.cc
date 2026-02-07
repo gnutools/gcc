@@ -3038,6 +3038,7 @@ emit_group_load_1 (rtx *tmps, rtx dst, rtx orig_src, tree type,
       src = orig_src;
       if (!MEM_P (orig_src)
 	  && (!REG_P (orig_src) || HARD_REGISTER_P (orig_src))
+	  && GET_CODE (orig_src) != CONCAT
 	  && !CONSTANT_P (orig_src))
 	{
 	  gcc_assert (GET_MODE (orig_src) != VOIDmode);
@@ -5968,6 +5969,18 @@ mem_ref_refers_to_non_mem_p (tree ref)
   return non_mem_decl_p (base);
 }
 
+/* Helper function of expand_assignment.  Check if storing field of
+   size BITSIZE at position BITPOS overlaps with the most significant
+   bit of TO_RTX, known to be SUBREG_PROMOTED_VAR_P.
+   Updating this field requires an explicit extension.  */
+static bool
+store_field_updates_msb_p (poly_int64 bitpos, poly_int64 bitsize, rtx to_rtx)
+{
+  poly_int64 to_size = GET_MODE_SIZE (GET_MODE (to_rtx));
+  poly_int64 bitnum = BYTES_BIG_ENDIAN ? to_size - bitsize - bitpos : bitpos;
+  return maybe_eq (bitnum + bitsize, to_size);
+}
+
 /* Expand an assignment that stores the value of FROM into TO.  If NONTEMPORAL
    is true, try generating a nontemporal store.  */
 
@@ -6314,8 +6327,7 @@ expand_assignment (tree to, tree from, bool nontemporal)
 		  && known_eq (bitsize, GET_MODE_BITSIZE (GET_MODE (to_rtx))))
 		result = store_expr (from, to_rtx, 0, nontemporal, false);
 	      /* Check if the field overlaps the MSB, requiring extension.  */
-	      else if (maybe_eq (bitpos + bitsize,
-				 GET_MODE_BITSIZE (GET_MODE (to_rtx))))
+	      else if (store_field_updates_msb_p (bitpos, bitsize, to_rtx))
 		{
 		  scalar_int_mode imode = subreg_unpromoted_mode (to_rtx);
 		  scalar_int_mode omode = subreg_promoted_mode (to_rtx);
@@ -12336,13 +12348,26 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 	   and need be, put it there.  */
 	else if (CONSTANT_P (op0) || (!MEM_P (op0) && must_force_mem))
 	  {
+	    machine_mode tem_mode = TYPE_MODE (TREE_TYPE (tem));
 	    poly_int64 size;
 	    if (!poly_int_tree_p (TYPE_SIZE_UNIT (TREE_TYPE (tem)), &size))
 	      size = max_int_size_in_bytes (TREE_TYPE (tem));
-	    memloc = assign_stack_local (TYPE_MODE (TREE_TYPE (tem)), size,
-					 TREE_CODE (tem) == SSA_NAME
-					 ? TYPE_ALIGN (TREE_TYPE (tem))
-					 : get_object_alignment (tem));
+	    unsigned int align = TREE_CODE (tem) == SSA_NAME
+				 ? TYPE_ALIGN (TREE_TYPE (tem))
+				 : get_object_alignment (tem);
+	    if (STRICT_ALIGNMENT)
+	      {
+		/* For STRICT_ALIGNMENT targets, when we force the operand to
+		   memory, we may need to increase the alignment to meet the
+		   expectation in later RTL lowering passes.  The increased
+		   alignment is capped by MAX_SUPPORTED_STACK_ALIGNMENT.  */
+		if (tem_mode != BLKmode)
+		  align = MAX (align, GET_MODE_ALIGNMENT (tem_mode));
+		else
+		  align = MAX (align, TYPE_ALIGN (TREE_TYPE (tem)));
+		align = MIN (align, (unsigned) MAX_SUPPORTED_STACK_ALIGNMENT);
+	      }
+	    memloc = assign_stack_local (tem_mode, size, align);
 	    emit_move_insn (memloc, op0);
 	    op0 = memloc;
 	    clear_mem_expr = true;

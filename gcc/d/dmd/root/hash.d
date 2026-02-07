@@ -11,9 +11,12 @@
 
 module dmd.root.hash;
 
+nothrow:
+@safe:
+
 // MurmurHash2 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
-// https://sites.google.com/site/murmurhash/
+// https://github.com/aappleby/smhasher/
 uint calcHash(scope const(char)[] data) @nogc nothrow pure @safe
 {
     return calcHash(cast(const(ubyte)[])data);

@@ -2323,7 +2323,7 @@ c_parser_maybe_reclassify_token (c_parser *parser)
     {
       c_token *token = c_parser_peek_token (parser);
 
-      if (token->id_kind != C_ID_CLASSNAME)
+      if (token->id_kind == C_ID_ID || token->id_kind == C_ID_TYPENAME)
 	{
 	  tree decl = lookup_name (token->value);
 
@@ -9893,7 +9893,7 @@ c_parser_string_literal (c_parser *parser, bool translate, bool wide_ok)
 	  (parse_in, strs, count, &istr, type)))
     {
       value = build_string (istr.len, (const char *) istr.text);
-      free (CONST_CAST (unsigned char *, istr.text));
+      free (const_cast<unsigned char *> (istr.text));
       if (count > 1)
 	{
 	  location_t *locs = (location_t *) obstack_finish (&loc_ob);

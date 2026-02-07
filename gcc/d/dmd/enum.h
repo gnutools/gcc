@@ -52,14 +52,13 @@ public:
     bool inuse(bool v);
 
     EnumDeclaration *syntaxCopy(Dsymbol *s) override;
-    Type *getType() override;
     const char *kind() const override;
     bool isDeprecated() const override;       // is Dsymbol deprecated?
     Visibility visible() override;
     bool isSpecial() const;
 
 
-    Symbol *sinit;
+    void *sinit;
     void accept(Visitor *v) override { v->visit(this); }
 };
 

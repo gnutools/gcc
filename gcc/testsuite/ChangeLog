@@ -1,3 +1,1395 @@
+2026-02-06  Richard Ball  <Richard.Ball@arm.com>
+
+	* gcc.target/aarch64/atomic_store_with_stshh.c: Testcase change.
+	* g++.target/aarch64/atomic_store_with_stshh.C: New test.
+
+2026-02-06  Martin Jambor  <mjambor@suse.cz>
+
+	PR ipa/106260
+	* g++.dg/ipa/pr106260.C: New test.
+
+2026-02-06  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/compile/error-nest-4.a68: Strings can now be passed as
+	arguments in formal holes.
+
+2026-02-06  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/101312
+	* gcc.dg/pr101312-1.c: New test.
+	* gcc.dg/pr101312-2.c: New test.
+
+2026-02-06  Daniel Barboza  <daniel.barboza@oss.qualcomm.com>
+
+	PR tree-optimization/114969
+	* g++.dg/pr114969.C: New test.
+
+2026-02-06  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/98447
+	* c-c++-common/analyzer/conditionals-pr98447-1.c: New test.
+	* c-c++-common/analyzer/conditionals-pr98447-2.c: New test.
+	* c-c++-common/analyzer/null-deref-pr108400-SoftEtherVPN-WebUi.c:
+	Updated for false positive being fixed for C.
+	* gcc.dg/analyzer/data-model-1.c: Update expected output to
+	reflect improved output.
+
+2026-02-06  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/117491
+	* gcc.dg/analyzer/torture/ice-pr117491.c: New test.
+
+2026-02-06  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* lib/lto.exp (lto-build-archive): Forward extra command line
+	arguments from $GCC_UNDER_TEST to gcc-ar.
+
+2026-02-06  Richard Biener  <rguenther@suse.de>
+
+	PR rtl-optimization/119982
+	* gcc.target/i386/pr109362.c: XFAIL.
+
+2026-02-06  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123977
+	* g++.dg/cpp26/stdarg10.C: New test.
+
+2026-02-06  Jonathan Wakely  <jwakely@redhat.com>
+
+	* gcc.dg/pr61053.c: Add *-*-mingw* to the dg-error directives
+	that currently only match x32.
+
+2026-02-06  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR tree-optimization/123940
+	* gcc.target/riscv/rvv/autovec/pr123940.c: New test.
+
+2026-02-05  Marek Polacek  <polacek@redhat.com>
+
+	* g++.dg/reflect/p3394-1.C: Make dg-run.  Add dg-output.
+
+2026-02-05  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/117048
+	PR target/123584
+	* gcc.target/aarch64/simd/pr117048.c: Scan for # in assembly immediate.
+
+2026-02-05  Josef Melcr  <josef.melcr@suse.com>
+
+	PR tree-optimization/123986
+	* gfortran.dg/vect/pr123986.f90: New test.
+
+2026-02-05  Michal Jires  <mjires@suse.cz>
+
+	PR testsuite/123559
+	* c-c++-common/toplevel-extended-asm-1.c: New test.
+
+2026-02-05  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/123882
+	* gcc.dg/pr123882.c: New test.
+
+2026-02-05  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/123934
+	* g++.dg/reflect/type_of2.C: Uncomment an assert.
+
+2026-02-05  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122169
+	* g++.dg/cpp26/pack-indexing19.C: New test.
+
+2026-02-05  Jakub Jelinek  <jakub@redhat.com>
+
+	Revert:
+	2026-02-05  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/101312
+	* c-c++-common/pr101312-1.c: New test.
+	* c-c++-common/pr101312-2.c: New test.
+
+2026-02-05  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* lib/lto.exp (lto-build-archive): Transform gcc-ar binary name.
+
+2026-02-05  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123983
+	* gcc.dg/vect/vect-pr123983.c: New testcase.
+
+2026-02-05  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/123978
+	* gcc.c-torture/execute/pr123978.c: New test.
+
+2026-02-05  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR target/123870
+	PR target/123969
+	* gcc.target/riscv/rvv/xtheadvector/pr123969.c: New test.
+
+2026-02-05  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR target/123971
+	* gcc.target/riscv/rvv/xtheadvector/pr123971.c: New test.
+
+2026-02-05  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR tree-optimization/123925
+	* gcc.target/riscv/rvv/autovec/pr123925.c: New test.
+
+2026-02-05  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR target/123910
+	* gcc.target/riscv/rvv/autovec/pr123910.c: New test.
+	* gcc.target/riscv/rvv/xtheadvector/pr114194-rv32.c: xfail.
+
+2026-02-05  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/execute/bits-clear-1.a68: Adapt test to new CLEAR
+	semantics.
+	* algol68/execute/bits-set-1.a68: Likewise for SET.
+	* algol68/execute/bits-test-1.a68: Likewise for TEST.
+
+2026-02-05  Jose E. Marchesi  <jemarch@gnu.org>
+
+	PR algol68/123959
+	* algol68/execute/bits-shift-1.a68: New test.
+	* algol68/execute/bits-shift-2.a68: Likewise.
+	* algol68/execute/bits-shift-3.a68: Likewise.
+
+2026-02-05  Thomas Schwinge  <tschwinge@baylibre.com>
+
+	PR target/122343
+	* gcc.target/nvptx/alloca-5.c: Adjust.
+
+2026-02-05  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/121726
+	* gcc.target/i386/pr121726.c: New testcase.
+
+2026-02-05  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/123898
+	* gcc.target/aarch64/sve/pr123898.c: New test.
+
+2026-02-05  Alexandre Oliva  <oliva@adacore.com>
+
+	PR testsuite/123936
+	PR tree-optimization/122103
+	* gcc.target/aarch64/sve/pr122103_1.c: Add sve hw requirement.
+
+2026-02-05  Alexandre Oliva  <oliva@adacore.com>
+
+	PR middle-end/123775
+	* gcc.target/aarch64/sve2/pr123775.c: Add sve128 and sve2 hw
+	requirements.
+
+2026-02-05  Alexandre Oliva  <oliva@adacore.com>
+
+	PR tree-optimization/123729
+	* g++.dg/torture/pr123729.C: Require hostedlib.
+
+2026-02-05  Pan Li  <pan2.li@intel.com>
+
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i16.c: Adjust the
+	asm check to not.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i8.c: Ditto.
+
+2026-02-05  Pan Li  <pan2.li@intel.com>
+
+	* gcc.target/riscv/rvv/autovec/pr123916.c: New test.
+
+2026-02-05  Pan Li  <pan2.li@intel.com>
+
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-3-f16.c: Add param
+	vr2fpr-cost.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-3-f32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-3-f64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-7-f16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-7-f32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-7-f64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-8-f16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-8-f32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vf-8-f64.c: Ditto.
+
+2026-02-05  Pan Li  <pan2.li@intel.com>
+
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-i16.c: Add param
+	vr2gpr-cost.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-i32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-i64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-i8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-u16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-u32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-u64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-4-u8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-i8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-u16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-u32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-u64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-5-u8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-i8.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-u16.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-u32.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-u64.c: Ditto.
+	* gcc.target/riscv/rvv/autovec/vx_vf/vx-6-u8.c: Ditto.
+
+2026-02-04  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR middle-end/121661
+	* gcc.dg/torture/pr121661-1.c: New test.
+
+2026-02-04  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	* gcc.target/riscv/rvv/autovec/vls/J: Remove.
+
+2026-02-04  Yangyu Chen  <cyy@cyyself.name>
+
+	* gcc.target/riscv/target-attr-bad-11.c: New test.
+
+2026-02-04  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/49330
+	* gcc.dg/torture/pr49330-1.c: New testcase.
+	* gcc.dg/torture/pr49330-2.c: Likewise.
+
+2026-02-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123913
+	PR c++/123964
+	* g++.dg/reflect/parameters_of7.C: New test.
+
+2026-02-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123611
+	* g++.dg/reflect/expansion-stmt1.C: New test.
+
+2026-02-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123818
+	* g++.dg/cpp0x/pr123818.C: New test.
+
+2026-02-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/122689
+	* gcc.dg/bitint-127.c: New test.
+
+2026-02-03  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/116865
+	* c-c++-common/analyzer/ice-pr116865.c: New test.
+
+2026-02-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* algol68/compile/error-module-definition-1.a68: New test.
+	* algol68/compile/error-module-definition-2.a68: New test.
+
+2026-02-03  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.dg/pr90601.d: Adjust test.
+	* lib/gdc-utils.exp: Handle new compiler options.
+
+2026-02-03  Kirill Chilikin  <chilikin.k@gmail.com>
+
+	PR fortran/117303
+	* gfortran.dg/c_funloc_tests_7.f90:
+	Updated test due to changed code generation.
+	* gfortran.dg/c_funloc_tests_9.f90: New test.
+
+2026-02-03  Pengxuan Zheng  <pengxuan.zheng@oss.qualcomm.com>
+
+	* gcc.dg/pr123109.c: Move to...
+	* gcc.dg/pr123109-vector.c: ...here.
+	* gcc.dg/pr123109-scalar.c: New test.
+
+2026-02-03  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/123952
+	* gfortran.dg/pr123952.f90: New test.
+
+2026-02-03  Roger Sayle  <roger@nextmovesoftware.com>
+
+	PR middle-end/118608
+	* gcc.target/mips/pr118608-1.c: New test case.
+	* gcc.target/mips/pr118608-2.c: Likewise.
+	* gcc.target/mips/pr118608-3.c: Likewise.
+	* gcc.target/mips/pr118608-4.c: Likewise.
+
+2026-02-03  Roger Sayle  <roger@nextmovesoftware.com>
+
+	PR middle-end/123826
+	* gcc.dg/errno-2.c: New test case.
+	* gcc.dg/errno-3.c: Likewise.
+
+2026-02-03  Alfie Richards  <alfie.richards@arm.com>
+
+	PR target/123548
+	* gcc.target/aarch64/pldir.c: Move to...
+	* gcc.target/aarch64/acle/pldir.c: ...here.
+	* gcc.target/aarch64/builtin_pld_pli_illegal.c: Removed.
+	* gcc.target/aarch64/acle/pld_pli_illegal.c: New test.
+	* gcc.target/aarch64/builtin_pld_pli.c: Removed.
+	* gcc.target/aarch64/acle/pld_pli.c: New test.
+	* gcc.target/aarch64/pr123548.c: New test.
+
+2026-02-03  Christophe Lyon  <christophe.lyon@arm.com>
+
+	* lib/target-supports.exp
+	(check_effective_target_arm_neon_ok_nocache): Add "-mcpu=unset
+	-march=armv7-a+simd -mfpu=auto" to the list.
+
+2026-02-03  Jeff Law  <jeffrey.law@oss.qualcomm.com>
+
+	PR rtl-optimization/123322
+	* gcc.target/riscv/pr123322.c: New test.
+
+2026-02-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR libstdc++/123921
+	* g++.dg/reflect/feat2.C: Add also test for __cpp_lib_define_static.
+	* g++.dg/reflect/feat3.C: New test.
+
+2026-02-03  Richard Biener  <rguenther@suse.de>
+
+	PR ipa/123416
+	* gcc.dg/torture/pr123416.c: New testcase.
+
+2026-02-02  Patrick Palka  <ppalka@redhat.com>
+
+	* g++.dg/cpp23/feat-cxx2b.C: Adjust expected __cpp_deduction_guides
+	value.
+	* g++.dg/cpp26/feat-cxx26.C: Likewise.
+
+2026-02-02  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/limited_with8.adb: New test.
+	* gnat.dg/limited_with8_pkg1.ads: New helper.
+	* gnat.dg/limited_with8_pkg2.ads: Likewise.
+	* gnat.dg/limited_with8_pkg2.adb: Likewise.
+
+2026-02-02  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR rtl-optimization/123294
+	* gcc.dg/pr123294-1.c: New test.
+	* gcc.target/aarch64/pr123294-1.c: New test.
+
+2026-02-02  Marek Polacek  <polacek@redhat.com>
+	    Boris Staletic  <boris.staletic@protonmail.com>
+
+	PR c++/123695
+	* g++.dg/reflect/object_of3.C: New test.
+
+2026-02-02  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/123614
+	* g++.dg/reflect/parm5.C: New test.
+
+2026-02-02  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/123897
+	* gcc.target/aarch64/sve/pr123897.c: New test.
+
+2026-02-02  Tamar Christina  <tamar.christina@arm.com>
+
+	PR target/121290
+	* gcc.target/aarch64/pr121290_3.c: New test.
+
+2026-02-02  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/121104
+	* gcc.dg/pr121104.c: New test.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	* gnat.dg/prefix4.adb: New test.
+	* gnat.dg/prefix4_pkg.ads: New helper.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	* gnat.dg/iter7.adb: New test.
+
+2026-02-01  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123755
+	* gcc.dg/vect/vect-pr123755-2.c: New testcase.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* g++.dg/lto/pr118817_0.C: Require hostedlib.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/lto/pr110812_0.c: Set cmodel explicitly.
+	* gcc.target/riscv/lto/pr110812_1.c: Likewise.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.dg/tree-ssa/pr83403-1.c: Bump param on riscv32.
+	* gcc.dg/tree-ssa/pr83403-2.c: Likewise.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.dg/pr90838-2.c: Drop 64-bit CTZ expectation on riscv32.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/pr114139.c: Set the abi explicitly.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/pr118170.c: Set the abi explicitly.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/rvv/autovec/vls-vlmax/shuffle-slide.c:
+	Set the abi explicitly.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/rvv/autovec/pr113206-2.c: Set the expected
+	code model explicitly.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/rvv/autovec/binop/vadd-rv32gcv-nofm.c: Set the
+	expected code model explicitly.
+	* gcc.target/riscv/rvv/autovec/binop/vadd-rv64gcv-nofm.c: Likewise.
+	* gcc.target/riscv/rvv/autovec/binop/vsub-rv32gcv-nofm.c: Likewise.
+	* gcc.target/riscv/rvv/autovec/binop/vsub-rv64gcv-nofm.c: Likewise.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/rvv/autovec/bug-3.c: Disable scheduling,
+	and restore expectation of slli combine.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/riscv/pr122215.c: Prune valgrind unhandled
+	syscall multi-line warning.
+
+2026-02-01  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-3.c: Revert
+	Maximum lmul = 2 count.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-7.c: XFAIL
+	unmet lmul selection expectations.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-5.c: Likewise,
+	and drop start/end patterns.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-6.c: XFAIL
+	missing Maximum lmul messages.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-8.c: Likewise.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul8-12.c: Drop
+	Maximum lmul = 8 message.  Likewise.
+	* gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul8-10.c: Likewise.
+	* gcc.dg/vect/costmodel/riscv/rvv/pr113112-3.c: XFAIL unexpected
+	selections of lmul, and of return insn.
+	* gcc.dg/vect/costmodel/riscv/rvv/pr113112-4.c: XFAIL unexpected
+	selection of lmul.
+
+2026-02-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/121832
+	* g++.dg/concepts/pr121832.C: New test.
+
+2026-01-31  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/execute/bits-test-1.a68: New test.
+
+2026-01-31  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/execute/bits-clear-1.a68: New test.
+	* algol68/execute/bits-set-1.a68: Likewise.
+
+2026-01-31  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/123887
+	* gcc.dg/torture/pr123887-2.c: New testcase.
+
+2026-01-31  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/123557
+	PR c++/123738
+	* g++.dg/cpp0x/constexpr-ice22.C: New test.
+	* g++.dg/cpp2a/constexpr-ref2.C: New test.
+
+2026-01-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123825
+	* g++.dg/reflect/has_identifier3.C: New test.
+	* g++.dg/reflect/identifier_of3.C: New test.
+	* g++.dg/cpp26/attr-indeterminate5.C: New test.
+
+2026-01-31  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.dg/asm1.d: Adjust test.
+	* gdc.dg/asm5.d: Likewise.
+	* gdc.dg/pr100967.d: Likewise.
+	* gdc.dg/rtti1.d: Likewise.
+	* gdc.dg/rtti2.d: New test.
+
+2026-01-31  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/arm/crypto-vsha1cq_u32.c: Accept d regs in
+	vdup.32.  Drop extraneous + after ] in vmov.32 pattern.
+	* gcc.target/arm/crypto-vsha1h_u32.c: Likewise.
+	* gcc.target/arm/crypto-vsha1mq_u32.c: Likewise.
+	* gcc.target/arm/crypto-vsha1pq_u32.c: Likewise.
+
+2026-01-31  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.target/arm/bfloat16_simd_1_2.c: Add -mcpu=unset.
+	* gcc.target/arm/bfloat16_simd_2_2.c: Likewise.
+	* gcc.target/arm/bfloat16_simd_3_2.c: Likewise.
+	* gcc.dg/torture/pr120347.c: Likewise.  Add +fp to -march.
+
+2026-01-31  Alexandre Oliva  <oliva@adacore.com>
+
+	* gcc.dg/vect/complex/fast-math-complex-mls-half-float.c:
+	Don't expect COMPLEX_ADD_ROT270.
+
+2026-01-31  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/123880
+	* g++.dg/analyzer/exception-rethrow-3.C: New test.
+
+2026-01-31  Jason Merrill  <jason@redhat.com>
+	    Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122785
+	* g++.dg/modules/reflect-1_a.H: New test.
+	* g++.dg/modules/reflect-1_b.C: New test.
+
+2026-01-30  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/123868
+	* gfortran.dg/array_memcpy_2.f90: Update expected memcpy count
+	from 4 to 3, as the double allocation bug is now fixed.
+	* gfortran.dg/pr123868.f90: New test.
+	Signed-off-by: Christopher Albert <albert@alumni.tugraz.at>
+
+2026-01-30  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123845
+	PR libstdc++/114865
+	* g++.dg/cpp0x/constexpr-ex3.C: Adjust C++11 non-empty
+	constexpr constructor dg-error to a dg-warning.  Expect
+	a follow-up missing member initializer diagnostic in C++11 mode.
+	* g++.dg/cpp2a/constexpr-try1.C: Expect a follow-up
+	compound-statement in constexpr function diagnostic in C++11
+	mode.
+	* g++.dg/cpp2a/constexpr-try2.C: Likewise.  Adjust C++11
+	non-empty constexpr constructor dg-error to a dg-warning.
+	* g++.dg/cpp2a/constexpr-try3.C:  Adjust C++11 non-empty
+	constexpr constructor dg-error to a dg-warning.
+	* g++.dg/cpp0x/constexpr-ctor23.C: New test.
+
+2026-01-30  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/123887
+	* gcc.dg/torture/pr123887.c: New testcase.
+
+2026-01-30  Marek Polacek  <polacek@redhat.com>
+
+	* g++.dg/reflect/define_aggregate3.C: Adjust expected diagnostic.
+	* g++.dg/reflect/p2996-21.C: Likewise.
+
+2026-01-30  Marek Polacek  <polacek@redhat.com>
+
+	* g++.dg/reflect/substitute3.C: New test.
+
+2026-01-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/specs/limited_with3.ads: New test.
+	* gnat.dg/specs/limited_with3-child.ads: New helper.
+	* gnat.dg/specs/limited_with3-child-grandchild.ads: Likewise.
+	* gnat.dg/specs/limited_with3-child-grandchild-grandgrandchild.ads:
+	Likewise.
+
+2026-01-30  Richard Biener  <rguenther@suse.de>
+
+	PR debug/110885
+	* g++.dg/debug/dwarf2/pr110885.C: New testcase.
+
+2026-01-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/123864
+	* gcc.c-torture/execute/pr123864.c: New test.
+	* gcc.dg/torture/pr123864.c: New test.
+
+2026-01-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123790
+	* g++.dg/cpp0x/nullptr47.C: New test.
+
+2026-01-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	* gdc.dg/asm1.d: Adjust test.
+
+2026-01-30  Jørgen Kvalsvik  <j@lambda.is>
+
+	PR gcov-profile/123855
+	* gcc.misc-tests/gcov-pr123855.c: New test.
+
+2026-01-30  Jørgen Kvalsvik  <j@lambda.is>
+
+	* g++.dg/gcov/gcov-18.C: Remove --coverage.
+	* g++.dg/gcov/gcov-22.C: Likewise.
+	* gcc.misc-tests/gcov-19.c: Remove -ftest-coverage.
+	* gcc.misc-tests/gcov-29.c: Likewise.
+
+2026-01-30  Jørgen Kvalsvik  <j@lambda.is>
+
+	* gcc.misc-tests/gcov-29.c: Expect 6 prime paths in test.
+	* gcc.misc-tests/gcov-30.c: Likewise.
+
+2026-01-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/123876
+	* gcc.dg/gomp/pr123876.c: New test.
+
+2026-01-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR preprocessor/123273
+	* c-c++-common/cpp/dir-only-10.c: New test.
+	* c-c++-common/cpp/dir-only-11.c: New test.
+
+2026-01-30  Alex Coplan  <alex.coplan@arm.com>
+
+	PR target/123206
+	* gcc.target/aarch64/pr123206.c: New test.
+
+2026-01-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123263
+	* gdc.dg/debug/pr123263.d: New test.
+
+2026-01-30  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/109410
+	* gcc.dg/pr109410-2.c: New testcase.
+
+2026-01-30  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123264
+	* gdc.dg/pr123264.d: New test.
+
+2026-01-30  Lulu Cheng  <chenglulu@loongson.cn>
+
+	PR target/123766
+	* gcc.target/loongarch/vector/lasx/pr123766.c: New test.
+	* gcc.target/loongarch/vector/lsx/pr123766.c: New test.
+
+2026-01-30  Lulu Cheng  <chenglulu@loongson.cn>
+
+	PR target/123807
+	* gcc.target/loongarch/vector/lsx/pr123807.c: New test.
+
+2026-01-30  mengqinggang  <mengqinggang@loongson.cn>
+
+	* gcc.target/loongarch/la64/movsf.c: New test.
+
+2026-01-29  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	* gcc.target/i386/pr116353.c: Move to...
+	* gcc.dg/torture/pr116353.c: ...here.
+
+2026-01-29  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/specs/aggr11.ads: New test.
+
+2026-01-29  Richard Earnshaw  <rearnsha@arm.com>
+	    Artemiy Volkov  <artemiy.volkov@arm.com>
+
+	* lib/target-supports.exp:
+	(check_effective_target_arm_v8_3a_complex_neon_ok_nocache):
+	Split and fill in arm and aarch64 compile options.  Remove the
+	cpu_unset variable.
+	(check_effective_target_arm_v8_2a_fp16_neon_ok_nocache): Likewise.
+	(check_effective_target_arm_v8_3a_fp16_complex_neon_ok_nocache):
+	Likewise.
+	(check_effective_target_arm_neon_ok_nocache): Rework to use
+	-mfpu=auto.
+	(check_effective_target_arm_neon_fp16_ok_nocache): Likewise.
+
+2026-01-29  Artemiy Volkov  <artemiy.volkov@arm.com>
+
+	* gcc.dg/vect/complex/fast-math-bb-slp-complex-add-half-float.c:
+	Adjust testcase.
+	* gcc.dg/vect/complex/fast-math-bb-slp-complex-add-pattern-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-bb-slp-complex-mla-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-bb-slp-complex-mls-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-bb-slp-complex-mul-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-complex-add-half-float.c: Likewise.
+	* gcc.dg/vect/complex/fast-math-complex-add-pattern-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-complex-mla-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-complex-mls-half-float.c:
+	Likewise.
+	* gcc.dg/vect/complex/fast-math-complex-mul-half-float.c:
+	Likewise.
+	* gcc.target/aarch64/advsimd-intrinsics/vector-complex_f16.c:
+	Likewise.
+
+2026-01-29  Christopher Bazley  <chris.bazley@arm.com>
+
+	* gcc.target/arm/stack-protector-7.c: Fix dgdirectives.
+
+2026-01-29  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR target/123806
+	* g++.target/riscv/rvv/base/pr123806.C: New test.
+	* g++.target/riscv/rvv/base/pr123808.C: New test.
+	* g++.target/riscv/rvv/base/pr123808-2.C: New test.
+
+2026-01-29  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	* lib/target-supports.exp: Add rvv_zvl_ge_256b_ok.
+	* gcc.target/riscv/rvv/base/pr123626.c: Use new target check.
+
+2026-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123407
+	* gdc.dg/pr123407a.d: New test.
+	* gdc.dg/pr123407b.d: New test.
+
+2026-01-29  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/123871
+	* g++.dg/reflect/error11.C: New test.
+
+2026-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123046
+	* gdc.dg/pr123046.d: New test.
+
+2026-01-29  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/122537
+	* gcc.dg/torture/pr122537.c: New testcase.
+
+2026-01-29  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123349
+	* gdc.dg/driver_debuglib.d: New test.
+	* gdc.dg/driver_defaultlib.d: New test.
+
+2026-01-29  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123596
+	* g++.dg/torture/pr123596.C: New testcase.
+
+2026-01-29  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/116747
+	* gcc.dg/tree-ssa/cselim-4.c: New testcase.
+
+2026-01-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123866
+	* g++.dg/reflect/annotations10.C: New test.
+
+2026-01-29  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/compile/error-selector-1.a68: New test.
+	* algol68/execute/selection-2.a68: Update test.
+	* algol68/execute/selection-5.a68: Likewise.
+
+2026-01-29  Jakub Jelinek  <jakub@redhat.com>
+
+	* g++.dg/cpp26/expansion-stmt1.C (N::begin, N::end, O::begin,
+	O::end): Change argument type from B & to const B & or from
+	D & to const D &.
+	* g++.dg/cpp26/expansion-stmt2.C (N::begin, N::end, O::begin,
+	O::end): Likewise.
+	* g++.dg/cpp26/expansion-stmt3.C (N::begin, N::end, O::begin,
+	O::end): Likewise.
+	* g++.dg/cpp26/expansion-stmt16.C: Expect different diagnostics
+	for C++11.
+	* g++.dg/cpp26/expansion-stmt18.C (N::begin, N::end): Change
+	argument type from B & to const B &.
+	* g++.dg/cpp26/expansion-stmt25.C (N::begin, N::end): Likewise.
+	* g++.dg/cpp26/expansion-stmt26.C: New test.
+	* g++.dg/reflect/p3491-2.C (baz): Move workaround to a new
+	function garply, use the previously #if 0 guarded implementation.
+	(garply): New function.
+
+2026-01-29  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* algol68/compile/error-nest-1.a68: New test.
+	* algol68/compile/nest-c-1.a68: Likewise.
+	* algol68/compile/error-nest-5.a68: Likewise.
+	* algol68/compile/error-nest-4.a68: Likewise.
+	* algol68/compile/error-nest-3.a68: Likewise.
+	* algol68/compile/error-nest-2.a68: Likewise.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/unchecked_union4.adb: New test.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gnat.dg/put_image2.adb: New test.
+
+2026-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123419
+	* gdc.dg/pr123419.d: New test.
+
+2026-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123798
+	* gdc.dg/pr123798.d: New test.
+
+2026-01-28  Uros Bizjak  <ubizjak@gmail.com>
+
+	PR target/36503
+	* gcc.target/i386/pr36503-5.c: New test.
+	* gcc.target/i386/pr36503-6.c: New test.
+
+2026-01-28  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR target/123824
+	* gcc.target/riscv/abi/vls-gpr-1.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-10.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-11.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-12.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-13.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-14.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-2.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-3.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-4.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-5.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-6.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-7.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-8.c: New test.
+	* gcc.target/riscv/abi/vls-gpr-9.c: New test.
+
+2026-01-28  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR c++/102846
+	PR c/102846
+	* c-c++-common/function-like-macro-1.c: New test.
+	* c-c++-common/function-like-macro-2.c: New test.
+
+2026-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/121477
+	* gdc.dg/pr121477.d: New test.
+
+2026-01-28  Vladimir N. Makarov  <vmakarov@redhat.com>
+
+	PR target/121571
+	* gcc.target/i386/pr121571.c: New.
+
+2026-01-28  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/123422
+	* gdc.dg/torture/pr123422.d: New test.
+
+2026-01-28  Senthil Kumar Selvaraj  <saaadhu@gcc.gnu.org>
+
+	PR c/123583
+	* gcc.target/avr/pr123583.c: New test.
+	* gcc.target/i386/pr123583.c: New test.
+
+2026-01-28  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/123575
+	* g++.dg/pr123575.C: New testcase.
+
+2026-01-28  Richard Biener  <rguenther@suse.de>
+
+	PR ipa/111036
+	* gcc.dg/torture/pr111036.c: New testcase.
+
+2026-01-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/123537
+	* gcc.dg/pr123537.c: New testcase.
+
+2026-01-28  Karl Meakin  <karl.meakin@arm.com>
+
+	* lib/target-supports.exp: Add `sve-bfscale` to `sve_exts`.
+	* gcc.target/aarch64/pragma_cpp_predefs_4.c: Add test for `__ARM_SVE_FEATURE_BFSCALE`.
+	* gcc.target/aarch64/sme2/acle-asm/mul_bf16_x2.c: New test.
+	* gcc.target/aarch64/sme2/acle-asm/mul_bf16_x4.c: New test.
+	* gcc.target/aarch64/sme2/acle-asm/scale_bf16_x2.c: New test.
+	* gcc.target/aarch64/sme2/acle-asm/scale_bf16_x4.c: New test.
+	* gcc.target/aarch64/sve/acle/asm/scale_bf16.c: New test.
+	* gcc.target/aarch64/sve/acle/general-c/bfscale.c: New test.
+
+2026-01-28  Pengfei Li  <Pengfei.Li2@arm.com>
+
+	PR middle-end/123447
+	* gcc.dg/pr123447.c: New test.
+
+2026-01-28  Andre Vieira  <andre.simoesdiasvieira@arm.com>
+
+	* gfortran.dg/vect/pr123016.f90: New test.
+
+2026-01-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/102613
+	* g++.dg/cpp1z/constexpr-asm-6.C: New test.
+	* g++.dg/cpp23/charset2.C: New test.
+	* g++.dg/cpp23/charset3.C: New test.
+	* g++.dg/cpp23/charset4.C: New test.
+	* g++.dg/cpp23/charset5.C: New test.
+
+2026-01-28  Jakub Jelinek  <jakub@redhat.com>
+
+	* g++.dg/cpp26/expansion-stmt1.C (A::operator -, C::operator -): New.
+	* g++.dg/cpp26/expansion-stmt2.C (A::operator -, C::operator -): New.
+	* g++.dg/cpp26/expansion-stmt3.C (A::operator -, C::operator -): New.
+	* g++.dg/cpp26/expansion-stmt18.C  (A::operator -): New.
+	* g++.dg/cpp26/expansion-stmt25.C: New test.
+
+2026-01-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/101312
+	* c-c++-common/pr101312-1.c: New test.
+	* c-c++-common/pr101312-2.c: New test.
+
+2026-01-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123837
+	* g++.dg/reflect/annotations9.C: New test.
+
+2026-01-28  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/123849
+	* g++.dg/warn/Wmismatched-new-delete-11.C: New test.
+
+2026-01-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/110043
+	* gcc.dg/torture/pr110043.c: New testcase.
+
+2026-01-28  Hongyu Wang  <hongyu.wang@intel.com>
+
+	PR target/123779
+	* g++.target/i386/pr123779.C: New test.
+
+2026-01-28  Alex Yesmanchyk  <aliaksandr.yesmanchyk@gmail.com>
+	    Jason Merrill  <jason@redhat.com>
+
+	PR c++/38612
+	* g++.dg/diagnostic/ptrtomem4.C: New test.
+
+2026-01-28  vspefs  <vspefs@protonmail.com>
+
+	* g++.dg/modules/splice-scope-tree_a.C: New test.
+	* g++.dg/modules/splice-scope-tree_b.C: New test.
+
+2026-01-28  Lucas Chollet  <lucas.chollet@free.fr>
+	    Jason Merrill  <jason@redhat.com>
+
+	PR c++/114450
+	* g++.dg/warn/Wunused-var-42.C: New test.
+
+2026-01-28  Johannes Altmanninger  <aclopte@gmail.com>
+	    Jason Merrill  <jason@redhat.com>
+
+	* g++.dg/warn/Wunused-value-2.C: New test.
+
+2026-01-28  Nina Ranns  <dinka.ranns@gmail.com>
+	    Iain Sandoe  <iain@sandoe.co.uk>
+	    Ville Voutilainen  <ville.voutilainen@gmail.com>
+
+	* g++.dg/contracts/cpp26/callerside-checks/callerside-checks-all.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/callerside-checks-non-trivial.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/callerside-checks-none.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/callerside-checks-pre.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/ctor.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/freefunc-noexcept-post.C: New test.
+	* g++.dg/contracts/cpp26/callerside-checks/freefunc-noexcept-pre.C: New test.
+	* g++.dg/contracts/cpp26/definition-checks/contract-assert-no-def-check.C: New test.
+	* g++.dg/contracts/cpp26/non-trivial-ice.C: New test.
+
+2026-01-28  Nina Ranns  <dinka.ranns@gmail.com>
+	    Iain Sandoe  <iain@sandoe.co.uk>
+	    Ville Voutilainen  <ville.voutilainen@gmail.com>
+
+	* g++.dg/contracts/cpp26/outline-checks/freefunc-noexcept-post.C: New test.
+	* g++.dg/contracts/cpp26/outline-checks/freefunc-noexcept-pre.C: New test.
+	* g++.dg/contracts/cpp26/outline-checks/func-noexcept-assert.C: New test.
+	* g++.dg/contracts/cpp26/outline-checks/memberfunc-noexcept-post.C: New test.
+	* g++.dg/contracts/cpp26/outline-checks/memberfunc-noexcept-pre.C: New test.
+	* g++.dg/contracts/cpp26/empty-nt-param.C: Test with outlined checks.
+	* g++.dg/contracts/cpp26/expr.prim.id.unqual.p7-3.C: New file.
+	* g++.dg/contracts/cpp26/expr.prim.id.unqual.p7-4.C: New file.
+
+2026-01-28  Iain Sandoe  <iain@sandoe.co.uk>
+	    Nina Ranns  <dinka.ranns@gmail.com>
+	    Ville Voutilainen  <ville.voutilainen@gmail.com>
+
+	PR c++/113968
+	PR c++/110871
+	PR c++/110872
+	* g++.dg/contracts/cpp26/BZ121936-workaround-noipa.C: New test.
+	* g++.dg/contracts/cpp26/assertion-statement-errors.C: New test.
+	* g++.dg/contracts/cpp26/assertion-statement.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p11-observe.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p14.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-2.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-3.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-4.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-5.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-SMF-post.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-SMF-pre.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-SMF2.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-SMF3.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17-SMF4.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p17.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p4-error.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p4.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p6.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p6.observe.C: New test.
+	* g++.dg/contracts/cpp26/basic.scope.contract.p1.C: New test.
+	* g++.dg/contracts/cpp26/basic.scope.contract.p2.1.C: New test.
+	* g++.dg/contracts/cpp26/contract-assert-run.C: New test.
+	* g++.dg/contracts/cpp26/contract-assert-warn-attributes.C: New test.
+	* g++.dg/contracts/cpp26/contract-violation-noexcept.C: New test.
+	* g++.dg/contracts/cpp26/contract-violation-noexcept2.C: New test.
+	* g++.dg/contracts/cpp26/contract_genericize.C: New test.
+	* g++.dg/contracts/cpp26/contracts-friend1.C: New test.
+	* g++.dg/contracts/cpp26/contracts-nested-class1.C: New test.
+	* g++.dg/contracts/cpp26/contracts-nested-class2.C: New test.
+	* g++.dg/contracts/cpp26/contracts-tmpl-spec2.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.func.p4.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.func.p6.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.res.p1-NT.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.res.p1.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.res.p2.C: New test.
+	* g++.dg/contracts/cpp26/debug-and-opt.C: New test.
+	* g++.dg/contracts/cpp26/deferred1.C: New test.
+	* g++.dg/contracts/cpp26/dependent_contract.C: New test.
+	* g++.dg/contracts/cpp26/empty-nt-param.C: New test.
+	* g++.dg/contracts/cpp26/function-contract-specifier-seq-error.C: New test.
+	* g++.dg/contracts/cpp26/function-contract-specifier-seq.C: New test.
+	* g++.dg/contracts/cpp26/lambda.C: New test.
+	* g++.dg/contracts/cpp26/name_mangling.C: New test.
+	* g++.dg/contracts/cpp26/over.call.func.p3.1.C: New test.
+	* g++.dg/contracts/cpp26/pr113968.C: New test.
+	* g++.dg/contracts/cpp26/src-loc-0.C: New test.
+	* g++.dg/contracts/cpp26/src-loc-1.C: New test.
+	* g++.dg/contracts/cpp26/src-loc-2.C: New test.
+	* g++.dg/contracts/cpp26/throwing-violation-handler.cc: New test.
+	* g++.dg/contracts/cpp26/unused_warning.C: New test.
+	* g++.dg/contracts/cpp26/vaargs.C: New test.
+	* g++.dg/contracts/cpp2a/check-err.C: New test.
+	* g++.dg/coroutines/pr110871.C: New test.
+	* g++.dg/coroutines/pr110872.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p8.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.func.p7.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.res.p1-2.C: New test.
+	* g++.dg/contracts/cpp26/expr.prim.id.unqual.p7-2.C: New test.
+	* g++.dg/contracts/cpp26/expr.prim.id.unqual.p7.C: New test.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p7.3.C: New test.
+	* g++.dg/contracts/cpp26/intro.compliance.general.p2.3.4.C: New test.
+	* g++.dg/contracts/cpp26/dcl.contract.func.p7-t1.C: New file.
+	* g++.dg/contracts/cpp26/dcl.contract.func.p7-t2.C: New file.
+
+2026-01-28  Iain Sandoe  <iain@sandoe.co.uk>
+	    Nina Ranns  <dinka.ranns@gmail.com>
+	    Ville Voutilainen  <ville.voutilainen@gmail.com>
+
+	* g++.dg/warn/Wkeyword-macro-1.C: Update for contract_assert.
+	* g++.dg/warn/Wkeyword-macro-2.C: Likewise.
+	* g++.dg/warn/Wkeyword-macro-4.C: Likewise.
+	* g++.dg/warn/Wkeyword-macro-5.C: Likewise.
+	* g++.dg/warn/Wkeyword-macro-7.C: Likewise.
+	* g++.dg/warn/Wkeyword-macro-8.C: Likewise.
+	* g++.dg/contracts/cpp26/basic.contract.eval.p8-2.C: New file.
+
+2026-01-28  Iain Sandoe  <iain@sandoe.co.uk>
+	    Nina Ranns  <dinka.ranns@gmail.com>
+
+	* g++.dg/contracts/contracts-access1.C: Removed.
+	* g++.dg/contracts/contracts-assume1.C: Removed.
+	* g++.dg/contracts/contracts-assume2.C: Removed.
+	* g++.dg/contracts/contracts-assume3.C: Removed.
+	* g++.dg/contracts/contracts-assume4.C: Removed.
+	* g++.dg/contracts/contracts-assume5.C: Removed.
+	* g++.dg/contracts/contracts-assume6.C: Removed.
+	* g++.dg/contracts/contracts-comdat1.C: Removed.
+	* g++.dg/contracts/contracts-config1.C: Removed.
+	* g++.dg/contracts/contracts-constexpr1.C: Removed.
+	* g++.dg/contracts/contracts-constexpr2.C: Removed.
+	* g++.dg/contracts/contracts-constexpr3.C: Removed.
+	* g++.dg/contracts/contracts-conversion1.C: Removed.
+	* g++.dg/contracts/contracts-ctor-dtor1.C: Removed.
+	* g++.dg/contracts/contracts-ctor-dtor2.C: Removed.
+	* g++.dg/contracts/contracts-cv1.C: Removed.
+	* g++.dg/contracts/contracts-deduced1.C: Removed.
+	* g++.dg/contracts/contracts-deduced2.C: Removed.
+	* g++.dg/contracts/contracts-err1.C: Removed.
+	* g++.dg/contracts/contracts-externC.C: Removed.
+	* g++.dg/contracts/contracts-friend1.C: Removed.
+	* g++.dg/contracts/contracts-ft1.C: Removed.
+	* g++.dg/contracts/contracts-ignore1.C: Removed.
+	* g++.dg/contracts/contracts-ignore2.C: Removed.
+	* g++.dg/contracts/contracts-large-return.C: Removed.
+	* g++.dg/contracts/contracts-multiline1.C: Removed.
+	* g++.dg/contracts/contracts-multiple-inheritance1.C: Removed.
+	* g++.dg/contracts/contracts-multiple-inheritance2.C: Removed.
+	* g++.dg/contracts/contracts-nested-class1.C: Removed.
+	* g++.dg/contracts/contracts-nested-class2.C: Removed.
+	* g++.dg/contracts/contracts-nocopy1.C: Removed.
+	* g++.dg/contracts/contracts-override.C: Removed.
+	* g++.dg/contracts/contracts-post1.C: Removed.
+	* g++.dg/contracts/contracts-post2.C: Removed.
+	* g++.dg/contracts/contracts-post3.C: Removed.
+	* g++.dg/contracts/contracts-post4.C: Removed.
+	* g++.dg/contracts/contracts-post5.C: Removed.
+	* g++.dg/contracts/contracts-post6.C: Removed.
+	* g++.dg/contracts/contracts-post7.C: Removed.
+	* g++.dg/contracts/contracts-pre1.C: Removed.
+	* g++.dg/contracts/contracts-pre10.C: Removed.
+	* g++.dg/contracts/contracts-pre2.C: Removed.
+	* g++.dg/contracts/contracts-pre2a1.C: Removed.
+	* g++.dg/contracts/contracts-pre2a2.C: Removed.
+	* g++.dg/contracts/contracts-pre3.C: Removed.
+	* g++.dg/contracts/contracts-pre4.C: Removed.
+	* g++.dg/contracts/contracts-pre5.C: Removed.
+	* g++.dg/contracts/contracts-pre6.C: Removed.
+	* g++.dg/contracts/contracts-pre7.C: Removed.
+	* g++.dg/contracts/contracts-pre9.C: Removed.
+	* g++.dg/contracts/contracts-redecl1.C: Removed.
+	* g++.dg/contracts/contracts-redecl2.C: Removed.
+	* g++.dg/contracts/contracts-redecl3.C: Removed.
+	* g++.dg/contracts/contracts-redecl4.C: Removed.
+	* g++.dg/contracts/contracts-redecl5.C: Removed.
+	* g++.dg/contracts/contracts-redecl6.C: Removed.
+	* g++.dg/contracts/contracts-redecl7.C: Removed.
+	* g++.dg/contracts/contracts-redecl8.C: Removed.
+	* g++.dg/contracts/contracts-tmpl-attr1.C: Removed.
+	* g++.dg/contracts/contracts-tmpl-spec1.C: Removed.
+	* g++.dg/contracts/contracts-tmpl-spec2.C: Removed.
+	* g++.dg/contracts/contracts-tmpl-spec3.C: Removed.
+	* g++.dg/contracts/contracts1.C: Removed.
+	* g++.dg/contracts/contracts10.C: Removed.
+	* g++.dg/contracts/contracts11.C: Removed.
+	* g++.dg/contracts/contracts12.C: Removed.
+	* g++.dg/contracts/contracts13.C: Removed.
+	* g++.dg/contracts/contracts14.C: Removed.
+	* g++.dg/contracts/contracts15.C: Removed.
+	* g++.dg/contracts/contracts16.C: Removed.
+	* g++.dg/contracts/contracts17.C: Removed.
+	* g++.dg/contracts/contracts18.C: Removed.
+	* g++.dg/contracts/contracts19.C: Removed.
+	* g++.dg/contracts/contracts2.C: Removed.
+	* g++.dg/contracts/contracts20.C: Removed.
+	* g++.dg/contracts/contracts22.C: Removed.
+	* g++.dg/contracts/contracts24.C: Removed.
+	* g++.dg/contracts/contracts25.C: Removed.
+	* g++.dg/contracts/contracts3.C: Removed.
+	* g++.dg/contracts/contracts35.C: Removed.
+	* g++.dg/contracts/contracts4.C: Removed.
+	* g++.dg/contracts/contracts5.C: Removed.
+	* g++.dg/contracts/contracts6.C: Removed.
+	* g++.dg/contracts/contracts7.C: Removed.
+	* g++.dg/contracts/pr110159.C: Removed.
+	* g++.dg/contracts/pr113968.C: Removed.
+	* g++.dg/contracts/pr115434.C: Removed.
+	* g++.dg/contracts/pr116490.C: Removed.
+	* g++.dg/contracts/pr116607.C: Removed.
+	* g++.dg/contracts/pr117579.C: Removed.
+	* g++.dg/contracts/noexcept_preload_handler/Makefile: Removed.
+	* g++.dg/contracts/noexcept_preload_handler/README: Removed.
+	* g++.dg/contracts/noexcept_preload_handler/assert_fail.cpp: Removed.
+	* g++.dg/contracts/noexcept_preload_handler/handle_contract_violation.cpp: Removed.
+	* g++.dg/contracts/preload_handler/Makefile: Removed.
+	* g++.dg/contracts/preload_handler/README: Removed.
+	* g++.dg/contracts/preload_handler/assert_fail.cpp: Removed.
+	* g++.dg/contracts/preload_handler/handle_contract_violation.cpp: Removed.
+	* g++.dg/contracts/preload_nocontinue_handler/Makefile: Removed.
+	* g++.dg/contracts/preload_nocontinue_handler/README: Removed.
+	* g++.dg/contracts/preload_nocontinue_handler/assert_fail.cpp: Removed.
+	* g++.dg/contracts/preload_nocontinue_handler/handle_contract_violation.cpp: Removed.
+	* g++.dg/contracts/preload_nocontinue_handler/nocontinue.cpp: Removed.
+	* g++.dg/contracts/backtrace_handler/Makefile: Removed.
+	* g++.dg/contracts/backtrace_handler/README: Removed.
+	* g++.dg/contracts/backtrace_handler/assert_fail.cpp: Removed.
+	* g++.dg/contracts/backtrace_handler/example_out.txt: Removed.
+	* g++.dg/contracts/backtrace_handler/example_pretty.txt: Removed.
+	* g++.dg/contracts/backtrace_handler/handle_contract_violation.cpp: Removed.
+	* g++.dg/contracts/backtrace_handler/prettytrace.sh: Removed.
+	* g++.dg/coroutines/pr110871.C: Removed.
+	* g++.dg/coroutines/pr110872.C: Removed.
+	* g++.dg/modules/contracts-1_a.C: Removed.
+	* g++.dg/modules/contracts-1_b.C: Removed.
+	* g++.dg/modules/contracts-2_a.C: Removed.
+	* g++.dg/modules/contracts-2_b.C: Removed.
+	* g++.dg/modules/contracts-2_c.C: Removed.
+	* g++.dg/modules/contracts-3_a.C: Removed.
+	* g++.dg/modules/contracts-3_b.C: Removed.
+	* g++.dg/modules/contracts-4_a.C: Removed.
+	* g++.dg/modules/contracts-4_b.C: Removed.
+	* g++.dg/modules/contracts-4_c.C: Removed.
+	* g++.dg/modules/contracts-4_d.C: Removed.
+	* g++.dg/modules/contracts-5_a.C: Removed.
+	* g++.dg/modules/contracts-5_b.C: Removed.
+	* g++.dg/modules/contracts-tpl-friend-1_a.C: Removed.
+	* g++.dg/modules/contracts-tpl-friend-1_b.C: Removed.
+	* g++.dg/contracts/contracts8.C: Removed.
+	* g++.dg/contracts/contracts9.C: Removed.
+	* g++.dg/contracts/except_preload_handler/Makefile: Removed.
+	* g++.dg/contracts/except_preload_handler/README: Removed.
+	* g++.dg/contracts/except_preload_handler/assert_fail.cpp: Removed.
+	* g++.dg/contracts/except_preload_handler/handle_contract_violation.cpp: Removed.
+
+2026-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/120096
+	* gdc.dg/torture/pr120096.d: New test.
+
+2026-01-27  David Malcolm  <dmalcolm@redhat.com>
+
+	PR analyzer/122623
+	* gcc.dg/analyzer/fexceptions-1.c: New test.
+	* gcc.dg/analyzer/fexceptions-2.c: New test.
+
+2026-01-27  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR middle-end/97898
+	* c-c++-common/gomp/pr97898-1.c: New test.
+
+2026-01-27  Qing Zhao  <qing.zhao@oracle.com>
+
+	PR c/123500
+	* gcc.dg/pointer-counted-by-pr123500.c: New test.
+
+2026-01-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/122817
+	* gdc.dg/pr122817.d: New test.
+
+2026-01-27  Richard Biener  <rguenther@suse.de>
+
+	PR ipa/116296
+	* gcc.dg/torture/pr116296.c: New testcase.
+
+2026-01-27  Richard Biener  <rguenther@suse.de>
+
+	PR debug/123376
+	* g++.dg/lto/pr123376_0.C: New testcase.
+
+2026-01-27  Christophe Lyon  <christophe.lyon@arm.com>
+
+	* gcc.target/arm/mve/intrinsics/vdupq_n_f32.c: Update expected
+	code.
+
+2026-01-27  Robin Dapp  <rdapp@oss.qualcomm.com>
+
+	PR tree-optimization/123799
+	* gcc.dg/torture/pr123799.c: New test.
+
+2026-01-27  Tobias Burnus  <tburnus@baylibre.com>
+
+	* gfortran.dg/gomp/groupprivate-7.f90: New test.
+
+2026-01-27  Wilco Dijkstra  <wilco.dijkstra@arm.com>
+
+	PR fortran/118955
+	* gfortran.dg/simd-builtins-9.f90: Add new test.
+	* gfortran.dg/simd-builtins-9.h: Likewise.
+
+2026-01-27  Wilco Dijkstra  <wilco.dijkstra@arm.com>
+
+	PR target/123791
+	* gcc.target/aarch64/pr123791.c: New test.
+
+2026-01-27  Wilco Dijkstra  <wilco.dijkstra@arm.com>
+
+	PR target/123792
+	* gcc.target/aarch64/pr123792.c: New test.
+
+2026-01-27  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122609
+	PR c++/101140
+	* g++.dg/modules/adl-12_b.C: Remove XFAIL.
+	* g++.dg/modules/inst-8_a.C: New test.
+	* g++.dg/modules/inst-8_b.C: New test.
+	* g++.dg/modules/inst-8_c.C: New test.
+	* g++.dg/modules/inst-9_a.C: New test.
+	* g++.dg/modules/inst-9_b.C: New test.
+	* g++.dg/modules/inst-10_a.C: New test.
+	* g++.dg/modules/inst-10_b.C: New test.
+	* g++.dg/modules/inst-10_c.C: New test.
+
+2026-01-27  Jakub Jelinek  <jakub@redhat.com>
+
+	* g++.dg/reflect/cwg3153.C: New test.
+
+2026-01-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123404
+	* g++.dg/reflect/pr123404.C: New test.
+
+2026-01-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123578
+	* g++.dg/cpp2a/pr123578.C: New test.
+
+2026-01-27  Frank Scheiner  <frank.scheiner@web.de>
+
+	* gcc.dg/guality/guality.exp: Only test with LTO if supported.
+	* g++.dg/guality/guality.exp: Likewise.
+
+2026-01-27  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/122749
+	* gcc.target/aarch64/pr122749_1.c: New test.
+	* gcc.target/aarch64/pr122749_2.c: New test.
+	* gcc.target/aarch64/pr122749_3.c: New test.
+	* gcc.target/aarch64/pr122749_4.c: New test.
+	* gcc.target/aarch64/pr122749_5.c: New test.
+	* gcc.target/aarch64/pr122749_6.c: New test.
+	* gcc.target/aarch64/pr122749_8.c: New test.
+	* gcc.target/aarch64/pr122749_9.c: New test.
+	* gcc.target/aarch64/sve/pr122749_1.c: New test.
+	* gcc.target/aarch64/sve/pr122749_11.c: New test.
+	* gcc.target/aarch64/sve/pr122749_12.c: New test.
+	* gcc.target/aarch64/sve/pr122749_13.c: New test.
+	* gcc.target/aarch64/sve/pr122749_14.c: New test.
+	* gcc.target/aarch64/sve/pr122749_2.c: New test.
+	* gcc.target/aarch64/sve/pr122749_3.c: New test.
+	* gcc.target/aarch64/sve/pr122749_4.c: New test.
+	* gcc.target/aarch64/sve/pr122749_5.c: New test.
+	* gcc.target/aarch64/sve/pr122749_6.c: New test.
+	* gcc.target/aarch64/sve/pr122749_8.c: New test.
+	* gcc.target/aarch64/sve/pr122749_9.c: New test.
+
+2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123676
+	* g++.dg/cpp2a/concepts-decltype5.C: New test.
+
+2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122494
+	PR c++/123814
+	* g++.dg/cpp2a/concepts-pr122494.C: New test.
+	* g++.dg/cpp2a/concepts-pr123814.C: New test.
+
 2026-01-26  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
 
 	PR tree-optimization/123820

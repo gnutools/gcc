@@ -672,7 +672,7 @@ Technical Report (TR) 14 is the first preview for OpenMP 6.1.
 @item New @code{omp_default_device} identifier as conforming device number
       @tab Y @tab
 @item Clarify when @code{omp_target_is_accessible} routine returns zero
-      @tab N @tab
+      @tab Y @tab
 @end multitable
 
 @unnumberedsubsec Deprecated features, unless listed above
@@ -2172,13 +2172,17 @@ and extending @var{size} bytes, is accessibly on the device specified by
 @var{device_num}.  If so, it returns a nonzero value and otherwise zero.
 
 The address given by @var{ptr} is interpreted to be in the address space of
-the device and @var{size} must be positive.
+the device and @var{size} must be positive.  NULL pointers and zero-length
+ranges always return zero.
 
 Note that GCC's current implementation assumes that @var{ptr} is a valid host
-pointer. Therefore, all addresses given by @var{ptr} are assumed to be
-accessible on the initial device. And, to err on the safe side, this memory
-is only available on a non-host device that can access all host memory
-([uniform] shared memory access).
+pointer. Therefore, all non-NULL addresses given by @var{ptr} are assumed to be
+accessible on the initial device.  The address is only reported as accessible
+on non-host devices if this is @emph{known} to be the case, or if the device
+reports that all memory is accessible (i.e. [unified] shared memory access).
+If the runtime is uncertain it may report accessible memory as inaccessible.
+For a memory range to be reported accessible, the whole range must be known to
+be accessible.
 
 Running this routine in a @code{target} region except on the initial device
 is not supported.
@@ -7183,10 +7187,9 @@ The implementation remark:
       pool is exhausted.
 @item Pinned memory allocated using @code{omp_alloc} with the
       @code{ompx_gnu_pinned_mem_alloc} allocator or the @code{pinned} trait is
-      obtained via the CUDA API when an NVPTX device is present.  This provides
-      a performance boost for NVPTX offload code and also allows unlimited use
-      of pinned memory regardless of the OS @code{ulimit}/@code{rlimit}
-      settings.
+      obtained via the CUDA API when an NVPTX device is present (even when
+      the primary device is AMD).  This allows unlimited use of pinned memory
+      regardless of the OS @code{ulimit}/@code{rlimit} settings.
 @item Managed memory allocated on the host with the
       @code{ompx_gnu_managed_mem_alloc} allocator or in the
       @code{ompx_gnu_managed_mem_space} (both GNU extensions) allocate memory
@@ -7383,6 +7386,12 @@ The implementation remark:
       use the fall-back setting. If the default device is configured
       differently when the memory is freed, via @code{omp_free} or
       @code{omp_realloc}, the result may be undefined.
+@item Pinned memory allocated using @code{omp_alloc} with the
+      @code{ompx_gnu_pinned_mem_alloc} allocator or the @code{pinned} trait is
+      obtained via the CUDA API when an NVPTX device is present.  This provides
+      a performance boost for NVPTX offload code and also allows unlimited use
+      of pinned memory regardless of the OS @code{ulimit}/@code{rlimit}
+      settings.
 @item The OpenMP routines @code{omp_target_memcpy_rect} and
       @code{omp_target_memcpy_rect_async} and the @code{target update}
       directive for non-contiguous list items use the 2D and 3D memory-copy

@@ -46,7 +46,6 @@ static tree verify_stmt_tree_r (tree *, int *, void *);
 
 static tree handle_init_priority_attribute (tree *, tree, tree, int, bool *);
 static tree handle_abi_tag_attribute (tree *, tree, tree, int, bool *);
-static tree handle_contract_attribute (tree *, tree, tree, int, bool *);
 static tree handle_no_dangling_attribute (tree *, tree, tree, int, bool *);
 static tree handle_annotation_attribute (tree *, tree, tree, int, bool *);
 
@@ -207,7 +206,7 @@ lvalue_kind (const_tree ref)
       /* FALLTHRU */
     case VAR_DECL:
       if (VAR_P (ref) && DECL_HAS_VALUE_EXPR_P (ref))
-	return lvalue_kind (DECL_VALUE_EXPR (CONST_CAST_TREE (ref)));
+	return lvalue_kind (DECL_VALUE_EXPR (const_cast<tree> (ref)));
 
       if (TREE_READONLY (ref) && ! TREE_STATIC (ref)
 	  && DECL_LANG_SPECIFIC (ref)
@@ -228,7 +227,7 @@ lvalue_kind (const_tree ref)
       /* A scope ref in a template, left as SCOPE_REF to support later
 	 access checking.  */
     case SCOPE_REF:
-      gcc_assert (!type_dependent_expression_p (CONST_CAST_TREE (ref)));
+      gcc_assert (!type_dependent_expression_p (const_cast<tree> (ref)));
       {
 	tree op = TREE_OPERAND (ref, 1);
 	if (TREE_CODE (op) == FIELD_DECL)
@@ -256,7 +255,7 @@ lvalue_kind (const_tree ref)
 	     point, we know we got a plain rvalue.  Unless we have a
 	     type-dependent expr, that is, but we shouldn't be testing
 	     lvalueness if we can't even tell the types yet!  */
-	  gcc_assert (!type_dependent_expression_p (CONST_CAST_TREE (ref)));
+	  gcc_assert (!type_dependent_expression_p (const_cast<tree> (ref)));
 	  goto default_;
 	}
       {
@@ -317,7 +316,7 @@ lvalue_kind (const_tree ref)
 	 with a BASELINK.  */
       /* This CONST_CAST is okay because BASELINK_FUNCTIONS returns
 	 its argument unmodified and we assign it to a const_tree.  */
-      return lvalue_kind (BASELINK_FUNCTIONS (CONST_CAST_TREE (ref)));
+      return lvalue_kind (BASELINK_FUNCTIONS (const_cast<tree> (ref)));
 
     case PAREN_EXPR:
       return lvalue_kind (TREE_OPERAND (ref, 0));
@@ -4104,50 +4103,6 @@ called_fns_equal (tree t1, tree t2)
     return cp_tree_equal (t1, t2);
 }
 
-bool comparing_override_contracts;
-
-/* In a component reference, return the innermost object of
-   the postfix-expression.  */
-
-static tree
-get_innermost_component (tree t)
-{
-  gcc_assert (TREE_CODE (t) == COMPONENT_REF);
-  while (TREE_CODE (t) == COMPONENT_REF)
-    t = TREE_OPERAND (t, 0);
-  return t;
-}
-
-/* Returns true if T is a possibly converted 'this' or '*this' expression.  */
-
-static bool
-is_this_expression (tree t)
-{
-  t = get_innermost_component (t);
-  /* See through deferences and no-op conversions.  */
-  if (INDIRECT_REF_P (t))
-    t = TREE_OPERAND (t, 0);
-  if (TREE_CODE (t) == NOP_EXPR)
-    t = TREE_OPERAND (t, 0);
-  return is_this_parameter (t);
-}
-
-static bool
-comparing_this_references (tree t1, tree t2)
-{
-  return is_this_expression (t1) && is_this_expression (t2);
-}
-
-static bool
-equivalent_member_references (tree t1, tree t2)
-{
-  if (!comparing_this_references (t1, t2))
-    return false;
-  t1 = TREE_OPERAND (t1, 1);
-  t2 = TREE_OPERAND (t2, 1);
-  return t1 == t2;
-}
-
 /* Return truthvalue of whether T1 is the same tree structure as T2.
    Return 1 if they are the same. Return 0 if they are different.  */
 
@@ -4163,6 +4118,26 @@ cp_tree_equal (tree t1, tree t2)
 
   code1 = TREE_CODE (t1);
   code2 = TREE_CODE (t2);
+
+  if (comparing_contracts)
+    {
+      /* When comparing contracts, one declaration may already be
+	 genericized. Check for invisible references and unravel them
+	 for comparison purposes. Remember that a parameter is an invisible
+	 reference so we can compare the parameter types accordingly.  */
+      if (code1 == VIEW_CONVERT_EXPR
+	  && is_invisiref_parm (TREE_OPERAND(t1, 0)))
+	{
+	  t1 = TREE_OPERAND(t1, 0);
+	  code1 = TREE_CODE(t1);
+	}
+      if (code2 == VIEW_CONVERT_EXPR
+	  && is_invisiref_parm (TREE_OPERAND(t2, 0)))
+	{
+	  t2 = TREE_OPERAND(t2, 0);
+	  code2 = TREE_CODE(t2);
+	}
+    }
 
   if (code1 != code2)
     return false;
@@ -4326,8 +4301,14 @@ cp_tree_equal (tree t1, tree t2)
 	   with parameters with identical contexts.  */
 	return false;
 
-      if (same_type_p (TREE_TYPE (t1), TREE_TYPE (t2)))
+      if (same_type_p (TREE_TYPE (t1), TREE_TYPE (t2)) || comparing_contracts)
 	{
+	  /* When comparing contracts, we already know the declarations match,
+	    and that the arguments have the same type. If one of the declarations
+	    has been genericised, then the type of arguments in that declaration
+	    will be adjusted for an invisible reference and the type comparison
+	    would spuriosly fail. The only thing we care about when comparing
+	    contractsis that we're using the same parameter.  */
 	  if (DECL_ARTIFICIAL (t1) ^ DECL_ARTIFICIAL (t2))
 	    return false;
 	  if (CONSTRAINT_VAR_P (t1) ^ CONSTRAINT_VAR_P (t2))
@@ -4352,6 +4333,7 @@ cp_tree_equal (tree t1, tree t2)
     case SSA_NAME:
     case USING_DECL:
     case DEFERRED_PARSE:
+    case NAMESPACE_DECL:
       return false;
 
     case BASELINK:
@@ -4523,13 +4505,6 @@ cp_tree_equal (tree t1, tree t2)
 			  PACK_INDEX_INDEX (t2)))
 	return false;
       return true;
-
-    case COMPONENT_REF:
-      /* If we're comparing contract conditions of overrides, member references
-	 compare equal if they designate the same member.  */
-      if (comparing_override_contracts)
-	return equivalent_member_references (t1, t2);
-      break;
 
     case REFLECT_EXPR:
       if (!cp_tree_equal (REFLECT_EXPR_HANDLE (t1), REFLECT_EXPR_HANDLE (t2))
@@ -4740,7 +4715,7 @@ scalarish_type_p (const_tree t)
 bool
 type_has_nontrivial_default_init (const_tree t)
 {
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (CLASS_TYPE_P (t))
     return TYPE_HAS_COMPLEX_DFLT (t);
@@ -4757,7 +4732,7 @@ remember_deleted_copy (const_tree t)
 {
   if (!deleted_copy_types)
     deleted_copy_types = hash_set<tree>::create_ggc(37);
-  deleted_copy_types->add (CONST_CAST_TREE (t));
+  deleted_copy_types->add (const_cast<tree> (t));
 }
 void
 maybe_warn_parm_abi (tree t, location_t loc)
@@ -4800,7 +4775,7 @@ maybe_warn_parm_abi (tree t, location_t loc)
 bool
 type_has_nontrivial_copy_init (const_tree type)
 {
-  tree t = strip_array_types (CONST_CAST_TREE (type));
+  tree t = strip_array_types (const_cast<tree> (type));
 
   if (CLASS_TYPE_P (t))
     {
@@ -4887,7 +4862,7 @@ type_has_nontrivial_copy_init (const_tree type)
 bool
 trivially_copyable_p (const_tree t)
 {
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (CLASS_TYPE_P (t))
     return ((!TYPE_HAS_COPY_CTOR (t)
@@ -4908,12 +4883,12 @@ trivially_copyable_p (const_tree t)
 bool
 trivial_type_p (const_tree t)
 {
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (CLASS_TYPE_P (t))
     /* A trivial class is a class that is trivially copyable and has one or
        more eligible default constructors, all of which are trivial.  */
-    return (type_has_non_deleted_trivial_default_ctor (CONST_CAST_TREE (t))
+    return (type_has_non_deleted_trivial_default_ctor (const_cast<tree> (t))
 	    && trivially_copyable_p (t));
   else
     return scalarish_type_p (t);
@@ -4968,7 +4943,7 @@ pod_type_p (const_tree t)
 {
   /* This CONST_CAST is okay because strip_array_types returns its
      argument unmodified and we assign it to a const_tree.  */
-  t = strip_array_types (CONST_CAST_TREE(t));
+  t = strip_array_types (const_cast<tree>(t));
 
   if (!CLASS_TYPE_P (t))
     return scalarish_type_p (t);
@@ -4991,7 +4966,7 @@ pod_type_p (const_tree t)
 bool
 layout_pod_type_p (const_tree t)
 {
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (CLASS_TYPE_P (t))
     return !CLASSTYPE_NON_LAYOUT_POD_P (t);
@@ -5005,7 +4980,7 @@ layout_pod_type_p (const_tree t)
 bool
 std_layout_type_p (const_tree t)
 {
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (CLASS_TYPE_P (t))
     return !CLASSTYPE_NON_STD_LAYOUT (t);
@@ -5023,7 +4998,7 @@ type_has_unique_obj_representations (const_tree t, bool explain/*=false*/)
 {
   bool ret;
 
-  t = strip_array_types (CONST_CAST_TREE (t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (t == error_mark_node)
     return false;
@@ -5263,7 +5238,7 @@ zero_init_p (const_tree t)
 {
   /* This CONST_CAST is okay because strip_array_types returns its
      argument unmodified and we assign it to a const_tree.  */
-  t = strip_array_types (CONST_CAST_TREE(t));
+  t = strip_array_types (const_cast<tree> (t));
 
   if (t == error_mark_node)
     return 1;
@@ -5617,10 +5592,6 @@ static const attribute_spec std_attributes[] =
     handle_carries_dependency_attribute, NULL },
   { "indeterminate", 0, 0, true, false, false, false,
     handle_indeterminate_attribute, NULL },
-  { "pre", 0, -1, false, false, false, false,
-    handle_contract_attribute, NULL },
-  { "post", 0, -1, false, false, false, false,
-    handle_contract_attribute, NULL }
 };
 
 const scoped_attribute_specs std_attribute_table =
@@ -5888,17 +5859,6 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
   return NULL_TREE;
 }
 
-/* Perform checking for contract attributes.  */
-
-tree
-handle_contract_attribute (tree *ARG_UNUSED (node), tree ARG_UNUSED (name),
-			   tree ARG_UNUSED (args), int ARG_UNUSED (flags),
-			   bool *ARG_UNUSED (no_add_attrs))
-{
-  /* TODO: Is there any checking we could do here?  */
-  return NULL_TREE;
-}
-
 /* Handle a "no_dangling" attribute; arguments as in
    struct attribute_spec.handler.  */
 
@@ -6045,7 +6005,7 @@ cxx_type_hash_eq (const_tree typea, const_tree typeb)
 tree
 cxx_copy_lang_qualifiers (const_tree typea, const_tree typeb)
 {
-  tree type = CONST_CAST_TREE (typea);
+  tree type = const_cast<tree> (typea);
   if (FUNC_OR_METHOD_TYPE_P (type))
     type = build_cp_fntype_variant (type, type_memfn_rqual (typeb),
 				    TYPE_RAISES_EXCEPTIONS (typeb),
@@ -6311,6 +6271,11 @@ cp_walk_subtrees (tree *tp, int *walk_subtrees_p, walk_tree_fn func,
       /* Removed from walk_type_fields in r119481.  */
       WALK_SUBTREE (TYPE_MIN_VALUE (t));
       WALK_SUBTREE (TYPE_MAX_VALUE (t));
+      break;
+
+    case SPLICE_SCOPE:
+      WALK_SUBTREE (SPLICE_SCOPE_EXPR (t));
+      *walk_subtrees_p = 0;
       break;
 
     default:

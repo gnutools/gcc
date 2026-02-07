@@ -1759,28 +1759,7 @@ loongarch_const_vector_bitimm_set_p (rtx op, machine_mode mode)
       && (GET_MODE_CLASS (mode) == MODE_VECTOR_FLOAT
 	  || GET_MODE_CLASS (mode) == MODE_VECTOR_INT))
     {
-      unsigned HOST_WIDE_INT val;
-
-      if (GET_MODE_CLASS (mode) == MODE_VECTOR_FLOAT)
-	{
-	  rtx val_s = CONST_VECTOR_ELT (op, 0);
-	  const REAL_VALUE_TYPE *x = CONST_DOUBLE_REAL_VALUE (val_s);
-	  if (GET_MODE (val_s) == DFmode)
-	    {
-	      long tmp[2];
-	      REAL_VALUE_TO_TARGET_DOUBLE (*x, tmp);
-	      val = (unsigned HOST_WIDE_INT) tmp[1] << 32 | tmp[0];
-	    }
-	  else
-	    {
-	      long tmp;
-	      REAL_VALUE_TO_TARGET_SINGLE (*x, tmp);
-	      val = (unsigned HOST_WIDE_INT) tmp;
-	    }
-	}
-      else
-	val = UINTVAL (CONST_VECTOR_ELT (op, 0));
-
+      unsigned HOST_WIDE_INT val = UINTVAL (CONST_VECTOR_ELT (op, 0));
       int vlog2 = exact_log2 (val & GET_MODE_MASK (GET_MODE_INNER (mode)));
 
       if (vlog2 != -1)
@@ -1872,27 +1851,7 @@ loongarch_const_vector_same_bytes_p (rtx op, machine_mode mode)
 
   first = CONST_VECTOR_ELT (op, 0);
   bytes = GET_MODE_UNIT_SIZE (mode);
-
-  if (GET_MODE_CLASS (mode) == MODE_VECTOR_FLOAT)
-    {
-      rtx val_s = CONST_VECTOR_ELT (op, 0);
-      const REAL_VALUE_TYPE *x = CONST_DOUBLE_REAL_VALUE (val_s);
-      if (GET_MODE (val_s) == DFmode)
-	{
-	  long tmp[2];
-	  REAL_VALUE_TO_TARGET_DOUBLE (*x, tmp);
-	  val = (unsigned HOST_WIDE_INT) tmp[1] << 32 | tmp[0];
-	}
-      else
-	{
-	  long tmp;
-	  REAL_VALUE_TO_TARGET_SINGLE (*x, tmp);
-	  val = (unsigned HOST_WIDE_INT) tmp;
-	}
-    }
-  else
-    val = UINTVAL (first);
-
+  val = INTVAL (first);
   first_byte = val & 0xff;
   for (i = 1; i < bytes; i++)
     {
@@ -6887,35 +6846,18 @@ loongarch_print_operand (FILE *file, rtx op, int letter)
 	{
 	  machine_mode mode = GET_MODE_INNER (GET_MODE (op));
 	  rtx val_s = CONST_VECTOR_ELT (op, 0);
-	  unsigned HOST_WIDE_INT val;
-
-	  if (GET_MODE_CLASS (mode) == MODE_FLOAT)
+	  if (CONST_INT_P (val_s))
 	    {
-	      const REAL_VALUE_TYPE *x = CONST_DOUBLE_REAL_VALUE (val_s);
-	      if (GET_MODE (val_s) == DFmode)
+	      unsigned HOST_WIDE_INT val = UINTVAL (val_s);
+	      int vlog2 = exact_log2 (val & GET_MODE_MASK (mode));
+	      if (vlog2 != -1)
 		{
-		  long tmp[2];
-		  REAL_VALUE_TO_TARGET_DOUBLE (*x, tmp);
-		  val = (unsigned HOST_WIDE_INT) (tmp[1] << 32 | tmp[0]);
-		}
-	      else
-		{
-		  long tmp;
-		  REAL_VALUE_TO_TARGET_SINGLE (*x, tmp);
-		  val = (unsigned HOST_WIDE_INT) tmp;
+		  fprintf (file, "%d", vlog2);
+		  break;
 		}
 	    }
-	  else
-	    val = UINTVAL (val_s);
-
-	  int vlog2 = exact_log2 (val & GET_MODE_MASK (mode));
-	  if (vlog2 != -1)
-	    fprintf (file, "%d", vlog2);
-	  else
-	    output_operand_lossage ("invalid use of '%%%c'", letter);
 	}
-      else
-	output_operand_lossage ("invalid use of '%%%c'", letter);
+      output_operand_lossage ("invalid use of '%%%c'", letter);
       break;
 
     case 'W':
@@ -8906,7 +8848,7 @@ loongarch_set_handled_components (sbitmap components)
 }
 
 /* Use the vshuf instruction to implement all 128-bit constant vector
-   permuatation.  */
+   permutation.  */
 
 static bool
 loongarch_try_expand_lsx_vshuf_const (struct expand_vec_perm_d *d)
@@ -9639,7 +9581,7 @@ loongarch_is_elem_duplicate (struct expand_vec_perm_d *d)
    When GCC wants to performs a vector permutation, it provides two op
    reigster, one target register, and a selector.
    In const vector permutation case, GCC provides selector as a char array
-   that contains original value; in variable vector permuatation
+   that contains original value; in variable vector permutation
    (performs via vec_perm<mode> insn template), it provides a vector register.
    We assume that nelt is the elements numbers inside single vector in current
    256bit vector mode.
@@ -9666,7 +9608,7 @@ loongarch_is_elem_duplicate (struct expand_vec_perm_d *d)
    by single instruction easily.
 
    3.  What LASX permutation instruction does:
-   In short, it just execute two independent 128bit vector permuatation, and
+   In short, it just execute two independent 128bit vector permutation, and
    it's the reason that we need to do the jobs below.  We will explain it.
    op0, op1, target, and selector will be separate into high 128bit and low
    128bit, and do permutation as the description below:
@@ -9696,8 +9638,8 @@ loongarch_is_elem_duplicate (struct expand_vec_perm_d *d)
    c) Use other instructions to process op and put correct result into target.
    */
 
-/* Implementation of constant vector permuatation.  This function identifies
-   recognized pattern of permuation selector argument, and use one or more
+/* Implementation of constant vector permutation.  This function identifies
+   recognized pattern of permutation selector argument, and use one or more
    instruction (s) to finish the permutation job correctly.  For unsupported
    patterns, it will return false.  */
 
@@ -10436,7 +10378,16 @@ loongarch_expand_vector_init_same (rtx target, rtx vals, unsigned nvar)
 	}
     }
 
-  temp = force_reg (imode, same);
+  if (GET_CODE (same) == MEM && GET_MODE (same) != imode)
+    {
+      rtx reg_tmp = gen_reg_rtx (GET_MODE (same));
+      loongarch_emit_move (reg_tmp, same);
+      temp = lowpart_subreg (imode, reg_tmp, GET_MODE (reg_tmp));
+    }
+  else
+    temp = same;
+
+  temp = force_reg (imode, temp);
 
   switch (vmode)
     {
@@ -11185,7 +11136,7 @@ loongarch_build_signbit_mask (machine_mode mode, bool vect, bool invert)
     return force_reg (inner_mode, mask);
 
   v = loongarch_build_const_vector (vec_mode, vect, mask);
-  return force_reg (vec_mode, v);
+  return v;
 }
 
 /* Use rsqrte instruction and Newton-Rhapson to compute the approximation of
@@ -11234,10 +11185,11 @@ void loongarch_emit_swrsqrtsf (rtx res, rtx a, machine_mode mode, bool recip)
       if (VECTOR_MODE_P (mode))
 	{
 	  machine_mode imode = related_int_vector_mode (mode).require ();
-	  rtx mask = gen_reg_rtx (imode);
-	  emit_insn (gen_rtx_SET (mask, gen_rtx_NE (imode, a, zero)));
-	  emit_insn (gen_rtx_SET (x0, gen_rtx_AND (mode, x0,
-						   gen_lowpart (mode, mask))));
+	  rtx mask = force_reg (imode, gen_rtx_NE (imode, a, zero));
+	  emit_move_insn (gen_lowpart (imode, x0),
+			  gen_rtx_AND (imode,
+				       gen_lowpart (imode, x0),
+				       mask));
 	}
       else
 	{

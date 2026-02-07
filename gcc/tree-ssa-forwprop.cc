@@ -3975,14 +3975,29 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
   if (refnelts < nelts)
     return false;
 
+  /* Determine the element type for the conversion source.
+     As orig_elem_type keeps track of the original type, check
+     if we need to perform a sign swap after permuting.
+     We need to be able to construct a vector type from the element
+     type which is not possible for e.g. BitInt or pointers
+     so pun with an integer type if needed.   */
+  tree perm_eltype = TREE_TYPE (TREE_TYPE (orig[0]));
+  bool sign_change_p = false;
+  if (conv_code != ERROR_MARK
+      && orig_elem_type[0]
+      && TYPE_SIGN (orig_elem_type[0]) != TYPE_SIGN (perm_eltype))
+    {
+      perm_eltype = signed_or_unsigned_type_for
+	(TYPE_UNSIGNED (orig_elem_type[0]), perm_eltype);
+      sign_change_p = true;
+    }
+  tree conv_src_type = build_vector_type (perm_eltype, nelts);
+
   if (maybe_ident)
     {
-      tree conv_src_type
-	= (nelts != refnelts
-	   ? (conv_code != ERROR_MARK
-	      ? build_vector_type (TREE_TYPE (TREE_TYPE (orig[0])), nelts)
-	      : type)
-	   : TREE_TYPE (orig[0]));
+      /* When there is no conversion, use the target type directly.  */
+      if (conv_code == ERROR_MARK && nelts != refnelts)
+	conv_src_type = type;
       if (conv_code != ERROR_MARK
 	  && !supportable_convert_operation (conv_code, type, conv_src_type,
 					     &conv_code))
@@ -4104,6 +4119,15 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 	  gsi_insert_before (gsi, lowpart, GSI_SAME_STMT);
 	  orig[0] = gimple_assign_lhs (lowpart);
 	}
+      else if (sign_change_p)
+	{
+	  gassign *conv
+	    = gimple_build_assign (make_ssa_name (conv_src_type),
+				   build1 (VIEW_CONVERT_EXPR, conv_src_type,
+					   orig[0]));
+	  gsi_insert_before (gsi, conv, GSI_SAME_STMT);
+	  orig[0] = gimple_assign_lhs (conv);
+	}
       if (conv_code == ERROR_MARK)
 	{
 	  tree src_type = TREE_TYPE (orig[0]);
@@ -4135,22 +4159,8 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 	  && orig[1] == error_mark_node
 	  && !maybe_blend[0])
 	return false;
-      tree mask_type, perm_type, conv_src_type;
+      tree mask_type, perm_type;
       perm_type = TREE_TYPE (orig[0]);
-      /* Determine the element type for the conversion source.
-	 As orig_elem_type keeps track of the original type, check
-	 if we need to perform a sign swap after permuting.
-	 We need to be able to construct a vector type from the element
-	 type which is not possible for e.g. BitInt or pointers
-	 so pun with an integer type if needed.  */
-      tree conv_elem_type = TREE_TYPE (perm_type);
-      if (conv_code != ERROR_MARK
-	  && orig_elem_type[0]
-	  && TYPE_SIGN (orig_elem_type[0]) != TYPE_SIGN (conv_elem_type))
-	conv_elem_type = signed_or_unsigned_type_for (TYPE_UNSIGNED
-						      (orig_elem_type[0]),
-						      conv_elem_type);
-      conv_src_type = build_vector_type (conv_elem_type, nelts);
       if (conv_code != ERROR_MARK
 	  && !supportable_convert_operation (conv_code, type, conv_src_type,
 					     &conv_code))
@@ -4280,8 +4290,7 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
       /* Otherwise, we can still have an intermediate sign change.
 	 ??? In that case we have two subsequent conversions.
 	 We should be able to merge them.  */
-      else if (conv_code != ERROR_MARK
-	       && tree_nop_conversion_p (conv_src_type, perm_type))
+      else if (sign_change_p)
 	res = gimple_build (&stmts, VIEW_CONVERT_EXPR, conv_src_type, res);
       /* Finally, apply the conversion.  */
       if (conv_code != ERROR_MARK)
@@ -4608,8 +4617,7 @@ recognise_vec_perm_simplify_seq (gassign *stmt, vec_perm_simplify_seq *seq)
       if (commutative_tree_code (gimple_assign_rhs_code (v_x_stmt)))
 	{
 	  /* Keep v_x_1 the first operand for non-commutative operators.  */
-	  v_x_1 = gimple_assign_rhs2 (v_x_stmt);
-	  v_x_2 = gimple_assign_rhs1 (v_x_stmt);
+	  std::swap (v_x_1, v_x_2);
 	  if (v_x_1 != v_y_1 || v_x_2 != v_y_2)
 	    return false;
 	}
@@ -4652,7 +4660,7 @@ recognise_vec_perm_simplify_seq (gassign *stmt, vec_perm_simplify_seq *seq)
 
   /* Create the new selector.  */
   vec_perm_builder new_sel_perm (nelts, nelts, 1);
-  auto_vec<unsigned int> lanes (nelts);
+  auto_vec<bool> lanes (nelts);
   lanes.quick_grow_cleared (nelts);
   for (unsigned int i = 0; i < nelts; i++)
     {
@@ -4678,7 +4686,7 @@ recognise_vec_perm_simplify_seq (gassign *stmt, vec_perm_simplify_seq *seq)
       new_sel_perm.quick_push (l + offs * nelts);
 
       /* Mark lane as used.  */
-      lanes[l] = 1;
+      lanes[l] = true;
     }
 
   /* Count how many lanes are need.  */
@@ -4690,12 +4698,12 @@ recognise_vec_perm_simplify_seq (gassign *stmt, vec_perm_simplify_seq *seq)
   if (cnt > nelts / 2)
     return false;
 
-  /* Check if the resulting permuation is cheap.  */
+  /* Check if the resulting permutation is cheap.  */
   vec_perm_indices new_indices (new_sel_perm, 2, nelts);
   tree vectype = TREE_TYPE (gimple_assign_lhs (stmt));
   machine_mode vmode = TYPE_MODE (vectype);
   if (!can_vec_perm_const_p (vmode, vmode, new_indices, false))
-      return false;
+    return false;
 
   *seq = XNEW (struct _vec_perm_simplify_seq);
   (*seq)->stmt = stmt;
@@ -4785,8 +4793,7 @@ can_blend_vec_perm_simplify_seqs_p (vec_perm_simplify_seq seq1,
      seq1->v_x_stmt and seq1->v_y_stmt are before it.
 
      Note, that we don't need to check the BBs here, because all
-     statements of both sequences have to be in the same BB.
-     */
+     statements of both sequences have to be in the same BB.  */
 
   tree seq2_v_in = gimple_assign_rhs1 (seq2->v_1_stmt);
   if (TREE_CODE (seq2_v_in) != SSA_NAME)
@@ -4834,7 +4841,7 @@ calc_perm_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
 {
   unsigned int i;
   unsigned int nelts = seq1->nelts;
-  auto_vec<int> lane_assignment;
+  auto_vec<unsigned int> lane_assignment;
   lane_assignment.create (nelts);
 
   /* Mark all lanes as free.  */
@@ -4846,7 +4853,7 @@ calc_perm_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
       unsigned int l = TREE_INT_CST_LOW (VECTOR_CST_ELT (seq1->new_sel, i));
       l %= nelts;
       lane_assignment[l] = 1;
-}
+    }
 
   /* Allocate lanes for seq2 and calculate selector for seq2->stmt.  */
   vec_perm_builder seq2_stmt_sel_perm (nelts, nelts, 1);
@@ -4887,14 +4894,14 @@ calc_perm_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
 	    }
 
 	  /* Allocate lane.  */
-	  lane_assignment[lane] = 2;
+	  lane_assignment[lane] = 2 + l_orig;
 	  new_sel = lane + offs * nelts;
 	}
 
       seq2_stmt_sel_perm.quick_push (new_sel);
     }
 
-  /* Check if the resulting permuation is cheap.  */
+  /* Check if the resulting permutation is cheap.  */
   seq2_stmt_indices->new_vector (seq2_stmt_sel_perm, 2, nelts);
   tree vectype = TREE_TYPE (gimple_assign_lhs (seq2->stmt));
   machine_mode vmode = TYPE_MODE (vectype);
@@ -4906,7 +4913,7 @@ calc_perm_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
   vec_perm_builder seq1_v_2_stmt_sel_perm (nelts, nelts, 1);
   for (i = 0; i < nelts; i++)
     {
-      bool use_seq1 = lane_assignment[i] != 2;
+      bool use_seq1 = lane_assignment[i] < 2;
       unsigned int l1, l2;
 
       if (use_seq1)
@@ -4922,25 +4929,12 @@ calc_perm_vec_perm_simplify_seqs (vec_perm_simplify_seq seq1,
 	  /* We moved the lanes for seq2, so we need to adjust for that.  */
 	  tree s1 = gimple_assign_rhs3 (seq2->v_1_stmt);
 	  tree s2 = gimple_assign_rhs3 (seq2->v_2_stmt);
-
-	  unsigned int j = 0;
-	  for (; j < i; j++)
-	    {
-	      unsigned int sel_new;
-	      sel_new = seq2_stmt_sel_perm[j].to_constant ();
-	      sel_new %= nelts;
-	      if (sel_new == i)
-		break;
-	    }
-
-	  /* This should not happen.  Test anyway to guarantee correctness.  */
-	  if (j == i)
-	    return false;
-
-	  l1 = TREE_INT_CST_LOW (VECTOR_CST_ELT (s1, j));
-	  l2 = TREE_INT_CST_LOW (VECTOR_CST_ELT (s2, j));
+	  l1 = TREE_INT_CST_LOW (VECTOR_CST_ELT (s1, lane_assignment[i] - 2));
+	  l2 = TREE_INT_CST_LOW (VECTOR_CST_ELT (s2, lane_assignment[i] - 2));
 	}
 
+      l1 %= nelts;
+      l2 %= nelts;
       seq1_v_1_stmt_sel_perm.quick_push (l1 + (use_seq1 ? 0 : nelts));
       seq1_v_2_stmt_sel_perm.quick_push (l2 + (use_seq1 ? 0 : nelts));
     }

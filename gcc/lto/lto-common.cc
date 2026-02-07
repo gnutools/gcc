@@ -96,7 +96,7 @@ free_with_string (void *arg)
 {
   struct lto_section_slot *s = (struct lto_section_slot *)arg;
 
-  free (CONST_CAST (char *, s->name));
+  free (const_cast<char *> (s->name));
   free (arg);
 }
 
@@ -397,8 +397,8 @@ gimple_canonical_type_eq (const void *p1, const void *p2)
 {
   const_tree t1 = (const_tree) p1;
   const_tree t2 = (const_tree) p2;
-  return gimple_canonical_types_compatible_p (CONST_CAST_TREE (t1),
-					      CONST_CAST_TREE (t2));
+  return gimple_canonical_types_compatible_p (const_cast<tree> (t1),
+					      const_cast<tree> (t2));
 }
 
 /* Main worker for gimple_register_canonical_type.  */
@@ -2504,7 +2504,7 @@ get_section_data (struct lto_file_decl_data *file_data,
       *len = f_slot->len;
     }
 
-  free (CONST_CAST (char *, section_name));
+  free (const_cast<char *> (section_name));
   return data;
 }
 
@@ -2531,7 +2531,7 @@ free_section_data (struct lto_file_decl_data *file_data ATTRIBUTE_UNUSED,
 
   munmap ((caddr_t) computed_offset, computed_len);
 #else
-  free (CONST_CAST(char *, offset));
+  free (const_cast<char *> (offset));
 #endif
 }
 

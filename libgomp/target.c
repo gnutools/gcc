@@ -1156,6 +1156,23 @@ gomp_merge_iterator_maps (size_t *mapnum, void ***hostaddrs, size_t **sizes,
   return true;
 }
 
+static void
+gomp_present_fatal (void *addr, size_t size, struct gomp_device_descr *devicep)
+{
+  gomp_mutex_unlock (&devicep->lock);
+#ifdef HAVE_INTTYPES_H
+  gomp_fatal ("present clause: not present on the device "
+	      "(addr: %p, size: %" PRIu64 " (0x%" PRIx64 "), "
+	      "dev: %d)",
+	      addr, (uint64_t) size, (uint64_t) size, devicep->target_id);
+#else
+  gomp_fatal ("present clause: not present on the device "
+	      "(addr: %p, size: %lu (0x%lx), dev: %d)",
+	      addr, (unsigned long) size, (unsigned long) size,
+	      devicep->target_id);
+#endif
+}
+
 static inline __attribute__((always_inline)) struct target_mem_desc *
 gomp_map_vars_internal (struct gomp_device_descr *devicep,
 			struct goacc_asyncqueue *aq, size_t mapnum,
@@ -1529,6 +1546,7 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
       size_t j, field_tgt_offset = 0, field_tgt_clear = FIELD_TGT_EMPTY;
       uintptr_t field_tgt_base = 0;
       splay_tree_key field_tgt_structelem_first = NULL;
+      bool ref_ptee_not_present = false;
 
       for (i = 0; i < mapnum; i++)
 	if (has_always_ptrset
@@ -1936,6 +1954,7 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
 		  case GOMP_MAP_FORCE_TOFROM:
 		  case GOMP_MAP_ALWAYS_TO:
 		  case GOMP_MAP_ALWAYS_TOFROM:
+		  map_to:
 		    gomp_copy_host2dev (devicep, aq,
 					(void *) (tgt->tgt_start
 						  + k->tgt_offset),
@@ -1952,6 +1971,9 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
 			== GOMP_MAP_POINTER_TO_ZERO_LENGTH_ARRAY_SECTION));
 		    break;
 		  case GOMP_MAP_TO_PSET:
+		    if (ref_ptee_not_present)
+		      gomp_present_fatal ((void *) k->host_start,
+					  k->host_end - k->host_start, devicep);
 		    gomp_copy_host2dev (devicep, aq,
 					(void *) (tgt->tgt_start
 						  + k->tgt_offset),
@@ -2001,23 +2023,17 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
 		  case GOMP_MAP_ALWAYS_PRESENT_FROM:
 		  case GOMP_MAP_ALWAYS_PRESENT_TOFROM:
 		    {
+		      if (i + 1 < mapnum
+			  && (get_kind (short_mapkind, kinds, i + 1) & typemask)
+			       == GOMP_MAP_TO_PSET)
+			{
+			  ref_ptee_not_present = true;
+			  goto map_to;
+			}
 		      /* We already looked up the memory region above and it
 			 was missing.  */
-		      size_t size = k->host_end - k->host_start;
-		      gomp_mutex_unlock (&devicep->lock);
-#ifdef HAVE_INTTYPES_H
-		      gomp_fatal ("present clause: not present on the device "
-				  "(addr: %p, size: %"PRIu64" (0x%"PRIx64"), "
-				  "dev: %d)", (void *) k->host_start,
-				  (uint64_t) size, (uint64_t) size,
-				  devicep->target_id);
-#else
-		      gomp_fatal ("present clause: not present on the device "
-				  "(addr: %p, size: %lu (0x%lx), dev: %d)",
-				  (void *) k->host_start,
-				  (unsigned long) size, (unsigned long) size,
-				  devicep->target_id);
-#endif
+		      gomp_present_fatal ((void *) k->host_start,
+					  k->host_end - k->host_start, devicep);
 		    }
 		    break;
 		  case GOMP_MAP_FORCE_DEVICEPTR:
@@ -2465,19 +2481,7 @@ gomp_update (struct gomp_device_descr *devicep, size_t mapnum, void **hostaddrs,
 	      {
 		/* We already looked up the memory region above and it
 		   was missing.  */
-		gomp_mutex_unlock (&devicep->lock);
-#ifdef HAVE_INTTYPES_H
-		gomp_fatal ("present clause: not present on the device "
-			    "(addr: %p, size: %"PRIu64" (0x%"PRIx64"), "
-			    "dev: %d)", (void *) hostaddrs[i],
-			    (uint64_t) sizes[i], (uint64_t) sizes[i],
-			    devicep->target_id);
-#else
-		gomp_fatal ("present clause: not present on the device "
-			    "(addr: %p, size: %lu (0x%lx), dev: %d)",
-			    (void *) hostaddrs[i], (unsigned long) sizes[i],
-			    (unsigned long) sizes[i], devicep->target_id);
-#endif
+		gomp_present_fatal (hostaddrs[i], sizes[i], devicep);
 	      }
 	  }
       }
@@ -5590,6 +5594,9 @@ omp_get_mapped_ptr (const void *ptr, int device_num)
 int
 omp_target_is_accessible (const void *ptr, size_t size, int device_num)
 {
+  if (ptr == NULL || size == 0)
+    return false;
+
   if (device_num == omp_default_device)
     device_num = gomp_get_default_device ();
 
@@ -5601,9 +5608,19 @@ omp_target_is_accessible (const void *ptr, size_t size, int device_num)
   if (devicep == NULL)
     return false;
 
-  /* TODO: Unified shared memory must be handled when available.  */
+  /* Managed memory (or other device feature).
+     is_accessible_ptr may, in future, report more than simply true or false,
+     but we can assume that positive responses are accessible, and
+     zero/negative responses are inaccessible.  */
+  if (devicep->is_accessible_ptr_func)
+    return (devicep->is_accessible_ptr_func (devicep->target_id, ptr, size)
+	    > 0);
 
-  return devicep->capabilities & GOMP_OFFLOAD_CAP_SHARED_MEM;
+  /* Unified shared memory (or true shared memory).  */
+  if (devicep->capabilities & GOMP_OFFLOAD_CAP_SHARED_MEM)
+    return true;
+
+  return false;
 }
 
 int
@@ -6009,6 +6026,7 @@ gomp_load_plugin_for_device (struct gomp_device_descr *device,
   DLSYM (free);
   DLSYM_OPT (managed_alloc, managed_alloc);
   DLSYM_OPT (managed_free, managed_free);
+  DLSYM_OPT (is_accessible_ptr, is_accessible_ptr);
   DLSYM_OPT (page_locked_host_alloc, page_locked_host_alloc);
   DLSYM_OPT (page_locked_host_free, page_locked_host_free);
   DLSYM (dev2host);

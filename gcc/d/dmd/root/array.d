@@ -16,7 +16,7 @@ import core.stdc.stdlib : _compare_fp_t;
 import core.stdc.string;
 
 import dmd.root.rmem;
-import dmd.root.string;
+import dmd.root.string : toDString;
 
 // `qsort` is only `nothrow` since 2.081.0
 private extern(C) void qsort(scope void* base, size_t nmemb, size_t size, _compare_fp_t compar) nothrow @nogc;
@@ -55,6 +55,18 @@ public:
         if (data.ptr && data.ptr != &smallarray[0])
             mem.xfree(data.ptr);
     }
+
+    // this is using a template constraint because of ambiguity with this(size_t) when T is
+    // int, and c++ header generation doesn't accept wrapping this in static if
+    extern(D) this()(T[] elems ...) pure nothrow if (is(T == struct) || is(T == class))
+    {
+        this(elems.length);
+        foreach(i; 0 .. elems.length)
+        {
+            this[i] = elems[i];
+        }
+    }
+
     ///returns elements comma separated in []
     extern(D) const(char)[] toString() const
     {
@@ -896,7 +908,7 @@ bool equal(Range1, Range2)(Range1 range1, Range2 range2)
 
     else
     {
-        static if (hasLength!Range1 && hasLength!Range2 && is(typeof(r1.length == r2.length)))
+        static if (hasLength!Range1 && hasLength!Range2 && is(typeof(range1.length == range2.length)))
         {
             if (range1.length != range2.length)
                 return false;
@@ -1180,4 +1192,20 @@ pure nothrow @nogc @safe unittest
 
     b.popFront();
     assert(b == expected[]);
+}
+
+
+/// Test Array array constructor
+pure nothrow unittest
+{
+    //check to make sure that this works with the aliases in arraytypes.d
+    import dmd.rootobject;
+    alias Objects = Array!RootObject;
+
+    auto ro1 = new RootObject();
+    auto ro2 = new RootObject();
+
+    auto aoo = new Objects(ro1, ro2);
+    assert((*aoo)[0] is ro1);
+    assert((*aoo)[1] is ro2);
 }

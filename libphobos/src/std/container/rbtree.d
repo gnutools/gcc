@@ -679,7 +679,7 @@ private struct RBRange(N)
     /**
      * Returns the first element in the range
      */
-    @property Elem front()
+    ref @property Elem front()
     {
         return _begin.value;
     }
@@ -687,7 +687,7 @@ private struct RBRange(N)
     /**
      * Returns the last element in the range
      */
-    @property Elem back()
+    ref @property Elem back()
     {
         return _end.prev.value;
     }
@@ -737,13 +737,17 @@ private struct RBRange(N)
  * elements `a` and `b`, $(D less(a, b) == !less(b, a)). $(D less(a, a)) should
  * always equal `false`.
  *
+ * Care should also be taken to not modify elements in the tree (e.g. via `front` /
+ * `back`, which return by `ref`) in a way which would affect the order defined by
+ * the `less` predicate.
+ *
  * If `allowDuplicates` is set to `true`, then inserting the same element more than
  * once continues to add more elements.  If it is `false`, duplicate elements are
  * ignored on insertion.  If duplicates are allowed, then new elements are
  * inserted after all existing duplicate elements.
  */
 final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
-if (is(typeof(binaryFun!less(T.init, T.init))))
+if (is(typeof((ref const T a) => binaryFun!less(a, a))))
 {
     import std.meta : allSatisfy;
     import std.range : Take;
@@ -1036,7 +1040,7 @@ if (is(typeof(binaryFun!less(T.init, T.init))))
      *
      * Complexity: $(BIGOH 1)
      */
-    inout(Elem) front() inout
+    ref inout(Elem) front() inout
     {
         return _begin.value;
     }
@@ -1046,7 +1050,7 @@ if (is(typeof(binaryFun!less(T.init, T.init))))
      *
      * Complexity: $(BIGOH log(n))
      */
-    inout(Elem) back() inout
+    ref inout(Elem) back() inout
     {
         return _end.prev.value;
     }
@@ -1527,13 +1531,18 @@ if (is(typeof(binaryFun!less(T.init, T.init))))
        Complexity: $(BIGOH m log(n)) (where m is the number of elements to remove)
 
        Example:
+$(RUNNABLE_EXAMPLE
 --------------------
+import std.algorithm, std.container;
+
 auto rbt = redBlackTree!true(0, 1, 1, 1, 4, 5, 7);
 rbt.removeKey(1, 4, 7);
 assert(equal(rbt[], [0, 1, 1, 5]));
+
 rbt.removeKey(1, 1, 0);
 assert(equal(rbt[], [5]));
 --------------------
+)
       +/
     size_t removeKey(U...)(U elems)
     if (allSatisfy!(isImplicitlyConvertibleToElem, U))
@@ -1735,6 +1744,26 @@ assert(equal(rbt[], [5]));
             // so we just get the next node.
             return RangeType(beg, beg.next);
         }
+    }
+
+    /**
+     * Returns a static array of 3 ranges `r` such that `r[0]` is the
+     * same as the result of `lowerBound(value)`, `r[1]` is the same
+     * as the result of $(D equalRange(value)), and `r[2]` is the same
+     * as the result of $(D upperBound(value)).
+     *
+     * Complexity: $(BIGOH log(n))
+     */
+    auto trisect(this This)(Elem e)
+    {
+        auto equalRange = this.equalRange(e);
+        alias RangeType = typeof(equalRange);
+        RangeType[3] result = [
+            RangeType(_begin, equalRange._begin),
+            equalRange,
+            RangeType(equalRange._end, _end)
+        ];
+        return result;
     }
 
     static if (doUnittest) @safe pure unittest
@@ -2186,6 +2215,11 @@ if ( is(typeof(binaryFun!less((ElementType!Stuff).init, (ElementType!Stuff).init
     assert(rt1.lowerBound(3).equal([1, 2]));
     assert(rt1.equalRange(3).equal([3]));
     assert(rt1[].equal([1, 2, 3, 4, 5]));
+
+    auto t = rt1.trisect(3);
+    assert(t[0].equal(rt1.lowerBound(3)));
+    assert(t[1].equal(rt1.equalRange(3)));
+    assert(t[2].equal(rt1.upperBound(3)));
 }
 
 //immutable checks
@@ -2230,4 +2264,15 @@ if ( is(typeof(binaryFun!less((ElementType!Stuff).init, (ElementType!Stuff).init
     auto t = new RedBlackTree!(int, delegate(a, b) => a > b);
     t.insert([1, 3, 5, 4, 2]);
     assert(t[].equal([5, 4, 3, 2, 1]));
+}
+
+// should support `less` predicate taking `ref const`
+@safe pure unittest
+{
+    struct S
+    {
+        int* value;
+    }
+
+    cast(void) new RedBlackTree!(S, (ref const S a, ref const S b) => a.value > b.value);
 }

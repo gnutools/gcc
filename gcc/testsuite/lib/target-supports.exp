@@ -2163,6 +2163,24 @@ proc check_effective_target_rvv_zvl256b_ok { } {
       } "-march=${gcc_march}"]
 }
 
+# Return 1 if the target runtime supports at least 256-bit
+# vectors, 0 otherwise.  Cache the result.
+
+proc check_effective_target_rvv_zvl_ge_256b_ok { } {
+    # Check if the target has at least a VLENB of 32.
+    set gcc_march [riscv_get_arch]
+    return [check_runtime ${gcc_march}_exec {
+	int main()
+	{
+	  int vlenb = 0;
+	  asm ("csrr %0,vlenb" : "=r" (vlenb) : : );
+	  if (vlenb >= 32)
+	    return 0;
+	  return 1;
+	}
+      } "-march=${gcc_march}"]
+}
+
 # Return 1 if the target runtime supports 512-bit vectors, 0 otherwise.
 # Cache the result.
 
@@ -5604,7 +5622,16 @@ proc check_effective_target_arm_neon_ok_nocache { } {
     }
     global et_arm_neon_flags
     set et_arm_neon_flags ""
-    foreach flags {"" "-mfloat-abi=softfp" "-mfpu=neon" "-mfpu=neon -mfloat-abi=softfp" "-mfpu=neon -mfloat-abi=softfp -mcpu=unset -march=armv7-a" "-mfloat-abi=hard" "-mfpu=neon -mfloat-abi=hard" "-mfpu=neon -mfloat-abi=hard -mcpu=unset -march=armv7-a"} {
+    foreach flags {
+	""
+	"-mcpu=unset -march=armv7-a+simd -mfpu=auto"
+
+	"-mfloat-abi=softfp"
+	"-mfloat-abi=softfp -mcpu=unset -march=armv7-a+simd -mfpu=auto"
+
+	"-mfloat-abi=hard"
+	"-mfloat-abi=hard -mcpu=unset -march=armv7-a+simd -mfpu=auto"
+    } {
 	if { [check_no_compiler_messages_nocache arm_neon_ok object {
 	    #include <arm_neon.h>
 	    int dummy;
@@ -5804,24 +5831,32 @@ proc check_effective_target_arm_neon_fp16_ok_nocache { } {
     global et_arm_neon_fp16_flags
     global et_arm_neon_flags
     set et_arm_neon_fp16_flags ""
-    if { [check_effective_target_arm_neon_ok] } {
-	foreach flags {"" "-mfloat-abi=softfp" "-mfpu=neon-fp16"
-		       "-mfpu=neon-fp16 -mfloat-abi=softfp"
-		       "-mfp16-format=ieee"
-		       "-mfloat-abi=softfp -mfp16-format=ieee"
-		       "-mfpu=neon-fp16 -mfp16-format=ieee"
-		       "-mfpu=neon-fp16 -mfloat-abi=softfp -mfp16-format=ieee"} {
-	    if { [check_no_compiler_messages_nocache arm_neon_fp16_ok object {
-		#include "arm_neon.h"
-		float16x4_t
-		foo (float32x4_t arg)
-		{
-		  return vcvt_f16_f32 (arg);
-		}
-	    } "$et_arm_neon_flags $flags"] } {
-		set et_arm_neon_fp16_flags [concat $et_arm_neon_flags $flags]
-		return 1
+    foreach flags {
+	""
+	"-mfp16-format=ieee"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto -mfp16-format=ieee"
+
+	"-mfloat-abi=softfp"
+	"-mfloat-abi=softfp -mfp16-format=ieee"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto -mfloat-abi=softfp"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto -mfloat-abi=softfp -mfp16-format=ieee"
+
+	"-mfloat-abi=hard"
+	"-mfloat-abi=hard -mfp16-format=ieee"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto -mfloat-abi=hard"
+	"-mcpu=unset -march=armv7-a+simd+vfpv3-fp16 -mfpu=auto -mfloat-abi=hard -mfp16-format=ieee"
+    } {
+	if { [check_no_compiler_messages_nocache arm_neon_fp16_ok object {
+	    #include "arm_neon.h"
+	    float16x4_t
+	    foo (float32x4_t arg)
+	    {
+		return vcvt_f16_f32 (arg);
 	    }
+	} "$flags"] } {
+	    set et_arm_neon_fp16_flags $flags
+	    return 1
 	}
     }
 
@@ -6892,27 +6927,45 @@ proc check_effective_target_arm_v8_2a_fp16_scalar_ok { } {
 proc check_effective_target_arm_v8_2a_fp16_neon_ok_nocache { } {
     global et_arm_v8_2a_fp16_neon_flags
     set et_arm_v8_2a_fp16_neon_flags ""
-    set cpu_unset ""
 
     if { ![istarget arm*-*-*] && ![istarget aarch64*-*-*] } {
 	return 0;
     }
 
     if { [istarget arm*-*-*] } {
-	set cpu_unset "-mcpu=unset"
+	set flag_opts {
+	    ""
+	    "-mfp16-format=ieee"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto -mfp16-format=ieee"
+
+	    "-mfloat-abi=softfp"
+	    "-mfloat-abi=softfp -mfp16-format=ieee"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto -mfloat-abi=softfp"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto -mfloat-abi=softfp -mfp16-format=ieee"
+
+	    "-mfloat-abi=hard"
+	    "-mfloat-abi=hard -mfp16-format=ieee"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto -mfloat-abi=hard"
+	    "-mcpu=unset -march=armv8.2-a+fp16 -mfpu=auto -mfloat-abi=hard -mfp16-format=ieee"
+	}
+    } else {
+	set flag_opts {
+	    ""
+	    "-march=armv8.2-a+fp16"
+	}
     }
 
     # Iterate through sets of options to find the compiler flags that
     # need to be added to the -march option.
-    foreach flags {"" "-mfpu=neon-fp-armv8" "-mfloat-abi=softfp" \
-		       "-mfpu=neon-fp-armv8 -mfloat-abi=softfp"} {
+    foreach flags $flag_opts {
 	if { [check_no_compiler_messages_nocache \
 		  arm_v8_2a_fp16_neon_ok object {
-	    #if !defined (__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-	    #error "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC not defined"
-	    #endif
-	} "$flags $cpu_unset -march=armv8.2-a+fp16"] } {
-	    set et_arm_v8_2a_fp16_neon_flags "$flags $cpu_unset -march=armv8.2-a+fp16"
+		      #if !defined (__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+		      #error "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC not defined"
+		      #endif
+		  } "$flags"] } {
+	    set et_arm_v8_2a_fp16_neon_flags "$flags"
 	    return 1
 	}
     }
@@ -12682,7 +12735,7 @@ set exts {
 set exts_sve2 {
     "sme-f8f16" "sme-f8f32"
     "sme-b16b16" "sme-f16f16" "sme-i16i64" "sme" "sme2" "sme2p1"
-    "ssve-fp8dot2" "ssve-fp8dot4" "ssve-fp8fma"
+    "ssve-fp8dot2" "ssve-fp8dot4" "ssve-fp8fma" "sve-bfscale"
 }
 
 foreach { aarch64_ext } $exts {
@@ -13727,27 +13780,33 @@ proc check_effective_target_inff { } {
 proc check_effective_target_arm_v8_3a_complex_neon_ok_nocache { } {
     global et_arm_v8_3a_complex_neon_flags
     set et_arm_v8_3a_complex_neon_flags ""
-    set cpu_unset ""
 
     if { ![istarget arm*-*-*] && ![istarget aarch64*-*-*] } {
 	return 0;
     }
 
     if { [istarget arm*-*-*] } {
-	set cpu_unset "-mcpu=unset"
+	set flag_opts {
+	    ""
+	    "-mcpu=unset -march=armv8.3-a+simd"
+	    "-mfloat-abi=softfp -mfpu=auto -mcpu=unset -march=armv8.3-a+simd"
+	    "-mfloat-abi=hard -mfpu=auto -mcpu=unset -march=armv8.3-a+simd"
+	}
+    } else {
+	set flag_opts { "" "-march=armv8.3-a" }
     }
 
     # Iterate through sets of options to find the compiler flags that
     # need to be added to the -march option.
-    foreach flags {"" "-mfloat-abi=softfp -mfpu=auto" "-mfloat-abi=hard -mfpu=auto"} {
+    foreach flags $flag_opts {
 	if { [check_no_compiler_messages_nocache \
 		  arm_v8_3a_complex_neon_ok assembly {
 	    #if !defined (__ARM_FEATURE_COMPLEX)
 	    #error "__ARM_FEATURE_COMPLEX not defined"
 	    #endif
 	    #include <complex.h>
-	} "$flags $cpu_unset -march=armv8.3-a+simd"] } {
-	    set et_arm_v8_3a_complex_neon_flags "$flags $cpu_unset -march=armv8.3-a+simd"
+	} "$flags"] } {
+	    set et_arm_v8_3a_complex_neon_flags "$flags"
 	    return 1;
 	}
     }
@@ -13775,19 +13834,25 @@ proc add_options_for_arm_v8_3a_complex_neon { flags } {
 proc check_effective_target_arm_v8_3a_fp16_complex_neon_ok_nocache { } {
     global et_arm_v8_3a_fp16_complex_neon_flags
     set et_arm_v8_3a_fp16_complex_neon_flags ""
-    set cpu_unset ""
 
     if { ![istarget arm*-*-*] && ![istarget aarch64*-*-*] } {
 	return 0;
     }
 
     if { [istarget arm*-*-*] } {
-	set cpu_unset "-mcpu=unset"
+	set flag_opts {
+	    ""
+	    "-mfpu=auto -mcpu=unset -march=armv8.3-a+fp16+simd"
+	    "-mfloat-abi=softfp -mfpu=auto -mcpu=unset -march=armv8.3-a+fp16+simd"
+	    "-mfloat-abi=hard -mfpu=auto -mcpu=unset -march=armv8.3-a+fp16+simd"
+	}
+    } else {
+	set flag_opts { "" "-march=armv8.3-a+fp16" }
     }
 
     # Iterate through sets of options to find the compiler flags that
     # need to be added to the -march option.
-    foreach flags {"" "-mfloat-abi=softfp -mfpu=auto" "-mfloat-abi=hard -mfpu=auto"} {
+    foreach flags $flag_opts {
 	if { [check_no_compiler_messages_nocache \
 		  arm_v8_3a_fp16_complex_neon_ok assembly {
 	    #if !defined (__ARM_FEATURE_COMPLEX)
@@ -13797,9 +13862,8 @@ proc check_effective_target_arm_v8_3a_fp16_complex_neon_ok_nocache { } {
 	    #error "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC not defined"
 	    #endif
 	    #include <complex.h>
-	} "$flags $cpu_unset -march=armv8.3-a+fp16+simd"] } {
-	    set et_arm_v8_3a_fp16_complex_neon_flags \
-			"$flags $cpu_unset -march=armv8.3-a+fp16+simd"
+	} "$flags"] } {
+	    set et_arm_v8_3a_fp16_complex_neon_flags "$flags"
 	    return 1;
 	}
     }

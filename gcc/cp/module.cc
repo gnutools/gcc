@@ -9246,7 +9246,7 @@ trees_out::decl_node (tree decl, walk_kind ref)
 	  // deferred noexcept and default parms, or references
 	  // to parms from earlier forward-decls (PR c++/119608).
 	  //
-	  // Currently we'll end up cloning those bits of tree. 
+	  // Currently we'll end up cloning those bits of tree.
 	  // It would be nice to reference those specific nodes.
 	  // I think putting those things in the map when we
 	  // reference their template by name.
@@ -9846,6 +9846,12 @@ trees_out::type_node (tree type)
 
     case META_TYPE:
       /* No additional data.  */
+      break;
+
+    case SPLICE_SCOPE:
+      if (streaming_p ())
+	u (SPLICE_SCOPE_TYPE_P (type));
+      tree_node (SPLICE_SCOPE_EXPR (type));
       break;
     }
 
@@ -10697,6 +10703,16 @@ trees_in::tree_node (bool is_use)
 	    if (!get_overrun ())
 	      res = meta_info_type_node;
 	    break;
+
+	  case SPLICE_SCOPE:
+	    {
+	      bool type = u ();
+	      tree expr = tree_node ();
+
+	      if (!get_overrun ())
+		res = make_splice_scope (expr, type);
+	    }
+	    break;
 	  }
 
 	/* In the exporting TU, a derived type with attributes was built by
@@ -11299,10 +11315,10 @@ trees_out::fn_parms_init (tree fn)
 
   if (!streaming_p ())
     {
-      /* We must walk contract attrs so the dependency graph is complete. */
-      for (tree contract = DECL_CONTRACTS (fn);
-	  contract;
-	  contract = CONTRACT_CHAIN (contract))
+      /* We must walk contract specifiers so the dependency graph is
+	 complete.  */
+      tree contract = get_fn_contract_specifiers (fn);
+      for (; contract; contract = TREE_CHAIN (contract))
 	tree_node (contract);
     }
 

@@ -9,3 +9,9 @@
 #elif __cpp_lib_reflection != 202506
 #  error "__cpp_lib_reflection != 202506"
 #endif
+
+#ifndef __cpp_lib_define_static
+#  error "__cpp_lib_define_static"
+#elif __cpp_lib_define_static != 202506
+#  error "__cpp_lib_define_static != 202506"
+#endif

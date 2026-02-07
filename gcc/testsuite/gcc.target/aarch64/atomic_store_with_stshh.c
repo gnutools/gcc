@@ -73,16 +73,17 @@ testFun4 ()
 ** testFun5:
 ** ...
 **	stshh	keep
-**	stlr	x[0-9]+, \[sp\]
+**	stlr	x[0-9]+, \[x[0-9]+\]
 ** ...
 */
 void
 testFun5 ()
 {
   long item5 = 10;
-  long* ptr5 = &item5;
+  long *ptritem = &item5;
+  long **ptr5 = &ptritem;
   long test5item = 11;
-  long* test5 = &test5item;
+  long *test5 = &test5item;
   __atomic_store_with_stshh (ptr5, test5, __ATOMIC_SEQ_CST, 0);
 }
 

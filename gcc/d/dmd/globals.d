@@ -26,11 +26,8 @@ import dmd.file_manager;
 import dmd.identifier;
 import dmd.location;
 import dmd.lexer : CompileEnv;
+import dmd.targetcompiler;
 import dmd.utils;
-
-version (IN_GCC) {}
-else version (IN_LLVM) {}
-else version = MARS;
 
 /// Defines a setting for how compiler warnings and deprecations are handled
 enum DiagnosticReporting : ubyte
@@ -154,6 +151,7 @@ extern(C++) struct Verbose
 
 extern (C++) struct ImportPathInfo {
     const(char)* path; // char*'s of where to look for import modules
+    bool isOutOfBinary; // Will any module found from this path be out of binary?
 }
 
 /// Put command line switches in here
@@ -182,12 +180,19 @@ extern (C++) struct Param
     bool betterC;           // be a "better C" compiler; no dependency on D runtime
     bool addMain;           // add a default main() function
     bool allInst;           // generate code for all template instantiations
-    bool bitfields;         // support C style bit fields
+    bool bitfields = true;  // support C style bit fields
+    bool rewriteNoExceptionToSeq; // Allow finally statements that do not throw an Exception
+                                  // in try body to rewrite to a sequence.
 
     CppStdRevision cplusplus = CppStdRevision.cpp11;    // version of C++ standard to support
 
     Help help;
     Verbose v;
+
+    // Editions
+    Edition edition;             // edition year
+    Edition[const(char)*] editionFiles; // Edition corresponding to a filespec
+
 
     // Options for `-preview=/-revert=`
     FeatureState useDIP25 = FeatureState.enabled; // implement https://wiki.dlang.org/DIP25
@@ -284,6 +289,7 @@ enum hdr_ext  = "di";       // for D 'header' import files
 enum json_ext = "json";     // for JSON files
 enum map_ext  = "map";      // for .map files
 enum c_ext    = "c";        // for C source files
+enum h_ext    = "h";        // for C header source files
 enum i_ext    = "i";        // for preprocessed C source file
 
 /**
@@ -310,7 +316,7 @@ extern (C++) struct Global
     uint warnings;          /// number of warnings reported so far
     uint gag;               /// !=0 means gag reporting of errors & warnings
     uint gaggedErrors;      /// number of errors reported while gagged
-    uint gaggedWarnings;    /// number of warnings reported while gagged
+    uint gaggedDeprecations; /// number of deprecations reported while gagged
 
     void* console;         /// opaque pointer to console for controlling text attributes
 
@@ -346,7 +352,7 @@ extern (C++) struct Global
     extern (C++) uint startGagging() @safe
     {
         ++gag;
-        gaggedWarnings = 0;
+        gaggedDeprecations = 0;
         return gaggedErrors;
     }
 
@@ -386,27 +392,12 @@ extern (C++) struct Global
         errorSinkNull = new ErrorSinkNull;
 
         this.fileManager = new FileManager();
-        version (MARS)
-        {
-            compileEnv.vendor = "Digital Mars D";
+        compileEnv.vendor = TargetCompiler;
+        compileEnv.switchPrefix = SwitchPrefix;
 
-            // -color=auto is the default value
-            import dmd.console : detectTerminal, detectColorPreference;
-            params.v.color = detectTerminal() && detectColorPreference();
-        }
-        else version (IN_GCC)
-        {
-            compileEnv.vendor = "GNU D";
-        }
-        else version (IN_LLVM)
-        {
-            compileEnv.vendor = "LDC";
+        mixin UseAnsiColors;
+        params.v.color = useAnsiColors();
 
-            import dmd.console : detectTerminal;
-            params.v.color = detectTerminal();
-        }
-
-        params.v.errorPrintMode = ErrorPrintMode.printErrorContext; // Enable error context globally by default
         compileEnv.versionNumber = parseVersionNumber(versionString());
 
         /* Initialize date, time, and timestamp
