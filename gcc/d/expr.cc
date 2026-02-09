@@ -1005,7 +1005,7 @@ public:
   void visit (ThrowExp *e) final override
   {
     tree arg = build_expr_dtor (e->e1);
-    this->result_ = build_libcall (LIBCALL_THROW, Type::tvoid, 1, arg);
+    this->result_ = build_libcall (LIBCALL_THROW, 1, arg);
   }
 
   /* Build a postfix expression.  */
@@ -1254,7 +1254,7 @@ public:
 	libcall_fn libcall = tb1->isClassHandle ()->isInterfaceDeclaration ()
 	  ? LIBCALL_CALLINTERFACEFINALIZER : LIBCALL_CALLFINALIZER;
 
-	this->result_ = build_libcall (libcall, Type::tvoid, 1, t1);
+	this->result_ = build_libcall (libcall, 1, t1);
 	return;
       }
     else
@@ -1764,8 +1764,7 @@ public:
 		if (!cd->isInterfaceDeclaration () && !cd->isCPPclass ())
 		  {
 		    arg = d_save_expr (arg);
-		    assert_pass = build_libcall (LIBCALL_INVARIANT,
-						 Type::tvoid, 1, arg);
+		    assert_pass = build_libcall (LIBCALL_INVARIANT, 1, arg);
 		  }
 	      }
 	    else if (tb1->ty == TY::Tpointer
@@ -1871,27 +1870,31 @@ public:
     /* Compile the declaration.  */
     build_lambda_tree (e->fd, e->type->toBasetype ());
 
-    /* If nested, this will be a trampoline.  */
-    if (e->fd->isNested ())
-      {
-	tree func = build_address (get_symbol_decl (e->fd));
-	tree object;
+    tree func = build_address (get_symbol_decl (e->fd));
+    Type *tb = e->type->toBasetype ();
 
-	if (this->constp_)
+    /* If a delegate is expected, the literal will be inferred as a delegate
+       even if it accesses no variables from an enclosing function.  */
+    if (tb->ty == TY::Tdelegate)
+      {
+	/* Static delegate variables have no context pointer.  */
+	if (this->constp_ || !e->fd->isNested ())
 	  {
-	    /* Static delegate variables have no context pointer.  */
-	    object = null_pointer_node;
-	    this->result_ = build_method_call (func, object, e->fd->type);
+	    this->result_ = build_method_call (func, null_pointer_node,
+					       e->fd->type);
 	    TREE_CONSTANT (this->result_) = 1;
 	  }
 	else
 	  {
-	    object = get_frame_for_symbol (e->fd);
+	    gcc_assert (e->fd->isNested ());
+	    tree object = get_frame_for_symbol (e->fd);
 	    this->result_ = build_method_call (func, object, e->fd->type);
 	  }
       }
     else
       {
+	/* The function literal is a function pointer.  */
+	gcc_assert (tb->ty == TY::Tpointer);
 	this->result_ = build_nop (build_ctype (e->type),
 				   build_address (get_symbol_decl (e->fd)));
       }
