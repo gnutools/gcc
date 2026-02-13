@@ -437,15 +437,14 @@ rs6000_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
   if (cfun
       && !cfun->machine->mma_return_type_error
       && TREE_TYPE (cfun->decl) == fntype
-      && OPAQUE_MODE_P (TYPE_MODE (type)))
+      && (TYPE_MODE (type) == OOmode || TYPE_MODE (type) == XOmode))
     {
       /* Record we have now handled function CFUN, so the next time we
 	 are called, we do not re-report the same error.  */
       cfun->machine->mma_return_type_error = true;
       if (TYPE_CANONICAL (type) != NULL_TREE)
 	type = TYPE_CANONICAL (type);
-      error ("invalid use of %s type %qs as a function return value",
-	     (TYPE_MODE (type) == TDOmode) ? "dense math" : "MMA",
+      error ("invalid use of MMA type %qs as a function return value",
 	     IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (type))));
     }
 
@@ -1633,12 +1632,11 @@ rs6000_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
   int n_elts;
 
   /* We do not allow MMA types being used as function arguments.  */
-  if (OPAQUE_MODE_P (mode))
+  if (mode == OOmode || mode == XOmode)
     {
       if (TYPE_CANONICAL (type) != NULL_TREE)
 	type = TYPE_CANONICAL (type);
-      error ("invalid use of %s operand of type %qs as a function parameter",
-	     (mode == TDOmode) ? "dense math" : "MMA",
+      error ("invalid use of MMA operand of type %qs as a function parameter",
 	     IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (type))));
       return NULL_RTX;
     }
