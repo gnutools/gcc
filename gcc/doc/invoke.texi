@@ -32674,6 +32674,13 @@ This option is enabled by default.
 Enable or disable warnings about deprecated @samp{vector long ...} Altivec
 type usage.  This option is enabled by default.
 
+@opindex mdense-math
+@opindex mno-dense-math
+@item -mdense-math
+@itemx -mno-dense-math
+Generate (do not generate) code that uses the dense math registers.
+This option is enabled by default.
+
 @end table
 
 @node RX Options
