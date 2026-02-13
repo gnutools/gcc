@@ -88,9 +88,13 @@
    During the development of the power10 support for GCC, using load/store
    vector pair instructions for string operations was turned off by default,
    because there was a use case that had really bad performance.  Assume this
-   will be fixed in potential future machines.  */
+   will be fixed in potential future machines.
+
+   Do not enable -mdense-math by default with -mcpu=future until all of the
+   basic dense math register support is enabled.  */
 #define FUTURE_MASKS_SERVER	(POWER11_MASKS_SERVER			\
 				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
+				 /* | OPTION_MASK_DENSE_MATH */		\
 				 | OPTION_MASK_FUTURE)
 
 /* Flags that need to be turned off if -mno-vsx.  */
@@ -124,6 +128,7 @@
 				 | OPTION_MASK_BLOCK_OPS_VECTOR_PAIR	\
 				 | OPTION_MASK_CMPB			\
 				 | OPTION_MASK_CRYPTO			\
+				 | OPTION_MASK_DENSE_MATH		\
 				 | OPTION_MASK_DFP			\
 				 | OPTION_MASK_DLMZB			\
 				 | OPTION_MASK_EFFICIENT_UNALIGNED_VSX	\
