@@ -1,3 +1,47 @@
+==================== Branch work237-dmf, patch #100 ====================
+
+Add wD constraint.
+
+This patch adds a new constraint ('wD') that matches the accumulator registers
+that overlap with VSX registers 0..31 on power10.  Future patches will add the
+support for a separate accumulator register class that will be used when the
+support for dense math registes is added.
+
+This patch is the same as the patch posted on November 14th (the follow on
+patches in this series will be different).
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+2026-02-12   Michael Meissner  <meissner@linux.ibm.com>
+
+	* config/rs6000/constraints.md (wD): New constraint.
+	* config/rs6000/mma.md (mma_<acc>): Prepare for alternate accumulator
+	registers.  Use wD constraint instead of 'd' constraint.  Use
+	accumulator_operand instead of fpr_reg_operand.
+	(mma_<vv>): Likewise.
+	(mma_<avv>): Likewise.
+	(mma_<pv>): Likewise.
+	(mma_<apv>): Likewise.
+	(mma_<vvi4i4i8>): Likewise.
+	(mma_<avvi4i4i8>): Likewise.
+	(mma_<vvi4i4i2>): Likewise.
+	(mma_<avvi4i4i2>): Likewise.
+	(mma_<vvi4i4>): Likewise.
+	(mma_<avvi4i4>): Likewise.
+	(mma_<pvi4i2): Likewise.
+	(mma_<apvi4i2>): Likewise.
+	(mma_<vvi4i4i4>): Likewise.
+	(mma_<avvi4i4i4): Likewise.
+	* config/rs6000/predicates.md (accumulator_operand): New predicate.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Print the register
+	class for the 'wD' constraint.
+	(rs6000_init_hard_regno_mode_ok): Set up the 'wD' register constraint
+	class.
+	* config/rs6000/rs6000.h (enum r6000_reg_class_enum): Add element for
+	the 'wD' constraint.
+	* doc/md.texi (PowerPC constraints): Document the 'wD' constraint.
+
 ==================== Branch work237-dmf, baseline ====================
 
 2026-02-12   Michael Meissner  <meissner@linux.ibm.com>
