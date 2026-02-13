@@ -1,0 +1,38 @@
+==================== Branch work237, baseline ====================
+
+2026-02-12   Michael Meissner  <meissner@linux.ibm.com>
+
+Add ChangeLog.meissner and REVISION.
+
+2026-02-12  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* REVISION: New file for branch.
+	* ChangeLog.meissner: New file.
+
+gcc/c-family/
+
+	* ChangeLog.meissner: New file.
+
+gcc/c/
+
+	* ChangeLog.meissner: New file.
+
+gcc/cp/
+
+	* ChangeLog.meissner: New file.
+
+gcc/fortran/
+
+	* ChangeLog.meissner: New file.
+
+gcc/testsuite/
+
+	* ChangeLog.meissner: New file.
+
+libgcc/
+
+	* ChangeLog.meissner: New file.
+
+	Clone branch
