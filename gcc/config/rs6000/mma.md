@@ -90,6 +90,7 @@
    UNSPEC_MMA_XVI8GER4SPP
    UNSPEC_MMA_XXMFACC
    UNSPEC_MMA_XXMTACC
+   UNSPEC_MMA_DMSETDMRZ
   ])
 
 (define_c_enum "unspecv"
@@ -313,7 +314,7 @@
    (set_attr "length" "*,*,8")])
 
 
-;; Vector quad support.  XOmode can only live in FPRs.
+;; Vector quad support.
 (define_expand "movxo"
   [(set (match_operand:XO 0 "nonimmediate_operand")
 	(match_operand:XO 1 "input_operand"))]
@@ -338,10 +339,13 @@
     gcc_assert (false);
 })
 
-(define_insn_and_split "*movxo"
+;; If we do not have dense math registers, XOmode can only live in FPR
+;; registers (0..31).
+
+(define_insn_and_split "*movxo_nodm"
   [(set (match_operand:XO 0 "nonimmediate_operand" "=d,ZwO,d")
 	(match_operand:XO 1 "input_operand" "ZwO,d,d"))]
-  "TARGET_MMA
+  "TARGET_MMA && !TARGET_DENSE_MATH
    && (gpc_reg_operand (operands[0], XOmode)
        || gpc_reg_operand (operands[1], XOmode))"
   "@
@@ -357,6 +361,34 @@
   [(set_attr "type" "vecload,vecstore,veclogical")
    (set_attr "length" "*,*,16")
    (set_attr "max_prefixed_insns" "2,2,*")])
+
+;; If dense math registers are available, XOmode can live in either VSX
+;; registers (0..63) or dense math registers.
+
+(define_insn_and_split "*movxo_dm"
+  [(set (match_operand:XO 0 "nonimmediate_operand" "=wa,ZwO,wa,wD,wD,wa")
+	(match_operand:XO 1 "input_operand"        "ZwO,wa, wa,wa,wD,wD"))]
+  "TARGET_DENSE_MATH
+   && (gpc_reg_operand (operands[0], XOmode)
+       || gpc_reg_operand (operands[1], XOmode))"
+  "@
+   #
+   #
+   #
+   dmxxinstdmr512 %0,%1,%Y1,0
+   dmmr %0,%1
+   dmxxextfdmr512 %0,%Y0,%1,0"
+  "&& reload_completed
+   && !dense_math_operand (operands[0], XOmode)
+   && !dense_math_operand (operands[1], XOmode)"
+  [(const_int 0)]
+{
+  rs6000_split_multireg_move (operands[0], operands[1]);
+  DONE;
+}
+  [(set_attr "type" "vecload,vecstore,veclogical,mma,mma,mma")
+   (set_attr "length" "*,*,16,*,*,*")
+   (set_attr "max_prefixed_insns" "2,2,*,*,*,*")])
 
 (define_expand "vsx_assemble_pair"
   [(match_operand:OO 0 "vsx_register_operand")
@@ -469,15 +501,44 @@
   [(set_attr "type" "mma")])
 
 ;; We can't have integer constants in XOmode so we wrap this in an
-;; UNSPEC_VOLATILE.
+;; UNSPEC_VOLATILE.  If we have dense math registers, we can just use a normal
+;; UNSPEC instead of UNSPEC_VOLATILE.
 
-(define_insn "mma_xxsetaccz"
-  [(set (match_operand:XO 0 "fpr_reg_operand" "=d")
+(define_expand "mma_xxsetaccz"
+  [(set (match_operand:XO 0 "accumulator_operand")
 	(unspec_volatile:XO [(const_int 0)]
 			    UNSPECV_MMA_XXSETACCZ))]
   "TARGET_MMA"
+{
+  if (TARGET_DENSE_MATH)
+    {
+      emit_insn (gen_mma_xxsetaccz_dm (operands[0]));
+      DONE;
+    }
+})
+
+;; Clear accumulator without dense math registers
+(define_insn "*mma_xxsetaccz_nodm"
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=d")
+	(unspec_volatile:XO [(const_int 0)]
+			    UNSPECV_MMA_XXSETACCZ))]
+  "TARGET_MMA && !TARGET_DENSE_MATH"
   "xxsetaccz %A0"
   [(set_attr "type" "mma")])
+
+;; Clear accumulator when dense math registers are available.
+(define_insn "mma_xxsetaccz_dm"
+  [(set (match_operand:XO 0 "accumulator_operand" "=wD")
+	(unspec [(const_int 0)]
+		UNSPEC_MMA_DMSETDMRZ))]
+  "TARGET_DENSE_MATH"
+  "dmsetdmrz %A0"
+  [(set_attr "type" "mma")])
+
+;; MMA operations below.  If dense math registers are available, these
+;; operations will use the 8 accumultors which are separate registers.
+;; If dense math registers are not available, these operations will use
+;; accumulators that are overlaid on top of the FPR registers.
 
 (define_insn "mma_<vv>"
   [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
