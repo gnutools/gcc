@@ -90,12 +90,6 @@
    UNSPEC_MMA_XVI8GER4SPP
    UNSPEC_MMA_XXMFACC
    UNSPEC_MMA_XXMTACC
-   UNSPEC_MMA_DMSETDMRZ
-   UNSPEC_DM_INSERT512_UPPER
-   UNSPEC_DM_INSERT512_LOWER
-   UNSPEC_DM_EXTRACT512
-   UNSPEC_DM_RELOAD_FROM_MEMORY
-   UNSPEC_DM_RELOAD_TO_MEMORY
   ])
 
 (define_c_enum "unspecv"
@@ -493,68 +487,31 @@
   DONE;
 })
 
-;; If dense math registers are not available, MMA instructions that do
-;; not use their accumulators that overlap with FPR registers as an
-;; input, still must not allow their vector operands to overlap the
-;; registers used by the accumulator.  We enforce this by marking the
-;; output as early clobber.  The prime and de-prime instructions are
-;; not needed on systems with dense math registers.
+;; MMA instructions that do not use their accumulators as an input, still
+;; must not allow their vector operands to overlap the registers used by
+;; the accumulator.  We enforce this by marking the output as early clobber.
 
 (define_insn "mma_<acc>"
   [(set (match_operand:XO 0 "fpr_reg_operand" "=&d")
 	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0")]
 		    MMA_ACC))]
-  "TARGET_MMA && !TARGET_DENSE_MATH"
+  "TARGET_MMA"
   "<acc> %A0"
   [(set_attr "type" "mma")])
 
 ;; We can't have integer constants in XOmode so we wrap this in an
-;; UNSPEC_VOLATILE.  If we have dense math registers, we can just use a normal
-;; UNSPEC instead of UNSPEC_VOLATILE.
+;; UNSPEC_VOLATILE.
 
-(define_expand "mma_xxsetaccz"
-  [(set (match_operand:XO 0 "accumulator_operand")
-	(unspec_volatile:XO [(const_int 0)]
-			    UNSPECV_MMA_XXSETACCZ))]
-  "TARGET_MMA"
-{
-  if (TARGET_DENSE_MATH)
-    {
-      emit_insn (gen_mma_xxsetaccz_dm (operands[0]));
-      DONE;
-    }
-})
-
-;; Clear accumulator without dense math registers
-(define_insn "*mma_xxsetaccz_nodm"
+(define_insn "mma_xxsetaccz"
   [(set (match_operand:XO 0 "fpr_reg_operand" "=d")
 	(unspec_volatile:XO [(const_int 0)]
 			    UNSPECV_MMA_XXSETACCZ))]
-  "TARGET_MMA && !TARGET_DENSE_MATH"
+  "TARGET_MMA"
   "xxsetaccz %A0"
   [(set_attr "type" "mma")])
 
-;; Clear accumulator when dense math registers are available.
-(define_insn "mma_xxsetaccz_dm"
-  [(set (match_operand:XO 0 "accumulator_operand" "=wD")
-	(unspec [(const_int 0)]
-		UNSPEC_MMA_DMSETDMRZ))]
-  "TARGET_DENSE_MATH"
-  "dmsetdmrz %A0"
-  [(set_attr "type" "mma")])
-
-
-;; MMA operations below.  If dense math registers are available, these
-;; operations will use the 8 accumultors which are separate registers.
-;; If dense math registers are not available, these operations will use
-;; accumulators that are overlaid on top of the FPR registers.
-
-;; Instructions:
-;; xvi4ger8   xvi8ger4 xvi16ger2 xvi16ger2s xvf16ger2
-;; xvbf16ger2 xvf32ger
-
 (define_insn "mma_<vv>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")]
 		    MMA_VV))]
@@ -562,15 +519,9 @@
   "<vv> %A0,%x1,%x2"
   [(set_attr "type" "mma")])
 
-;; Instructions:
-;; xvi4ger8pp   xvi8ger4pp  xvi8ger4spp   xvi16ger2pp xvi16ger2spp
-;; xvf16ger2pp  xvf16ger2pn  xvf16ger2np  xvf16ger2nn xvbf16ger2pp
-;; xvbf16ger2pn xvbf16ger2np xvbf16ger2nn xvf32gerpp  xvf32gerpn
-;; xvf32gernp   xvf32gernn
-
 (define_insn "mma_<avv>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")]
 		    MMA_AVV))]
@@ -578,10 +529,8 @@
   "<avv> %A0,%x2,%x3"
   [(set_attr "type" "mma")])
 
-;; Instruction: xvf64ger
-
 (define_insn "mma_<pv>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:OO 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")]
 		    MMA_PV))]
@@ -589,11 +538,9 @@
   "<pv> %A0,%x1,%x2"
   [(set_attr "type" "mma")])
 
-;; Instructions: xvf64gerpp xvf64gerpn xvf64gernp xvf64gernn
-
 (define_insn "mma_<apv>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:OO 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")]
 		    MMA_APV))]
@@ -601,10 +548,8 @@
   "<apv> %A0,%x2,%x3"
   [(set_attr "type" "mma")])
 
-;; Instruction: pmxvi4ger8
-
 (define_insn "mma_<vvi4i4i8>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 3 "const_0_to_15_operand" "n,n")
@@ -616,11 +561,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instruction: pmxvi4ger8pp
-
 (define_insn "mma_<avvi4i4i8>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 4 "const_0_to_15_operand" "n,n")
@@ -632,11 +575,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instructions:
-;; pmxvi16ger2 pmxvi16ger2s pmxvf16ger2 pmxvbf16ger2
-
 (define_insn "mma_<vvi4i4i2>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 3 "const_0_to_15_operand" "n,n")
@@ -648,14 +588,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instructions:
-;; pmxvi16ger2pp  pmxvi16ger2spp pmxvf16ger2pp  pmxvf16ger2pn
-;; pmxvf16ger2np  pmxvf16ger2nn  pmxvbf16ger2pp pmxvbf16ger2pn
-;; pmxvbf16ger2np pmxvbf16ger2nn
-
 (define_insn "mma_<avvi4i4i2>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 4 "const_0_to_15_operand" "n,n")
@@ -667,10 +602,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instruction: pmxvf32ger
-
 (define_insn "mma_<vvi4i4>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 3 "const_0_to_15_operand" "n,n")
@@ -681,11 +614,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instructions: pmxvf32gerpp pmxvf32gerpn pmxvf32gernp pmxvf32gernn
-
 (define_insn "mma_<avvi4i4>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 4 "const_0_to_15_operand" "n,n")
@@ -696,10 +627,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instruction: pmxvf64ger
-
 (define_insn "mma_<pvi4i2>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:OO 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 3 "const_0_to_15_operand" "n,n")
@@ -710,11 +639,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instructions: pmxvf64gerpp pmxvf64gerpn pmxvf64gernp pmxvf64gernn
-
 (define_insn "mma_<apvi4i2>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:OO 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 4 "const_0_to_15_operand" "n,n")
@@ -725,10 +652,8 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instruction: pmxvi8ger4
-
 (define_insn "mma_<vvi4i4i4>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
 	(unspec:XO [(match_operand:V16QI 1 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 3 "const_0_to_15_operand" "n,n")
@@ -740,11 +665,9 @@
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
 
-;; Instructions: pmxvi8ger4pp pmxvi8ger4spp
-
 (define_insn "mma_<avvi4i4i4>"
-  [(set (match_operand:XO 0 "accumulator_operand" "=&wD,&wD")
-	(unspec:XO [(match_operand:XO 1 "accumulator_operand" "0,0")
+  [(set (match_operand:XO 0 "fpr_reg_operand" "=&d,&d")
+	(unspec:XO [(match_operand:XO 1 "fpr_reg_operand" "0,0")
 		    (match_operand:V16QI 2 "vsx_register_operand" "v,?wa")
 		    (match_operand:V16QI 3 "vsx_register_operand" "v,?wa")
 		    (match_operand:SI 4 "const_0_to_15_operand" "n,n")
@@ -755,153 +678,3 @@
   "<avvi4i4i4> %A0,%x2,%x3,%4,%5,%6"
   [(set_attr "type" "mma")
    (set_attr "prefixed" "yes")])
-
-;; TDOmode (__dmf keyword for 1,024 bit registers).
-(define_expand "movtdo"
-  [(set (match_operand:TDO 0 "nonimmediate_operand")
-	(match_operand:TDO 1 "input_operand"))]
-  "TARGET_DENSE_MATH"
-{
-  rs6000_emit_move (operands[0], operands[1], TDOmode);
-  DONE;
-})
-
-(define_insn_and_split "*movtdo"
-  [(set (match_operand:TDO 0 "nonimmediate_operand" "=wa,m,wa,wD,wD,wa")
-	(match_operand:TDO 1 "input_operand" "m,wa,wa,wa,wD,wD"))]
-  "TARGET_DENSE_MATH
-   && (gpc_reg_operand (operands[0], TDOmode)
-       || gpc_reg_operand (operands[1], TDOmode))"
-  "@
-   #
-   #
-   #
-   #
-   dmmr %0,%1
-   #"
-  "&& reload_completed
-   && (!dense_math_operand (operands[0], TDOmode)
-       || !dense_math_operand (operands[1], TDOmode))"
-  [(const_int 0)]
-{
-  rtx op0 = operands[0];
-  rtx op1 = operands[1];
-
-  if (REG_P (op0) && REG_P (op1))
-    {
-      int regno0 = REGNO (op0);
-      int regno1 = REGNO (op1);
-
-      if (DM_REGNO_P (regno0) && VSX_REGNO_P (regno1))
-	{
-	  rtx op1_upper = gen_rtx_REG (XOmode, regno1);
-	  rtx op1_lower = gen_rtx_REG (XOmode, regno1 + 4);
-	  emit_insn (gen_movtdo_insert512_upper (op0, op1_upper));
-	  emit_insn (gen_movtdo_insert512_lower (op0, op0, op1_lower));
-	  DONE;
-	}
-
-      else if (VSX_REGNO_P (regno0) && DM_REGNO_P (regno1))
-	{
-	  rtx op0_upper = gen_rtx_REG (XOmode, regno0);
-	  rtx op0_lower = gen_rtx_REG (XOmode, regno0 + 4);
-	  emit_insn (gen_movtdo_extract512 (op0_upper, op1, const0_rtx));
-	  emit_insn (gen_movtdo_extract512 (op0_lower, op1, const1_rtx));
-	  DONE;
-	}
-
-     else
-	gcc_assert (VSX_REGNO_P (regno0) && VSX_REGNO_P (regno1));
-    }
-
-  rs6000_split_multireg_move (operands[0], operands[1]);
-  DONE;
-}
-  [(set_attr "type" "vecload,vecstore,vecmove,vecmove,vecmove,vecmove")
-   (set_attr "length" "*,*,32,8,*,8")
-   (set_attr "max_prefixed_insns" "4,4,*,*,*,*")])
-
-;; Move from VSX registers to dense math registers via two insert 512 bit
-;; instructions.
-(define_insn "movtdo_insert512_upper"
-  [(set (match_operand:TDO 0 "dense_math_operand" "=wD")
-	(unspec:TDO [(match_operand:XO 1 "vsx_register_operand" "wa")]
-		    UNSPEC_DM_INSERT512_UPPER))]
-  "TARGET_DENSE_MATH"
-  "dmxxinstdmr512 %0,%1,%Y1,0"
-  [(set_attr "type" "mma")])
-
-(define_insn "movtdo_insert512_lower"
-  [(set (match_operand:TDO 0 "dense_math_operand" "=wD")
-	(unspec:TDO [(match_operand:TDO 1 "dense_math_operand" "0")
-		     (match_operand:XO 2 "vsx_register_operand" "wa")]
-		    UNSPEC_DM_INSERT512_LOWER))]
-  "TARGET_DENSE_MATH"
-  "dmxxinstdmr512 %0,%2,%Y2,1"
-  [(set_attr "type" "mma")])
-
-;; Move from dense math registers to VSX registers via two extract 512 bit
-;; instructions.
-(define_insn "movtdo_extract512"
-  [(set (match_operand:XO 0 "vsx_register_operand" "=wa")
-	(unspec:XO [(match_operand:TDO 1 "dense_math_operand" "wD")
-		    (match_operand 2 "const_0_to_1_operand" "n")]
-		   UNSPEC_DM_EXTRACT512))]
-  "TARGET_DENSE_MATH"
-  "dmxxextfdmr512 %0,%Y0,%1,%2"
-  [(set_attr "type" "mma")])
-
-;; Reload dense math registers from memory.
-(define_insn_and_split "reload_tdo_from_memory"
-  [(set (match_operand:TDO 0 "dense_math_operand" "=wD")
-	(unspec:TDO [(match_operand:TDO 1 "memory_operand" "m")]
-		    UNSPEC_DM_RELOAD_FROM_MEMORY))
-   (clobber (match_operand:XO 2 "vsx_register_operand" "=wa"))]
-  "TARGET_DENSE_MATH"
-  "#"
-  "&& reload_completed"
-  [(const_int 0)]
-{
-  rtx dest = operands[0];
-  rtx src = operands[1];
-  rtx tmp = operands[2];
-  rtx mem_upper = adjust_address (src, XOmode, BYTES_BIG_ENDIAN ? 0 : 64);
-  rtx mem_lower = adjust_address (src, XOmode, BYTES_BIG_ENDIAN ? 64 : 0);
-
-  emit_move_insn (tmp, mem_upper);
-  emit_insn (gen_movtdo_insert512_upper (dest, tmp));
-
-  emit_move_insn (tmp, mem_lower);
-  emit_insn (gen_movtdo_insert512_lower (dest, dest, tmp));
-  DONE;
-}
-  [(set_attr "length" "16")
-   (set_attr "max_prefixed_insns" "2")
-   (set_attr "type" "vecload")])
-
-;; Reload dense math registers to memory
-(define_insn_and_split "reload_tdo_to_memory"
-  [(set (match_operand:TDO 0 "memory_operand" "=m")
-	(unspec:TDO [(match_operand:TDO 1 "dense_math_operand" "wD")]
-		    UNSPEC_DM_RELOAD_TO_MEMORY))
-   (clobber (match_operand:XO 2 "vsx_register_operand" "=wa"))]
-  "TARGET_DENSE_MATH"
-  "#"
-  "&& reload_completed"
-  [(const_int 0)]
-{
-  rtx dest = operands[0];
-  rtx src = operands[1];
-  rtx tmp = operands[2];
-  rtx mem_upper = adjust_address (dest, XOmode, BYTES_BIG_ENDIAN ? 0 : 64);
-  rtx mem_lower = adjust_address (dest, XOmode, BYTES_BIG_ENDIAN ? 64 : 0);
-
-  emit_insn (gen_movtdo_extract512 (tmp, src, const0_rtx));
-  emit_move_insn (mem_upper, tmp);
-
-  emit_insn (gen_movtdo_extract512 (tmp, src, const1_rtx));
-  emit_move_insn (mem_lower, tmp);
-  DONE;
-}
-  [(set_attr "length" "16")
-   (set_attr "max_prefixed_insns" "2")])
