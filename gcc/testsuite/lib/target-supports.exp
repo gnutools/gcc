@@ -7989,6 +7989,41 @@ proc check_effective_target_power10_ok { } {
     }
 }
 
+# Return 1 if this is a PowerPC target supporting -mcpu=future which enables
+# some potential new instructions.
+proc check_effective_target_powerpc_future_ok { } {
+       return [check_no_compiler_messages powerpc_future_ok object {
+           #ifndef _ARCH_PWR_FUTURE
+           #error "-mcpu=future is not supported"
+           #else
+           int dummy;
+           #endif
+       } "-mcpu=future"]
+}
+
+# Return 1 if this is a PowerPC target supporting -mcpu=future which enables
+# the dense math operations.
+proc check_effective_target_powerpc_dense_math_ok { } {
+    if { ([istarget powerpc*-*-*]) } {
+	return [check_no_compiler_messages powerpc_dense_math_ok object {
+	    __vector_quad vq;
+	    int main (void) {
+		#ifndef __DENSE_MATH__
+		#error "target does not have dense math support."
+		#else
+		/* Make sure we have dense math support.  */
+		  __vector_quad dmr;
+		  __asm__ ("dmsetaccz %A0" : "=wD" (dmr));
+		  vq = dmr;
+		#endif
+		return 0;
+	    }
+	} "-mcpu=future"]
+    } else {
+	return 0;
+    }
+}
+
 # Return 1 if this is a PowerPC target supporting -mfloat128 via either
 # software emulation on power7/power8 systems or hardware support on power9.
 
