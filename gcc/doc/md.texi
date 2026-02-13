@@ -3415,6 +3415,11 @@ Like @code{d}, if @option{-mpowerpc-gfxopt} is used; otherwise, @code{NO_REGS}.
 @item wA
 Like @code{b}, if @option{-mpowerpc64} is used; otherwise, @code{NO_REGS}.
 
+@item wD
+Accumulator register if @option{-mma} is used; otherwise,
+@code{NO_REGS}.  For @option{-mcpu=power10} the accumulator registers
+overlap with VSX vector registers 0..31.
+
 @item wB
 Signed 5-bit constant integer that can be loaded into an Altivec register.
 
