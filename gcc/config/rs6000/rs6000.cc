@@ -4410,15 +4410,6 @@ rs6000_option_override_internal (bool global_init_p)
   if (!TARGET_PCREL && TARGET_PCREL_OPT)
     rs6000_isa_flags &= ~OPTION_MASK_PCREL_OPT;
 
-  /* Turn off dense math register support on non-future systems.  */
-  if (TARGET_DENSE_MATH && !TARGET_FUTURE)
-    {
-      if ((rs6000_isa_flags_explicit & OPTION_MASK_DENSE_MATH) != 0)
-	error ("%qs requires %qs", "-mdense-math", "-mcpu=future");
-
-      rs6000_isa_flags &= ~OPTION_MASK_DENSE_MATH;
-    }
-
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
     rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags);
 
@@ -24472,7 +24463,6 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
 								false, true  },
   { "cmpb",			OPTION_MASK_CMPB,		false, true  },
   { "crypto",			OPTION_MASK_CRYPTO,		false, true  },
-  { "dense-math",		OPTION_MASK_DENSE_MATH,		false, true  },
   { "direct-move",		0,				false, true  },
   { "dlmzb",			OPTION_MASK_DLMZB,		false, true  },
   { "efficient-unaligned-vsx",	OPTION_MASK_EFFICIENT_UNALIGNED_VSX,
