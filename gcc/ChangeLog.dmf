@@ -1,4 +1,4 @@
-==================== Branch work237-dmf, patch #114 ====================
+==================== Branch work237-dmf, patch #120 ====================
 
 Add support for 1,024 bit dense math registers.
 
@@ -20,9 +20,17 @@ registers.
 The patches have been tested on both little and big endian systems.  Can I check
 it into the master branch?
 
+This is version 4 of the patches.  The previous patches were:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707452.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707453.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707454.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707455.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707456.html
+
 gcc/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* config/rs6000/mma.md (UNSPEC_DM_INSERT512_UPPER): New unspec.
 	(UNSPEC_DM_INSERT512_LOWER): Likewise.
@@ -67,20 +75,46 @@ gcc/
 
 gcc/testsuite/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* gcc.target/powerpc/dm-1024bit.c: New test.
 
-==================== Branch work237-dmf, patch #113 ====================
+==================== Branch work237-dmf, patch #120 ====================
 
-Add support for dense math registers #3.
+Make the MMA instructions support -mdense-math.
 
-This patch completes support for the dense math registes with 512-bit types.  A
-future path will add support for 1,024-bit dense registers.
+This patch completes support for the dense math registes with 512-bit types.
+The MMA insns have been modfiied to use the 'wD' constraint and the
+accumulator_operand predicate.
+
+The insn (mma_xxsetaccz) that clears accumulators has been changed to be a
+normal unspec when -mdense-math.  If -mno-dense-math is in effect, the insn
+remains an unspec_volatile due to register constraints and the need to issue a
+de-prime operation.
+
+I added a comment in front of each insn to say which instructions are generated
+by the insns.
+
+I set -mcpu=future to turn on -mdense-math.
+
+I added 2 tests to the testsuite for -mdense-math support.
+
+A future path will add support for 1,024-bit dense registers.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+This is version 4 of the patches.  The previous patches were:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707452.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707453.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707454.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707455.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707456.html
 
 gcc/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* config/rs6000/mma.md (UNSPEC_MMA_DMSETDMRZ): New unspec.
 	(mma_xxsetaccz) Convert to being a define_expand that can handle both
@@ -113,31 +147,76 @@ gcc/
 
 gcc/testsuite/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* gcc.target/powerpc/mma-dm-1.c: New test.
 	* gcc.target/powerpc/mma-dm-1.c: Likewise.
-	* lib/target-supports.exp (check_effective_target_powerpc_future_ok):
-	New powerpc target support.
-	(check_effective_target_powerpc_dense_math_ok): Likewise.
+	* lib/target-supports.exp
+	(check_effective_target_powerpc_dense_math_ok): New powerpc target
+	support.
 
-==================== Branch work237-dmf, patch #112 ====================
+==================== Branch work237-dmf, patch #120 ====================
 
-Add support for dense math registers #2.
+Add support for dense math registers.
 
 This patch adds basic support for dense math registers.  It includes support for
-moving values to/from dense registers.  The MMA instructions except for clearing
-an accumulator are not yet converted to using dense math registers.
+moving values to/from dense registers.  The MMA instructions are not yet
+modified to know about dense math registers.  The -mcpu=future option does not
+set -mdense-math in this patch.  A future patch will make these changes.
+
+The changes include:
+
+   1:	XOmode moves include moving to/from dense math registers.
+
+   2:	Add predicate dense_math_operand.
+
+   3:	Make the predicate accumulator_operand match on dense math registers.
+
+   4:	Add dense math register class.
+
+   5:	Add the 8 dense math register accumulators with internal register
+	numbers 111-118.
+
+   6:	Make the 'wD' constraint match dense math register if -mdense-math, and
+	4 adjacent VSX register if -mno-dense-math is in effect.
+
+   7:	Set up the reload information so that the register allocator knows that
+	dense math registers do not have load or store instructions.  Instead to
+	read/write dense math registers, you have to use VSX registers as
+	intermediaries.
+
+   8:	Make the print_operand '%A' output operand now knows about accumulators
+	in dense math registrs and accumulators in 4 adjacent VSX registers.
+
+   9:	Update register move and memmory load/store costs for dense math
+	registers.
+
+   10:	Make dense math registers a pressure class for register allocation.
+
+   11:	Do not issue MMA deprime instructions if -mdense-math is in effect.
+
+   12:	Add support for dense math registers to rs6000_split_multireg_move.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+This is version 4 of the patches.  The previous patches were:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707452.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707453.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707454.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707455.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707456.html
 
 gcc/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* config/rs6000/mma.md (movxo): Convert to being a define_expand that
 	can handle both the original MMA support without dense math registes,
 	and adding dense math support.
-	(movxo_nodm): Rename original movxo, and restrict this to when we do not
-	have dense math registers.
+	(movxo_nodm): Rename original movxo insn, and restrict this insn to when
+	we do not have dense math registers.
 	(movxo_dm): New define_insn_and_split for dense math registers.
 	* config/rs6000/predicates.md (dense_math_operand): New predicate.
 	(accumulator_operand): Add support for dense math registes.
@@ -180,16 +259,30 @@ gcc/
 	(LAST_DM_REGNO): Likewise.
 
 
-==================== Branch work237-dmf, patch #111 ====================
+==================== Branch work237-dmf, patch #120 ====================
 
-Add support for dense math registers.
+Add the -mdense-math option.
 
 This patch adds the -mdense-math option for -mcpu=future.  The next set of
 patches will support for using dense math registers with the MMA instructions.
+All this patch does is add the option.  A future patch will implement support
+for dense math registers, and another patch will then switch the MMA
+instructions to use dense math registers.
+
+The patches have been tested on both little and big endian systems.  Can I check
+it into the master branch?
+
+This is version 4 of the patches.  The previous patches were:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707452.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707453.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707454.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707455.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707456.html
 
 gcc/
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* config/rs6000/rs6000-c.cc (rs6000_define_or_undefine_macro): Define
 	__DENSE_MATH__ if we have dense math registers.
@@ -199,22 +292,54 @@ gcc/
 	* config/rs6000/rs6000.opt (-mdense-math): New option.
 	* doc/invoke.texi (RS/6000 and PowerPC Options): Add -mdense-math.
 
-==================== Branch work237-dmf, patch #110 ====================
+==================== Branch work237-dmf, patch #120 ====================
 
 Add wD constraint.
 
 This patch adds a new constraint ('wD') that matches the accumulator registers
-that overlap with VSX registers 0..31 on power10.  Future patches will add the
-support for a separate accumulator register class that will be used when the
-support for dense math registes is added.
+used by the MMA instructions.  Possible future PowerPC machines are thinking
+about having a new set of 8 dense math accumulators that will be 1,024 bits in
+size.  The 'wD' constaint was chosen because the VSX constraints start with 'w'.
+The 'wd' constraint was already used, so I chose 'wD' to be similar.
 
-In this patch, I have removed using the wD constriant in mma.md.  A later patch
-will move to using wA instead of a d constraint.
+To change code to possibly use dense math registers, the 'd' constraint should
+be changed to 'wD', and the predicate 'fpr_reg_operand' should be changed to
+'accumulator_operand'.
+
+On current power10/power11 systems, the accumulators overlap with the 32
+traditional FPR registers (i.e. VSX vector registers 0..31).  Each accumulator
+uses 4 adjacent FPR/VSX registers for a 512 bit logical register.
+
+Possible future PowerPC machines would have these 8 accumulator registers be
+separate registers, called dense math registers.  It is anticipated that when in
+dense math register mode, the MMA instructions would use the accumulators
+instead of the adjacent VSX registers.  I.e. in power10/power11 mode,
+accumulator 1 will overlap with vector registers 4-7, but in dense math register
+mode, accumulator 1 will be a separate register.
+
+Code compiled for power10/power11 systems will continue to work on the potential
+future machine with dense math register support but the compiler will have fewer
+vector registers available for allocation because it believe the accumulators
+are using vector registers.  For example, the file mma-double-test.c in the
+gcc.target/powerpc testsuite directory has 8 more register spills to/from the
+stack for power10/power11 code then when compiled with dense math register
+support.
 
 The patches have been tested on both little and big endian systems.  Can I check
 it into the master branch?
 
-2026-02-13   Michael Meissner  <meissner@linux.ibm.com>
+This is version 4 of the patches.  The previous patches were:
+
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707452.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707453.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707454.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707455.html
+ * https://gcc.gnu.org/pipermail/gcc-patches/2026-February/707456.html
+
+In this patch, I have removed using the wD constriant in mma.md.  A later patch
+will change mma.md to using wA instead of a d constraint.
+
+2026-02-20   Michael Meissner  <meissner@linux.ibm.com>
 
 	* config/rs6000/constraints.md (wD): New constraint.
 	* config/rs6000/predicates.md (accumulator_operand): New predicate.
@@ -225,6 +350,12 @@ it into the master branch?
 	* config/rs6000/rs6000.h (enum r6000_reg_class_enum): Add element for
 	the 'wD' constraint.
 	* doc/md.texi (PowerPC constraints): Document the 'wD' constraint.
+
+==================== Branch work237-dmf, patch #114 was reverted ====================
+==================== Branch work237-dmf, patch #113 was reverted ====================
+==================== Branch work237-dmf, patch #112 was reverted ====================
+==================== Branch work237-dmf, patch #111 was reverted ====================
+==================== Branch work237-dmf, patch #110 was reverted ====================
 
 ==================== Branch work237-dmf, patch #104 was reverted ====================
 ==================== Branch work237-dmf, patch #103 was reverted ====================
