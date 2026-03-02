@@ -1792,7 +1792,10 @@ void
 merge_decl_arguments (tree newdecl, tree olddecl, bool new_defines_function,
 		      bool types_match, bool extern_alias)
 {
-  tree oldarg, newarg;
+  tree oldarg, newarg, type = NULL_TREE;
+  tree first_user_parm = NULL_TREE;
+  if (extern_alias)
+    first_user_parm = FUNCTION_FIRST_USER_PARM (newdecl);
   for (oldarg = DECL_ARGUMENTS (olddecl), newarg = DECL_ARGUMENTS (newdecl);
        oldarg && newarg;
        oldarg = DECL_CHAIN (oldarg), newarg = DECL_CHAIN (newarg))
@@ -1813,6 +1816,27 @@ merge_decl_arguments (tree newdecl, tree olddecl, bool new_defines_function,
 	 we should do that for the function itself, not just parameters.  */
       if (!extern_alias || flag_reflection)
 	DECL_ATTRIBUTES (oldarg) = DECL_ATTRIBUTES (newarg);
+      if (!flag_reflection)
+	continue;
+      /* For extern_alias set DECL_HAS_DEFAULT_ARGUMENT_P on oldarg
+	 if the local extern has a default argument for that parameter.  */
+      if (extern_alias)
+	{
+	  if (newarg == first_user_parm)
+	    type = FUNCTION_FIRST_USER_PARMTYPE (newdecl);
+	  else if (type)
+	    type = TREE_CHAIN (type);
+	  if (type && TREE_PURPOSE (type))
+	    DECL_HAS_DEFAULT_ARGUMENT_P (oldarg) = 1;
+	}
+      else
+	{
+	  /* Otherwise propagate the flag.  */
+	  if (DECL_HAS_DEFAULT_ARGUMENT_P (oldarg))
+	    DECL_HAS_DEFAULT_ARGUMENT_P (newarg) = 1;
+	  if (DECL_HAS_DEFAULT_ARGUMENT_P (newarg))
+	    DECL_HAS_DEFAULT_ARGUMENT_P (oldarg) = 1;
+	}
       /* Merge names for std::meta::has_identifier and
 	 std::meta::{,u8}identifier_of purposes.  If they are different and
 	 both oldarg and newarg are named, add flag to force that
@@ -1820,7 +1844,7 @@ merge_decl_arguments (tree newdecl, tree olddecl, bool new_defines_function,
 	 unnamed, if neither is a olddecl nor newdecl is definition, propagate
 	 DECL_NAME to both.  Otherwise stash the old name into "old parm name"
 	 artificial attribute.  */
-      if (flag_reflection && DECL_NAME (oldarg) != DECL_NAME (newarg))
+      if (DECL_NAME (oldarg) != DECL_NAME (newarg))
 	{
 	  if (DECL_NAME (oldarg) && DECL_NAME (newarg))
 	    {
@@ -5611,6 +5635,15 @@ cxx_init_decl_processing (void)
 			    CP_BUILT_IN_IS_STRING_LITERAL,
 			    BUILT_IN_FRONTEND, NULL, NULL_TREE);
   set_call_expr_flags (decl, ECF_CONST | ECF_NOTHROW | ECF_LEAF);
+
+  tree void_vaintftype = build_varargs_function_type_list (void_type_node,
+							   integer_type_node,
+							   NULL_TREE);
+  decl = add_builtin_function ("__builtin_constexpr_diag",
+			       void_vaintftype,
+			       CP_BUILT_IN_CONSTEXPR_DIAG,
+			       BUILT_IN_FRONTEND, NULL, NULL_TREE);
+  set_call_expr_flags (decl, ECF_NOTHROW | ECF_LEAF);
 
   integer_two_node = build_int_cst (NULL_TREE, 2);
 

@@ -1562,6 +1562,16 @@ ftms = {
 };
 
 ftms = {
+  name = format_path;
+  // 202403 P2845R8 Formatting of std::filesystem::path
+  values = {
+    v = 202403;
+    cxxmin = 26;
+    hosted = yes;
+  };
+};
+
+ftms = {
   name = freestanding_algorithm;
   values = {
     v = 202311;

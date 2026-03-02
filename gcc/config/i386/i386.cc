@@ -8711,6 +8711,37 @@ ix86_find_all_reg_uses (HARD_REG_SET &regset,
     }
 }
 
+/* Return true if the hard register REGNO used for a stack access is
+   defined in a basic block that dominates the block where it is used.  */
+
+static bool
+ix86_access_stack_p (unsigned int regno, basic_block bb,
+		     HARD_REG_SET &set_up_by_prologue,
+		     HARD_REG_SET &prologue_used)
+{
+  /* Get all BBs which set REGNO and dominate the current BB from all
+     DEFs of REGNO.  */
+  for (df_ref def = DF_REG_DEF_CHAIN (regno);
+       def;
+       def = DF_REF_NEXT_REG (def))
+    if (!DF_REF_IS_ARTIFICIAL (def)
+	&& !DF_REF_FLAGS_IS_SET (def, DF_REF_MAY_CLOBBER)
+	&& !DF_REF_FLAGS_IS_SET (def, DF_REF_MUST_CLOBBER))
+      {
+	basic_block set_bb = DF_REF_BB (def);
+	if (dominated_by_p (CDI_DOMINATORS, bb, set_bb))
+	  {
+	    rtx_insn *insn = DF_REF_INSN (def);
+	    /* Return true if INSN requires stack.  */
+	    if (requires_stack_frame_p (insn, prologue_used,
+					set_up_by_prologue))
+	      return true;
+	  }
+      }
+
+  return false;
+}
+
 /* Set stack_frame_required to false if stack frame isn't required.
    Update STACK_ALIGNMENT to the largest alignment, in bits, of stack
    slot used if stack frame is required and CHECK_STACK_SLOT is true.  */
@@ -8771,6 +8802,10 @@ ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
       bitmap_set_bit (worklist, HARD_FRAME_POINTER_REGNUM);
     }
 
+  HARD_REG_SET hard_stack_slot_access = stack_slot_access;
+
+  calculate_dominance_info (CDI_DOMINATORS);
+
   unsigned int regno;
 
   do
@@ -8798,9 +8833,19 @@ ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
 	if (!NONJUMP_INSN_P (insn))
 	  continue;
 
-	data.reg = DF_REF_REG (ref);
-	note_stores (insn, ix86_update_stack_alignment, &data);
+	if (TEST_HARD_REG_BIT (hard_stack_slot_access, regno)
+	    || ix86_access_stack_p (regno, BLOCK_FOR_INSN (insn),
+				    set_up_by_prologue, prologue_used))
+	  {
+	    /* Update stack alignment if REGNO is used for stack
+	       access.  */
+	    data.reg = DF_REF_REG (ref);
+	    note_stores (insn, ix86_update_stack_alignment, &data);
+	    continue;
+	  }
       }
+
+  free_dominance_info (CDI_DOMINATORS);
 }
 
 /* Finalize stack_realign_needed and frame_pointer_needed flags, which
@@ -20632,13 +20677,13 @@ avx_vpermilp_parallel (rtx par, machine_mode mode)
 	 then fallthru.  */
       for (i = 4; i < 6; ++i)
 	{
-	  if (ipar[i] < 4 || ipar[i] >= 6)
+	  if (!IN_RANGE (ipar[i], 4, 5))
 	    return 0;
 	  mask |= (ipar[i] - 4) << i;
 	}
       for (i = 6; i < 8; ++i)
 	{
-	  if (ipar[i] < 6)
+	  if (!IN_RANGE (ipar[i], 6, 7))
 	    return 0;
 	  mask |= (ipar[i] - 6) << i;
 	}
@@ -20650,13 +20695,13 @@ avx_vpermilp_parallel (rtx par, machine_mode mode)
          a 128-bit lane.  */
       for (i = 0; i < 2; ++i)
 	{
-	  if (ipar[i] >= 2)
+	  if (!IN_RANGE (ipar[i], 0, 1))
 	    return 0;
 	  mask |= ipar[i] << i;
 	}
       for (i = 2; i < 4; ++i)
 	{
-	  if (ipar[i] < 2)
+	  if (!IN_RANGE (ipar[i], 2, 3))
 	    return 0;
 	  mask |= (ipar[i] - 2) << i;
 	}
@@ -25116,7 +25161,7 @@ i386_solaris_elf_named_section (const char *name, unsigned int flags,
       return;
     }
 
-#if !HAVE_GNU_AS
+#if HAVE_SOLARIS_AS
   if (HAVE_COMDAT_GROUP && flags & SECTION_LINKONCE)
     {
       solaris_elf_asm_comdat_section (name, flags, decl);
@@ -26382,26 +26427,29 @@ ix86_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
 	  TREE_VISITED (op) = 1;
 	  gimple *def = SSA_NAME_DEF_STMT (op);
 	  tree tem;
+	  /* Look through a conversion.  */
 	  if (is_gimple_assign (def)
 	      && CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (def))
 	      && ((tem = gimple_assign_rhs1 (def)), true)
-	      && TREE_CODE (tem) == SSA_NAME
-	      /* A sign-change expands to nothing.  */
-	      && tree_nop_conversion_p (TREE_TYPE (gimple_assign_lhs (def)),
-					TREE_TYPE (tem)))
+	      && TREE_CODE (tem) == SSA_NAME)
 	    def = SSA_NAME_DEF_STMT (tem);
-	  /* When the component is loaded from memory we can directly
-	     move it to a vector register, otherwise we have to go
-	     via a GPR or via vpinsr which involves similar cost.
-	     Likewise with a BIT_FIELD_REF extracting from a vector
-	     register we can hope to avoid using a GPR.  */
-	  if (!is_gimple_assign (def)
-	      || ((!gimple_assign_load_p (def)
-		   || (!TARGET_SSE4_1
-		       && GET_MODE_SIZE (TYPE_MODE (TREE_TYPE (op))) == 1))
-		  && (gimple_assign_rhs_code (def) != BIT_FIELD_REF
-		      || !VECTOR_TYPE_P (TREE_TYPE
-				(TREE_OPERAND (gimple_assign_rhs1 (def), 0))))))
+	  /* When the component is loaded from memory without sign-
+	     or zero-extension we can move it to a vector register and/or
+	     insert it via vpinsr with a memory operand.  */
+	  if (gimple_assign_load_p (def)
+	      && tree_nop_conversion_p (TREE_TYPE (op),
+					TREE_TYPE (gimple_assign_lhs (def)))
+	      && (GET_MODE_SIZE (TYPE_MODE (TREE_TYPE (op))) > 1
+		  || TARGET_SSE4_1))
+	    ;
+	  /* When the component is extracted from a vector it is already
+	     in a vector register.  */
+	  else if (is_gimple_assign (def)
+		   && gimple_assign_rhs_code (def) == BIT_FIELD_REF
+		   && VECTOR_TYPE_P (TREE_TYPE
+				(TREE_OPERAND (gimple_assign_rhs1 (def), 0))))
+	    ;
+	  else
 	    {
 	      if (fp)
 		{

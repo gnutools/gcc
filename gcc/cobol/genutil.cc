@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Symas Corporation
+ * Copyright (c) 2021-2026 Symas Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -744,17 +744,18 @@ get_data_offset(const cbl_refer_t &refer,
   return retval;
   }
 
-static tree tree_type_from_field(const cbl_field_t *field);
+//static tree tree_type_from_field(const cbl_field_t *field);
 
-void
-get_binary_value( tree value,
-                  tree rdigits,
-                  cbl_field_t *field,
-                  tree         field_offset,
-                  tree         hilo
-                  )
+tree
+get_binary_value_tree(tree return_type,
+                      tree rdigits,
+                      cbl_field_t *field,
+                      tree         field_offset,
+                      tree         hilo
+                      )
   {
-  Analyze();
+  tree retval;
+
   if( hilo )
     {
     gg_assign(hilo, integer_zero_node);
@@ -766,12 +767,12 @@ get_binary_value( tree value,
   // Very special case:
   if( strcmp(field->name, "ZEROS") == 0 )
     {
-    gg_assign(value, gg_cast(TREE_TYPE(value), integer_zero_node));
+    retval = gg_cast(return_type, integer_zero_node);
     if( rdigits )
       {
       gg_assign(rdigits, gg_cast(TREE_TYPE(rdigits), integer_zero_node));
       }
-    return;
+    return retval;
     }
 
   static tree pointer = gg_define_variable( UCHAR_P,
@@ -781,7 +782,7 @@ get_binary_value( tree value,
     {
     case FldLiteralN:
       {
-      if( SCALAR_FLOAT_TYPE_P(value) )
+      if( return_type == FLOAT )
         {
         cbl_internal_error("cannot get %<float%> value from %s", field->name);
         }
@@ -792,21 +793,17 @@ get_binary_value( tree value,
           gg_assign(rdigits, build_int_cst_type(TREE_TYPE(rdigits),
                                                 field->data.rdigits));
           }
-        tree dest_type   = TREE_TYPE(value);
-        tree source_type = tree_type_from_field(field);
-
-        gg_assign(value,
-                  gg_cast(dest_type,
-                          gg_indirect( gg_cast(build_pointer_type(source_type),
-                              gg_get_address_of(field->data_decl_node)))));
+        // tree source_type = tree_type_from_field(field);
+        // retval = gg_cast(return_type,
+                         // gg_indirect( gg_cast(build_pointer_type(source_type),
+                                   // gg_get_address_of(field->data_decl_node))));
+        retval = gg_cast(return_type, field->data_decl_node);
         }
-
       break;
       }
 
     case FldNumericDisplay:
       {
-      Analyzer.Message("FldNumericDisplay");
       const charmap_t *charmap = __gg__get_charmap(field->codeset.encoding);
       int stride = charmap->stride();
 
@@ -829,14 +826,13 @@ get_binary_value( tree value,
                     build_int_cst_type( TREE_TYPE(rdigits),
                                         get_scaled_rdigits(field)));
           }
-        gg_assign(value, build_int_cst_type(TREE_TYPE(value),
-                                            0x7FFFFFFFFFFFFFFFUL));
+        retval = build_int_cst_type(return_type, 0x7FFFFFFFFFFFFFFFUL);
         }
       ELSE
         {
         IF( digit, eq_op, build_int_cst(UCHAR, DEGENERATE_LOW_VALUE) )
           {
-          // We are dealing with LOW-VALUE 
+          // We are dealing with LOW-VALUE
           if( hilo )
             {
             gg_assign(hilo, integer_minus_one_node);
@@ -918,7 +914,10 @@ get_binary_value( tree value,
                               build_int_cst_type(INT, field->codeset.encoding),
                               NULL_TREE));
           // Assign the value we got from the string to our "return" value:
-          gg_assign(value, gg_cast(TREE_TYPE(value), val128));
+          
+          // Note that cppcheck can't understand the run-time IF()
+          // cppcheck-suppress redundantAssignment
+          retval = gg_cast(return_type, val128);
           }
         ENDIF
         }
@@ -931,10 +930,11 @@ get_binary_value( tree value,
       {
       // As of this writing, the source value is big-endian
       // We have to convert it to a little-endian destination.
+      tree value = gg_define_variable(return_type);
       tree dest   = gg_cast(build_pointer_type(UCHAR), gg_get_address_of(value));
       tree source = get_data_address(field, field_offset);
 
-      size_t dest_nbytes   = gg_sizeof(value);
+      size_t dest_nbytes   =  TREE_INT_CST_LOW(TYPE_SIZE_UNIT(return_type));
       size_t source_nbytes = field->data.capacity();
 
       if( debugging )
@@ -968,7 +968,7 @@ get_binary_value( tree value,
         if( field->attr & signable_e )
           {
           IF( gg_array_value(gg_cast(build_pointer_type(SCHAR), source)),
-              lt_op, 
+              lt_op,
               gg_cast(SCHAR, integer_zero_node) )
             {
             gg_assign(extension, build_int_cst_type(UCHAR, 0xFF));
@@ -1007,6 +1007,7 @@ get_binary_value( tree value,
         hex_dump(dest, dest_nbytes);
         gg_printf("\n", NULL_TREE);
         }
+      retval = value;
       break;
       }
 
@@ -1035,7 +1036,6 @@ get_binary_value( tree value,
           }
         }
       tree source_address = get_data_address(field, field_offset);
-      tree dest_type = TREE_TYPE(value);
       tree source_type = tree_type_from_size( field->data.capacity(),
                                               field->attr & signable_e);
       if( debugging && rdigits)
@@ -1043,10 +1043,9 @@ get_binary_value( tree value,
         gg_printf("get_binary_value bin5 rdigits: %d\n", rdigits, NULL_TREE);
         }
 
-      gg_assign(value,
-                gg_cast(dest_type,
-                        gg_indirect(gg_cast( build_pointer_type(source_type),
-                                             source_address ))));
+      retval = gg_cast(return_type,
+                       gg_indirect(gg_cast( build_pointer_type(source_type),
+                                            source_address )));
       break;
       }
 
@@ -1058,17 +1057,16 @@ get_binary_value( tree value,
                   build_int_cst_type( TREE_TYPE(rdigits),
                                       get_scaled_rdigits(field)));
         }
-      tree dest_type = TREE_TYPE(value);
-        
-      gg_assign(value, 
-                gg_cast(dest_type,
-                        gg_call_expr(INT128,
+      tree value = gg_define_variable(return_type);
+      gg_assign(value, gg_cast(return_type,
+                                    gg_call_expr(INT128,
                                     "__gg__packed_to_binary",
                                     get_data_address( field,
                                                       field_offset),
                                     build_int_cst_type(INT,
                                                       field->data.capacity()),
                                     NULL_TREE)));
+      retval = value;
       break;
       }
 
@@ -1080,13 +1078,14 @@ get_binary_value( tree value,
         gg_assign(rdigits,
                   gg_cast( TREE_TYPE(rdigits), integer_zero_node));
         }
-      gg_assign(value,
-                gg_cast(TREE_TYPE(value),
-                        gg_call_expr( INT128,
-                                      "__gg__integer_from_float128",
-                                      gg_get_address_of(field->var_decl_node),
-                                      NULL_TREE)));
+      tree value = gg_define_variable(return_type);
+      gg_assign(value, gg_cast(return_type,
+                               gg_call_expr( INT128,
+                                     "__gg__integer_from_float128",
+                                     gg_get_address_of(field->var_decl_node),
+                                     NULL_TREE)));
       needs_scaling = false;
+      retval = value;
       break;
       }
 
@@ -1108,18 +1107,70 @@ get_binary_value( tree value,
       {
       if( field->data.rdigits < 0 )
         {
+        // Hey, Dubner!
+        // Should that test be != 0 rather than < 0?  Maybe not; this routine
+        // is supposed to be for integers.
+        tree value = gg_define_variable(return_type);
+        gg_assign(value, retval);
         scale_by_power_of_ten_N(value, -field->data.rdigits);
+        retval = value;
         }
       }
     }
+  return retval;
   }
 
+tree
+get_binary_value_tree(tree return_type,
+                      tree rdigits,
+                const cbl_refer_t &refer,
+                      tree         hilo
+                      )
+  {
+  tree retval;
+  if( refer_is_clean(refer) )
+    {
+    retval = get_binary_value_tree(return_type,
+                                   rdigits,
+                                   refer.field,
+                                   integer_zero_node,
+                                   hilo);
+    }
+  else
+    {
+    retval = get_binary_value_tree(return_type,
+                                   rdigits,
+                                   refer.field,
+                                   refer_offset(refer),
+                                   hilo);
+    }
+  return retval;
+  }
+
+void
+get_binary_value( tree value,
+                  tree rdigits,
+                  cbl_field_t *field,
+                  tree         field_offset,
+                  tree         hilo
+                  )
+  {
+  tree return_type = TREE_TYPE(value);
+  gg_assign(value, get_binary_value_tree( return_type,
+                                          rdigits,
+                                          field,
+                                          field_offset,
+                                          hilo ));
+  }
+
+#if 0
 static tree
 tree_type_from_field(const cbl_field_t *field)
   {
   gcc_assert(field);
   return tree_type_from_size(field->data.capacity(), field->attr & signable_e);
   }
+#endif
 
 tree
 get_data_address( cbl_field_t *field,
@@ -1788,7 +1839,7 @@ refer_is_clean(const cbl_refer_t &refer)
     // like.
     return true;
     }
-    
+
   return     !refer.all
           && !refer.addr_of
           && !refer.nsubscript()
@@ -1989,3 +2040,61 @@ get_time_nanoseconds()
 #endif
   return retval;
 }
+
+bool
+is_pure_integer(const cbl_field_t *field)
+  {
+  // Check to see if field is suitable for fast arithmetic.  That is, it is
+  // a native binary integer with no fixed-point decimal places:
+  bool retval = false;
+  switch( field->type )
+    {
+    case FldIndex:
+    case FldPointer:
+    case FldLiteralN:
+      retval = true;
+      break;
+
+    case FldNumericBin5:
+      if( !(field->attr & intermediate_e) && field->data.rdigits == 0 )
+        {
+        // This is a pure integer, with no rdigits
+        switch(field->data.capacity())
+          {
+          case 1:
+          case 2:
+          case 4:
+          case 8:
+          case 16:
+            // These are the sizes we know how to handle
+            retval = true;
+            break;
+          }
+        }
+      break;
+
+    case FldAlphanumeric:
+      if( strcmp(field->name, "ZEROS") == 0 )
+        {
+        retval = true;
+        }
+      break;
+
+    case FldInvalid:
+    case FldGroup:
+    case FldNumericBinary:
+    case FldFloat:
+    case FldPacked:
+    case FldNumericDisplay:
+    case FldNumericEdited:
+    case FldAlphaEdited:
+    case FldLiteralA:
+    case FldClass:
+    case FldConditional:
+    case FldForward:
+    case FldSwitch:
+    case FldDisplay:
+      break;
+    }
+  return retval;
+  }

@@ -858,7 +858,7 @@ public:
     const region *reg
       = model->deref_rvalue (ptr_sval, cd.get_arg_tree (0), ctxt);
     store_manager *store_mgr = model->get_manager ()->get_store_manager ();
-    model->get_store ()->mark_as_escaped (*store_mgr, reg);
+    model->get_store ()->mark_as_escaped (*store_mgr, reg->get_base_region ());
     enum memory_space mem_space = reg->get_memory_space ();
     switch (mem_space)
       {
@@ -1245,6 +1245,12 @@ public:
     const svalue *dst_ptr = cd.get_arg_svalue (0);
     const region *dst_reg
       = model->deref_rvalue (dst_ptr, cd.get_arg_tree (0), ctxt);
+    /* Restrict the region we consider to be affected to the valid capacity
+       so that we don't trigger buffer overflow false positives.  */
+    const svalue *capacity = model->get_capacity (dst_reg);
+    dst_reg = model->get_manager ()->get_sized_region (dst_reg,
+						       NULL_TREE,
+						       capacity);
     const svalue *content = cd.get_or_create_conjured_svalue (dst_reg);
     model->set_value (dst_reg, content, ctxt);
     cd.set_any_lhs_with_defaults ();
@@ -1399,10 +1405,11 @@ kf_strcpy::impl_call_pre (const call_details &cd) const
   /* strcpy returns the initial param.  */
   cd.maybe_set_lhs (dest_sval);
 
-  const svalue *bytes_to_copy;
+  const svalue *bytes_to_copy = nullptr;
   if (const svalue *num_bytes_read_sval
       = cd.check_for_null_terminated_string_arg (1, true, &bytes_to_copy))
     {
+      gcc_assert (bytes_to_copy);
       cd.complain_about_overlap (0, 1, num_bytes_read_sval);
       model->write_bytes (dest_reg, num_bytes_read_sval, bytes_to_copy, ctxt);
     }

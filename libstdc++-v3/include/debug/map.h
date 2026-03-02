@@ -476,6 +476,18 @@ namespace __debug
 	return {};
       }
 
+# ifdef __glibcxx_associative_heterogeneous_erasure
+      template <__heterogeneous_tree_key<map> _Kt>
+	node_type
+	extract(_Kt&& __key)
+	{
+	  const auto __position = find(__key);
+	  if (__position != end())
+	    return extract(__position);
+	  return {};
+	}
+# endif
+
       insert_return_type
       insert(node_type&& __nh)
       {
@@ -537,6 +549,26 @@ namespace __debug
 	    return 1;
 	  }
       }
+
+# ifdef __glibcxx_associative_heterogeneous_erasure
+      // Note that for some types _Kt this may erase more than
+      // one element, such as if _Kt::operator< checks only part
+      // of the key.
+      template <__heterogeneous_tree_key<map> _Kt>
+	size_type
+	erase(_Kt&& __x)
+	{
+	  auto __victims = _Base::equal_range(__x);
+	  size_type __count = 0;
+	  for (auto __victim = __victims.first; __victim != __victims.second;)
+	    {
+	      this->_M_invalidate_if(_Equal(__victim));
+	      _Base::erase(__victim++);
+	      ++__count;
+	    }
+	  return __count;
+	}
+# endif
 
 #if __cplusplus >= 201103L
       iterator

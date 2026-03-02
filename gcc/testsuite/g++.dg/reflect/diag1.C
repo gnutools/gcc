@@ -14,12 +14,10 @@ void
 f ()
 {
   S s;
-  s.[: ^^S::tfn :](42); // { dg-error "reflection .S::tfn. not usable in a splice expression" }
-// { dg-message "add .template. to denote a template" "" { target *-*-* } .-1 }
+  s.[: ^^S::tfn :](42); // { dg-error "expected 'template' keyword before dependent template name" }
   s.template [: ^^S::tfn :](42);
 
   constexpr auto r = ^^fortytwo;
-  constexpr int i1 = [:r:]<int>; // { dg-error "reflection .fortytwo<int>. not usable in a splice expression with template arguments" }
-// { dg-message "add .template. to denote a template" "" { target *-*-* } .-1 }
+  constexpr int i1 = [:r:]<int>; // { dg-error "expected 'template' keyword before dependent template name" }
   constexpr int i2 = template [:r:]<int>;
 }

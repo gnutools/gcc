@@ -1920,12 +1920,12 @@ lra_dump_insns_if_possible (const char *title)
   lra_dump_insns (lra_dump_file);
 }
 
-/* Emit insns BEFORE before INSN and insns AFTER after INSN.  Put the
-   insns onto the stack.  Print about emitting the insns with
-   TITLE.  */
+/* Emit insns BEFORE before INSN and insns AFTER after INSN.  Put the insns
+   onto the stack.  Print about emitting the insns with TITLE.  Move insn
+   REG_ARGS_SIZE note to AFTER insns if FIXUP_REG_ARGS_SIZE.  */
 void
 lra_process_new_insns (rtx_insn *insn, rtx_insn *before, rtx_insn *after,
-		       const char *title)
+		       const char *title, bool fixup_reg_args_size)
 {
   if (before == NULL_RTX && after == NULL_RTX)
     return;
@@ -1983,6 +1983,25 @@ lra_process_new_insns (rtx_insn *insn, rtx_insn *before, rtx_insn *after,
 	  emit_insn_after (after, insn);
 	  push_insns (last, insn);
 	  setup_sp_offset (after, last);
+	  if (fixup_reg_args_size)
+	    {
+	      rtx note = find_reg_note (insn, REG_ARGS_SIZE, NULL_RTX);
+	      if (note)
+		{
+		  remove_note (insn, note);
+		  fixup_args_size_notes (insn, last,
+					 get_args_size (note));
+		  if (lra_dump_file != NULL)
+		    {
+		      fprintf (lra_dump_file,
+			       "    fixing up REG_SIZE_NOTE for:\n");
+		      dump_rtl_slim (lra_dump_file, insn, insn, -1, 0);
+		      fprintf (lra_dump_file, "    fixed insns after:\n");
+		      dump_rtl_slim (lra_dump_file,
+				     NEXT_INSN (insn), last, -1, 0);
+		    }
+		}
+	    }
 	}
       else
 	{

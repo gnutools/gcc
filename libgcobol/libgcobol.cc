@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Symas Corporation
+ * Copyright (c) 2021-2026 Symas Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -7,6 +7,7 @@
  *
  * * Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above
  * * Redistributions in binary form must reproduce the above
  *   copyright notice, this list of conditions and the following disclaimer
  *   in the documentation and/or other materials provided with the
@@ -3494,6 +3495,37 @@ format_for_display_internal(char **dest,
         index += source_rdigits;
         }
       (*dest)[index++] = NULLCH ;
+      if( var->attr & intermediate_e )
+        {
+        if( value == 0 )
+          {
+          strcpy(*dest, "0");
+          }
+        else
+          {
+          // An intermediate is a rubber-band variable.  It has no formal format.
+          // So, to make it cleaner for display purposes, let's clear off leading
+          // '+' characters and trailing zeroes.
+          if( **dest == ascii_plus )
+            {
+            memmove(*dest, (*dest)+1, strlen(*dest));
+            }
+          if( strchr(*dest, charmap->decimal_point()) )
+            {
+            // There is a decimal point.  Strip off trailing zeros:
+            char *p = *dest + strlen(*dest)-1;
+            while( *p == ascii_zero )
+              {
+              *p-- = '\0';
+              }
+            // And if we are left with just a decimal point, strip that off, too.
+            while( *p ==  charmap->decimal_point() )
+              {
+              *p = '\0';
+              }
+            }
+          }
+        }
       }
     break;
 
@@ -5259,14 +5291,6 @@ init_var_both(cblc_field_t  *var,
   bool defaultbyte_in_play = !!(flag_bits & DEFAULTBYTE_BIT);
   char defaultbyte  = flag_bits & DEFAULT_BYTE_MASK;
   unsigned int nsubscripts = (flag_bits & NSUBSCRIPT_MASK) >> NSUBSCRIPT_SHIFT;
-
-  if(    var->data == NULL
-      && var->attr & (intermediate_e)
-      && var->type != FldLiteralA
-      && var->type != FldLiteralN )
-    {
-    var->data = static_cast<unsigned char *>(malloc(var->capacity));
-    }
 
   // Set the "initialized" bit, which is tested in parser_symbol_add to make
   // sure this code gets executed only once.
@@ -11218,8 +11242,8 @@ __gg__get_argc(cblc_field_t *dest, size_t offset, size_t length)
                                             ach,
                                             strlen(ach),
                                             &nbytes );
-  __gg__field_from_string(dest, offset, length, converted, nbytes);
   __gg__adjust_dest_size(dest, nbytes);
+  __gg__field_from_string(dest, offset, length, converted, nbytes);
   free(converted);
   }
 
@@ -11261,8 +11285,8 @@ __gg__get_argv( cblc_field_t *dest,
                                         stashed_argv[N],
                                         strlen(stashed_argv[N]),
                                         &nbytes );
-    __gg__field_from_string(dest, dest_offset, dest_length, converted, nbytes);
     __gg__adjust_dest_size(dest, nbytes);
+    __gg__field_from_string(dest, dest_offset, dest_length, converted, nbytes);
     free(converted);
     retcode = 0;  // Okay
     }
@@ -11306,8 +11330,8 @@ __gg__get_command_line( cblc_field_t *field,
                                         retval,
                                         strlen(retval),
                                         &nbytes );
-    __gg__field_from_string(field, offset, flength, converted, nbytes);
     __gg__adjust_dest_size(field, nbytes);
+    __gg__field_from_string(field, offset, flength, converted, nbytes);
     free(converted);
     retcode = 0; // Okay
     }
@@ -11568,23 +11592,7 @@ __gg__fetch_call_by_value_value(const cblc_field_t *field,
 
     case FldFloat:
       {
-      switch(length)
-        {
-        case 4:
-          *PTRCAST(float, &retval) = *PTRCAST(float, data);
-          break;
-
-        case 8:
-          *PTRCAST(double, &retval) = *PTRCAST(double, data);
-          break;
-
-        case 16:
-          // *(_Float128 *)(&retval) = double(*(_Float128 *)data);
-          GCOB_FP128 t;
-          memcpy(&t, data, 16);
-          memcpy(&retval, &t, 16);
-          break;
-        }
+      memcpy(&retval, data, length);
       break;
       }
 
@@ -11629,23 +11637,7 @@ __gg__assign_value_from_stack(cblc_field_t *dest, __int128 parameter)
 
     case FldFloat:
       {
-      switch(dest->capacity)
-        {
-        case 4:
-          *PTRCAST(float, dest->data) = *PTRCAST(float, (&parameter));
-          break;
-
-        case 8:
-          *PTRCAST(double, dest->data) = *PTRCAST(double, (&parameter));
-          break;
-
-        case 16:
-          // *(_Float128 *)(dest->data) = *(_Float128 *)&parameter;
-          GCOB_FP128 t;
-          memcpy(&t, &parameter, 16);
-          memcpy(dest->data, &t, 16);
-          break;
-        }
+      memcpy(dest->data, &parameter, dest->capacity);
       break;
       }
 
@@ -11745,8 +11737,8 @@ __gg__unstring( const cblc_field_t *id1,        // The string being unstring
   int tally = 0;
   size_t pointer = 1;
   size_t nreceiver;
-  size_t left;
-  size_t right;
+  size_t left=0;
+  size_t right=0;
 
   std::u32string str_id1;
   std::vector<std::u32string> delimiters;
@@ -12619,16 +12611,16 @@ extern "C"
 void
 __gg__adjust_dest_size(cblc_field_t *dest, size_t ncount)
   {
-  if( dest->attr & (intermediate_e) )
+  if( dest->attr & intermediate_e )
     {
-    if( dest->allocated < ncount )
+    // Make sure at least one byte is allocated; some routines get upset when
+    // dest->data is NULL even when dest->capacity is zero.
+    size_t alloc_size = std::max(1UL, ncount);
+    if( dest->allocated < alloc_size )
       {
-      fprintf(stderr, "libgcobol.cc:__gg__adjust_dest_size(): "
-                      "Adjusting %s size upward is not possible.\n",
-                      dest->name);
-      abort();
-//      dest->allocated = ncount;
-//      dest->data = (unsigned char *)realloc(dest->data, ncount);
+      dest->allocated = alloc_size;
+      free(dest->data);
+      dest->data = static_cast<unsigned char *>(malloc(alloc_size));
       }
     dest->capacity = ncount;
     }
@@ -12645,11 +12637,11 @@ __gg__adjust_encoding(cblc_field_t *field)
                                            PTRCAST(char, field->data),
                                            field->capacity,
                                            &nbytes);
+  __gg__adjust_dest_size(field, nbytes);
   size_t tocopy = std::min(nbytes, field->allocated);
   field->capacity = tocopy;
   memcpy(field->data, converted, tocopy);
   }
-
 
 extern "C"
 void
@@ -14001,7 +13993,7 @@ __gg__module_name(cblc_field_t *dest, module_type_t type)
       break;
     }
 
-  __gg__adjust_dest_size(dest, strlen(result));
+  __gg__adjust_dest_size(dest, strlen(result)+1);
   memcpy(dest->data, result, strlen(result)+1);
   __gg__adjust_encoding(dest);
   }
@@ -14344,9 +14336,19 @@ __gg__refer_from_string(cblc_field_t *field,
   {
   // 'string' has to be in the 'field' encoding.  Use this when the input
   // might, or might not, be nul-terminated, and you don't want a
-  // nul-terminator in the data of the target field.
+  // nul-terminator in the data of the target field.  For intermediates, the
+  // string must be nul-terminated
   charmap_t *charmap = __gg__get_charmap(field->encoding);
+  if( field->attr & intermediate_e )
+    {
+    field_size = SSIZE_MAX;
+    }
   size_t nbytes = charmap->strlen(string, field_size);
+  if( field->attr & intermediate_e )
+    {
+    __gg__adjust_dest_size(field, nbytes);
+    field_size  = nbytes;
+    }
   __gg__field_from_string(field, field_offset, field_size, string, nbytes);
   }
 
@@ -14357,15 +14359,20 @@ __gg__refer_from_psz(cblc_field_t *field,
                      size_t field_size,
                const char *string)
   {
-  // 'string' has to be in the 'field' encoding.  Use this when the input
-  // might, or might not, be nul-terminated, and you *do* want a
-  // nul-terminator in the data of the target field if there was one in the
-  // input.
-
-  // One typical use is processing returned values from external C-style
-  // functions, which often return nul-terminated strings.
+  // 'string' has to be in the 'field' encoding. If the target is intermediate,
+  // It has to be nul-terminated in the field's encoding.
   charmap_t *charmap = __gg__get_charmap(field->encoding);
+
+  if( field->attr & intermediate_e )
+    {
+    field_size = SSIZE_MAX;
+    }
   size_t nbytes = charmap->strlen(string, field_size);
+  if( field->attr & intermediate_e )
+    {
+    __gg__adjust_dest_size(field, nbytes);
+    field_size  = nbytes;
+    }
   __gg__field_from_string(field,
                     field_offset,
                     field_size,
@@ -14557,6 +14564,7 @@ __gg__convert(cblc_field_t *dest,
     // destination encoding:
     size_t i = 0;
     size_t d = 0;
+    __gg__adjust_dest_size(dest, 2*nbytes);
     while(i < nbytes && d < dest->capacity )
       {
       cbl_char_t byte = charmap_tgt->getch(converted, &i);
@@ -14568,7 +14576,6 @@ __gg__convert(cblc_field_t *dest,
       charmap_dest->putch(charmap_dest->mapped_character(lo), dest->data, &d);
       }
     free(converted);
-    __gg__adjust_dest_size(dest, d);
     }
   else if( dest_format == convert_byte_e )
     {
@@ -14581,6 +14588,7 @@ __gg__convert(cblc_field_t *dest,
                                          &nbytes);
     size_t i = 0;
     size_t d = 0;
+    __gg__adjust_dest_size(dest, 4*nbytes);
     while(i < nbytes && d < dest->capacity )
       {
       // Each character is part of a string of hexadecimal digits.  So, the
@@ -14618,7 +14626,6 @@ __gg__convert(cblc_field_t *dest,
         }
       }
     free(converted);
-    __gg__adjust_dest_size(dest, d);
     }
   else
     {
@@ -14628,9 +14635,33 @@ __gg__convert(cblc_field_t *dest,
                                           input_o,
                                           input_s,
                                           &nbytes);
+    __gg__adjust_dest_size(dest, nbytes);
     size_t len = std::min(nbytes, dest->capacity);
     memcpy(dest->data, converted, len);
     free(converted);
-    __gg__adjust_dest_size(dest, len);
     }
+  }
+
+
+extern "C"
+__int128
+__gg__look_at_int128(__int128 val128)
+  {
+  /* This silly-looking function is included here as an aide to debugging
+     code generated at compile time.  Because it is difficult to use GDB on
+     code created via GENERIC tags (there is, after all, no source code), it's
+     necessary to use things like gg_printf to do print-statement debugging on
+     such code.  But there is no provision in printf for outputting __int128
+     values.  So, I created this routine; during debugging I can generate a
+     call to it, and then with GDB (which can display __int128 values in
+     decimal) I can set a breakpoint here and see the value. */
+  return val128;
+  }
+
+extern "C"
+void *
+__gg__look_at_pointer(void *ptr)
+  {
+  // See comment for __gg__look_at_int128
+  return ptr;
   }

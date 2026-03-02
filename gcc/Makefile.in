@@ -1895,6 +1895,7 @@ OBJS-libcommon = \
 	diagnostics/option-classifier.o \
 	diagnostics/paths.o \
 	diagnostics/paths-output.o \
+	diagnostics/physical-location-maker.o \
 	diagnostics/source-printing.o \
 	diagnostics/state-graphs-to-dot.o \
 	diagnostics/selftest-context.o \
@@ -1904,7 +1905,7 @@ OBJS-libcommon = \
 	gcc-diagnostic-spec.o \
 	graphviz.o pex.o \
 	pretty-print.o intl.o \
-	json.o json-parsing.o \
+	json.o json-parsing.o json-diagnostic.o \
 	pub-sub.o \
 	xml.o \
 	sbitmap.o \
@@ -3939,7 +3940,7 @@ regenerate-opt-urls-unit-test: $(OPT_URLS_HTML_DEPS)
 
 # Regenerate attr-urls.def from the generated html.
 .PHONY: regenerate-attr-urls
-ATTR_URLS_HTML_DEPS = $(build_htmldir)/gcc/Concept-and-Symbol-Index.html
+ATTR_URLS_HTML_DEPS = $(build_htmldir)/gcc/Attribute-Index.html
 
 regenerate-attr-urls: $(srcdir)/regenerate-attr-urls.py $(ATTR_URLS_HTML_DEPS)
 	$(srcdir)/regenerate-attr-urls.py $(build_htmldir) $(shell dirname $(srcdir))
@@ -4819,7 +4820,7 @@ paranoia: paranoia.o real.o $(LIBIBERTY)
 	g++ -o $@ paranoia.o real.o $(LIBIBERTY)
 
 all.fda: $(ALL_FDAS)
-	$(PROFILE_MERGER) $(ALL_FDAS) --output_file all.fda -gcov_version 2
+	$(PROFILE_MERGER) $(ALL_FDAS) --output_file all.fda -gcov_version 3
 
 # These exist for maintenance purposes.
 

@@ -1721,6 +1721,52 @@ optimize_agr_copyprop_arg (gimple *defstmt, gcall *call,
     update_stmt (call);
 }
 
+/* Helper function for optimize_agr_copyprop, propagate aggregates
+   into the return stmt USE if the operand of the return matches DEST;
+   replacing it with SRC.  */
+static void
+optimize_agr_copyprop_return (gimple *defstmt, greturn *use,
+			      tree dest, tree src)
+{
+  tree rvalue = gimple_return_retval (use);
+  if (!rvalue
+      || TREE_CODE (rvalue) == SSA_NAME
+      || is_gimple_min_invariant (rvalue)
+      || TYPE_VOLATILE (TREE_TYPE (rvalue)))
+    return;
+
+  /* `return <retval>;` is already the best it could be.
+     Likewise `return *<retval>_N(D)`.  */
+  if (TREE_CODE (rvalue) == RESULT_DECL
+      || (TREE_CODE (rvalue) == MEM_REF
+	  && TREE_CODE (TREE_OPERAND (rvalue, 0)) == SSA_NAME
+	  && TREE_CODE (SSA_NAME_VAR (TREE_OPERAND (rvalue, 0)))
+	       == RESULT_DECL))
+    return;
+  tree newsrc = new_src_based_on_copy (rvalue, dest, src);
+  if (!newsrc)
+    return;
+  /* Currently only support non-global vars.
+     See PR 124099 on enumtls not supporting expanding for GIMPLE_RETURN.
+     FIXME: could support VCEs too?  */
+  if (!VAR_P (newsrc) || is_global_var (newsrc))
+    return;
+  if (dump_file && (dump_flags & TDF_DETAILS))
+    {
+      fprintf (dump_file, "Simplified\n  ");
+      print_gimple_stmt (dump_file, use, 0, dump_flags);
+      fprintf (dump_file, "after previous\n  ");
+      print_gimple_stmt (dump_file, defstmt, 0, dump_flags);
+    }
+  gimple_return_set_retval (use, newsrc);
+  if (dump_file && (dump_flags & TDF_DETAILS))
+    {
+      fprintf (dump_file, "into\n  ");
+      print_gimple_stmt (dump_file, use, 0, dump_flags);
+    }
+  update_stmt (use);
+}
+
 /* Optimizes
    DEST = SRC;
    DEST2 = DEST; # DEST2 = SRC2;
@@ -1764,6 +1810,8 @@ optimize_agr_copyprop (gimple *stmt)
 	optimize_agr_copyprop_1 (stmt, use_stmt, dest, src);
       else if (is_gimple_call (use_stmt))
 	optimize_agr_copyprop_arg (stmt, as_a<gcall*>(use_stmt), dest, src);
+      else if (is_a<greturn*> (use_stmt))
+	optimize_agr_copyprop_return (stmt, as_a<greturn*>(use_stmt), dest, src);
     }
 }
 
@@ -4032,7 +4080,7 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 		  == TYPE_PRECISION (TREE_TYPE (type)))
 	      && orig_elem_type[0]
 	      && useless_type_conversion_p (orig_elem_type[0],
-					    TREE_TYPE (type))
+					    TREE_TYPE (TREE_TYPE (orig[0])))
 	      && mode_for_vector (as_a <scalar_mode>
 				  (TYPE_MODE (TREE_TYPE (TREE_TYPE (orig[0])))),
 				  nelts * 2).exists ()
@@ -4074,7 +4122,7 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
 		       == 2 * TYPE_PRECISION (TREE_TYPE (type)))
 		   && orig_elem_type[0]
 		   && useless_type_conversion_p (orig_elem_type[0],
-						 TREE_TYPE (type))
+						 TREE_TYPE (TREE_TYPE (orig[0])))
 		   && mode_for_vector (as_a <scalar_mode>
 				         (TYPE_MODE
 					   (TREE_TYPE (TREE_TYPE (orig[0])))),

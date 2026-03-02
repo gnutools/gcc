@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-# Copyright (C) 2025 Free Software Foundation, Inc.
+# Copyright (C) 2026 Free Software Foundation, Inc.
 # Contributed by the Symas Corporation, 2025
 
 # This file is part of GCC.
@@ -312,6 +312,8 @@ LIBQUADLIB_DEP = @LIBQUADLIB_DEP@
 LIBQUADSPEC = @LIBQUADSPEC@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIBXML2_CPPFLAGS = @LIBXML2_CPPFLAGS@
+LIBXML2_LIBS = @LIBXML2_LIBS@
 LIPO = @LIPO@
 LLVM_CONFIG = @LLVM_CONFIG@
 LN_S = @LN_S@
@@ -454,17 +456,17 @@ gcc_version := $(shell @get_gcc_base_ver@ $(top_srcdir)/../gcc/BASE-VER)
 
 @BUILD_LIBGCOBOL_TRUE@WARN_CFLAGS = -W -Wall -Wwrite-strings
 @BUILD_LIBGCOBOL_TRUE@AM_CPPFLAGS = -I. -I posix/shim \
-@BUILD_LIBGCOBOL_TRUE@	$(LIBQUADINCLUDE) -I \
-@BUILD_LIBGCOBOL_TRUE@	/usr/include/libxml2
+@BUILD_LIBGCOBOL_TRUE@	$(LIBQUADINCLUDE) $(LIBXML2_CPPFLAGS)
 @BUILD_LIBGCOBOL_TRUE@AM_CFLAGS = $(XCFLAGS)
 @BUILD_LIBGCOBOL_TRUE@AM_CXXFLAGS = $(XCFLAGS) $(WARN_CFLAGS) \
-@BUILD_LIBGCOBOL_TRUE@	-DIN_TARGET_LIBS -fno-strict-aliasing
+@BUILD_LIBGCOBOL_TRUE@	-DIN_TARGET_LIBS -fstrict-aliasing \
+@BUILD_LIBGCOBOL_TRUE@	-Wstrict-aliasing -Wstrict-aliasing=3
 
 # We want to link with the c++ runtime.
 @BUILD_LIBGCOBOL_TRUE@libgcobol_la_LINK = $(CXXLINK) $(libgcobol_la_LDFLAGS)
 @BUILD_LIBGCOBOL_TRUE@version_arg = -version-info $(LIBGCOBOL_VERSION)
 @BUILD_LIBGCOBOL_TRUE@libgcobol_la_LDFLAGS = $(LTLDFLAGS) $(LIBQUADLIB) $(LTLIBICONV) \
-@BUILD_LIBGCOBOL_TRUE@	$(extra_ldflags_libgcobol) $(LIBS) $(version_arg)
+@BUILD_LIBGCOBOL_TRUE@	$(extra_ldflags_libgcobol) $(LIBS) $(LIBXML2_LIBS) $(version_arg)
 
 @BUILD_LIBGCOBOL_TRUE@libgcobol_la_DEPENDENCIES = libgcobol.spec $(LIBQUADLIB_DEP)
 all: config.h

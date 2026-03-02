@@ -32,6 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "sarif-spec-urls.def"
 #include "libsarifreplay.h"
 #include "label-text.h"
+#include "pretty-print.h"
 
 namespace {
 
@@ -145,7 +146,9 @@ make_logical_location_from_jv (libgdiagnostics::manager &mgr,
     parent = make_logical_location_from_jv (mgr,
 					    *jv.m_pointer_token.m_parent);
 
-  std::string short_name;
+  pretty_printer pp;
+  pointer_token.print (&pp);
+  std::string short_name = pp_formatted_text (&pp);
   std::string fully_qualified_name;
   switch (pointer_token.m_kind)
     {
@@ -153,19 +156,16 @@ make_logical_location_from_jv (libgdiagnostics::manager &mgr,
       gcc_unreachable ();
 
     case json::pointer::token::kind::root_value:
-      short_name = "";
       fully_qualified_name = "";
       break;
 
     case json::pointer::token::kind::object_member:
-      short_name = pointer_token.m_data.u_member;
       gcc_assert (parent.m_inner);
       fully_qualified_name
 	= std::string (parent.get_fully_qualified_name ()) + "/" + short_name;
       break;
 
     case json::pointer::token::kind::array_index:
-      short_name = std::to_string (pointer_token.m_data.u_index);
       gcc_assert (parent.m_inner);
       fully_qualified_name
 	= std::string (parent.get_fully_qualified_name ()) + "/" + short_name;
@@ -316,27 +316,6 @@ public:
 			   const replay_options &replay_opts);
 
 private:
-  class replayer_location_map : public json::location_map
-  {
-  public:
-    void record_range_for_value (json::value *jv,
-				 const range &r) final override
-    {
-      m_map_jv_to_range[jv] = r;
-    }
-
-    const json::location_map::range &
-    get_range_for_value (const json::value &jv) const
-    {
-      auto iter = m_map_jv_to_range.find (&jv);
-      gcc_assert (iter != m_map_jv_to_range.end ());
-      return iter->second;
-    }
-
-  private:
-    std::map<const json::value *, range> m_map_jv_to_range;
-  };
-
   enum status emit_sarif_as_diagnostics (const json::value &jv);
 
   libgdiagnostics::message_buffer
@@ -743,7 +722,7 @@ private:
   /* The file within m_control_mgr representing the .sarif file.  */
   libgdiagnostics::file m_loaded_file;
 
-  replayer_location_map m_json_location_map;
+  json::simple_location_map m_json_location_map;
 
   const json::object *m_driver_obj;
   const json::array *m_artifacts_arr;

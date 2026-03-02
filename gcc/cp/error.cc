@@ -3976,6 +3976,42 @@ function_category (tree fn)
     return G_("In function %qD");
 }
 
+/* We expected some kind of tree but instead got T and emitted a diagnostic.
+   Print the category of T (type, expression, ...) if possible.  */
+
+void
+inform_tree_category (tree t)
+{
+  const location_t loc = location_of (t);
+
+  t = maybe_get_first_fn (t);
+  if (TREE_CODE (t) == TYPE_DECL)
+    t = TREE_TYPE (t);
+
+  if (TYPE_P (t))
+    inform (loc, "but %qE is a type", t);
+  else if (EXPR_P (t))
+    inform (loc, "but %qE is an expression", t);
+  else if (DECL_DECOMPOSITION_P (t) && !DECL_DECOMP_IS_BASE (t))
+    inform (loc, "but %qE is a structured binding", t);
+  else if (VAR_P (t))
+    inform (loc, "but %qE is a variable", t);
+  else if (TREE_CODE (t) == PARM_DECL)
+    inform (loc, "but %qE is a parameter", t);
+  else if (TREE_CODE (t) == FUNCTION_DECL)
+    inform (loc, "but %qE is a function", t);
+  else if (TREE_CODE (t) == FIELD_DECL)
+    inform (loc, "but %qE is a data member", t);
+  else if (DECL_FUNCTION_TEMPLATE_P (t))
+    inform (loc, "but %qE is a function template", t);
+  else if (DECL_CLASS_TEMPLATE_P (t))
+    inform (loc, "but %qE is a class template", t);
+  else if (TREE_CODE (t) == NAMESPACE_DECL)
+    inform (loc, "but %qE is a namespace", t);
+  else if (TREE_CODE (t) == CONST_DECL && !DECL_TEMPLATE_PARM_P (t))
+    inform (loc, "but %qE is an enumerator", t);
+}
+
 /* Disable warnings about missing quoting in GCC diagnostics for
    the pp_verbatim calls.  Their format strings deliberately don't
    follow GCC diagnostic conventions.  */
@@ -4055,13 +4091,18 @@ public:
 		     bool show_locus = false)
   : m_text_output (text_output),
     m_loc (loc),
-    m_show_locus (show_locus)
+    m_show_locus (show_locus),
+    m_nesting_level (text_output.get_context ().get_diagnostic_nesting_level ()),
+    m_location_printed (false)
   {
     char *indent = m_text_output.build_indent_prefix (true);
     pp_verbatim (m_text_output.get_printer (), indent);
     free (indent);
-    if (!m_text_output.show_nesting_p ())
-      print_location (m_text_output, m_loc);
+    if (m_nesting_level == 0 || !m_text_output.show_nesting_p ())
+      {
+	print_location (m_text_output, m_loc);
+	m_location_printed = true;
+      }
   }
   ~auto_context_line ()
   {
@@ -4071,9 +4112,13 @@ public:
 	if (m_text_output.show_locations_in_nesting_p ())
 	  {
 	    char *indent = m_text_output.build_indent_prefix (false);
-	    pp_verbatim (pp, indent);
-	    print_location (m_text_output, m_loc);
-	    pp_newline (pp);
+	    if (!m_location_printed)
+	      {
+		pp_verbatim (pp, indent);
+		print_location (m_text_output, m_loc);
+		pp_newline (pp);
+		m_location_printed = true;
+	      }
 
 	    char *saved_prefix = pp_take_prefix (pp);
 	    pp_set_prefix (pp, indent);
@@ -4101,6 +4146,8 @@ private:
   diagnostics::text_sink &m_text_output;
   location_t m_loc;
   bool m_show_locus;
+  int m_nesting_level;
+  bool m_location_printed;
 };
 
 /* Helper function of print_instantiation_partial_context() that

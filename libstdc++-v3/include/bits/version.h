@@ -1721,6 +1721,16 @@
 #endif /* !defined(__cpp_lib_format_ranges) */
 #undef __glibcxx_want_format_ranges
 
+#if !defined(__cpp_lib_format_path)
+# if (__cplusplus >  202302L) && _GLIBCXX_HOSTED
+#  define __glibcxx_format_path 202403L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_format_path)
+#   define __cpp_lib_format_path 202403L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_format_path) */
+#undef __glibcxx_want_format_path
+
 #if !defined(__cpp_lib_freestanding_algorithm)
 # if (__cplusplus >= 202100L)
 #  define __glibcxx_freestanding_algorithm 202311L

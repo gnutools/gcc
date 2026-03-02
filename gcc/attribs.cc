@@ -1230,7 +1230,11 @@ make_dispatcher_decl (const tree decl)
   /* Set flags on the cgraph_node for the new decl.  */
   cgraph_node *func_node = cgraph_node::get_create (func_decl);
   func_node->dispatcher_function = true;
-  func_node->definition = true;
+  /* For targets with TARGET_HAS_FMV_TARGET_ATTRIBUTE, the resolver is created
+     unconditionally if any versioned nodes are present.
+     For !TARGET_HAS_FMV_TARGET_ATTRIBUTE, the dispatcher is only defined when
+     the default node is defined.  */
+  func_node->definition = node->definition || TARGET_HAS_FMV_TARGET_ATTRIBUTE;
 
   cgraph_function_version_info *func_v
     = func_node->insert_new_function_version ();
@@ -2007,10 +2011,16 @@ handle_dll_attribute (tree * pnode, tree name, tree args, int flags,
 	{
 	  if (DECL_INITIAL (node))
 	    {
-	      error ("variable %q+D definition is marked dllimport",
-		     node);
+	      error ("variable %q+D definition is marked dllimport", node);
 	      *no_add_attrs = true;
 	    }
+#if TARGET_WIN32_TLS
+	  else if (DECL_THREAD_LOCAL_P (node))
+	    {
+	      error ("thread-local variable %q+D declared as dllimport", node);
+	      *no_add_attrs = true;
+	    }
+#endif
 
 	  /* `extern' needn't be specified with dllimport.
 	     Specify `extern' now and hope for the best.  Sigh.  */
@@ -2034,6 +2044,13 @@ handle_dll_attribute (tree * pnode, tree name, tree args, int flags,
 	   && flag_keep_inline_dllexport)
     /* An exported function, even if inline, must be emitted.  */
     DECL_EXTERNAL (node) = 0;
+#if TARGET_WIN32_TLS
+  else if (VAR_P (node) && DECL_THREAD_LOCAL_P (node))
+    {
+      error ("thread-local variable %q+D declared as dllexport", node);
+      *no_add_attrs = true;
+    }
+#endif
 
   /*  Report error if symbol is not accessible at global scope.  */
   if (!TREE_PUBLIC (node) && VAR_OR_FUNCTION_DECL_P (node))

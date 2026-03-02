@@ -1,3 +1,364 @@
+2026-02-28  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc: New test.
+
+2026-02-26  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* testsuite/29_atomics/atomic_ref/requirements_neg.cc: Add
+	using std::size_t.
+
+2026-02-26  Yuao Ma  <c8ef@outlook.com>
+
+	* include/bits/atomic_base.h (__atomic_base<_PTp*>::fetch_min,
+	__atomic_base<_PTp*>::fetch_max,
+	__atomic_ref<_Pt, false, false, true>::fetch_min,
+	__atomic_ref<_Pt, false, false, true>::fetch_max): Define new
+	functions.
+	* include/std/atomic (atomic<_Tp*>::fetch_min,
+	atomic<_Tp*>::fetch_max): Likewise.
+	(atomic_fetch_min_explicit, atomic_fetch_max_explicit,
+	atomic_fetch_min, atomic_fetch_max): Change parameter from
+	__atomic_base<_ITp>* to atomic<_Tp>*.
+	* testsuite/29_atomics/atomic/pointer_fetch_minmax.cc: New test.
+	* testsuite/29_atomics/atomic_ref/pointer_fetch_minmax.cc: New
+	test.
+
+2026-02-25  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/117404
+	* include/debug/map.h (extract, erase): Define overloads.
+	* include/debug/multimap.h: Same.
+	* include/debug/multiset.h: Same.
+	* include/debug/set.h: Same.
+	* include/debug/unordered_map: Same (2x).
+	* include/debug/unordered_set: Same (2x), rename some locals.
+
+2026-02-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* testsuite/23_containers/mdspan/at.cc: Updated guard.
+
+2026-02-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* testsuite/23_containers/mdspan/at.cc: Updated test.
+
+2026-02-23  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/mdspan (__mdspan::__is_multi_index): Removed,
+	replaced with local lambda in mdspan::operator[].
+	(__mdspan::operator[]): Implement in terms of single overload
+	accepting index_type. Use __mdspan::__index_type_cast for type
+	conversion.
+
+2026-02-23  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/mdspan (mdspan::at, mdspan::__index_int_t):
+	Define.
+	* testsuite/23_containers/mdspan/at.cc: New test.
+
+2026-02-20  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/lib/libstdc++.exp (v3-minimum-std): Remove second
+	and third args in favour of using globals.
+
+2026-02-19  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/type_traits (_CWOperators::operator++)
+	(_CWOperators::operator--, _CWOperators::operator+=)
+	(_CWOperators::operator-=, _CWOperators::operator*=)
+	(_CWOperators::operator/=, _CWOperators::operator%=)
+	(_CWOperators::operator&=, _CWOperators::operator|=)
+	(_CWOperators::operator^=, _CWOperators::operator<<=)
+	(_CWOperators::operator>>=, constant_wrapper::operator=):
+	Adjust definitions to apply operator on value.
+	* testsuite/20_util/constant_wrapper/generic.cc:
+	Remove test_pseudo_mutator.
+	* testsuite/20_util/constant_wrapper/instantiate.cc:
+	Test that operators are not provided if wrapped type
+	do not support them, or provide mutable operators.
+
+2026-02-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/lib/libstdc++.exp (v3_default_std, v3_max_std): New
+	global variables.
+	(v3-minimum-std): Use globals instead of arguments.
+	(v3_modules_std): Define in terms of $v3_max_std.
+	(v3-dg-runtest): Use globals instead of local variables. Adjust
+	call to v3-min-std.
+
+2026-02-19  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/lib/libstdc++.exp (v3-minimum-std): Remove special
+	case for c++2a and TODO comment.
+	* testsuite/20_util/is_pod/requirements/explicit_instantiation.cc:
+	Replace c++2a effective target with c++20.
+	* testsuite/20_util/is_pod/requirements/typedefs.cc: Likewise.
+	* testsuite/20_util/is_pod/value.cc: Likewise.
+	* testsuite/20_util/reference_wrapper/result_type.cc: Likewise.
+	* testsuite/20_util/reference_wrapper/typedefs-2.cc: Likewise.
+	* testsuite/20_util/reference_wrapper/typedefs-3.cc: Likewise.
+	* testsuite/20_util/result_of/sfinae_friendly_1.cc: Likewise.
+	* testsuite/20_util/tuple/78939.cc: Likewise.
+	* testsuite/20_util/uses_allocator/69293_neg.cc: Likewise.
+	* testsuite/20_util/uses_allocator/cons_neg.cc: Likewise.
+	* testsuite/20_util/variable_templates_for_traits.cc: Likewise.
+	* testsuite/experimental/type_traits/value.cc: Likewise.
+	* testsuite/ext/malloc_allocator/variadic_construct.cc:
+	Likewise.
+	* testsuite/ext/new_allocator/variadic_construct.cc: Likewise.
+	* testsuite/libstdc++-prettyprinters/chrono.cc: Likewise.
+	* testsuite/libstdc++-prettyprinters/cxx20.cc: Likewise.
+	* testsuite/std/ranges/iota/size.cc: Likewise.
+	* testsuite/tr1/3_function_objects/result_of.cc: Likewise.
+
+2026-02-18  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/121402
+	* include/std/ranges (repeat_view::_M_value): Add
+	[[no_unique_address]].
+	* testsuite/std/ranges/adaptors/sizeof.cc
+	[__cpp_lib_ranges_repeat]: New test.
+
+2026-02-17  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/124124
+	* testsuite/29_atomics/atomic/cons/zero_padding.cc: Updated
+	Ctor class and move test_floating to...
+	* testsuite/29_atomics/atomic_float/zero_padding.cc: Extracted
+	test_floating.
+
+2026-02-17  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/124124
+	* testsuite/29_atomics/atomic/cons/zero_padding.cc: Adjust
+	dg-require.
+
+2026-02-17  Jakub Jelinek  <jakub@redhat.com>
+
+	* src/c++23/std.cc.in (std::submdspan_canonicalize_slices,
+	std::submdspan_extents): Remove exports.
+	(std::canonical_slices, std::subextents): New exports.
+
+2026-02-16  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/119745
+	* include/bits/basic_string.h (basic_string::_M_construct)
+	[__cplusplus >= 202302L]: Declare.
+	(basic_string::basic_string(basic_string&&, size_type, const _Alloc&))
+	(basic_string(basic_string&&, size_type, size_type, const _Alloc&))
+	(basic_string::substr(size_type, size_type) &&)
+	(basic_string::substr(size_type) &&) [__cplusplus >= 202302L]: Define.
+	* include/bits/basic_string.tcc (basic_string::_M_construct)
+	[__cplusplus >= 202302L]: Define.
+	* testsuite/21_strings/basic_string/operations/substr/rvalue.cc: New test.
+
+2026-02-16  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/mdspan (std::submdspan_extents): Rename to...
+	(std::subextents): Renamed from submdspan_extents.
+	(std::submdspan_canonicalize_slices): Rename to...
+	(std::canonical_slices): Renamed from submdspan_canonicalize_slices.
+	* testsuite/23_containers/mdspan/submdspan/submdspan_canonicalize_slices.cc:
+	Move to...
+	* testsuite/23_containers/mdspan/submdspan/canonical_slices.cc: ...here.
+	Updated calls to submdspan_canonicalize_slices.
+	* testsuite/23_containers/mdspan/submdspan/submdspan_canonicalize_slices_neg.cc:
+	Move to...
+	* testsuite/23_containers/mdspan/submdspan/canonical_slices_neg.cc: ...here.
+	Updated calls to submdspan_canonicalize_slices.
+	* testsuite/23_containers/mdspan/submdspan/submdspan_extents.cc: Move to...
+	* testsuite/23_containers/mdspan/submdspan/subextents.cc: ...here.
+	Qualified and renamed calls to submdspan_extents.
+	* testsuite/23_containers/mdspan/submdspan/submdspan_extents_neg.cc: Move to...
+	* testsuite/23_containers/mdspan/submdspan/subextents_neg.cc: ...here.
+	Qualified and renamed calls to submdspan_extents.
+
+2026-02-16  Ivan Lazaric  <ivan.lazaric1@gmail.com>
+	    Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/fs_path.h: Include bits/formatfwd.h.
+	(std::formatter<filesystem::path, _CharT>): Define.
+	* include/bits/version.def (format_path): Define.
+	* include/bits/version.h: Regenerate.
+	* include/std/filesystem: Expose __cpp_lib_format_path.
+	* testsuite/std/format/fs_path.cc: New test.
+
+2026-02-13  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* testsuite/20_util/scoped_allocator/construct_pair_c++2a.cc
+	(__gnu_test::uneq_allocator(int)): Declare as explicit.
+	* testsuite/std/memory/indirect/ctor.cc: Construct uneq_allocator
+	from int explicitly.
+	* testsuite/std/memory/polymorphic/ctor.cc: Likewise.
+	* testsuite/std/memory/polymorphic/ctor_poly.cc: Likewise.
+	* testsuite/util/testsuite_allocator.h: Likewise.
+
+2026-02-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/121771
+	* include/std/tuple (tuple::tuple(const Elements&...)): Use
+	type_identity_t to prevent constructor being used for CTAD.
+	(tuple::tuple(allocator_arg_t, const A&, const Elements&...)):
+	Likewise.
+	* testsuite/20_util/tuple/cons/121771.cc: New test.
+
+2026-02-12  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex_executor.tcc (_Executor::_M_rep_once_more):
+	Make unnused _Match_mode parameter unnamed.
+	(_Executor::_M_handle_repeat): Likewise.
+	(_Executor::_M_handle_subexpr_begin): Likewise.
+	(_Executor::_M_handle_subexpr_end): Likewise.
+	(_Executor::_M_handle_line_begin_assertion): Likewise.
+	(_Executor::_M_handle_line_end_assertion): Likewise.
+	(_Executor::_M_handle_match): Likewise.
+	(_Executor::_M_handle_backref): Likewise.
+	(_Executor::_M_handle_alternative): Likewise.
+
+2026-02-12  Xi Ruoyao  <xry111@xry111.site>
+	    Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/17_intro/badnames.cc (__unused): Do not define.
+	* testsuite/17_intro/names.cc [glibc == 2.43] (__unused): Undef.
+
+2026-02-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/type_traits (is_function): Declare before first
+	use.
+
+2026-02-12  Patrick Palka  <ppalka@redhat.com>
+
+	PR libstdc++/114865
+	* include/std/atomic (atomic<_Tp>::atomic(_Tp)) [C++11]:
+	Enable __builtin_clear_padding logic.
+	* testsuite/29_atomics/atomic/compare_exchange_padding.cc: Enable
+	this test in earlier modes, including C++11.
+	* testsuite/29_atomics/atomic/cons/zero_padding.cc [C++11]:
+	Enable tests verifying cleared padding bits for a non-static-init
+	std::atomic object.
+
+2026-02-11  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/bits/funcref_impl.h (function_ref::function_ref(_Fn&&)):
+	Use _S_static and _S_nttp invokers.
+	* include/bits/funcwrap.h (_Base_invoker::_S_static):
+	Define.
+	* include/bits/stl_function.h (std::__is_std_op_template)
+	(std::__is_std_op_wrapper) [__cplusplus > 201703L]:
+	Moved from std/ranges.
+	* include/std/ranges (__detail::__is_std_op_template)
+	(__detail::__is_std_op_wrapper): Moved to bits/stl_function.h.
+	* testsuite/20_util/function_ref/dangling.cc: New test.
+	* testsuite/20_util/function_ref/dangling_neg.cc: New test.
+
+2026-02-11  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/123875
+	* testsuite/29_atomics/atomic/cons/static_zero_padding.cc: Move to...
+	* testsuite/29_atomics/atomic/cons/zero_padding.cc: ...here and
+	added heap tests. Also fixed trailing whitespaces.
+
+2026-02-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/123908
+	* config/abi/pre/gnu.ver (GLIBCXX_3.4.35): Add exports for
+	std::__get_once_callable and std::__get_once_call.
+
+2026-02-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/regex.tcc (__detail::__lookup_collatename): New
+	function.
+	(regex_traits::lookup_collatename): Use new function. Elide
+	redundant narrowing via ctype facet for regex_traits<char>.
+	(regex_traits::lookup_classname): Replace lookup table with
+	handwritten prefix match.
+
+2026-02-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/124015
+	* include/bits/regex.tcc (regex_traits::lookup_classname): Fix
+	handling of icase parameter.
+
+2026-02-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/124015
+	* testsuite/28_regex/traits/char/lookup_classname.cc: Check for
+	correct result for unrecognized classname. Check that lookup is
+	case insensitive. Check that all required classnames are
+	recognized. Check that icase flag only affects "lower" and
+	"upper".
+	* testsuite/28_regex/traits/wchar_t/lookup_classname.cc:
+	Likewise.
+
+2026-02-10  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/123875
+	* include/bits/atomic_base.h (__atomic_impl::__clear_padding):
+	Use if constexpr unconditionally.
+	(__atomic_float<_Fp>::__atomic_float(_Fp)): Skip __clear_padding
+	call for constant evaluation.
+	* include/std/atomic (atomic<_Tp>::atomic(_Tp)): Likewise.
+	* testsuite/29_atomics/atomic/cons/static_zero_padding.cc: New test.
+
+2026-02-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/123991
+	* include/bits/basic_string.h (compare(size_type, size_type, T)):
+	Remove noexcept-specifier.
+	(compare(size_type, size_type, T, size_type, size_type)):
+	Likewise.
+	* include/bits/cow_string.h (compare(size_type, size_type, T)):
+	Remove noexcept-specifier.
+	(compare(size_type, size_type, T, size_type, size_type)):
+	Likewise.
+	* testsuite/21_strings/basic_string/operations/compare/char/123991.cc:
+	New test.
+	* testsuite/21_strings/basic_string/operations/compare/wchar_t/123991.cc:
+	New test.
+
+2026-02-10  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex.h (_Executor): Remove __dfs_mode template
+	parameter and _V2 inline namespace.
+	* include/bits/regex.tcc (__regex_algo_impl): Adjust after
+	__dfs_mode template parameter removal.
+	* include/bits/regex_executor.h (_Executor): Remove __dfs_mode
+	parameter and _V2 inline namespace.
+	* include/bits/regex_executor.tcc (_Executor): Likewise.
+
+2026-02-10  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/regex.tcc (__regex_algo_impl): Pass __use_dfs
+	parameter to _Executor's constructor.
+	* include/bits/regex_executor.h (_Executor::_Search_mode): New.
+	(_Executor::_Executor): Add __use_dfs parameter and initialize
+	_M_search_mode.  Adjust after inlining _State_info members into
+	_Executor.
+	(_Executor::~_Executor): Free _M_visted_states.
+	(_Executor::_M_main): Adjust after renaming _M_main_dispatch
+	overloads to _M_main_dfs and _M_main_bfs.
+	(_Executor::_State_info): Remove.
+	(_Executor::_M_visited): Inlined from _State_info.
+	(_Executor::_M_get_sol_pos): Likewise.
+	(_Executor::_M_states): Remove.
+	(_Executor::_M_start): Inlined from _State_info.
+	(_Executor::_M_sol_pos): Likewise.
+	(_Executor::_M_match_queue): Likewise.
+	(_Executor::_M_search_mode): New.
+	* include/bits/regex_executor.tcc (_Executor::_M_main_dispatch):
+	Renamed to...
+	(_Executor::_M_main_dfs, _Executor::_M_main_bfs): ... these.
+	(_Executor::_M_*): Adjust after _M_states removal.
+	(_Executor::_M_lookhead): Also adjust _Executor constructor
+	call.
+
+2026-02-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/124024
+	* include/bits/out_ptr.h (out_ptr): Fix doxygen comment to refer
+	to the right function.
+	(inout_ptr): Improve markup in doxygen comment.
+
 2026-02-06  Tomasz Kamiński  <tkaminsk@redhat.com>
 
 	* include/bits/hashtable.h (std::__heterogeneous_hash_key)

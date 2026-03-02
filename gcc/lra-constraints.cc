@@ -682,6 +682,27 @@ canonicalize_reload_addr (rtx addr)
   return addr;
 }
 
+/* Return rtx accessing reload REG of RCLASS matching another reload reg in
+   MODE.  */
+static rtx
+get_matching_reload_reg_subreg (machine_mode mode, rtx reg,
+				enum reg_class rclass)
+{
+  int hard_regno = ira_class_hard_regs[rclass][0];
+  if (subreg_regno_offset (hard_regno,
+			   GET_MODE (reg),
+			   subreg_lowpart_offset (mode, GET_MODE (reg)),
+			   mode) == 0)
+    /* For matching scalar int modes generate the right subreg byte offset for
+       BE targets -- see call of reload.cc:operands_match_p in
+       recog.cc:constrain_operands.  */
+    return lowpart_subreg (mode, reg, GET_MODE (reg));
+  int offset = (lra_constraint_offset (hard_regno, GET_MODE (reg))
+		- lra_constraint_offset (hard_regno, mode)) * UNITS_PER_WORD;
+  lra_assert (offset >= 0);
+  return gen_rtx_SUBREG (mode, reg, offset);
+}
+
 /* Create a new pseudo using MODE, RCLASS, EXCLUDE_START_HARD_REGS, ORIGINAL or
    reuse an existing reload pseudo.  Don't reuse an existing reload pseudo if
    IN_SUBREG_P is true and the reused pseudo should be wrapped up in a SUBREG.
@@ -766,7 +787,7 @@ get_reload_reg (enum op_type type, machine_mode mode, rtx original,
 		if (maybe_lt (GET_MODE_SIZE (GET_MODE (reg)),
 			      GET_MODE_SIZE (mode)))
 		  continue;
-		reg = lowpart_subreg (mode, reg, GET_MODE (reg));
+		reg = get_matching_reload_reg_subreg (mode, reg, new_class);
 		if (reg == NULL_RTX || GET_CODE (reg) != SUBREG)
 		  continue;
 	      }
@@ -1134,7 +1155,7 @@ match_reload (signed char out, signed char *ins, signed char *outs,
 	    = lra_create_new_reg_with_unique_value (inmode, in_rtx, goal_class,
 						    exclude_start_hard_regs,
 						    "");
-	  new_out_reg = gen_lowpart_SUBREG (outmode, reg);
+	  new_out_reg = get_matching_reload_reg_subreg (outmode, reg, goal_class);
 	  LRA_SUBREG_P (new_out_reg) = 1;
 	  /* If the input reg is dying here, we can use the same hard
 	     register for REG and IN_RTX.  We do it only for original
@@ -1153,7 +1174,7 @@ match_reload (signed char out, signed char *ins, signed char *outs,
 						    goal_class,
 						    exclude_start_hard_regs,
 						    "");
-	  new_in_reg = gen_lowpart_SUBREG (inmode, reg);
+	  new_in_reg = get_matching_reload_reg_subreg (inmode, reg, goal_class);
 	  /* NEW_IN_REG is non-paradoxical subreg.  We don't want
 	     NEW_OUT_REG living above.  We add clobber clause for
 	     this.  This is just a temporary clobber.  We can remove
@@ -3315,7 +3336,15 @@ process_alt_operands (int only_alternative)
 	    early_clobbered_nops[early_clobbered_regs_num++] = nop;
 	}
 
-      if (curr_insn_set != NULL_RTX && n_operands == 2
+      if (curr_insn_set != NULL_RTX
+	  /* Allow just two operands or three operands where the third
+	     is a clobber.  */
+	  && (n_operands == 2
+	      || (n_operands == 3
+		  && GET_CODE (PATTERN (curr_insn)) == PARALLEL
+		  && XVECLEN (PATTERN (curr_insn), 0) == 2
+		  && GET_CODE (XVECEXP (PATTERN (curr_insn), 0, 1))
+		     == CLOBBER))
 	  /* Prevent processing non-move insns.  */
 	  && (GET_CODE (SET_SRC (curr_insn_set)) == SUBREG
 	      || SET_SRC (curr_insn_set) == no_subreg_reg_operand[1])
@@ -4919,6 +4948,8 @@ curr_insn_transform (bool check_only_p)
 	      && find_reg_note (curr_insn, REG_UNUSED, old) == NULL_RTX
 	      /* OLD can be an equivalent constant here.  */
 	      && !CONSTANT_P (old)
+	      /* No need to write back anything for a scratch.  */
+	      && GET_CODE (old) != SCRATCH
 	      && (!REG_P(old) || !ira_former_scratch_p (REGNO (old))))
 	    {
 	      start_sequence ();
@@ -5061,7 +5092,8 @@ curr_insn_transform (bool check_only_p)
 	  const_insn = prev;
 	}
     }
-  lra_process_new_insns (curr_insn, before, after, "Inserting insn reload");
+  lra_process_new_insns (curr_insn, before, after,
+			 "Inserting insn reload", true);
   if (const_regno >= 0) {
     bool move_p = true;
     for (rtx_insn *insn = before; insn != curr_insn; insn = NEXT_INSN (insn))

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Symas Corporation
+ * Copyright (c) 2021-2026 Symas Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1202,6 +1202,56 @@ parser_statement_begin( const cbl_name_t statement_name,
   sv_is_i_o = false;
   }
 
+void
+parser_statement_end( const std::list<cbl_field_t*>&flist)
+  {
+  SHOW_PARSE
+    {
+    SHOW_PARSE_HEADER
+    char *psz = xasprintf(" List has %ld elements", flist.size());
+    SHOW_PARSE_TEXT(psz);
+    free(psz);
+    SHOW_PARSE_END
+    }
+  TRACE1
+    {
+    TRACE1_HEADER
+    char *psz = xasprintf(" List has %ld elements", flist.size());
+    TRACE1_TEXT(psz);
+    free(psz);
+    TRACE1_END
+    }
+  if( flist.size() )
+    {
+    for( auto field : flist )
+      {
+      SHOW_PARSE
+        {
+        SHOW_PARSE_INDENT
+        char *psz = xasprintf("Deallocating %s", field->name);
+        SHOW_PARSE_TEXT(psz);
+        free(psz);
+        }
+      TRACE1
+        {
+        TRACE1_INDENT
+        char *psz = xasprintf(" Deallocating %s", field->name);
+        TRACE1_TEXT(psz);
+        free(psz);
+        }
+        
+      gg_free(member(field->var_decl_node, "data"));
+      // Flag this guy as free:
+      gg_assign(member(field->var_decl_node, "data"), gg_cast(UCHAR_P, null_pointer_node));
+      gg_assign(member(field->var_decl_node, "allocated"), gg_cast(SIZE_T, integer_zero_node));
+      }
+    TRACE1
+      {
+      TRACE1_END
+      }
+    }
+  }
+
 static void
 initialize_variable_internal( cbl_refer_t refer,
                               bool explicitly=false,
@@ -1221,7 +1271,9 @@ initialize_variable_internal( cbl_refer_t refer,
     return;
     }
 
-  if( parsed_var->attr & register_e )
+  if(     parsed_var->attr & register_e
+      || (   parsed_var->attr & intermediate_e
+          && parsed_var->type == FldAlphanumeric) )
     {
     return;
     }
@@ -2028,6 +2080,102 @@ normal_normal_compare(bool debugging,
     }
   }
 
+static
+tree
+tree_type_from_field_type(cbl_field_t *field, size_t &nbytes)
+  {
+  /*  This routine is used to determine what action is taken with type of a
+      CALL ... USING <var> and the matching PROCEDURE DIVISION USING <var> of
+      a PROGRAM-ID or FUNCTION-ID
+      */
+  tree retval = COBOL_FUNCTION_RETURN_TYPE;
+  nbytes = 8;
+  if( field )
+    {
+    // This maps a Fldxxx to a C-style variable type:
+    switch(field->type)
+      {
+      case FldGroup:
+      case FldAlphanumeric:
+      case FldAlphaEdited:
+      case FldNumericEdited:
+        retval = CHAR_P;
+        nbytes = field->data.capacity();
+        break;
+
+      case FldNumericDisplay:
+      case FldNumericBinary:
+      case FldPacked:
+      if( field->data.digits > 18 )
+          {
+          retval = UINT128;
+          nbytes = 16;
+          }
+        else
+          {
+          retval = SIZE_T;
+          nbytes = 8;
+          }
+        break;
+
+      case FldNumericBin5:
+      case FldIndex:
+      case FldPointer:
+        if( field->data.capacity() > 8 )
+          {
+          retval = UINT128;
+          nbytes = 16;
+          }
+        else
+          {
+          retval = SIZE_T;
+          nbytes = 8;
+          }
+        break;
+
+      case FldFloat:
+        if( field->data.capacity() == 8 )
+          {
+          retval = DOUBLE;
+          nbytes = 8;
+          }
+        else if( field->data.capacity() == 4 )
+          {
+          retval = FLOAT;
+          nbytes = 4;
+          }
+        else
+          {
+          retval = FLOAT128;
+          nbytes = 16;
+          }
+        break;
+
+      case FldLiteralN:
+        // Assume a 64-bit signed integer.  This happens for GOBACK STATUS 101,
+        // the like
+        retval = LONG;
+        nbytes = 8;
+        break;
+
+      default:
+        cbl_internal_error(  "%s: Invalid field type %s:",
+                __func__,
+                cbl_field_type_str(field->type));
+        break;
+      }
+    if( retval == SIZE_T && field->attr & signable_e )
+      {
+      retval = SSIZE_T;
+      }
+    if( retval == UINT128 && field->attr & signable_e )
+      {
+      retval = INT128;
+      }
+    }
+  return retval;
+  }
+
 static void
 compare_binary_binary(tree return_int,
                       cbl_refer_t *left_side_ref,
@@ -2039,6 +2187,54 @@ compare_binary_binary(tree return_int,
   // We know the two sides have binary values that can be extracted.
   tree left_side;
   tree right_side;
+
+  // Let's check for the simplified case where both left and right sides are
+  // little-endian binary values:
+
+  if(   is_pure_integer(left_side_ref->field)
+     && is_pure_integer(right_side_ref->field) )
+    {
+    size_t left_bytes;
+    tree left_type = tree_type_from_field_type(left_side_ref->field,
+                                               left_bytes);
+    size_t right_bytes;
+    tree right_type = tree_type_from_field_type(right_side_ref->field,
+                                                right_bytes);
+    tree larger;
+    if(    TREE_INT_CST_LOW(TYPE_SIZE(left_type))
+         > TREE_INT_CST_LOW(TYPE_SIZE(right_type)) )
+      {
+      larger = left_type;
+      }
+    else
+      {
+      larger = right_type;
+      }
+    left_side  = get_binary_value_tree(larger,
+                                       NULL,
+                                       *left_side_ref);
+    right_side = get_binary_value_tree(larger,
+                                       NULL,
+                                       *right_side_ref);
+    IF( left_side, eq_op, right_side )
+      {
+      gg_assign(return_int, integer_zero_node);
+      }
+    ELSE
+      {
+      IF( left_side, lt_op, right_side )
+        {
+        gg_assign(return_int, integer_minusone_node);
+        }
+      ELSE
+        {
+        gg_assign(return_int, integer_one_node);
+        }
+      ENDIF
+      }
+    ENDIF
+    return;
+    }
 
   // Use SIZE128 when we need two 64-bit registers to hold the value.  All
   // others fit into 64-bit LONG with pretty much the same efficiency.
@@ -3807,7 +4003,7 @@ public:
 } label_verify;
 
 void
-parser_end_program(const char *prog_name  )
+parser_end_program(const char *prog_name )
   {
   if( gg_trans_unit.function_stack.size() )
     {
@@ -3952,7 +4148,7 @@ parser_init_list()
           "__gg__variables_to_init",
           gg_get_address_of(array),
           wsclear() ? build_string_literal(
-                                    1, 
+                                    1,
                                     reinterpret_cast<const char *>(wsclear()))
                     : null_pointer_node,
           NULL_TREE);
@@ -4133,11 +4329,7 @@ psa_FldLiteralN(struct cbl_field_t *field )
   uint32_t digits;
   int32_t  rdigits;
   uint64_t attr;
-  //// DUBNERHACK.  Necessary to prevent UAT lockup:
-  const char *source_text = field->data.original()
-                          ? field->data.original()
-                          : field->data.initial;
-  FIXED_WIDE_INT(128) value = dirty_to_binary(source_text,
+  FIXED_WIDE_INT(128) value = dirty_to_binary(field->data.original(),
                                               capacity,
                                               digits,
                                               rdigits,
@@ -4167,7 +4359,9 @@ psa_FldLiteralN(struct cbl_field_t *field )
   tree new_var_decl = gg_define_variable( var_type,
                                           base_name,
                                           vs_static);
-  DECL_INITIAL(new_var_decl) = wide_int_to_tree(var_type, value);
+  DECL_INITIAL(new_var_decl)  = wide_int_to_tree(var_type, value);
+  TREE_CONSTANT(new_var_decl) = 1;
+
   field->data_decl_node = new_var_decl;
 
   // Note that during compilation, the integer value, assuming it can be
@@ -6148,102 +6342,6 @@ vs_file_static);
   gg_free(ttbls);
   }
 
-static
-tree
-tree_type_from_field_type(cbl_field_t *field, size_t &nbytes)
-  {
-  /*  This routine is used to determine what action is taken with type of a
-      CALL ... USING <var> and the matching PROCEDURE DIVISION USING <var> of
-      a PROGRAM-ID or FUNCTION-ID
-      */
-  tree retval = COBOL_FUNCTION_RETURN_TYPE;
-  nbytes = 8;
-  if( field )
-    {
-    // This maps a Fldxxx to a C-style variable type:
-    switch(field->type)
-      {
-      case FldGroup:
-      case FldAlphanumeric:
-      case FldAlphaEdited:
-      case FldNumericEdited:
-        retval = CHAR_P;
-        nbytes = field->data.capacity();
-        break;
-
-      case FldNumericDisplay:
-      case FldNumericBinary:
-      case FldPacked:
-      if( field->data.digits > 18 )
-          {
-          retval = UINT128;
-          nbytes = 16;
-          }
-        else
-          {
-          retval = SIZE_T;
-          nbytes = 8;
-          }
-        break;
-
-      case FldNumericBin5:
-      case FldIndex:
-      case FldPointer:
-        if( field->data.capacity() > 8 )
-          {
-          retval = UINT128;
-          nbytes = 16;
-          }
-        else
-          {
-          retval = SIZE_T;
-          nbytes = 8;
-          }
-        break;
-
-      case FldFloat:
-        if( field->data.capacity() == 8 )
-          {
-          retval = DOUBLE;
-          nbytes = 8;
-          }
-        else if( field->data.capacity() == 4 )
-          {
-          retval = FLOAT;
-          nbytes = 4;
-          }
-        else
-          {
-          retval = FLOAT128;
-          nbytes = 16;
-          }
-        break;
-
-      case FldLiteralN:
-        // Assume a 64-bit signed integer.  This happens for GOBACK STATUS 101,
-        // the like
-        retval = LONG;
-        nbytes = 8;
-        break;
-
-      default:
-        cbl_internal_error(  "%s: Invalid field type %s:",
-                __func__,
-                cbl_field_type_str(field->type));
-        break;
-      }
-    if( retval == SIZE_T && field->attr & signable_e )
-      {
-      retval = SSIZE_T;
-      }
-    if( retval == UINT128 && field->attr & signable_e )
-      {
-      retval = INT128;
-      }
-    }
-  return retval;
-  }
-
 static void
 restore_local_variables()
   {
@@ -6313,8 +6411,8 @@ void parser_sleep(const cbl_refer_t &seconds)
   }
 
 void
-parser_exit_program(void)  // exits back to COBOL only, else continue
-  {
+parser_exit_program()
+  { // exits back to COBOL only, else continue
   static cbl_label_t this_program = {};
   static cbl_refer_t magic_refer(&this_program, false);
   parser_exit( magic_refer );
@@ -6328,7 +6426,8 @@ parser_exit_program(void)  // exits back to COBOL only, else continue
 
 static
 void
-program_end_stuff(cbl_refer_t refer, ec_type_t ec)
+program_end_stuff(cbl_refer_t refer,
+                  ec_type_t ec)
   {
   // This is the moral equivalent of a C "return xyz;".
 
@@ -6416,7 +6515,8 @@ program_end_stuff(cbl_refer_t refer, ec_type_t ec)
   }
 
 void
-parser_exit( const cbl_refer_t& refer, ec_type_t ec )
+parser_exit( const cbl_refer_t& refer,
+             ec_type_t ec )
   {
   Analyze();
   SHOW_PARSE
@@ -7012,7 +7112,14 @@ establish_using(size_t nusing,
       tree par_type = tree_type_from_field_type(args[i].refer.field, nbytes);
       if( par_type == FLOAT )
         {
-        par_type = SSIZE_T;
+        if( nbytes == 16 )
+          {
+          par_type = INT128;
+          }
+        else
+          {
+          par_type = SSIZE_T;
+          }
         }
       if( par_type == DOUBLE )
         {
@@ -7087,56 +7194,6 @@ establish_using(size_t nusing,
 
       // It makes more sense if you don't think about it too hard.
 
-      // We need to be able to restore prior arguments when doing recursive
-      // calls:
-      IF( member(args[i].refer.field->var_decl_node, "data"),
-          ne_op,
-          gg_cast(UCHAR_P, null_pointer_node) )
-        {
-        gg_call(VOID,
-                "__gg__push_local_variable",
-                gg_get_address_of(args[i].refer.field->var_decl_node),
-                NULL_TREE);
-        }
-      ELSE
-        ENDIF
-
-      tree base = gg_define_variable(UCHAR_P);
-      gg_assign(rt_i, build_int_cst_type(INT, i));
-      //gg_printf("The rt_i counter is %d\n", rt_i, NULL_TREE);
-      IF( rt_i, lt_op , var_decl_call_parameter_count )
-        {
-        if( i == 0 )
-          {
-          // This is the first parameter.
-          parameter = DECL_ARGUMENTS(current_function->function_decl);
-          }
-        else
-          {
-          // These are subsequent parameters
-          parameter = TREE_CHAIN(parameter);
-          }
-        gg_assign(base, gg_cast(UCHAR_P, parameter));
-
-        if( args[i].refer.field->attr & any_length_e )
-          {
-          // gg_printf("side channel: Length of \"%s\" is %ld\n",
-                    // member(args[i].refer.field->var_decl_node, "name"),
-                    // gg_array_value(var_decl_call_parameter_lengths, rt_i),
-                    // NULL_TREE);
-
-          // Get the length from the global lengths[] side channel.  Don't
-          // forget to use the length mask on the table value.
-          gg_assign(member(args[i].refer.field->var_decl_node, "capacity"),
-                    gg_array_value(var_decl_call_parameter_lengths, rt_i));
-          }
-        }
-      ELSE
-        {
-        gg_assign(base, gg_cast(UCHAR_P, null_pointer_node));
-        }
-        ENDIF
-
       // Arriving here means that we are processing an instruction like
       // this:
       // PROCEDURE DIVISION USING using[0] using[1] ... using using[nusing-1]
@@ -7145,6 +7202,7 @@ establish_using(size_t nusing,
       // an OTHER-TO-COBOL call and the var_decl_call_parameter_lengths array
       // is not valid
 
+      // Sort out the USING BY; it can be BY REFERENCE or BY VALUE:
       cbl_ffi_crv_t crv = args[i].crv;
       cbl_field_t *new_var = args[i].refer.field;
 
@@ -7163,46 +7221,158 @@ establish_using(size_t nusing,
           }
         }
 
+      // We need to be able to restore prior arguments when doing recursive
+      // calls:
+      IF( member(args[i].refer.field->var_decl_node, "data"),
+          ne_op,
+          gg_cast(UCHAR_P, null_pointer_node) )
+        {
+        gg_call(VOID,
+                "__gg__push_local_variable",
+                gg_get_address_of(args[i].refer.field->var_decl_node),
+                NULL_TREE);
+        }
+      ELSE
+        ENDIF
+
+      if( crv == by_reference_e )
+        {
+        // The passed parameter, if it exists, is a pointer to a COBOL
+        // variable's data area
+        tree reference = gg_define_variable(UCHAR_P);
+        gg_assign(rt_i, build_int_cst_type(INT, i));
+        IF( rt_i, lt_op , var_decl_call_parameter_count )
+          {
+          if( i == 0 )
+            {
+            // This is the first parameter.
+            parameter = DECL_ARGUMENTS(current_function->function_decl);
+            }
+          else
+            {
+            // These are subsequent parameters
+            parameter = TREE_CHAIN(parameter);
+            }
+          gg_assign(reference, gg_cast(UCHAR_P, parameter));
+
+          if( args[i].refer.field->attr & any_length_e )
+            {
+            // gg_printf("side channel: Length of \"%s\" is %ld\n",
+                      // member(args[i].refer.field->var_decl_node, "name"),
+                      // gg_array_value(var_decl_call_parameter_lengths, rt_i),
+                      // NULL_TREE);
+
+            // Get the length from the global lengths[] side channel.  Don't
+            // forget to use the length mask on the table value.
+            gg_assign(member(args[i].refer.field->var_decl_node, "capacity"),
+                      gg_array_value(var_decl_call_parameter_lengths, rt_i));
+            }
+          }
+        ELSE
+          {
+          gg_assign(reference, gg_cast(UCHAR_P, null_pointer_node));
+          }
+        ENDIF
+        // 'parameter' is a reference, so it it becomes the data member of
+        // the cblc_field_t COBOL variable.
+        gg_assign(member(args[i].field()->var_decl_node, "data"), reference);
+
+        // We need to apply reference + offset to the LINKAGE variable
+        // and all of its children
+        propogate_linkage_offsets( args[i].field(), reference );
+        }
+
       if( crv == by_value_e )
         {
-        // 'parameter' is the 64-bit or 128-bit value that was placed on the stack
-
         size_t nbytes;
         tree_type_from_field_type(new_var, nbytes);
         tree parm = gg_define_variable(INT128);
+
+        tree value_type;
+        if( nbytes == 16 )
+          {
+          value_type = INT128;
+          }
+        else
+          {
+          value_type = SSIZE_T;
+          }
+
+        // 'parameter' is the 64-bit or 128-bit value that was placed on the stack
+        tree value = gg_define_variable(value_type);
+
+        gg_assign(rt_i, build_int_cst_type(INT, i));
+        IF( rt_i, lt_op , var_decl_call_parameter_count )
+          {
+          if( i == 0 )
+            {
+            // This is the first parameter.
+            parameter = DECL_ARGUMENTS(current_function->function_decl);
+            }
+          else
+            {
+            // These are subsequent parameters
+            parameter = TREE_CHAIN(parameter);
+            }
+          gg_assign(value, gg_cast(value_type, parameter));
+          gg_memcpy(gg_get_address_of(value),
+                    gg_get_address_of(parameter),
+                    build_int_cst_type(SIZE_T, nbytes));
+
+          if( args[i].refer.field->attr & any_length_e )
+            {
+            // gg_printf("side channel: Length of \"%s\" is %ld\n",
+                      // member(args[i].refer.field->var_decl_node, "name"),
+                      // gg_array_value(var_decl_call_parameter_lengths, rt_i),
+                      // NULL_TREE);
+
+            // Get the length from the global lengths[] side channel.  Don't
+            // forget to use the length mask on the table value.
+            gg_assign(member(args[i].refer.field->var_decl_node, "capacity"),
+                      gg_array_value(var_decl_call_parameter_lengths, rt_i));
+            }
+          }
+        ELSE
+          {
+          gg_assign(value, gg_cast(value_type, integer_zero_node));
+          }
+        ENDIF
 
         if( nbytes <= 8 )
           {
           // Our input is a 64-bit number
           if( new_var->attr & signable_e )
             {
-            IF( gg_bitwise_and( gg_cast(SIZE_T, base),
+            IF( gg_bitwise_and( gg_cast(SIZE_T, value),
                                 build_int_cst_type(SIZE_T, 0x8000000000000000ULL)),
                 ne_op,
                 gg_cast(SIZE_T, integer_zero_node) )
               {
-              // Our input is a negative number
+              // Our input is a negative number.  Set it to -1, so that the
+              // eight high-order bytes are 0xFF
               gg_assign(parm, gg_cast(INT128, integer_minus_one_node));
               }
             ELSE
               {
-              // Our input is a positive number
+              // Our input is a positive number, so set it to zero, so that
+              // the eight high-order bytes are 0x00
               gg_assign(parm, gg_cast(INT128, integer_zero_node));
               }
             ENDIF
             }
           else
             {
-            // This is a 64-bit positive number:
+            // This is a 64-bit positive number: so set it to zero, so that
+              // the eight high-order bytes are 0x00
             gg_assign(parm, gg_cast(INT128, integer_zero_node));
             }
           }
-        // At this point, parm has been set to 0 or -1
 
+        // Now copy over the little-endian binary bytes, either 8 or 16 as
+        // necessary
         gg_memcpy(gg_get_address_of(parm),
-                  gg_get_address_of(base),
+                  gg_get_address_of(value),
                   build_int_cst_type(SIZE_T, nbytes));
-
         tree array_type = build_array_type_nelts(UCHAR, new_var->data.capacity());
         tree data_decl_node = gg_define_variable( array_type,
                                                   NULL,
@@ -7252,16 +7422,6 @@ establish_using(size_t nusing,
             }
           next_index += 1;
           }
-        }
-      else
-        {
-        // 'parameter' is a reference, so it it becomes the data member of
-        // the cblc_field_t COBOL variable.
-        gg_assign(member(args[i].field()->var_decl_node, "data"), base);
-
-        // We need to apply base + offset to the LINKAGE variable
-        // and all of its children
-        propogate_linkage_offsets( args[i].field(), base );
         }
       }
     }
@@ -8329,7 +8489,7 @@ parser_perform_conditional( struct cbl_perform_tgt_t *tgt )
 
   // The next instructions that the parser will give us are the conditional
   // calculation, so the first thing that goes down is the condover:
-  /* The following NOP is needed to make NEXT OVER PERFORM BEFORE/AFTER UNTIL 
+  /* The following NOP is needed to make NEXT OVER PERFORM BEFORE/AFTER UNTIL
      behaves properly.  */
   insert_nop(106);
   gg_append_statement(tgt->addresses.condover[i].go_to);
@@ -8410,7 +8570,7 @@ perform_outofline_before_until(struct cbl_perform_tgt_t *tgt,
   create_iline_address_pairs(tgt);
 
   // Tag the top of the perform
-  
+
   gg_append_statement(tgt->addresses.top.label);
 
   // Go do the conditional calculation:
@@ -9670,7 +9830,7 @@ parser_file_add(struct cbl_file_t *file)
     }
   if( varies.max < symbol_file_record(file)->data.capacity())
     {
-    const charmap_t *charmap = 
+    const charmap_t *charmap =
                      __gg__get_charmap(current_encoding(display_encoding_e));
     varies.min *= charmap->stride();
     varies.max *= charmap->stride();
@@ -13297,8 +13457,7 @@ create_and_call(size_t narg,
             if( !(args[i].refer.field->attr & intermediate_e) )
               {
               // All temporaries are SIZE_T
-              if( args[i].refer.field->type == FldFloat
-                  && args[i].refer.field->data.capacity() == 16 )
+              if( args[i].refer.field->type == FldFloat )
                 {
                 as_int128 = true;
                 }
@@ -15646,7 +15805,7 @@ mh_source_is_group( const cbl_refer_t &destref,
                     const TREEPLET    &tsrc)
   {
   bool retval = false;
- charmap_t *charmap = __gg__get_charmap(destref.field->codeset.encoding);
+  charmap_t *charmap = __gg__get_charmap(destref.field->codeset.encoding);
   if(   sourceref.field->type == FldGroup && !(destref.field->attr & rjust_e)
      && sourceref.field->codeset.encoding == destref.field->codeset.encoding
      && charmap->stride() == 1)
@@ -15668,7 +15827,7 @@ mh_source_is_group( const cbl_refer_t &destref,
       }
     ELSE
       {
-      // There are too-few source bytes:
+      // There are too few source bytes:
       int dest_space = charmap->mapped_character(ascii_space);
       gg_memset(tdest, build_int_cst_type(INT, dest_space), dbytes);
       gg_memcpy(tdest, tsource, sbytes);
@@ -15802,38 +15961,91 @@ mh_source_is_literalA(const cbl_refer_t &destref,
         }
       }
 
-    // If the source is flagged ALL, or if we are setting the destination to
-    // a figurative constant, pass along the ALL bit:
-    int rounded_parameter = rounded
-                           | ((sourceref.all || figconst ) ? REFER_ALL_BIT : 0);
-
-    if( size_error )
+    // Check to see if we can do a simple alphanumeric-to-alphanumeric move
+    if( (   destref.field->type == FldAlphanumeric
+         || destref.field->type == FldGroup )
+       && !(destref.field->attr & any_length_e)
+       && !sourceref.all
+       && !size_error)
       {
-      gg_assign(size_error,
-                gg_call_expr( INT,
-                              "__gg__move_literala",
-                              gg_get_address_of(destref.field->var_decl_node),
-                              refer_offset(destref),
-                              refer_size_dest(destref),
-                              build_int_cst_type(INT, rounded_parameter),
-                              build_string_literal(outlength,
-                                                   buffer),
-                              build_int_cst_type( SIZE_T, outlength),
-                              NULL_TREE));
+      // A simple alpha-to-alpha move is possible
+      size_t dest_bytes = destref.field->data.capacity();
+      // We have 'outlength' bytes in 'buffer' that need to go to
+      // destref.field->data.capacity() bytes at destref.field->data.
+      char *src = static_cast<char *>(xmalloc(dest_bytes));
+      size_t src_bytes = std::min(outlength, dest_bytes);
+      charmap_t *charmap = __gg__get_charmap(destref.field->codeset.encoding);
+      charmap->memset(src, charmap->mapped_character(ascii_space), dest_bytes);
+
+      if( destref.field->attr & rjust_e )
+        {
+        size_t fill = 0;
+        if( src_bytes < dest_bytes )
+          {
+          fill = dest_bytes - src_bytes;
+          }
+        memcpy(src+fill, buffer+outlength-src_bytes, src_bytes);
+        }
+      else
+        {
+        memcpy(src, buffer, src_bytes);
+        }
+      // src is now the desired string, space-filled if necessary on the right,
+      // (or on the left, for rjust_e destinations).
+
+      if( refer_is_clean(destref) )
+        {
+        gg_memcpy(member(destref.field->var_decl_node, "data"),
+                  build_string_literal(dest_bytes, src),
+                  build_int_cst_type(SIZE_T, dest_bytes));
+        }
+      else
+        {
+        gg_memcpy(gg_add(member(destref.field->var_decl_node, "data"),
+                         refer_offset(destref)),
+                  build_string_literal(dest_bytes, src),
+                  refer_size_dest(destref));
+        }
+      free(src);
       }
     else
       {
-                gg_call     ( INT,
-                              "__gg__move_literala",
-                              gg_get_address_of(destref.field->var_decl_node),
-                              refer_offset(destref),
-                              refer_size_dest(destref),
-                              build_int_cst_type(INT, rounded_parameter),
-                              build_string_literal(outlength,
-                                                   buffer),
-                              build_int_cst_type( SIZE_T, outlength),
-                              NULL_TREE);
+      // This is more complicated than a simple alpha-to-alpha move
+
+      // If the source is flagged ALL, or if we are setting the destination to
+      // a figurative constant, pass along the ALL bit:
+      int rounded_parameter = rounded
+                             | ((sourceref.all || figconst ) ? REFER_ALL_BIT : 0);
+
+      if( size_error )
+        {
+        gg_assign(size_error,
+                  gg_call_expr( INT,
+                                "__gg__move_literala",
+                                gg_get_address_of(destref.field->var_decl_node),
+                                refer_offset(destref),
+                                refer_size_dest(destref),
+                                build_int_cst_type(INT, rounded_parameter),
+                                build_string_literal(outlength,
+                                                     buffer),
+                                build_int_cst_type( SIZE_T, outlength),
+                                NULL_TREE));
+        }
+      else
+        {
+                  gg_call     ( INT,
+                                "__gg__move_literala",
+                                gg_get_address_of(destref.field->var_decl_node),
+                                refer_offset(destref),
+                                refer_size_dest(destref),
+                                build_int_cst_type(INT, rounded_parameter),
+                                build_string_literal(outlength,
+                                                     buffer),
+                                build_int_cst_type( SIZE_T, outlength),
+                                NULL_TREE);
+        }
       }
+
     if(    destref.refmod.from
         || destref.refmod.len )
       {
@@ -15841,6 +16053,118 @@ mh_source_is_literalA(const cbl_refer_t &destref,
       gg_attribute_bit_clear(destref.field, refmod_e);
       }
     moved = true;
+    }
+  return moved;
+  }
+
+static bool
+mh_alpha_to_alpha(const cbl_refer_t &destref,
+                  const cbl_refer_t &sourceref,
+                        cbl_round_t /*rounded*/,
+                        tree        size_error)
+  {
+  bool moved = false;
+  // If a bunch of conditions are met, we can do a move without resorting to
+  // the library.
+  if(   sourceref.field->type == FldAlphanumeric
+     && destref.field->type   == FldAlphanumeric
+     && !size_error
+     && sourceref.field->codeset.encoding == destref.field->codeset.encoding
+     && !destref.refmod.from
+     && !destref.refmod.len
+     && !(destref.field->attr   & rjust_e)
+     && !(sourceref.field->attr & any_length_e)
+     && !(destref.field->attr   & any_length_e)
+     && !(sourceref.field->attr & intermediate_e)
+     && !sourceref.all
+     )
+    {
+    // We are in a position to simply move bytes from the source to the dest.
+    if( refer_is_clean(sourceref) && refer_is_clean(destref) )
+      {
+      // Source and destination are both clean
+      if( destref.field->data.capacity() <= sourceref.field->data.capacity() )
+        {
+        // This is the simplest case of all
+        gg_memcpy(member(  destref.field->var_decl_node, "data"),
+                  member(sourceref.field->var_decl_node, "data"),
+                  build_int_cst_type(SIZE_T, destref.field->data.capacity()));
+        moved = true;
+        }
+      else
+        {
+        // This is a tad more complicated.  The source is too short, so we need
+        // to copy over what we can...
+        gg_memcpy(member(  destref.field->var_decl_node, "data"),
+                 member(sourceref.field->var_decl_node, "data"),
+                 build_int_cst_type(SIZE_T, sourceref.field->data.capacity()));
+        // And then space-fill the rest:
+        size_t fill_bytes =
+            destref.field->data.capacity() - sourceref.field->data.capacity();
+
+        // ...and then create a memory area with the fill spaces...
+        char *spaces = static_cast<char *>(xmalloc(fill_bytes));
+        charmap_t *charmap =__gg__get_charmap(destref.field->codeset.encoding);
+        charmap->memset(spaces,
+                        charmap->mapped_character(ascii_space),
+                        fill_bytes);
+        // ...and then copy those spaces into place.
+        gg_memcpy(
+          gg_add(member(destref.field->var_decl_node, "data"),
+                 build_int_cst_type(SIZE_T, sourceref.field->data.capacity())),
+          build_string_literal(fill_bytes, spaces),
+          build_int_cst_type(SIZE_T, fill_bytes));
+        free(spaces);
+        moved = true;
+        }
+      }
+    else
+      {
+      // Either the source or the dest is a table or refmod, so we need to do
+      // more work.
+      tree source_data = gg_define_variable(UCHAR_P);
+      tree source_len  = gg_define_variable(SIZE_T);
+
+      tree dest_data = gg_define_variable(UCHAR_P);
+      tree dest_len  = gg_define_variable(SIZE_T);
+
+      gg_assign(source_data,
+                gg_add(member(sourceref.field->var_decl_node, "data"),
+                       refer_offset(sourceref)));
+      gg_assign(source_len, refer_size_source(sourceref));
+
+      gg_assign(dest_data,
+                gg_add(member(destref.field->var_decl_node, "data"),
+                       refer_offset(destref)));
+      gg_assign(dest_len, refer_size_dest(destref));
+      IF( source_len, ge_op, dest_len )
+        {
+        // The source has enough (or more) bytes to fill the destination:
+        gg_memcpy(dest_data, source_data, dest_len);
+        }
+      ELSE
+        {
+        // The source data is too short.  We need to copy over what we have...
+        gg_memcpy(dest_data, source_data, source_len);
+
+        // And then right-fill the remainder with spaces. Create a buffer with
+        // more than enough spaces for our purposes:
+        size_t fill_bytes = destref.field->data.capacity();
+        char *spaces = static_cast<char *>(xmalloc(fill_bytes));
+        charmap_t *charmap =__gg__get_charmap(destref.field->codeset.encoding);
+        charmap->memset(spaces,
+                        charmap->mapped_character(ascii_space),
+                        fill_bytes);
+        // And then copy enough of those spaces into place.
+        gg_memcpy(gg_add(dest_data, source_len),
+                  build_string_literal(fill_bytes, spaces),
+                  gg_subtract(dest_len, source_len));
+        free(spaces);
+        }
+      ENDIF
+
+      moved = true;
+      }
     }
   return moved;
   }
@@ -15873,7 +16197,6 @@ move_helper(tree size_error,        // This is an INT
 
   tree st_data = NULL_TREE;
   tree st_size = NULL_TREE;
-
   if( restore_on_error )
     {
     // We are creating a copy of the original destination in case we clobber it
@@ -15895,12 +16218,6 @@ move_helper(tree size_error,        // This is an INT
     gg_memcpy(stash,
               st_data,
               st_size);
-    }
-
-  if(     (sourceref.field->attr & (linkage_e | based_e))
-      ||  (  destref.field->attr & (linkage_e | based_e)) )
-    {
-    //goto dont_be_clever; this will go through to the default.
     }
 
   // if( !moved ) // commented out to quiet cppcheck
@@ -15954,6 +16271,14 @@ move_helper(tree size_error,        // This is an INT
                                   sourceref,
                                   rounded,
                                   size_error);
+    }
+
+  if( !moved )
+    {
+    moved = mh_alpha_to_alpha(destref,
+                              sourceref,
+                              rounded,
+                              size_error);
     }
 
   if( !moved )
@@ -16462,12 +16787,20 @@ psa_new_var_decl(cbl_field_t *new_var, const char *external_record_base)
               && new_var->type != FldLiteralA
               && new_var->type != FldLiteralN )
       {
-//      new_var_decl = gg_define_variable(  cblc_field_type_node,
-//                                          base_name,
-//                                          vs_static);
+      gg_variable_scope_t scope = vs_stack;
+      if( new_var->type == FldAlphanumeric )
+        {
+        // This has to be static, because we are putting the actual memory
+        // on the heap.  But if we put the cblc_field_t on the stack inside
+        // of a condition, or in a loop, we just keep recreating the field
+        // without getting freeing the memory.  Eventually, with perhaps a
+        // two-pass compiler, we'll be able to create the stack cblc_field_t
+        // once per program-id.
+        scope = vs_static;
+        }
       new_var_decl = gg_define_variable(  cblc_field_type_node,
                                           base_name,
-                                          vs_stack);
+                                          scope);
       SET_DECL_MODE(new_var_decl, BLKmode);
       }
     else
@@ -16659,7 +16992,9 @@ parser_symbol_add(struct cbl_field_t *new_var )
         || new_var->type == FldLiteralA
         )
       {
-      if( new_var->data.initial && new_var->data.capacity() )
+      if(    new_var->data.initial
+          && new_var->data.capacity()
+          && !(new_var->attr & intermediate_e) )
         {
         SHOW_PARSE_INDENT
         for(size_t i=0; i<new_var->data.capacity(); i++)
@@ -16691,29 +17026,7 @@ parser_symbol_add(struct cbl_field_t *new_var )
 
   if( new_var->var_decl_node )
     {
-    if( new_var->type != FldConditional )
-      {
-      // There is a possibility when re-using variables that a temporary that
-      // was created at compile time might not have a data pointer at run time.
-      if( new_var->attr & (intermediate_e) )
-        {
-        IF( member(new_var->var_decl_node, "allocated"),
-            lt_op,
-            member(new_var->var_decl_node, "capacity") )
-          {
-          gg_free(member(new_var, "data"));
-          gg_assign(member(new_var, "data"),
-                    gg_cast(UCHAR_P, gg_malloc(new_var->data.capacity())));
-          gg_assign(member(new_var, "allocated"),
-                    build_int_cst_type(SIZE_T, new_var->data.capacity()));
-          }
-        ELSE
-          {
-          }
-        ENDIF
-        }
-      }
-    else
+    if( new_var->type == FldConditional )
       {
       gg_assign(new_var->var_decl_node, boolean_false_node);
       }
@@ -17039,7 +17352,9 @@ parser_symbol_add(struct cbl_field_t *new_var )
      * 4.  cbl_field_data_t::capacity is 0 because it requires no working storage
      */
 
-    if( new_var->data.capacity() == 0
+    if(    new_var->data.capacity() == 0
+        && !(   new_var->type == FldAlphanumeric
+             && new_var->attr & intermediate_e)
         && new_var->level != 88
         && new_var->type  != FldClass
         && new_var->type  != FldLiteralN
@@ -17111,7 +17426,7 @@ parser_symbol_add(struct cbl_field_t *new_var )
           bytes_to_allocate = 1;
           }
 
-        if( !bytes_to_allocate )
+        if( !bytes_to_allocate && !(new_var->attr & intermediate_e) )
           {
           cbl_internal_error( "%<bytes_to_allocate%> is zero for %s (symbol number "
                               HOST_SIZE_T_PRINT_DEC ")",
@@ -17137,49 +17452,60 @@ parser_symbol_add(struct cbl_field_t *new_var )
             }
           }
 
-        if( bytes_to_allocate )
+        if(   new_var->attr & intermediate_e
+           && new_var->type == FldAlphanumeric )
           {
-          // We need a unique name for the allocated data for this COBOL variable:
-          char achDataName[256];
-          if( new_var->attr & external_e )
+          // We don't allocate here for intermediates.  We instead use
+          // malloc() in the library when a run-time value is assigned to this
+          // variable
+          data_area = null_pointer_node;
+          }
+        else
+          {
+          if( bytes_to_allocate )
             {
-            sprintf(achDataName, "%s", new_var->name);
-            }
-          else if( new_var->name[0] == '_' )
-            {
-            // Avoid doubling up on leading underscore
-            sprintf(achDataName,
-                    "%s_data_" HOST_SIZE_T_PRINT_UNSIGNED,
-                    new_var->name,
-                    (fmt_size_t)sv_data_name_counter++);
-            }
-          else
-            {
-            sprintf(achDataName,
-                    "_%s_data_" HOST_SIZE_T_PRINT_UNSIGNED,
-                    new_var->name,
-                    (fmt_size_t)sv_data_name_counter++);
-            }
+            // We need a unique name for the allocated data for this COBOL variable:
+            char achDataName[256];
+            if( new_var->attr & external_e )
+              {
+              sprintf(achDataName, "%s", new_var->name);
+              }
+            else if( new_var->name[0] == '_' )
+              {
+              // Avoid doubling up on leading underscore
+              sprintf(achDataName,
+                      "%s_data_" HOST_SIZE_T_PRINT_UNSIGNED,
+                      new_var->name,
+                      (fmt_size_t)sv_data_name_counter++);
+              }
+            else
+              {
+              sprintf(achDataName,
+                      "_%s_data_" HOST_SIZE_T_PRINT_UNSIGNED,
+                      new_var->name,
+                      (fmt_size_t)sv_data_name_counter++);
+              }
 
-          if( new_var->attr & external_e )
-            {
-            tree array_type = build_array_type_nelts(UCHAR, bytes_to_allocate);
-            new_var->data_decl_node = gg_define_variable(
-                                array_type,
-                                achDataName,
-                                vs_external);
-            data_area = gg_get_address_of(new_var->data_decl_node);
-            }
-          else
-            {
-            gg_variable_scope_t vs_scope = (new_var->attr & intermediate_e)
-                                            ? vs_stack : vs_static ;
-            tree array_type = build_array_type_nelts(UCHAR, bytes_to_allocate);
-            new_var->data_decl_node = gg_define_variable(
-                                array_type,
-                                achDataName,
-                                vs_scope);
-            data_area = gg_get_address_of(new_var->data_decl_node);
+            if( new_var->attr & external_e )
+              {
+              tree array_type = build_array_type_nelts(UCHAR, bytes_to_allocate);
+              new_var->data_decl_node = gg_define_variable(
+                                  array_type,
+                                  achDataName,
+                                  vs_external);
+              data_area = gg_get_address_of(new_var->data_decl_node);
+              }
+            else
+              {
+              gg_variable_scope_t vs_scope = (new_var->attr & intermediate_e)
+                                              ? vs_stack : vs_static ;
+              tree array_type = build_array_type_nelts(UCHAR, bytes_to_allocate);
+              new_var->data_decl_node = gg_define_variable(
+                                  array_type,
+                                  achDataName,
+                                  vs_scope);
+              data_area = gg_get_address_of(new_var->data_decl_node);
+              }
             }
           }
         }
@@ -17203,7 +17529,8 @@ parser_symbol_add(struct cbl_field_t *new_var )
     free(level_88_string);
     free(class_string);
 
-    if(  !(new_var->attr & ( linkage_e | based_e)) )
+    if(    !(new_var->attr & ( linkage_e | based_e))
+        && !(new_var->type == FldLiteralN) )
       {
       static const bool explicitly = false;
       static const bool just_once = true;
