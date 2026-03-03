@@ -1898,6 +1898,7 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
 		&& (regno & 1) == 0);
     }
 
+<<<<<<< HEAD
   if (mode == TDOmode)
     {
       if (!TARGET_DENSE_MATH)
@@ -1914,6 +1915,9 @@ rs6000_hard_regno_mode_ok_uncached (int regno, machine_mode mode)
 
   /* No other types other than XOmode or TDOmode can go in dense math
      registers.  */
+=======
+  /* No other types other than XOmode can go in dense math registers.  */
+>>>>>>> d4004c1d65f (Add support for dense math registers.)
   if (DM_REGNO_P (regno))
     return 0;
 
@@ -2692,7 +2696,11 @@ rs6000_setup_reg_addr_masks (void)
 	  /* Special case dense math registers.  */
 	  if (rc == RELOAD_REG_DMR)
 	    {
+<<<<<<< HEAD
 	      if (TARGET_DENSE_MATH && (m2 == XOmode || m2 == TDOmode))
+=======
+	      if (TARGET_DENSE_MATH && m2 == XOmode)
+>>>>>>> d4004c1d65f (Add support for dense math registers.)
 		{
 		  addr_mask = RELOAD_REG_VALID;
 		  reg_addr[m].addr_mask[rc] = addr_mask;
