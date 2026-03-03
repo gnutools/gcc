@@ -83,7 +83,6 @@
 #define POWER11_MASKS_SERVER (ISA_3_1_MASKS_SERVER			\
 			      | OPTION_MASK_POWER11)
 
-/* -mcpu=future flags.
 
    During the development of the power10 support for GCC, using load/store
    vector pair instructions for string operations was turned off by default,
