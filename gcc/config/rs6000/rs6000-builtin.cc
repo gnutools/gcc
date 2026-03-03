@@ -495,6 +495,8 @@ const char *rs6000_type_string (tree type_node)
     return "__vector_pair";
   else if (type_node == vector_quad_type_node)
     return "__vector_quad";
+  else if (type_node == dm1024_type_node)
+    return "__dm1024";
 
   return "unknown";
 }
@@ -780,6 +782,21 @@ rs6000_init_builtins (void)
 					  "__vector_quad");
   t = build_qualified_type (vector_quad_type_node, TYPE_QUAL_CONST);
   ptr_vector_quad_type_node = build_pointer_type (t);
+
+  /* For TDOmode (1,024 bit dense math accumulators), don't use an alignment of
+     1,024, use 512.  TDOmode loads and stores are always broken up into 2
+     vector pair loads or stores.  In addition, we don't have support for
+     aligning the stack to 1,024 bits.  */
+  dm1024_type_node = make_node (OPAQUE_TYPE);
+  SET_TYPE_MODE (dm1024_type_node, TDOmode);
+  TYPE_SIZE (dm1024_type_node) = bitsize_int (GET_MODE_BITSIZE (TDOmode));
+  TYPE_PRECISION (dm1024_type_node) = GET_MODE_BITSIZE (TDOmode);
+  TYPE_SIZE_UNIT (dm1024_type_node) = size_int (GET_MODE_SIZE (TDOmode));
+  SET_TYPE_ALIGN (dm1024_type_node, 512);
+  TYPE_USER_ALIGN (dm1024_type_node) = 0;
+  lang_hooks.types.register_builtin_type (dm1024_type_node, "__dm1024");
+  t = build_qualified_type (dm1024_type_node, TYPE_QUAL_CONST);
+  ptr_dm1024_type_node = build_pointer_type (t);
 
   tdecl = add_builtin_type ("__bool char", bool_char_type_node);
   TYPE_NAME (bool_char_type_node) = tdecl;
