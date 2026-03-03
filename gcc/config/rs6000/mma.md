@@ -408,7 +408,6 @@
    (set_attr "length" "*,*,16,*,*,*")
    (set_attr "max_prefixed_insns" "2,2,*,*,*,*")])
 
->>>>>>> 2a3e136a743 (MMA+: Remove unneeded vsx_assemble_pair define_expand)
 ;; We cannot update the two output registers atomically, so mark the output
 ;; as an early clobber so we don't accidentally clobber the input operands.  */
 
