@@ -395,19 +395,6 @@
    (set_attr "length" "*,*,16,*,*,*")
    (set_attr "max_prefixed_insns" "2,2,*,*,*,*")])
 
-(define_expand "vsx_assemble_pair"
-  [(match_operand:OO 0 "vsx_register_operand")
-   (match_operand:V16QI 1 "mma_assemble_input_operand")
-   (match_operand:V16QI 2 "mma_assemble_input_operand")]
-  "TARGET_MMA"
-{
-  rs6000_split_multireg_move (operands[0], operands[1]);
-  DONE;
-}
-  [(set_attr "type" "vecload,vecstore,veclogical,mma,mma,mma")
-   (set_attr "length" "*,*,16,*,*,*")
-   (set_attr "max_prefixed_insns" "2,2,*,*,*,*")])
-
 ;; We cannot update the two output registers atomically, so mark the output
 ;; as an early clobber so we don't accidentally clobber the input operands.  */
 
