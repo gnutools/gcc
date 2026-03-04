@@ -395,23 +395,10 @@
    (set_attr "length" "*,*,16,*,*,*")
    (set_attr "max_prefixed_insns" "2,2,*,*,*,*")])
 
-(define_expand "vsx_assemble_pair"
-  [(match_operand:OO 0 "vsx_register_operand")
-   (match_operand:V16QI 1 "mma_assemble_input_operand")
-   (match_operand:V16QI 2 "mma_assemble_input_operand")]
-  "TARGET_MMA"
-{
-  rtx src = gen_rtx_UNSPEC (OOmode,
-			    gen_rtvec (2, operands[1], operands[2]),
-			    UNSPEC_VSX_ASSEMBLE);
-  emit_move_insn (operands[0], src);
-  DONE;
-})
-
 ;; We cannot update the two output registers atomically, so mark the output
 ;; as an early clobber so we don't accidentally clobber the input operands.  */
 
-(define_insn_and_split "*vsx_assemble_pair"
+(define_insn_and_split "vsx_assemble_pair"
   [(set (match_operand:OO 0 "vsx_register_operand" "=&wa")
 	(unspec:OO [(match_operand:V16QI 1 "mma_assemble_input_operand" "mwa")
 		    (match_operand:V16QI 2 "mma_assemble_input_operand" "mwa")]
