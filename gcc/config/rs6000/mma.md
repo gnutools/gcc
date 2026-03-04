@@ -427,6 +427,18 @@
   DONE;
 })
 
+;; Move from VSX registers to DMR registers via two insert 512 bit
+;; instructions.
+(define_insn "dm_insert512"
+  [(set (match_operand:XO 0 "dense_math_operand" "=wD")
+       (unspec:XO [(match_operand:OO 1 "vsx_register_operand" "wa")
+		   (match_operand:OO 2 "vsx_register_operand" "wa")
+		  (match_operand 3 "const_0_to_1_operand")]
+		  UNSPEC_DM_INSERT512_UPPER))]
+  "TARGET_DENSE_MATH"
+  "dmxxinstdmr512 %0,%x1,%x2,%3"
+  [(set_attr "type" "mma")])
+
 (define_expand "mma_assemble_acc"
   [(match_operand:XO 0 "fpr_reg_operand")
    (match_operand:V16QI 1 "mma_assemble_input_operand")
@@ -435,11 +447,22 @@
    (match_operand:V16QI 4 "mma_assemble_input_operand")]
   "TARGET_MMA"
 {
-  rtx src = gen_rtx_UNSPEC_VOLATILE (XOmode,
-			    	     gen_rtvec (4, operands[1], operands[2],
-				       		operands[3], operands[4]),
-			    	     UNSPECV_MMA_ASSEMBLE);
-  emit_move_insn (operands[0], src);
+  if (TARGET_DENSE_MATH)
+    {
+      rtx vp0 = gen_reg_rtx (OOmode);
+      rtx vp1 = gen_reg_rtx (OOmode);
+      emit_insn (gen_vsx_assemble_pair (vp0, operands[1], operands[2]));
+      emit_insn (gen_vsx_assemble_pair (vp1, operands[3], operands[4]));
+      emit_insn (gen_dm_insert512 (operands[0], vp0, vp1, const0_rtx));
+    }
+  else
+    {
+      rtx src = gen_rtx_UNSPEC_VOLATILE (XOmode,
+			    	    	 gen_rtvec (4, operands[1], operands[2],
+				       		    operands[3], operands[4]),
+			    	     	 UNSPECV_MMA_ASSEMBLE);
+      emit_move_insn (operands[0], src);
+    }
   DONE;
 })
 
