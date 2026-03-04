@@ -5318,6 +5318,7 @@ eval_can_substitute (location_t loc, const constexpr_ctx *ctx,
 				"invalid argument to can_substitute",
 				fun, non_constant_p, jump_target);
       a = resolve_nondeduced_context (a, tf_warning_or_error);
+      a = convert_from_reference (a);
       TREE_VEC_ELT (rvec, i) = a;
     }
   if (DECL_TYPE_TEMPLATE_P (r) || DECL_TEMPLATE_TEMPLATE_PARM_P (r))
@@ -5398,6 +5399,7 @@ eval_substitute (location_t loc, const constexpr_ctx *ctx,
       if (DECL_FUNCTION_TEMPLATE_P (r))
 	r = ovl_make (r, NULL_TREE);
       ret = lookup_template_function (r, rvec);
+      ret = resolve_nondeduced_context (ret, tf_none);
     }
   return get_reflection_raw (loc, ret);
 }
@@ -6557,6 +6559,7 @@ class_members_of (location_t loc, const constexpr_ctx *ctx, tree r,
 		  tree actx, tree call, bool *non_constant_p,
 		  tree *jump_target, enum metafn_code kind, tree fun)
 {
+  r = TYPE_MAIN_VARIANT (r);
   if (kind == METAFN_MEMBERS_OF)
     {
       if (modules_p ())
@@ -8086,6 +8089,14 @@ consteval_only_p (tree t)
   if (!t)
     return false;
 
+  if (TREE_CODE (t) == TREE_VEC)
+    {
+      for (tree arg : tree_vec_range (t))
+	if (arg && consteval_only_p (arg))
+	  return true;
+      return false;
+    }
+
   /* We need the complete type otherwise we'd have no fields for class
      templates and thus come up with zilch for things like
        template<typename T>
@@ -8108,12 +8119,10 @@ check_out_of_consteval_use_r (tree *tp, int *walk_subtrees, void *pset)
 
   /* No need to look into types or unevaluated operands.  */
   if (TYPE_P (t)
-      || unevaluated_p (TREE_CODE (t))
+      || (unevaluated_p (TREE_CODE (t)) && !REFLECT_EXPR_P (t))
       /* Don't walk INIT_EXPRs, because we'd emit bogus errors about
 	 member initializers.  */
       || TREE_CODE (t) == INIT_EXPR
-      /* Don't walk BIND_EXPR_VARS.  */
-      || TREE_CODE (t) == BIND_EXPR
       /* And don't recurse on DECL_EXPRs.  */
       || TREE_CODE (t) == DECL_EXPR)
     {
@@ -8141,6 +8150,46 @@ check_out_of_consteval_use_r (tree *tp, int *walk_subtrees, void *pset)
       if (tree ret = cp_walk_tree (&vexpr, check_out_of_consteval_use_r, pset,
 				   (hash_set<tree> *) pset))
 	return ret;
+    }
+
+  if (TREE_CODE (t) == BIND_EXPR)
+    {
+      if (tree r = cp_walk_tree (&BIND_EXPR_BODY (t),
+				 check_out_of_consteval_use_r, pset,
+				 static_cast<hash_set<tree> *>(pset)))
+	return r;
+      /* Don't walk BIND_EXPR_VARS.  */
+      *walk_subtrees = false;
+      return NULL_TREE;
+    }
+
+  if (TREE_CODE (t) == IF_STMT)
+    {
+      if (IF_STMT_CONSTEVAL_P (t))
+	{
+	  if (tree r = cp_walk_tree (&ELSE_CLAUSE (t),
+				     check_out_of_consteval_use_r, pset,
+				     static_cast<hash_set<tree> *>(pset)))
+	    return r;
+	  /* Don't walk the consteval branch.  */
+	  *walk_subtrees = false;
+	  return NULL_TREE;
+	}
+      else if (IF_STMT_CONSTEXPR_P (t))
+	{
+	  if (tree r = cp_walk_tree (&THEN_CLAUSE (t),
+				     check_out_of_consteval_use_r, pset,
+				     static_cast<hash_set<tree> *>(pset)))
+	    return r;
+	  if (tree r = cp_walk_tree (&ELSE_CLAUSE (t),
+				     check_out_of_consteval_use_r, pset,
+				     static_cast<hash_set<tree> *>(pset)))
+	    return r;
+	  /* Don't walk the condition -- it's a manifestly constant-evaluated
+	     context.  */
+	  *walk_subtrees = false;
+	  return NULL_TREE;
+	}
     }
 
   /* Now check the type to see if we are dealing with a consteval-only

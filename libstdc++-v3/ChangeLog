@@ -1,3 +1,133 @@
+2026-03-03  Adam Wood  <adam.wood@mines.sdsmt.edu>
+
+	PR libstdc++/122217
+	* testsuite/27_io/filesystem/operations/copy_symlink/1.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/2.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/3.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/4.cc: New
+	test.
+
+2026-03-03  Arthur O'Dwyer  <arthur.j.odwyer@gmail.com>
+
+	PR libstdc++/119197
+	* include/std/expected (expected, expected<void, E>): Add
+	[[nodiscard]] to class.
+	* testsuite/20_util/expected/119197.cc: New test.
+
+2026-03-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/atomic (atomic<T*>::wait, atomic<T*>::notify_one)
+	(atomic<T*>::notify_all): Fix indentation.
+
+2026-03-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/regex_compiler.h: Adjust comments so that
+	standard references are specific to C++11.
+
+2026-03-02  François Dumont  <frs.dumont@gmail.com>
+
+	* include/debug/safe_unordered_container.h
+	(_Safe_unordered_container::_M_invalidate_locals): Remove.
+	(_Safe_unordered_container::_M_invalidate_all): Lock mutex while calling
+	_M_invalidate_if and _M_invalidate_locals.
+	(_Safe_unordered_container::_M_invalidate_all_if): New.
+	(_Safe_unordered_container::_M_invalidate): New.
+	(_Safe_unordered_container::_M_invalidate_if): Make private, add __scoped_lock
+	argument.
+	(_Safe_unordered_container::_M_invalidate_local_if): Likewise.
+	* include/debug/safe_unordered_container.tcc
+	(_Safe_unordered_container::_M_invalidate_if): Adapt and remove lock.
+	(_Safe_unordered_container::_M_invalidate_local_if): Likewise.
+	* include/debug/unordered_map
+	(unordered_map::erase(const_iterator, const_iterator)): Lock before loop on
+	iterators. Remove _M_check_rehashed call.
+	(unordered_map::_M_self): New.
+	(unordered_map::_M_invalidate): Remove.
+	(unordered_map::_M_erase): Adapt and remove _M_check_rehashed call.
+	(unordered_multimap::_M_erase(_Base_iterator, _Base_iterator)): New.
+	(unordered_multimap::erase(_Kt&&)): Use latter.
+	(unordered_multimap::erase(const key_type&)): Likewise.
+	(unordered_multimap::erase(const_iterator, const_iterator)):
+	Lock before loop on iterators. Remove _M_check_rehashed.
+	(unordered_multimap::_M_self): New.
+	(unordered_multimap::_M_invalidate): Remove.
+	(unordered_multimap::_M_erase): Adapt. Remove _M_check_rehashed call.
+	* include/debug/unordered_set
+	(unordered_set::erase(const_iterator, const_iterator)): Add lock before loop
+	for iterator invalidation. Remove _M_check_rehashed call.
+	(unordered_set::_M_self): New.
+	(unordered_set::_M_invalidate): Remove.
+	(unordered_set::_M_erase): Adapt and remove _M_check_rehashed call.
+	(unordered_multiset::_M_erase(_Base_iterator, _Base_iterator)): New.
+	(unordered_multiset::erase(_Kt&&)): Use latter.
+	(unordered_multiset::erase(const key_type&)): Likewise.
+	(unordered_multiset::erase(const_iterator, const_iterator)):
+	Lock before loop on iterators. Remove _M_check_rehashed.
+	(unordered_multiset::_M_self): New.
+	(unordered_multiset::_M_invalidate): Remove.
+	(unordered_multiset::_M_erase): Adapt. Remove _M_check_rehashed call.
+
+2026-03-02  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc:
+	Add dg-bogus check for warning.
+
+2026-03-02  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* include/std/streambuf (streambuf::gptr, streambuf::egptr)
+	(streambuf::gbump): Surround with pragma disabling -Wnull-dereference.
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc: Remove check for
+	warning being emitted.
+
+2026-02-28  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc: New test.
+
+2026-02-26  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* testsuite/29_atomics/atomic_ref/requirements_neg.cc: Add
+	using std::size_t.
+
+2026-02-26  Yuao Ma  <c8ef@outlook.com>
+
+	* include/bits/atomic_base.h (__atomic_base<_PTp*>::fetch_min,
+	__atomic_base<_PTp*>::fetch_max,
+	__atomic_ref<_Pt, false, false, true>::fetch_min,
+	__atomic_ref<_Pt, false, false, true>::fetch_max): Define new
+	functions.
+	* include/std/atomic (atomic<_Tp*>::fetch_min,
+	atomic<_Tp*>::fetch_max): Likewise.
+	(atomic_fetch_min_explicit, atomic_fetch_max_explicit,
+	atomic_fetch_min, atomic_fetch_max): Change parameter from
+	__atomic_base<_ITp>* to atomic<_Tp>*.
+	* testsuite/29_atomics/atomic/pointer_fetch_minmax.cc: New test.
+	* testsuite/29_atomics/atomic_ref/pointer_fetch_minmax.cc: New
+	test.
+
+2026-02-25  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/117404
+	* include/debug/map.h (extract, erase): Define overloads.
+	* include/debug/multimap.h: Same.
+	* include/debug/multiset.h: Same.
+	* include/debug/set.h: Same.
+	* include/debug/unordered_map: Same (2x).
+	* include/debug/unordered_set: Same (2x), rename some locals.
+
+2026-02-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* testsuite/23_containers/mdspan/at.cc: Updated guard.
+
+2026-02-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* testsuite/23_containers/mdspan/at.cc: Updated test.
+
 2026-02-23  Tomasz Kamiński  <tkaminsk@redhat.com>
 
 	* include/std/mdspan (__mdspan::__is_multi_index): Removed,

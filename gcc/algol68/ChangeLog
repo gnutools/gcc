@@ -1,3 +1,28 @@
+2026-02-27  James Bohl  <bohlj47@gmail.com>
+
+	* a68-low-prelude.cc (a68_lower_negate2): Annotate denotation
+	as being negated.
+	* a68-low-units.cc (a68_lower_denotation): Allow the full range
+	of negative values if the denotation is negated.
+	* a68-types.h (struct NODE_T): Add negated field.
+	(NEGATED): Define.
+	* a68-parser.cc (a68_new_node): Initialize NEGATED.
+
+2026-02-26  James Bohl  <bohlj47@gmail.com>
+
+	* a68-low-units.cc (a68_lower_denotation): Add error on
+	integral denotation overflow.
+
+2026-02-25  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-imports-archive.cc (Archive_file): Handle Darwin #1/NN
+	archive members.
+
+2026-02-25  Jose E. Marchesi  <jemarch@gnu.org>
+
+	* a68-low-units.cc (lower_subscript_for_trimmers): Do not revise
+	bounds if no trimscript.
+
 2026-02-23  Jose E. Marchesi  <jemarch@gnu.org>
 
 	* a68.h: Remove prototypes for *_width functions.

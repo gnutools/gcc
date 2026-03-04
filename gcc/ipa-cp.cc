@@ -5922,7 +5922,8 @@ ipcp_val_replacement_ok_p (vec<tree> &,
 {
   if (offset != -1)
     return false;
-  return (!known_contexts[index].useless_p ()
+  return (known_contexts.length () > (unsigned) index
+	  && !known_contexts[index].useless_p ()
 	  && known_contexts[index].equal_to (value));
 }
 

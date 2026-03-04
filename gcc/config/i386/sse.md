@@ -1744,7 +1744,7 @@
 	  (match_operand:<ssevecmode> 4 "const0_operand")
 	  (const_int 1)))]
   "TARGET_AVX512F"
-  "vmov<ssescalarmodesuffix>\t{%1, %0%{%3%}%N2|%0%{3%}%N2, %1}"
+  "vmov<ssescalarmodesuffix>\t{%1, %0%{%3%}%N2|%0%{%3%}%N2, %1}"
   [(set_attr "type" "ssemov")
    (set_attr "prefix" "evex")
    (set_attr "memory" "load")
@@ -4913,8 +4913,8 @@
 {
   int cmp_imm = INTVAL (operands[3]);
   rtx res = CONST0_RTX (<avx512fmaskmode>mode);
-  /* EQ/LE/NLT.  */
-  if (cmp_imm == 0 || cmp_imm == 2 || cmp_imm == 5)
+  /* EQ/LE/NLT/TRUE.  */
+  if (cmp_imm == 0 || cmp_imm == 2 || cmp_imm == 5 || cmp_imm == 7)
   {
     int nelts = GET_MODE_NUNITS (<MODE>mode);
     if (nelts >= 8)
@@ -7036,7 +7036,7 @@
 	  (match_dup 3)
 	  (const_int 1)))]
   "TARGET_AVX512F"
-  "vfmadd231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>3, %<iptr>2<round_op5>}"
+  "vfmadd231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>1, %<iptr>2<round_op5>}"
   [(set_attr "type" "ssemuladd")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<MODE>")])
@@ -7110,7 +7110,7 @@
 	  (match_dup 3)
 	  (const_int 1)))]
   "TARGET_AVX512F"
-  "vfmsub231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>3, %<iptr>2<round_op5>}"
+  "vfmsub231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>1, %<iptr>2<round_op5>}"
   [(set_attr "type" "ssemuladd")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<MODE>")])
@@ -7171,7 +7171,7 @@
 	  (match_dup 3)
 	  (const_int 1)))]
   "TARGET_AVX512F"
-  "vfnmadd231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>3, %<iptr>2<round_op5>}"
+  "vfnmadd231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>1, %<iptr>2<round_op5>}"
   [(set_attr "type" "ssemuladd")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<MODE>")])
@@ -7248,7 +7248,7 @@
 	  (match_dup 3)
 	  (const_int 1)))]
   "TARGET_AVX512F"
-  "vfnmsub231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>3, %<iptr>2<round_op5>}"
+  "vfnmsub231<ssescalarmodesuffix>\t{<round_op5>%2, %1, %0%{%4%}|%0%{%4%}, %<iptr>1, %<iptr>2<round_op5>}"
   [(set_attr "type" "ssemuladd")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<MODE>")])
@@ -12377,7 +12377,7 @@
   operands[2] = gen_lowpart (<ssescalarmode>mode, operands[2]);
 })
 
-;; vmovw clears also the higer bits
+;; vmovw clears also the higher bits
 (define_insn "vec_set<mode>_0"
   [(set (match_operand:VI2F_256_512 0 "register_operand" "=v,v,v")
 	(vec_merge:VI2F_256_512
@@ -12435,17 +12435,17 @@
   DONE;
 })
 
-(define_insn "avx512fp16_mov<mode>"
+(define_insn "*avx512fp16_mov<mode>"
   [(set (match_operand:V8_128 0 "register_operand" "=v,v")
 	(vec_merge:V8_128
 	  (match_operand:V8_128 2 "register_operand" "v,v")
 	  (match_operand:V8_128 1 "reg_or_0_operand" "v,C")
 	  (const_int 1)))]
   "TARGET_AVX512FP16
-  || (TARGET_AVX10_2 && const0_operand (operands[1], <MODE>mode))"
+   || (TARGET_AVX10_2 && const0_operand (operands[1], <MODE>mode))"
   "@
     vmovsh\t{%2, %1, %0|%0, %1, %2}
-    vmovw\t{%2, %0|%2, %0}"
+    vmovw\t{%2, %0|%0, %2}"
   [(set_attr "isa" "*,avx10_2")
    (set_attr "type" "ssemov")
    (set_attr "prefix" "evex")

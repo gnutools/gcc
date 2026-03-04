@@ -3107,7 +3107,8 @@ diagnose_failing_condition (tree bad, location_t cloc, bool show_expr_p,
   else if (maybe_diagnose_standard_trait (cloc, bad))
     ;
   else if (COMPARISON_CLASS_P (bad)
-	   && ARITHMETIC_TYPE_P (TREE_TYPE (TREE_OPERAND (bad, 0))))
+	   && (ARITHMETIC_TYPE_P (TREE_TYPE (TREE_OPERAND (bad, 0)))
+	       || REFLECTION_TYPE_P (TREE_TYPE (TREE_OPERAND (bad, 0)))))
     {
       tree op0 = fold_operand (TREE_OPERAND (bad, 0), ctx);
       tree op1 = fold_operand (TREE_OPERAND (bad, 1), ctx);

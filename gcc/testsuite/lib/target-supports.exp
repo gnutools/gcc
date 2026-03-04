@@ -13808,7 +13808,7 @@ proc check_effective_target_arm_v8_3a_complex_neon_ok_nocache { } {
     if { [istarget arm*-*-*] } {
 	set flag_opts {
 	    ""
-	    "-mcpu=unset -march=armv8.3-a+simd"
+	    "-mfpu=auto -mcpu=unset -march=armv8.3-a+simd"
 	    "-mfloat-abi=softfp -mfpu=auto -mcpu=unset -march=armv8.3-a+simd"
 	    "-mfloat-abi=hard -mfpu=auto -mcpu=unset -march=armv8.3-a+simd"
 	}
@@ -13911,7 +13911,7 @@ proc add_options_for_arm_v8_3a_fp16_complex_neon { flags } {
 
 proc check_effective_target_arm_v8_3a_complex_neon_hw { } {
     if { ![check_effective_target_arm_v8_3a_complex_neon_ok] } {
-	return 1;
+	return 0;
     }
     return [check_runtime arm_v8_3a_complex_neon_hw_available {
 	#include "arm_neon.h"

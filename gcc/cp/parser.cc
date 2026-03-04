@@ -31930,21 +31930,11 @@ cp_parser_base_specifier (cp_parser* parser)
   template_p = class_scope_p && cp_parser_optional_template_keyword (parser);
 
   if (typename_token && cp_lexer_peek_token (parser->lexer) != splice_token)
-    {
-      /* Emit deferred diagnostics for invalid typename keyword if
-	 cp_parser_nested_name_specifier_opt parsed splice-scope-specifier.  */
-      // TODO This error should be removed:
-      // struct A { struct B {}; };
-      // typename A::B b;
-      // is valid.
-      if (!processing_template_decl)
-	error_at (typename_token->location,
-		  "keyword %<typename%> not allowed outside of templates");
-      else
-	error_at (typename_token->location,
-		  "keyword %<typename%> not allowed in this context "
-		  "(the base class is implicitly a type)");
-    }
+    /* Emit deferred diagnostics for invalid typename keyword if
+       cp_parser_nested_name_specifier_opt parsed splice-scope-specifier.  */
+    error_at (typename_token->location,
+	      "keyword %<typename%> not allowed in this context "
+	      "(the base class is implicitly a type)");
 
   if (!parser->scope
       && cp_lexer_next_token_is_decltype (parser->lexer))
