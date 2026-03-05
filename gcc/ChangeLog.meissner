@@ -1,3 +1,79 @@
+==================== Branch work238, patch #2 ====================
+
+Use vector pair load/store for memcpy with -mcpu=future
+
+In the development for the power10 processor, GCC did not enable using the load
+vector pair and store vector pair instructions when optimizing things like
+memory copy.  This patch enables using those instructions if -mcpu=future is
+used.
+
+I have tested these patches on both big endian and little endian PowerPC
+servers, with no regressions.  Can I check these patchs into the trunk?
+
+2026-03-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): Enable using load
+	vector pair and store vector pair instructions for memory copy
+	operations.
+	(POWERPC_MASKS): Make the option for enabling using load vector pair and
+	store vector pair operations set and reset when the PowerPC processor is
+	changed.
+	* config/rs6000/rs6000.cc (rs6000_machine_from_flags): Disable
+	-mblock-ops-vector-pair from influencing .machine selection.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-3.c: New test.
+
+==================== Branch work238, patch #1 ====================
+
+Add -mcpu=future.
+
+This patch adds support for the -mcpu=future option. New processor features,
+that may or may not be supported in a future processor, will be supported in gcc
+under this option.  This option will be renamed to an actual future processor,
+whenever such a processor is announced.
+
+This is version 12 of the -mcpu=future patch.
+
+Can I check this patch into the GCC trunk?  I have built bootstrap
+builds on both a little endian Power10 system and a big endian Power9
+system and there were no regressions.  On the little endian Power10
+system, I built the last run using the --with-cpu=future configuration
+option.
+
+2026-03-05  Michael Meissner  <meissner@linux.ibm.com>
+
+gcc/
+
+	* config.gcc (powerpc*-*-*): Add support for supporting --with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if the user used the -mcpu=future option.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	_ARCH_FUTURE if -mcpu=future.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	(rs6000_cpu_opt_value): New entry for 'future' via the RS6000_CPU macro.
+	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): New macro.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (rs6000_machine_from_flags) If -mcpu=future,
+	set the .machine directive to "future".
+	(rs6000_opt_masks): Add entry for -mfuture.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if the user used the -mcpu=future option.
+	* config/rs6000/rs6000.opt (-mfuture): New option.
+	* doc/invoke.texi (IBM RS/6000 and PowerPC Options): Document
+	-mcpu=future.
+
+gcc/testsuite/
+
+	* gcc.target/powerpc/future-1.c: New test.
+	* gcc.target/powerpc/future-2.c: Likewise.
+
 ==================== Branch work238, baseline ====================
 
 2026-03-05   Michael Meissner  <meissner@linux.ibm.com>
