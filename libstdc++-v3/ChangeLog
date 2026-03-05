@@ -1,3 +1,138 @@
+2026-03-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/124363
+	* include/std/string_view: Adjust comment on #endif to match #if
+	condition.
+
+2026-03-04  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/117402
+	* include/debug/map.h (try_emplace (2x), insert_or_assign (2x)):
+	Define heterogeneous overloads, simplify existing overloads.
+	* include/debug/unordered_map: Same.
+	* include/debug/set.h (insert (2x)):
+	Define heterogeneous overloads.
+	* include/debug/unordered_set: Same.
+
+2026-03-04  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/117402
+	* include/bits/stl_map.h (operator[], at (2x), try_emplace (2x),
+	insert_or_assign (2x)): Add overloads.
+	* include/bits/unordered_map.h (operator[], at (2x),
+	try_emplace (2x), insert_or_assign (2x), bucket (2x)): Add overloads.
+	* include/bits/stl_set.h (insert (2x)): Add overloads.
+	* include/bits/unordered_set.h (insert (2x), bucket (2x)): Add overloads.
+	* include/bits/hashtable.h (_M_bucket_tr, _M_insert_tr): Define.
+	* include/bits/hashtable_policy.h (_M_at_tr (2x)): Define.
+	* include/bits/stl_tree.h (_M_emplace_here, _M_get_insert_unique_pos_tr,
+	_M_get_insert_hint_unique_pos_tr): Define new heterogeneous insertion
+	code path for set and map.
+	* include/bits/version.def (associative_heterogeneous_insertion):
+	Define.
+	* include/bits/version.h: Regenerate.
+	* include/std/map (__glibcxx_want_associative_heterogeneous_insertion):
+	Define macro.
+	* include/std/set: Same.
+	* include/std/unordered_map: Same.
+	* include/std/unordered_set: Same.
+	* testsuite/23_containers/map/modifiers/hetero/insert.cc: New tests.
+	* testsuite/23_containers/set/modifiers/hetero/insert.cc: Same.
+	* testsuite/23_containers/unordered_map/modifiers/hetero/insert.cc:
+	Same.
+	* testsuite/23_containers/unordered_multimap/modifiers/hetero/insert.cc:
+	Same.
+	* testsuite/23_containers/unordered_multiset/modifiers/hetero/insert.cc:
+	Same.
+	* testsuite/23_containers/unordered_set/modifiers/hetero/insert.cc:
+	Same.
+
+2026-03-03  Adam Wood  <adam.wood@mines.sdsmt.edu>
+
+	PR libstdc++/122217
+	* testsuite/27_io/filesystem/operations/copy_symlink/1.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/2.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/3.cc: New
+	test.
+	* testsuite/27_io/filesystem/operations/copy_symlink/4.cc: New
+	test.
+
+2026-03-03  Arthur O'Dwyer  <arthur.j.odwyer@gmail.com>
+
+	PR libstdc++/119197
+	* include/std/expected (expected, expected<void, E>): Add
+	[[nodiscard]] to class.
+	* testsuite/20_util/expected/119197.cc: New test.
+
+2026-03-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/std/atomic (atomic<T*>::wait, atomic<T*>::notify_one)
+	(atomic<T*>::notify_all): Fix indentation.
+
+2026-03-03  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/regex_compiler.h: Adjust comments so that
+	standard references are specific to C++11.
+
+2026-03-02  François Dumont  <frs.dumont@gmail.com>
+
+	* include/debug/safe_unordered_container.h
+	(_Safe_unordered_container::_M_invalidate_locals): Remove.
+	(_Safe_unordered_container::_M_invalidate_all): Lock mutex while calling
+	_M_invalidate_if and _M_invalidate_locals.
+	(_Safe_unordered_container::_M_invalidate_all_if): New.
+	(_Safe_unordered_container::_M_invalidate): New.
+	(_Safe_unordered_container::_M_invalidate_if): Make private, add __scoped_lock
+	argument.
+	(_Safe_unordered_container::_M_invalidate_local_if): Likewise.
+	* include/debug/safe_unordered_container.tcc
+	(_Safe_unordered_container::_M_invalidate_if): Adapt and remove lock.
+	(_Safe_unordered_container::_M_invalidate_local_if): Likewise.
+	* include/debug/unordered_map
+	(unordered_map::erase(const_iterator, const_iterator)): Lock before loop on
+	iterators. Remove _M_check_rehashed call.
+	(unordered_map::_M_self): New.
+	(unordered_map::_M_invalidate): Remove.
+	(unordered_map::_M_erase): Adapt and remove _M_check_rehashed call.
+	(unordered_multimap::_M_erase(_Base_iterator, _Base_iterator)): New.
+	(unordered_multimap::erase(_Kt&&)): Use latter.
+	(unordered_multimap::erase(const key_type&)): Likewise.
+	(unordered_multimap::erase(const_iterator, const_iterator)):
+	Lock before loop on iterators. Remove _M_check_rehashed.
+	(unordered_multimap::_M_self): New.
+	(unordered_multimap::_M_invalidate): Remove.
+	(unordered_multimap::_M_erase): Adapt. Remove _M_check_rehashed call.
+	* include/debug/unordered_set
+	(unordered_set::erase(const_iterator, const_iterator)): Add lock before loop
+	for iterator invalidation. Remove _M_check_rehashed call.
+	(unordered_set::_M_self): New.
+	(unordered_set::_M_invalidate): Remove.
+	(unordered_set::_M_erase): Adapt and remove _M_check_rehashed call.
+	(unordered_multiset::_M_erase(_Base_iterator, _Base_iterator)): New.
+	(unordered_multiset::erase(_Kt&&)): Use latter.
+	(unordered_multiset::erase(const key_type&)): Likewise.
+	(unordered_multiset::erase(const_iterator, const_iterator)):
+	Lock before loop on iterators. Remove _M_check_rehashed.
+	(unordered_multiset::_M_self): New.
+	(unordered_multiset::_M_invalidate): Remove.
+	(unordered_multiset::_M_erase): Adapt. Remove _M_check_rehashed call.
+
+2026-03-02  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc:
+	Add dg-bogus check for warning.
+
+2026-03-02  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/105580
+	* include/std/streambuf (streambuf::gptr, streambuf::egptr)
+	(streambuf::gbump): Surround with pragma disabling -Wnull-dereference.
+	* testsuite/24_iterators/istreambuf_iterator/105580.cc: Remove check for
+	warning being emitted.
+
 2026-02-28  Tomasz Kamiński  <tkaminsk@redhat.com>
 
 	PR libstdc++/105580
