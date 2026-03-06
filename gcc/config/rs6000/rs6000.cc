@@ -2949,6 +2949,9 @@ rs6000_init_hard_regno_mode_ok (bool global_init_p)
 
       if (TARGET_P9_VECTOR)
 	rs6000_vector_unit[V8HFmode] = VECTOR_VSX;
+
+      if (TARGET_POWER10)
+	rs6000_vector_unit[V8BFmode] = VECTOR_VSX;
     }
 
   /* DFmode, see if we want to use the VSX unit.  Memory is handled
