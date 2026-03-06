@@ -250,6 +250,7 @@ typedef struct {
   bool all_words_same;			/* Are the words all equal?  */
   bool all_half_words_same;		/* Are the half words all equal?  */
   bool all_bytes_same;			/* Are the bytes all equal?  */
+  machine_mode mode;			/* Original constant mode.  */
 } vec_const_128bit_type;
 
 extern bool vec_const_128bit_to_bytes (rtx, machine_mode,

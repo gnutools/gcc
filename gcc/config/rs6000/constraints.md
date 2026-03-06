@@ -219,6 +219,11 @@
   "An IEEE 128-bit constant that can be loaded into VSX registers."
   (match_operand 0 "easy_vector_constant_ieee128"))
 
+;; A negative 0 constant
+(define_constraint "eZ"
+  "A floating point -0.0 constant."
+  (match_operand 0 "minus_zero_constant"))
+
 ;; Floating-point constraints.  These two are defined so that insn
 ;; length attributes can be calculated exactly.
 
