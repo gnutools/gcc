@@ -587,9 +587,27 @@ rs6000_target_modify_macros (bool define_p, HOST_WIDE_INT flags)
   if (rs6000_cpu == PROCESSOR_CELL)
     rs6000_define_or_undefine_macro (define_p, "__PPU__");
 
-  /* Tell the user if we support the MMA instructions.  */
+  /* Tell the user if we support the MMA instructions.  Also tell them if we
+     have MMA with ISA 3.1 that uses accumulators overlaid over VSX registers
+     0..31 or if we have support with separate dense math accumulators.  */
   if ((flags & OPTION_MASK_MMA) != 0)
-    rs6000_define_or_undefine_macro (define_p, "__MMA__");
+    {
+      rs6000_define_or_undefine_macro (define_p, "__MMA__");
+      if ((flags & OPTION_MASK_DENSE_MATH) != 0)
+	{
+	  rs6000_define_or_undefine_macro (define_p, "__MMA_DENSE_MATH__");
+	  rs6000_define_or_undefine_macro (false, "__MMA_NO_DENSE_MATH__");
+	}
+      else
+	{
+	  rs6000_define_or_undefine_macro (false, "__MMA_DENSE_MATH__");
+	  rs6000_define_or_undefine_macro (define_p, "__MMA_NO_DENSE_MATH__");
+	}
+    }
+  /* Tell the user if we support the dense math registers for use with MMA and
+     cryptography.  */
+  if ((flags & OPTION_MASK_DENSE_MATH) != 0)
+    rs6000_define_or_undefine_macro (define_p, "__DENSE_MATH__");
   /* Whether pc-relative code is being generated.  */
   if ((flags & OPTION_MASK_PCREL) != 0)
     rs6000_define_or_undefine_macro (define_p, "__PCREL__");

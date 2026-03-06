@@ -500,6 +500,12 @@ extern int rs6000_vector_align[];
 #define TARGET_MINMAX	(TARGET_HARD_FLOAT && TARGET_PPC_GFXOPT		\
 			 && (TARGET_P9_MINMAX || !flag_trapping_math))
 
+/* Define if the MMA subsystem uses ISA 3.1 where the accumulators are overlaid
+   over VSX registers 0..31 or whether MMA uses separate dense math
+   accumulators.  */
+#define TARGET_MMA_DENSE_MATH		(TARGET_MMA && TARGET_DENSE_MATH)
+#define TARGET_MMA_NO_DENSE_MATH	(TARGET_MMA && !TARGET_DENSE_MATH)
+
 /* In switching from using target_flags to using rs6000_isa_flags, the options
    machinery creates OPTION_MASK_<xxx> instead of MASK_<xxx>.  The MASK_<xxxx>
    options that have not yet been replaced by their OPTION_MASK_<xxx>
