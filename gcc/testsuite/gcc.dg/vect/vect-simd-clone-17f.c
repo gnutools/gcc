@@ -1,4 +1,4 @@
-/* { dg-do-if compile { target { sse2_runtime && { ! sse4_runtime } } } } */
+/* { dg-do-if compile { target { { ! x86 } || { sse2_runtime && { ! sse4_runtime } } } } } */
 /* { dg-require-effective-target vect_simd_clones } */
 /* { dg-additional-options "-fopenmp-simd --param vect-epilogues-nomask=0" } */
 /* { dg-additional-options "-msse4" { target sse4 } } */
