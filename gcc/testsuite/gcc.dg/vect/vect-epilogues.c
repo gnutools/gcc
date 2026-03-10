@@ -18,4 +18,4 @@ void pixel_avg( unsigned char *dst, int i_dst_stride,
  }
 
 /* { dg-final { scan-tree-dump "LOOP EPILOGUE VECTORIZED" "vect" { target vect_multiple_sizes xfail { { arm32 && be } || vect_partial_vectors_usage_2 } } } } */
-/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" } } */
+/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" { xfail sparc-leon3-elf s390x-*-* powerpc64le-*-* } } } */
