@@ -18,4 +18,8 @@ void pixel_avg( unsigned char *dst, int i_dst_stride,
  }
 
 /* { dg-final { scan-tree-dump "LOOP EPILOGUE VECTORIZED" "vect" { target vect_multiple_sizes xfail { { arm32 && be } || vect_partial_vectors_usage_2 } } } } */
-/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" { xfail sparc-leon3-elf s390x-*-* powerpc64le-*-* } } } */
+/* The condition that selects between the vectorized loop (with prologue and
+   epilogue for alignment) and a non-vectorized version may resolve to a
+   constant, and the removal of the edge doesn't adjust estimated execution
+   counts.  */
+/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" { xfail { { sparc-leon3-elf s390x-*-* powerpc64le-*-* } || { powerpc*-*-* && { vect_no_store_align && { ! vect_hw_misalign } } } } } } } */ /* PR 119293 */

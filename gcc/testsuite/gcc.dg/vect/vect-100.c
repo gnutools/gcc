@@ -80,4 +80,7 @@ int main (void)
 /* Requires versioning.  */
 /* { dg-final { scan-tree-dump-times "vectorized 2 loops" 0 "vect" } } */
 
-/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" } } */
+/* When we don't have misaligned stores, the vectorized loop is conditional,
+   and the condition and the vectorized loop are optimized out in ccp4, leaving
+   the estimated counts of the fallback non-vector loop incorrect.  */
+/* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" { xfail { powerpc*-*-* && { vect_no_store_align && { ! vect_hw_misalign } } } } } } */ /* PR 119293 */
