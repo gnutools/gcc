@@ -37,8 +37,8 @@ main ()
   fill_struct(n);
   n.c = 'b';
   n.s = 71;
-  // padding cleared on compexchg
-  VERIFY( as.compare_exchange_weak(s, n) );
+  // padding cleared on compexchg.  tolerate one spurious _weak failure.
+  VERIFY( as.compare_exchange_weak(s, n) || as.compare_exchange_weak(s, n) );
   VERIFY( as.compare_exchange_strong(n, s) );
   return 0;
 }
