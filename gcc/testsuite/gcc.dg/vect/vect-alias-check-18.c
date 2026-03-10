@@ -61,5 +61,5 @@ main (void)
 }
 
 /* { dg-final { scan-tree-dump {flags: *WAR\n} "vect" { target vect_int } } } */
-/* { dg-final { scan-tree-dump "using an index-based WAR/WAW test" "vect" { target { vect_int && vect_perm } } } } */
+/* { dg-final { scan-tree-dump "using an index-based WAR/WAW test" "vect" { target { vect_int && { vect_perm && { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } } } */
 /* { dg-final { scan-tree-dump-not "using an address-based" "vect" } } */

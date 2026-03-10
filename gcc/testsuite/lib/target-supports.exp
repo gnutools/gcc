@@ -9109,6 +9109,24 @@ proc check_effective_target_vect_no_align { } {
 		 && [et-is-effective-target mips_loongson_mmi]) }}]
 }
 
+# Return 1 if the target plus current options does not support a vector
+# alignment mechanism for stores, 0 otherwise.
+#
+# This won't change for different subtargets so cache the result.
+
+proc check_effective_target_vect_no_store_align { } {
+    return [check_cached_effective_target_indexed vect_no_store_align {
+	# power8 vectors support misalignment, which makes for some
+	# vectorization opportunities covered by vect_hw_misalign, but
+	# neither vsx (without misalign) nor vmx support any mechanism
+	# for realigning vector stores.
+	if { [istarget powerpc*-*-*] } {
+	    return 1
+	}
+	return [check_effective_target_vect_no_align]
+    }]
+}
+
 # Return 1 if the target supports a vector misalign access, 0 otherwise.
 #
 # This won't change for different subtargets so cache the result.

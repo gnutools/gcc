@@ -91,5 +91,6 @@ int main (void)
   return main1 ();
 } 
 
-/* { dg-final { scan-tree-dump-times "vectorized 4 loops" 1 "vect" } } */
+/* The first loop is not vectorized on powerpc-elf altivec.  */
+/* { dg-final { scan-tree-dump-times "vectorized 4 loops" 1 "vect" { xfail  { vect_no_store_align && { ! vect_hw_misalign } } } } } */
 /* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" } } */

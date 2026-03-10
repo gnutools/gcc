@@ -81,13 +81,12 @@ int main (void)
    the second loop in main requires vectorization of misaligned load.  */
 
 /* main && main1 together: */
-/* { dg-final { scan-tree-dump-times "vectorized 2 loops" 2 "vect" { target powerpc*-*-* i?86-*-* x86_64-*-* } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 2 loops" 2 "vect" { target { { powerpc*-*-* i?86-*-* x86_64-*-* } && { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } } */
 
 /* in main1: */
-/* { dg-final { scan-tree-dump-times "vectorized 2 loops" 1 "vect" { target !powerpc*-*-* !i?86-*-* !x86_64-*-* } } } */
-/* { dg-final { scan-tree-dump-times "vectorized 2 loops" 1 "vect" { target { vect_no_align && { ! vect_hw_misalign } } } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 2 loops" 1 "vect" { target { ! { { powerpc*-*-* i?86-*-* x86_64-*-* } && { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } } } */
 
 /* in main: */
-/* { dg-final { scan-tree-dump-times "vectorized 1 loops" 1 "vect" { target { vect_no_align && { ! vect_hw_misalign } } } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 1 loops" 1 "vect" { target { vect_no_store_align && { ! vect_hw_misalign } } } } } */
 
 /* { dg-final { scan-tree-dump-not "Invalid sum" "optimized" } } */

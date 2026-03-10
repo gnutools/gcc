@@ -122,7 +122,7 @@ int main (void)
   return main1 ();
 } 
 
-/* { dg-final { scan-tree-dump-times "vectorized 4 loops" 1 "vect" { target vect_int } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 4 loops" 1 "vect" { target { vect_int && { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } } */
 /* Alignment forced using versioning until the pass that increases alignment
   is extended to handle structs.  */
 /* { dg-final { scan-tree-dump-times "Alignment of access forced using versioning" 4 "vect" { target {vect_int && {! vector_alignment_reachable} } } } } */
