@@ -3,7 +3,7 @@
 /* { dg-require-effective-target vect_int } */
 /* { dg-require-effective-target vect_shift } */
 /* { dg-additional-options "-mavx2" { target x86_64-*-* i?86-*-* } } */
-/* { dg-additional-options "--param max-completely-peeled-insns=200" { target powerpc64*-*-* } } */
+/* { dg-additional-options "--param max-completely-peeled-insns=200" { target powerpc*-*-* } } */
 /* { dg-additional-options "-mlsx" { target loongarch64-*-* } } */
 /* { dg-additional-options "--param max-completely-peeled-insns=200 --param min-vect-loop-bound=0" { target s390*-*-* } } */
 
@@ -69,5 +69,9 @@ void ggml_vec_dot_q5_1_q8_1(const int n, float * restrict s, const void * restri
 
   *s = sumf;
 }
+
+/* Altivec alone cannot handle these loops; the widening for the multiplies
+   gets in the way.  */
+/* { dg-skip-if "" { powerpc*-*-* && { ! powerpc_vsx } } } */
 
 /* { dg-final { scan-tree-dump-times "vectorized 1 loops" 1 "vect" } } */
