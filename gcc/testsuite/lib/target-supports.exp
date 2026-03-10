@@ -13694,6 +13694,16 @@ proc check_effective_target_struct_musttail { } {
     } {-fdump-rtl-expand-all}] ;# The "SIBCALL" note requires a detailed dump.
 }
 
+# Return 1 if the target can perform musttail optimizations for
+# structures passed as arguments.  powerpc-elf for one can't.
+proc check_effective_target_struct_parm_musttail { } {
+    return [check_no_messages_and_pattern struct_parm_musttail ",SIBCALL" rtl-expand {
+	struct foo { int a, b; };
+	extern __attribute__((__noipa__)) int foo (struct foo bar);
+	__attribute__((__noipa__)) int bar (struct foo bar) { [[gnu::musttail]] return foo(bar); }
+    } {-fdump-rtl-expand-all}] ;# The "SIBCALL" note requires a detailed dump.
+}
+
 # Return 1 if the target's calling sequence or its ABI
 # create implicit stack probes at or prior to function entry.
 proc check_effective_target_caller_implicit_probes { } {

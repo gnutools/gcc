@@ -1,5 +1,5 @@
 /* PR ipa/121023 */
-/* { dg-do compile { target musttail } } */
+/* { dg-do compile { target struct_parm_musttail } } */
 /* { dg-options "-O2" } */
 
 struct S { int a, b; };

@@ -1,5 +1,5 @@
 // PR middle-end/119613
-// { dg-do compile { target { musttail && { c++11 && { ! using_sjlj_exceptions } } } } }
+// { dg-do compile { target { struct_parm_musttail && { c++11 && { ! using_sjlj_exceptions } } } } }
 // { dg-options "-O0" }
 
 struct S { S () {} };
