@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-skip-if "" { powerpc*-*-aix* } } */
-/* { dg-options "-O2 -mdejagnu-cpu=power9" } */
+/* { dg-options "-O3 -mdejagnu-cpu=power9" } */
 
 static int darn32(void) { return __builtin_darn_32(); }
 
