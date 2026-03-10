@@ -1,6 +1,6 @@
 /* { dg-do compile { target { { powerpc*-*-* } && ilp32 } } } */
 /* { dg-skip-if "" { powerpc*-*-aix* } } */
-/* { dg-options "-mdejagnu-cpu=power7 -O2" } */
+/* { dg-options "-mdejagnu-cpu=power7 -O2 -std=c11" } */
 /* { dg-final { scan-assembler-times "addze" 1 } } */
 
 extern int fn2 ();
