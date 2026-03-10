@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-mdejagnu-cpu=power8 -mvsx -O2" } */
+/* { dg-options "-mdejagnu-cpu=power8 -mvsx -O2 -mno-strict-align" } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 /* Ensure vector mode is used for 16-byte by pieces equality compare.  */
