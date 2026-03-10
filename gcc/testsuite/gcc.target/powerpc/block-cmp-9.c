@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O2" } */
+/* { dg-options "-O2 -mno-strict-align" } */
 /* { dg-final { scan-assembler-not {\ml[hb]z\M} } } */
 
 /* Test if by-piece overlap compare is enabled and following case is

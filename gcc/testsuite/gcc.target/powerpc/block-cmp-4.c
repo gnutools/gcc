@@ -1,5 +1,5 @@
 /* { dg-do compile { target be } } */
-/* { dg-options "-O2 -mdejagnu-cpu=power7" } */
+/* { dg-options "-O2 -mdejagnu-cpu=power7 -mno-strict-align" } */
 /* { dg-skip-if "" { has_arch_ppc64 && ilp32 } } */
 /* { dg-final { scan-assembler-not {\mb[l]? memcmp\M} } } */
 
