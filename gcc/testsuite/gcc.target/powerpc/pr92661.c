@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-w -O2 -mdejagnu-cpu=power9" } */
+/* { dg-options "-w -O2 -mdejagnu-cpu=power9 -Wno-error=implicit-function-declaration" } */
 
 /* PR92661: The following tests should not ICE, regardless of
    whether the target supports DFP or not.  */
