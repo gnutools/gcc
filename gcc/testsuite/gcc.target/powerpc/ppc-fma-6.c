@@ -4,6 +4,7 @@
 /* { dg-options "-O2 -mdejagnu-cpu=power5 -std=c99 -msoft-float" } */
 /* { dg-final { scan-assembler-not "fmadd" } } */
 /* { dg-final { scan-assembler-not "xsfmadd" } } */
+/* { dg-skip-if "" { *-*-* } { "-mhard-float" } } */
 
 /* Test whether -msoft-float turns off the macros math.h uses for
    FP_FAST_FMA{,F,L}.  */

@@ -2,6 +2,7 @@
    incompatible and warns it.  */
 /* { dg-skip-if "aix long-double-128 soft-float" { powerpc*-*-aix* } } */
 /* { dg-options "-mlong-double-128 -msoft-float" } */
+/* { dg-skip-if "" { *-*-* } { "-mhard-float" } } */
 
 /* Verify there is no ICE.  */
 
