@@ -1738,6 +1738,9 @@ Target does not support a vector min and max instruction on @code{int}.
 @item vect_no_int_add
 Target does not support a vector add instruction on @code{int}.
 
+@item vect_no_int_remainder
+Target does not support a vector remainder instruction on @code{int}.
+
 @item vect_no_bitwise
 Target does not support vector bitwise instructions.
 
