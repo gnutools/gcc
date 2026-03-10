@@ -8725,7 +8725,8 @@ proc check_effective_target_ifn_copysign { } {
 	  && [is-effective-target sse])
 	 || ([istarget loongarch*-*-*]
 	     && [check_effective_target_hard_float])
-	 || [istarget powerpc*-*-*]
+	 || ([istarget powerpc*-*-*]
+	     && [check_effective_target_hard_float])
 	 || [istarget alpha*-*-*]
 	 || [istarget aarch64*-*-*]
 	 || [is-effective-target arm_neon]

@@ -1,6 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O -ffinite-math-only -fno-signed-zeros -fstrict-overflow -fdump-tree-optimized" } */
 /* { dg-additional-options "-msse2 -mfpmath=sse" { target { { i?86-*-* x86_64-*-* } && ilp32 } } } */
+/* { dg-additional-options "-mpowerpc-gfxopt" { target { powerpc*-*-* } } } */
 
 double g (double a)
 {

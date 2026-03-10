@@ -1,5 +1,6 @@
 /* { dg-options "-O2 -ffast-math -fdump-tree-optimized" } */
 /* { dg-additional-options "-msse -mfpmath=sse" { target { { i?86-*-* x86_64-*-* } && ilp32 } } } */
+/* { dg-additional-options "-mpowerpc-gfxopt" { target { powerpc*-*-* } } } */
 /* { dg-do compile } */
 float f(float x)
 {
