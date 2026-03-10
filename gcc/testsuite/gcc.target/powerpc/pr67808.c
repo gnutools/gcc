@@ -1,7 +1,8 @@
 /* { dg-do compile { target { powerpc*-*-* } } } */
 /* { dg-skip-if "" { powerpc*-*-darwin* } } */
-/* { dg-options "-O1 -mvsx -mdejagnu-cpu=power7 -mlong-double-128" } */
+/* { dg-options "-O1 -mvsx -mdejagnu-cpu=power7 -mfloat128 -mlong-double-128" } */
 /* { dg-require-effective-target powerpc_vsx } */
+/* { dg-prune-output ".-mfloat128. option may not be fully supported" } */
 
 /* PR 67808: LRA ICEs on simple double to long double conversion test case */
 
@@ -9,7 +10,7 @@
 /* If long double is IEEE 128-bit, we need to use the __ibm128 type instead of
    long double.  We can't use __ibm128 on systems that don't support IEEE
    128-bit floating point, because the type is not enabled on those
-   systems.  */
+   systems.  Without -mfloat128, the __ibm128 type may be undefined.  */
 #define LDOUBLE __ibm128
 
 #elif defined(__LONG_DOUBLE_IBM128__)
