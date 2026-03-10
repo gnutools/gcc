@@ -1,6 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target vect_int } */
-/* { dg-options "-O2 -mno-vsx" } */
+/* { dg-require-effective-target powerpc_altivec_ok } */
+/* { dg-options "-O2 -mno-vsx -maltivec" } */
 
 /* Verify it emits error message on inlining even without LTO.  */
 
