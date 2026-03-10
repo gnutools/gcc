@@ -1,5 +1,5 @@
 /* { dg-do compile { target { powerpc*-*-* } } } */
-/* { dg-options "-mdejagnu-cpu=power9 -mvsx" } */
+/* { dg-options "-mdejagnu-cpu=power9 -mvsx -mno-powerpc64" } */
 /* { dg-require-effective-target ilp32 } */
 /* { dg-require-effective-target powerpc_vsx } */
 

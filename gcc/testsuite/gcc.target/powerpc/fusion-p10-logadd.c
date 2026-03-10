@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power10 -O3 -dp" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 
 #include <altivec.h>
 #include <stdint.h>

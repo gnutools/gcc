@@ -3,6 +3,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power8 -mvsx -O2" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 // six tests total. Targeting P8, both LE and BE.

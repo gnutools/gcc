@@ -3,6 +3,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-O2 -mdejagnu-cpu=power9 -mvsx" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 /* The below contains vec_insert () calls with both variable and constant

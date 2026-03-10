@@ -3,6 +3,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-O2 -mdejagnu-cpu=power8 -mvsx" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 #include <altivec.h>

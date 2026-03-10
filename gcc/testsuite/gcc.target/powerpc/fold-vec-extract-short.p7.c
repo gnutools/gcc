@@ -3,6 +3,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power7 -O2" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 // six tests total. Targeting P7 BE.

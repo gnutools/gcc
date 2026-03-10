@@ -3,6 +3,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power8 -mvsx -O2" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 // six tests total. Targeting P8LE / P8BE.
@@ -23,7 +24,7 @@
 /* { dg-final { scan-assembler-times {\mvspltb\M} 3 { target lp64 } } } */
 /* { dg-final { scan-assembler-times {\mrlwinm\M} 4 { target lp64 } } } */
 
-/* multiple codegen variations for -m32. */
+/* multiple codegen variations for -m32 (with -mno-powerpc64). */
 /* { dg-final { scan-assembler-times {\mrlwinm\M} 3 { target ilp32 } } } */
 /* { dg-final { scan-assembler-times {\mstxvw4x\M} 6 { target ilp32 } } } */
 /* { dg-final { scan-assembler-times {\mlbz\M} 6 { target ilp32 } } } */

@@ -1,5 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power8 -mvsx -O2" } */
+/* On ilp32, we get mulld and divdi[u]? with (implied) -mpowerpc64.  */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-additional-options "-mbig" { target powerpc64le-*-* } } */
 /* { dg-require-effective-target powerpc_vsx } */
 

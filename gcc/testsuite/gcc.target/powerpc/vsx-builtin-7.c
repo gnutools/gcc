@@ -1,6 +1,7 @@
 /* { dg-do compile { target { powerpc*-*-* } } } */
 /* { dg-skip-if "" { powerpc*-*-darwin* } } */
 /* { dg-options "-O2 -mdejagnu-cpu=power7 -fno-inline-functions -fno-ipa-icf" } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_vsx } */
 
 /* PR testsuite/119382

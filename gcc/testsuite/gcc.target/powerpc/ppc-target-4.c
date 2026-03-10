@@ -5,6 +5,9 @@
 /* { dg-final { scan-assembler-times "vaddfp" 1 } } */
 /* { dg-final { scan-assembler-times "xvaddsp" 1 } } */
 /* { dg-final { scan-assembler-times "fadds" 1 } } */
+/* Without -mno-powerpc64, we wouldn't use the counter register on ilp32, and
+   reorder-blocks duplicates the loop body with fadds.  */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 
 #ifndef SIZE
 #define SIZE 1024

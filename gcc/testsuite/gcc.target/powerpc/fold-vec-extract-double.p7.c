@@ -4,6 +4,7 @@
 /* { dg-do compile } */
 /* { dg-options "-mdejagnu-cpu=power7 -O2" } */
 /* { dg-additional-options "-mbig-endian" { target powerpc*-*-linux* } } */
+/* { dg-additional-options "-mno-powerpc64" { target ilp32 } } */
 /* { dg-require-effective-target powerpc_altivec } */
 
 // targeting P7 (BE), 2 tests.
