@@ -12,4 +12,5 @@ void foo3 (float *restrict a, int *restrict c)
     c[i] = a[i] > 1.0;
 }
 
-/* { dg-final { scan-tree-dump "vectorized using SLP" "slp1" } } */
+/* Altivec cannot slp-vectorize the stores that aren't known to be vector-aligned.  */
+/* { dg-final { scan-tree-dump "vectorized using SLP" "slp1" { target { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } */

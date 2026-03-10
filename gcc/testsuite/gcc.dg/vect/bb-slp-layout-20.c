@@ -30,4 +30,5 @@ void f()
   e[3] = b3;
 }
 
-/* { dg-final { scan-tree-dump-times "add new stmt: \[^\\n\\r\]* = VEC_PERM_EXPR" 3 "slp1" { target { vect_int_mult && vect_perm } } } } */
+/* Altivec cannot slp-vectorize the stores that aren't known to be vector-aligned.  */
+/* { dg-final { scan-tree-dump-times "add new stmt: \[^\\n\\r\]* = VEC_PERM_EXPR" 3 "slp1" { target { { vect_int_mult && vect_perm } && { ! { vect_no_store_align && { ! vect_hw_misalign } } } } } } } */
