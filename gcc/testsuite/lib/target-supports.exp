@@ -1534,11 +1534,16 @@ proc check_effective_target_shared { } {
     # requires GOT references, and with a libc symbol that would
     # bring in significant parts of a static-only libc.  Absent a
     # shared libc, this would make -shared tests fail, so we don't
-    # want to enable the shared effective target then.
+    # want to enable the shared effective target then.  When
+    # compiling c++, also bring in symbols from libsupc++.
     return [check_no_compiler_messages shared executable {
 	#include <stdlib.h>
 	extern int foo (void); extern int bar;
 	char *baz (void) {
+	    #if __cplusplus
+	    extern char *p;
+	    delete p;
+	    #endif
 	    return foo () + (char*) malloc (bar);
 	}
     } "-shared -fpic $extra_flags"]
