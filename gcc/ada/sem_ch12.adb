@@ -6520,8 +6520,28 @@ package body Sem_Ch12 is
                   Inside_A_Generic := S_Inside_A_Generic;
                end;
 
+            --  If the scope is local, the instantiation must be fully analyzed
+            --  as well as expanded if the context is not a generic unit.
+
             else
-               Add_Local_Declaration (R, N, Scop => Scop);
+               declare
+                  S_Expander_Active : constant Boolean := Expander_Active;
+                  S_Full_Analysis   : constant Boolean := Full_Analysis;
+                  S_In_Spec_Expr    : constant Boolean := In_Spec_Expression;
+
+               begin
+                  Expander_Active :=
+                    Operating_Mode = Opt.Generate_Code
+                      and then not Inside_A_Generic;
+                  Full_Analysis := True;
+                  In_Spec_Expression := False;
+
+                  Add_Local_Declaration (R, N, Scop => Scop);
+
+                  Expander_Active := S_Expander_Active;
+                  Full_Analysis := S_Full_Analysis;
+                  In_Spec_Expression := S_In_Spec_Expr;
+               end;
             end if;
 
             Ent := Defining_Entity_Of_Instance (R);
