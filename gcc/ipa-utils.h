@@ -115,6 +115,7 @@ void set_type_canonical_for_odr_type (tree type, tree canonical);
 void warn_function_returns_nonnull (tree);
 
 void register_odr_enum (tree type);
+bool ipa_points_to_readonly_memory_p (tree t);
 
 /* Return vector containing possible targets of polymorphic call E.
    If COMPLETEP is non-NULL, store true if the list is complete.

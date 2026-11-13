@@ -4285,23 +4285,77 @@ find_constructor_constant_at_offset (tree constructor, HOST_WIDE_INT req_offset)
    NULL. */
 
 tree
-ipa_find_agg_cst_from_init (tree scalar, HOST_WIDE_INT offset, bool by_ref)
+ipa_find_agg_cst_from_init (tree scalar, HOST_WIDE_INT offset, bool by_ref, tree type)
 {
+  if (!scalar || scalar == error_mark_node)
+    return NULL_TREE;
+
   if (by_ref)
     {
       if (TREE_CODE (scalar) != ADDR_EXPR)
-	return NULL;
+	return NULL_TREE;
       scalar = TREE_OPERAND (scalar, 0);
     }
 
-  if (!VAR_P (scalar)
-      || !is_global_var (scalar)
-      || !TREE_READONLY (scalar)
-      || !DECL_INITIAL (scalar)
-      || TREE_CODE (DECL_INITIAL (scalar)) != CONSTRUCTOR)
-    return NULL;
+  poly_int64 byte_offset = 0;
+  scalar = get_addr_base_and_unit_offset (scalar, &byte_offset);
+  if (!scalar)
+    return NULL_TREE;
 
-  return find_constructor_constant_at_offset (DECL_INITIAL (scalar), offset);
+  if (!CONSTANT_CLASS_P (scalar)
+      && TREE_CODE (scalar) != CONST_DECL
+      && !(VAR_P (scalar) || !TREE_READONLY (scalar)))
+    return NULL_TREE;
+
+  poly_offset_int bit_off
+    = poly_offset_int (byte_offset) * BITS_PER_UNIT + offset;
+  poly_int64 const_bit_off;
+  if (!bit_off.to_shwi (&const_bit_off)
+      || !const_bit_off.is_constant (&offset)
+      || offset < 0)
+    return NULL_TREE;
+
+  if (type && is_gimple_reg_type (type))
+    {
+      if (!TYPE_SIZE (type) || !tree_fits_uhwi_p (TYPE_SIZE (type)))
+	return NULL_TREE;
+      unsigned HOST_WIDE_INT size = tree_to_uhwi (TYPE_SIZE (type));
+      if (size == 0)
+	return NULL_TREE;
+
+      tree ctor = NULL_TREE;
+      tree from_decl = NULL_TREE;
+      if (VAR_P (scalar) || TREE_CODE (scalar) == CONST_DECL)
+	{
+	  ctor = ctor_for_folding (scalar);
+	  if (ctor == error_mark_node)
+	    return NULL_TREE;
+	  from_decl = scalar;
+	}
+      else
+	ctor = scalar;
+
+      tree res = (ctor
+		  ? fold_ctor_reference (type, ctor, offset, size, from_decl)
+		  : build_zero_cst (type));
+      if (res && is_gimple_ip_invariant (res))
+	return res;
+      return NULL_TREE;
+    }
+
+  if (VAR_P (scalar) || TREE_CODE (scalar) == CONST_DECL)
+    {
+      tree ctor = ctor_for_folding (scalar);
+      if (!ctor || ctor == error_mark_node)
+	return NULL_TREE;
+      if (TREE_CODE (ctor) == CONSTRUCTOR)
+	return find_constructor_constant_at_offset (ctor, offset);
+      if (offset == 0
+	  && is_gimple_reg_type (TREE_TYPE (ctor))
+	  && is_gimple_ip_invariant (ctor))
+	return ctor;
+    }
+  return NULL_TREE;
 }
 
 /* Retrieve value from AGG_JFUNC for the given OFFSET or return NULL if there
@@ -4426,7 +4480,9 @@ try_make_edge_direct_simple_call (struct cgraph_edge *ie,
     {
       if (scalar)
 	target = ipa_find_agg_cst_from_init (scalar, sii->offset, sii->by_ref);
-      if (!target && sii->guaranteed_unmodified)
+      if (!target
+	  && (sii->guaranteed_unmodified
+	      || (sii->by_ref && ipa_points_to_readonly_memory_p (scalar))))
 	target = ipa_find_agg_cst_from_jfunc_items (&jfunc->agg, new_root_info,
 						    new_root, sii->offset,
 						    sii->by_ref);

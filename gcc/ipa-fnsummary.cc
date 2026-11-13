@@ -418,7 +418,7 @@ evaluate_conditions_for_known_args (struct cgraph_node *node,
 	    continue;
 
 	  if (tree sval = avals->safe_sval_at (c->operand_num))
-	    val = ipa_find_agg_cst_from_init (sval, c->offset, c->by_ref);
+	    val = ipa_find_agg_cst_from_init (sval, c->offset, c->by_ref, c->type);
 	  /* ipa_argagg_value_list is indexed by byte offsets, so a condition
 	     which does not start at a byte boundary (a bit-field) cannot be
 	     looked up in it; the containing byte would be reinterpreted as
@@ -427,7 +427,7 @@ evaluate_conditions_for_known_args (struct cgraph_node *node,
 	    {
 	      ipa_argagg_value_list avs (avals);
 	      val = avs.get_value (c->operand_num, c->offset / BITS_PER_UNIT,
-				   c->by_ref);
+				   c->by_ref, c->maybe_modified);
 	    }
 	}
       else
@@ -1317,6 +1317,7 @@ unmodified_parm_or_parm_agg_item (struct ipa_func_body_info *fbi,
 	return false;
       aggpos->agg_contents = false;
       aggpos->by_ref = false;
+      aggpos->maybe_modified = false;
       return true;
     }
 
@@ -1332,10 +1333,18 @@ unmodified_parm_or_parm_agg_item (struct ipa_func_body_info *fbi,
 						 aggpos);
     }
 
+  bool guaranteed_unmodified;
   aggpos->agg_contents = true;
-  return ipa_load_from_parm_agg (fbi, fbi->info->descriptors,
-				 stmt, op, index_p, &aggpos->offset,
-				 size_p, &aggpos->by_ref);
+  if (ipa_load_from_parm_agg (fbi, fbi->info->descriptors,
+			      stmt, op, index_p, &aggpos->offset,
+			      size_p, &aggpos->by_ref,
+			      &guaranteed_unmodified))
+    {
+      aggpos->maybe_modified = !guaranteed_unmodified;
+      gcc_checking_assert (!aggpos->maybe_modified || aggpos->by_ref);
+      return true;
+    }
+  return false;
 }
 
 /* If stmt is simple load or store of value pointed to by a function parameter,
@@ -2645,7 +2654,9 @@ refs_local_or_readonly_memory_p (tree t)
       && auto_var_in_fn_p (t, current_function_decl))
     return true;
 
-  /* Read-only variables are fine.  */
+  /* Read-only variables and constants are fine.  */
+  if (CONSTANT_CLASS_P (t))
+    return true;
   if (DECL_P (t) && TREE_READONLY (t))
     return true;
 
@@ -4416,6 +4427,7 @@ remap_edge_summaries (struct cgraph_edge *inlined_edge,
 		      class ipa_fn_summary *callee_info,
 		      const vec<int> &operand_map,
 		      const vec<HOST_WIDE_INT> &offset_map,
+		      const vec<bool> &agg_preserved_map,
 		      clause_t possible_truths,
 		      ipa_predicate *toplev_predicate)
 {
@@ -4435,7 +4447,8 @@ remap_edge_summaries (struct cgraph_edge *inlined_edge,
 	      p = es->predicate->remap_after_inlining
 				     (info, params_summary,
 				      callee_info, operand_map,
-				      offset_map, possible_truths,
+				      offset_map, agg_preserved_map,
+				      possible_truths,
 				      *toplev_predicate);
 	      edge_set_predicate (e, &p);
 	    }
@@ -4445,8 +4458,8 @@ remap_edge_summaries (struct cgraph_edge *inlined_edge,
       else
 	remap_edge_summaries (inlined_edge, e->callee, info,
 		              params_summary, callee_info,
-			      operand_map, offset_map, possible_truths,
-			      toplev_predicate);
+			      operand_map, offset_map, agg_preserved_map,
+			      possible_truths, toplev_predicate);
     }
   for (e = node->indirect_calls; e; e = next)
     {
@@ -4460,6 +4473,7 @@ remap_edge_summaries (struct cgraph_edge *inlined_edge,
 	  p = es->predicate->remap_after_inlining
 				 (info, params_summary,
 				  callee_info, operand_map, offset_map,
+				  agg_preserved_map,
 			          possible_truths, *toplev_predicate);
 	  edge_set_predicate (e, &p);
 	}
@@ -4477,6 +4491,7 @@ remap_freqcounting_predicate (class ipa_fn_summary *info,
 			      vec<ipa_freqcounting_predicate, va_gc> *v,
 			      const vec<int> &operand_map,
 			      const vec<HOST_WIDE_INT> &offset_map,
+			      const vec<bool> &agg_preserved_map,
 			      clause_t possible_truths,
 			      ipa_predicate *toplev_predicate)
 
@@ -4487,7 +4502,8 @@ remap_freqcounting_predicate (class ipa_fn_summary *info,
       ipa_predicate p
 	= fcp->predicate->remap_after_inlining (info, params_summary,
 						callee_info, operand_map,
-						offset_map, possible_truths,
+						offset_map, agg_preserved_map,
+						possible_truths,
 						*toplev_predicate);
       if (p != false && p != true)
 	*fcp->predicate &= p;
@@ -4507,6 +4523,7 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
   size_time_entry *e;
   auto_vec<int, 8> operand_map;
   auto_vec<HOST_WIDE_INT, 8> offset_map;
+  auto_vec<bool, 8> agg_preserved_map;
   int i;
   ipa_predicate toplev_predicate;
   class ipa_call_summary *es = ipa_call_summaries->get (edge);
@@ -4536,6 +4553,7 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
 	{
 	  operand_map.safe_grow_cleared (count, true);
 	  offset_map.safe_grow_cleared (count, true);
+	  agg_preserved_map.safe_grow_cleared (count, true);
 	}
       for (i = 0; i < count; i++)
 	{
@@ -4546,9 +4564,11 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
 	  if (jfunc->type == IPA_JF_PASS_THROUGH)
 	    {
 	      if (ipa_get_jf_pass_through_operation (jfunc) == NOP_EXPR)
-		map = ipa_get_jf_pass_through_formal_id (jfunc);
-	      if (!ipa_get_jf_pass_through_agg_preserved (jfunc))
-		offset_map[i] = -1;
+		{
+		  map = ipa_get_jf_pass_through_formal_id (jfunc);
+		  agg_preserved_map[i]
+		    = ipa_get_jf_pass_through_agg_preserved (jfunc);
+		}
 	    }
 	  else if (jfunc->type == IPA_JF_ANCESTOR)
 	    {
@@ -4556,9 +4576,9 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
 	      if (offset >= 0 && offset < INT_MAX)
 		{
 		  map = ipa_get_jf_ancestor_formal_id (jfunc);
-		  if (!ipa_get_jf_ancestor_agg_preserved (jfunc))
-		    offset = -1;
 		  offset_map[i] = offset;
+		  agg_preserved_map[i]
+		    = ipa_get_jf_ancestor_agg_preserved (jfunc);
 		}
 	    }
 	  operand_map[i] = map;
@@ -4577,13 +4597,13 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
       p = e->exec_predicate.remap_after_inlining
 			     (info, params_summary,
 			      callee_info, operand_map,
-			      offset_map, clause,
+			      offset_map, agg_preserved_map, clause,
 			      toplev_predicate);
       ipa_predicate nonconstp;
       nonconstp = e->nonconst_predicate.remap_after_inlining
 				     (info, params_summary,
 				      callee_info, operand_map,
-				      offset_map, clause,
+				      offset_map, agg_preserved_map, clause,
 				      toplev_predicate);
       if (p != false && nonconstp != false)
 	{
@@ -4603,13 +4623,16 @@ ipa_merge_fn_summary_after_inlining (struct cgraph_edge *edge)
     }
   remap_edge_summaries (edge, edge->callee, info, params_summary,
 		 	callee_info, operand_map,
-			offset_map, clause, &toplev_predicate);
+			offset_map, agg_preserved_map, clause,
+			&toplev_predicate);
   remap_freqcounting_predicate (info, params_summary, callee_info,
 				info->loop_iterations, operand_map,
-				offset_map, clause, &toplev_predicate);
+				offset_map, agg_preserved_map, clause,
+				&toplev_predicate);
   remap_freqcounting_predicate (info, params_summary, callee_info,
 				info->loop_strides, operand_map,
-				offset_map, clause, &toplev_predicate);
+				offset_map, agg_preserved_map, clause,
+				&toplev_predicate);
 
   HOST_WIDE_INT stack_frame_offset = ipa_get_stack_frame_offset (edge->callee);
   HOST_WIDE_INT peak = stack_frame_offset + callee_info->estimated_stack_size;
@@ -4891,8 +4914,11 @@ inline_read_section (struct lto_file_decl_data *file_data, const char *data,
 	  bp = streamer_read_bitpack (&ib);
 	  c.agg_contents = bp_unpack_value (&bp, 1);
 	  c.by_ref = bp_unpack_value (&bp, 1);
+	  c.maybe_modified = bp_unpack_value (&bp, 1);
 	  if (c.agg_contents)
 	    c.offset = streamer_read_uhwi (&ib);
+	  else
+	    c.offset = 0;
 	  count3 = streamer_read_uhwi (&ib);
 	  c.param_ops = NULL;
 	  if (info)
@@ -5127,6 +5153,7 @@ ipa_fn_summary_write (void)
 	      bp = bitpack_create (ob->main_stream);
 	      bp_pack_value (&bp, c->agg_contents, 1);
 	      bp_pack_value (&bp, c->by_ref, 1);
+	      bp_pack_value (&bp, c->maybe_modified, 1);
 	      streamer_write_bitpack (&bp);
 	      if (c->agg_contents)
 		streamer_write_uhwi (ob, c->offset);

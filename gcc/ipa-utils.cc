@@ -1046,3 +1046,14 @@ find_always_executed_bbs (function *fun, bool assume_return_or_eh)
 
   return ret;
 }
+
+/* Return true if T is an ADDR_EXPR of a read-only memory location.  */
+
+bool
+ipa_points_to_readonly_memory_p (tree t)
+{
+  if (!t || TREE_CODE (t) != ADDR_EXPR)
+    return false;
+  tree base = get_base_address (TREE_OPERAND (t, 0));
+  return (base && TREE_READONLY (base));
+}

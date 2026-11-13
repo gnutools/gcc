@@ -67,6 +67,7 @@ struct agg_position_info
   HOST_WIDE_INT offset;
   bool agg_contents;
   bool by_ref;
+  bool maybe_modified;
 };
 
 /* Representation of function body size and time depending on the call

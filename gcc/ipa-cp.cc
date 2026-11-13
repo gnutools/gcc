@@ -1204,17 +1204,23 @@ ipa_argagg_value_list::get_value (int index, unsigned unit_offset) const
 }
 
 /* Return the aggregate constant stored for INDEX at UNIT_OFFSET, if it is
-   passed by reference or not according to BY_REF, or NULL_TREE if there is
-   no such constant.  */
+   passed by reference or not according to BY_REF (and if MAYBE_MODIFIED is
+   true, only when the memory passed by reference is read-only), or
+   NULL_TREE if there is no such constant.  */
 
 tree
 ipa_argagg_value_list::get_value (int index, unsigned unit_offset,
-				    bool by_ref) const
+				  bool by_ref, bool maybe_modified) const
 {
   const ipa_argagg_value *av = get_elt (index, unit_offset);
-  if (av && av->by_ref == by_ref)
-    return av->value;
-  return NULL_TREE;
+  if (!av || av->by_ref != by_ref)
+    return NULL_TREE;
+  if (maybe_modified
+      && (!by_ref
+	  || (unsigned) index >= m_known_vals.size ()
+	  || !ipa_points_to_readonly_memory_p (m_known_vals[index])))
+    return NULL_TREE;
+  return av->value;
 }
 
 /* Return true if all elements present in OTHER are also present in this
@@ -3188,9 +3194,9 @@ ipa_get_indirect_edge_target_1 (struct cgraph_edge *ie,
 					    sii->offset,
 					    sii->by_ref);
 
-	  if (!t && sii->guaranteed_unmodified)
+	  if (!t)
 	    t = avs.get_value (param_index, sii->offset / BITS_PER_UNIT,
-			       sii->by_ref);
+			       sii->by_ref, !sii->guaranteed_unmodified);
 	}
       else if ((unsigned) param_index < known_csts.length ())
 	t = known_csts[param_index];
@@ -4190,7 +4196,7 @@ ipcp_discover_new_direct_edges (struct cgraph_node *node,
       bool speculative;
 
       next_ie = ie->next_callee;
-      ipa_argagg_value_list avs (aggvals);
+      ipa_argagg_value_list avs (aggvals, known_csts);
       target = ipa_get_indirect_edge_target_1 (ie, known_csts, known_contexts,
 					       avs, &speculative);
       if (target)
