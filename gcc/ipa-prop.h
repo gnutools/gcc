@@ -1223,7 +1223,8 @@ bool ipa_load_from_parm_agg (struct ipa_func_body_info *fbi,
 			     vec<ipa_param_descriptor, va_gc> *descriptors,
 			     gimple *stmt, tree op, int *index_p,
 			     HOST_WIDE_INT *offset_p, poly_int64 *size_p,
-			     bool *by_ref, bool *guaranteed_unmodified = NULL);
+			     bool *by_ref, bool *guaranteed_unmodified = NULL,
+			     bool *unknown_offset_p = NULL);
 
 /* Debugging interface.  */
 void ipa_print_node_params (FILE *, struct cgraph_node *node);

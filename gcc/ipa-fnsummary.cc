@@ -71,6 +71,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-pretty-print.h"
 #include "cfganal.h"
 #include "gimple-iterator.h"
+#include "gimple-fold.h"
 #include "tree-cfg.h"
 #include "tree-ssa-loop-niter.h"
 #include "tree-ssa-loop.h"
@@ -378,6 +379,318 @@ add_freqcounting_predicate (vec<ipa_freqcounting_predicate, va_gc> **v,
 
    ERROR_MARK value of an argument means compile time invariant.  */
 
+/* Hashmap traits that free the cached sbitmap when an entry is removed.  */
+
+struct string_char_set_hashmap_traits
+  : simple_hashmap_traits<default_hash_traits<tree>, sbitmap>
+{
+  template <typename T>
+  static inline void
+  remove (T &entry)
+  {
+    sbitmap_free (entry.m_value);
+    simple_hashmap_traits<default_hash_traits<tree>, sbitmap>::remove (entry);
+  }
+};
+
+/* Map from unique STRING_CST tree nodes (longer than 256 bytes) to an
+   sbitmap recording which byte values appear in the string.  */
+
+static hash_map<tree, sbitmap, string_char_set_hashmap_traits>
+  *string_char_set_cache;
+
+/* Return the character presence bitmap for STR (with TREE_STRING_LENGTH (STR)
+   > 256), populating and memoizing it on first lookup.  PREC is the character
+   type precision.  */
+
+static const_sbitmap
+get_string_char_set (tree str, unsigned int prec)
+{
+  if (!string_char_set_cache)
+    string_char_set_cache
+      = new hash_map<tree, sbitmap, string_char_set_hashmap_traits>;
+
+  bool existed;
+  sbitmap &bmp = string_char_set_cache->get_or_insert (str, &existed);
+  if (!existed)
+    {
+      unsigned int full = 1U << prec;
+      unsigned int mask = full - 1;
+      bmp = sbitmap_alloc (full);
+      bitmap_clear (bmp);
+      unsigned int len = TREE_STRING_LENGTH (str);
+      const char *p = TREE_STRING_POINTER (str);
+      for (unsigned int i = 0; i < len; i++)
+	bitmap_set_bit (bmp, (unsigned char) p[i] & mask);
+    }
+  return bmp;
+}
+
+/* Return true if BMP contains any character whose ordered value with
+   signedness SGN and precision PREC falls in the inclusive unsigned
+   coordinate range [U_LO, U_HI].
+
+   For UNSIGNED, ordered coordinate == raw byte value.
+   For SIGNED, ordered coordinate == raw byte value ^ (1 << (PREC - 1)), so
+   negative bytes map to [0, half - 1] (raw [half, 2*half - 1]) and
+   non-negative bytes map to [half, 2*half - 1] (raw [0, half - 1]).  */
+
+static bool
+char_set_any_in_range_p (const_sbitmap bmp, unsigned int prec, signop sgn,
+			  unsigned int u_lo, unsigned int u_hi)
+{
+  if (u_lo > u_hi)
+    return false;
+  if (sgn == UNSIGNED)
+    return bitmap_any_bit_in_range_p (bmp, u_lo, u_hi);
+
+  unsigned int half = 1U << (prec - 1);
+  /* Check negative byte values in [u_lo, min (u_hi, half - 1)].  */
+  if (u_lo < half
+      && bitmap_any_bit_in_range_p (bmp, u_lo + half,
+				    MIN (u_hi, half - 1) + half))
+    return true;
+  /* Check non-negative byte values in [max (u_lo, half), u_hi].  */
+  if (u_hi >= half
+      && bitmap_any_bit_in_range_p (bmp, MAX (u_lo, half) - half, u_hi - half))
+    return true;
+  return false;
+}
+
+/* Fold comparison (ch CODE VAL) across every byte ch of constant string STR
+   (interpreted with type CHAR_TYPE, defaulting to the element type of STR when
+   NULL).  Return boolean_true_node or boolean_false_node if the comparison has
+   the same boolean result for all bytes of STR, or NULL_TREE otherwise.  */
+
+static tree
+fold_string_char_compare (tree str, enum tree_code code, tree val,
+			  tree char_type)
+{
+  if (!char_type && str && TREE_TYPE (str)
+      && TREE_CODE (TREE_TYPE (str)) == ARRAY_TYPE)
+    char_type = TREE_TYPE (TREE_TYPE (str));
+
+  if (!str
+      || TREE_CODE (str) != STRING_CST
+      || !val
+      || TREE_CODE (val) != INTEGER_CST
+      || !char_type
+      || TREE_CODE (char_type) != INTEGER_TYPE
+      || TYPE_PRECISION (char_type) != BITS_PER_UNIT)
+    return NULL_TREE;
+
+  unsigned prec = TYPE_PRECISION (char_type);
+  signop sgn = TYPE_SIGN (char_type);
+  tree val_type = TREE_TYPE (val);
+  unsigned val_prec = TYPE_PRECISION (val_type);
+  signop val_sgn = TYPE_SIGN (val_type);
+
+  /* Require VAL to be an integral constant whose type preserves the range
+     and sign of CHAR_TYPE (either the same precision and sign, or a wider
+     type that cannot reinterpret a negative signed char as large positive).  */
+  if (!INTEGRAL_TYPE_P (val_type)
+      || val_prec < prec
+      || (val_prec == prec ? val_sgn != sgn
+			   : (sgn == SIGNED && val_sgn == UNSIGNED)))
+    return NULL_TREE;
+
+  int len = TREE_STRING_LENGTH (str);
+  if (len <= 0)
+    return NULL_TREE;
+
+  /* First test VAL against the full representable [c_min, c_max] range of
+     CHAR_TYPE so out-of-range or boundary comparisons fold without scanning
+     STR.  */
+  wide_int wval = wi::to_wide (val);
+  wide_int c_min = wide_int::from (wi::min_value (prec, sgn), val_prec, sgn);
+  wide_int c_max = wide_int::from (wi::max_value (prec, sgn), val_prec, sgn);
+
+  if (wi::lt_p (wval, c_min, val_sgn))
+    {
+      if (code == EQ_EXPR || code == LT_EXPR || code == LE_EXPR)
+	return constant_boolean_node (false, boolean_type_node);
+      gcc_checking_assert (code == NE_EXPR || code == GT_EXPR
+			   || code == GE_EXPR);
+      return constant_boolean_node (true, boolean_type_node);
+    }
+  if (wi::gt_p (wval, c_max, val_sgn))
+    {
+      if (code == EQ_EXPR || code == GT_EXPR || code == GE_EXPR)
+	return constant_boolean_node (false, boolean_type_node);
+      gcc_checking_assert (code == NE_EXPR || code == LT_EXPR
+			   || code == LE_EXPR);
+      return constant_boolean_node (true, boolean_type_node);
+    }
+  if (wi::eq_p (wval, c_min))
+    {
+      if (code == LT_EXPR)
+	return constant_boolean_node (false, boolean_type_node);
+      if (code == GE_EXPR)
+	return constant_boolean_node (true, boolean_type_node);
+    }
+  if (wi::eq_p (wval, c_max))
+    {
+      if (code == GT_EXPR)
+	return constant_boolean_node (false, boolean_type_node);
+      if (code == LE_EXPR)
+	return constant_boolean_node (true, boolean_type_node);
+    }
+
+  /* For strings longer than 256 bytes, build and memoize an sbitmap of all
+     present byte values and answer queries by probing the target bit or
+     lower/upper ordered coordinate ranges.  */
+  if (len > 256)
+    {
+      const_sbitmap bmp = get_string_char_set (str, prec);
+      unsigned int full = 1U << prec;
+
+      if (code == EQ_EXPR || code == NE_EXPR)
+	{
+	  unsigned int raw_target
+	    = wide_int::from (wval, prec, UNSIGNED).to_uhwi ();
+	  bool has_target = bitmap_bit_p (bmp, raw_target);
+	  if (!has_target)
+	    return constant_boolean_node (code == NE_EXPR, boolean_type_node);
+
+	  bool has_other
+	    = ((raw_target > 0
+		&& bitmap_any_bit_in_range_p (bmp, 0, raw_target - 1))
+	       || (raw_target + 1 < full
+		   && bitmap_any_bit_in_range_p (bmp, raw_target + 1,
+						  full - 1)));
+	  if (!has_other)
+	    return constant_boolean_node (code == EQ_EXPR, boolean_type_node);
+	  return NULL_TREE;
+	}
+
+      gcc_checking_assert (code == LT_EXPR || code == LE_EXPR
+			   || code == GT_EXPR || code == GE_EXPR);
+
+      /* Partition the ordered coordinate domain [0, full - 1] into [0, split]
+	 (values <= wval for LE/GT, or < wval for LT/GE) and
+	 [split + 1, full - 1].  Boundary wval == c_min (with LT) and
+	 wval == c_max (with GT) already folded above, so split >= 0 and
+	 split + 1 <= full - 1 hold.  */
+      unsigned int half = (sgn == SIGNED) ? (full >> 1) : 0;
+      unsigned int u_val
+	= wide_int::from (wval, prec, UNSIGNED).to_uhwi () ^ half;
+      unsigned int split
+	= (code == LE_EXPR || code == GT_EXPR) ? u_val : u_val - 1;
+      bool any_lo = char_set_any_in_range_p (bmp, prec, sgn, 0, split);
+      bool any_hi
+	= char_set_any_in_range_p (bmp, prec, sgn, split + 1, full - 1);
+
+      bool known_true = ((code == LT_EXPR || code == LE_EXPR) ? !any_hi
+							      : !any_lo);
+      bool known_false = ((code == LT_EXPR || code == LE_EXPR) ? !any_lo
+							       : !any_hi);
+      if (known_true)
+	return constant_boolean_node (true, boolean_type_node);
+      if (known_false)
+	return constant_boolean_node (false, boolean_type_node);
+      return NULL_TREE;
+    }
+
+  /* For short strings, check EQ/NE via memchr and inequality comparisons by
+     computing the actual [wmin, wmax] byte bounds of STR.  */
+  const char *ptr = TREE_STRING_POINTER (str);
+  if (code == EQ_EXPR || code == NE_EXPR)
+    {
+      unsigned target = wide_int::from (wval, prec, UNSIGNED).to_uhwi ();
+      bool has_target = memchr (ptr, target, len) != NULL;
+      if (!has_target)
+	return constant_boolean_node (code == NE_EXPR, boolean_type_node);
+
+      bool has_other = false;
+      for (int k = 0; k < len; k++)
+	if ((unsigned char) ptr[k] != target)
+	  {
+	    has_other = true;
+	    break;
+	  }
+      if (!has_other)
+	return constant_boolean_node (code == EQ_EXPR, boolean_type_node);
+      return NULL_TREE;
+    }
+
+  wide_int wmin = wi::uhwi ((unsigned char) ptr[0], prec);
+  wide_int wmax = wmin;
+  for (int k = 1; k < len; k++)
+    {
+      wide_int wk = wi::uhwi ((unsigned char) ptr[k], prec);
+      if (wi::lt_p (wk, wmin, sgn))
+	wmin = wk;
+      if (wi::gt_p (wk, wmax, sgn))
+	wmax = wk;
+    }
+
+  wmin = wide_int::from (wmin, val_prec, sgn);
+  wmax = wide_int::from (wmax, val_prec, sgn);
+
+  bool known_true = false;
+  bool known_false = false;
+  switch (code)
+    {
+    case LT_EXPR:
+      known_true = wi::lt_p (wmax, wval, val_sgn);
+      known_false = wi::ge_p (wmin, wval, val_sgn);
+      break;
+    case LE_EXPR:
+      known_true = wi::le_p (wmax, wval, val_sgn);
+      known_false = wi::gt_p (wmin, wval, val_sgn);
+      break;
+    case GT_EXPR:
+      known_true = wi::gt_p (wmin, wval, val_sgn);
+      known_false = wi::le_p (wmax, wval, val_sgn);
+      break;
+    case GE_EXPR:
+      known_true = wi::ge_p (wmin, wval, val_sgn);
+      known_false = wi::lt_p (wmax, wval, val_sgn);
+      break;
+    default:
+      gcc_unreachable ();
+    }
+
+  if (known_true)
+    return constant_boolean_node (true, boolean_type_node);
+  if (known_false)
+    return constant_boolean_node (false, boolean_type_node);
+  return NULL_TREE;
+}
+
+/* Evaluate condition C (with c->unknown_offset set) against the argument
+   values in AVALS.  If the caller argument resolves to a STRING_CST, try to
+   fold the character comparison over all bytes of the string and return
+   boolean_true_node or boolean_false_node when the result is independent of
+   the offset, or NULL_TREE otherwise.  */
+
+static tree
+evaluate_unknown_offset_condition (struct condition *c,
+				   ipa_auto_call_arg_values *avals)
+{
+  gcc_checking_assert (c->agg_contents && c->unknown_offset);
+
+  /* TODO: Support conversions in c->param_ops.  */
+  if (!vec_safe_is_empty (c->param_ops))
+    return NULL_TREE;
+
+  if (!c->by_ref || !c->val || TREE_CODE (c->val) != INTEGER_CST)
+    return NULL_TREE;
+
+  tree sval = avals->safe_sval_at (c->operand_num);
+  if (!sval || TREE_CODE (sval) != ADDR_EXPR)
+    return NULL_TREE;
+
+  poly_int64 byte_off;
+  tree base = get_addr_base_and_unit_offset (TREE_OPERAND (sval, 0),
+					     &byte_off);
+  /* TODO: Support general constructors of readonly variables.  */
+  if (!base || TREE_CODE (base) != STRING_CST)
+    return NULL_TREE;
+
+  return fold_string_char_compare (base, c->code, c->val, c->type);
+}
+
 static void
 evaluate_conditions_for_known_args (struct cgraph_node *node,
 				    bool inline_p,
@@ -414,20 +727,38 @@ evaluate_conditions_for_known_args (struct cgraph_node *node,
 	{
 	  if (c->code == ipa_predicate::changed
 	      && !c->by_ref
+	      && !c->unknown_offset
 	      && (avals->safe_sval_at(c->operand_num) == error_mark_node))
 	    continue;
 
-	  if (tree sval = avals->safe_sval_at (c->operand_num))
-	    val = ipa_find_agg_cst_from_init (sval, c->offset, c->by_ref, c->type);
-	  /* ipa_argagg_value_list is indexed by byte offsets, so a condition
-	     which does not start at a byte boundary (a bit-field) cannot be
-	     looked up in it; the containing byte would be reinterpreted as
-	     the whole field below.  */
-	  if (!val && (c->offset % BITS_PER_UNIT) == 0)
+	  if (c->unknown_offset)
 	    {
-	      ipa_argagg_value_list avs (avals);
-	      val = avs.get_value (c->operand_num, c->offset / BITS_PER_UNIT,
-				   c->by_ref, c->maybe_modified);
+	      res = evaluate_unknown_offset_condition (c, avals);
+	      if (res && integer_zerop (res))
+		continue;
+	      if (res && integer_onep (res))
+		{
+		  clause |= 1 << (i + ipa_predicate::first_dynamic_condition);
+		  nonspec_clause
+		    |= 1 << (i + ipa_predicate::first_dynamic_condition);
+		  continue;
+		}
+	    }
+	  else
+	    {
+	      if (tree sval = avals->safe_sval_at (c->operand_num))
+		val = ipa_find_agg_cst_from_init (sval, c->offset, c->by_ref,
+						  c->type);
+	      /* ipa_argagg_value_list is indexed by byte offsets, so a
+		 condition which does not start at a byte boundary (a bit-field)
+		 cannot be looked up in it; the containing byte would be
+		 reinterpreted as the whole field below.  */
+	      if (!val && (c->offset % BITS_PER_UNIT) == 0)
+		{
+		  ipa_argagg_value_list avs (avals);
+		  val = avs.get_value (c->operand_num, c->offset / BITS_PER_UNIT,
+				       c->by_ref, c->maybe_modified);
+		}
 	    }
 	}
       else
@@ -1315,9 +1646,11 @@ unmodified_parm_or_parm_agg_item (struct ipa_func_body_info *fbi,
       *index_p = ipa_get_param_decl_index (fbi->info, res);
       if (*index_p < 0)
 	return false;
+      aggpos->offset = 0;
       aggpos->agg_contents = false;
       aggpos->by_ref = false;
       aggpos->maybe_modified = false;
+      aggpos->unknown_offset = false;
       return true;
     }
 
@@ -1338,10 +1671,11 @@ unmodified_parm_or_parm_agg_item (struct ipa_func_body_info *fbi,
   if (ipa_load_from_parm_agg (fbi, fbi->info->descriptors,
 			      stmt, op, index_p, &aggpos->offset,
 			      size_p, &aggpos->by_ref,
-			      &guaranteed_unmodified))
+			      &guaranteed_unmodified, &aggpos->unknown_offset))
     {
       aggpos->maybe_modified = !guaranteed_unmodified;
       gcc_checking_assert (!aggpos->maybe_modified || aggpos->by_ref);
+      gcc_checking_assert (!aggpos->unknown_offset || aggpos->offset == -1);
       return true;
     }
   return false;
@@ -1738,7 +2072,8 @@ set_cond_stmt_execution_predicate (struct ipa_func_body_info *fbi,
       || gimple_call_num_args (set_stmt) != 1)
     return;
   op2 = gimple_call_arg (set_stmt, 0);
-  if (!decompose_param_expr (fbi, set_stmt, op2, &index, &param_type, &aggpos))
+  if (!decompose_param_expr (fbi, set_stmt, op2, &index, &param_type, &aggpos)
+      || aggpos.unknown_offset)
     return;
   if (!aggpos.by_ref)
     add_builtin_constant_p_parm (summary, index);
@@ -2184,7 +2519,8 @@ will_be_nonconstant_predicate (struct ipa_func_body_info *fbi,
     {
       tree op = gimple_assign_rhs1 (stmt);
       if (!decompose_param_expr (fbi, stmt, op, &base_index, &param_type,
-				 &aggpos))
+				 &aggpos)
+	  || aggpos.unknown_offset)
 	return p;
     }
   else
@@ -4915,7 +5251,10 @@ inline_read_section (struct lto_file_decl_data *file_data, const char *data,
 	  c.agg_contents = bp_unpack_value (&bp, 1);
 	  c.by_ref = bp_unpack_value (&bp, 1);
 	  c.maybe_modified = bp_unpack_value (&bp, 1);
-	  if (c.agg_contents)
+	  c.unknown_offset = bp_unpack_value (&bp, 1);
+	  if (c.unknown_offset)
+	    c.offset = -1;
+	  else if (c.agg_contents)
 	    c.offset = streamer_read_uhwi (&ib);
 	  else
 	    c.offset = 0;
@@ -5154,8 +5493,9 @@ ipa_fn_summary_write (void)
 	      bp_pack_value (&bp, c->agg_contents, 1);
 	      bp_pack_value (&bp, c->by_ref, 1);
 	      bp_pack_value (&bp, c->maybe_modified, 1);
+	      bp_pack_value (&bp, c->unknown_offset, 1);
 	      streamer_write_bitpack (&bp);
-	      if (c->agg_contents)
+	      if (c->agg_contents && !c->unknown_offset)
 		streamer_write_uhwi (ob, c->offset);
 	      streamer_write_uhwi (ob, vec_safe_length (c->param_ops));
 	      for (j = 0; vec_safe_iterate (c->param_ops, j, &op); j++)
@@ -5394,4 +5734,6 @@ ipa_fnsummary_cc_finalize (void)
 {
   ipa_free_fn_summary ();
   ipa_free_size_summary ();
+  delete string_char_set_cache;
+  string_char_set_cache = NULL;
 }

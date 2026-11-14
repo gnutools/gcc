@@ -150,7 +150,8 @@ ipa_predicate::add_clause (conditions conditions, clause_t new_clause)
 		  && cc2->agg_contents == cc1->agg_contents
 		  && cc2->by_ref == cc1->by_ref
 		  && (!cc1->agg_contents
-		      || (cc2->offset == cc1->offset
+		      || (cc1->unknown_offset == cc2->unknown_offset
+			  && (!cc1->unknown_offset || cc2->offset == cc1->offset)
 			  && cc2->maybe_modified == cc1->maybe_modified))
 		  && types_compatible_p (cc2->type, cc1->type)
 		  && cc1->code == invert_tree_comparison (cc2->code,
@@ -297,6 +298,7 @@ ipa_predicate::probability (conditions conds,
 		      &(*conds)[i2 - ipa_predicate::first_dynamic_condition];
 		    if (c->code == ipa_predicate::changed
 			&& !c->maybe_modified
+			&& !c->unknown_offset
 			&& (c->operand_num <
 			    (int) inline_param_summary.length ()))
 		      {
@@ -334,10 +336,17 @@ dump_condition (FILE *f, conditions conditions, int cond)
       c = &(*conditions)[cond - ipa_predicate::first_dynamic_condition];
       fprintf (f, "op%i", c->operand_num);
       if (c->agg_contents)
-	fprintf (f, "[%s%soffset: " HOST_WIDE_INT_PRINT_DEC "]",
-		 c->by_ref ? "ref " : "",
-		 c->maybe_modified ? "maybe_modified " : "",
-		 c->offset);
+	{
+	  if (c->unknown_offset)
+	    fprintf (f, "[%s%sunknown_offset]",
+		     c->by_ref ? "ref " : "",
+		     c->maybe_modified ? "maybe_modified " : "");
+	  else
+	    fprintf (f, "[%s%soffset: " HOST_WIDE_INT_PRINT_DEC "]",
+		     c->by_ref ? "ref " : "",
+		     c->maybe_modified ? "maybe_modified " : "",
+		     c->offset);
+	}
 
       for (unsigned i = 0; i < vec_safe_length (c->param_ops); i++)
 	{
@@ -565,6 +574,7 @@ ipa_predicate::remap_after_inlining (class ipa_fn_summary *info,
 		    || ((!c->agg_contents || !c->by_ref)
 			&& offset_map[c->operand_num] > 0)
 		    || (c->agg_contents
+			&& !c->unknown_offset
 			&& !wi::fits_shwi_p (offset_int (c->offset)
 					     + offset_map[c->operand_num])))
 		  cond_predicate = true;
@@ -575,13 +585,17 @@ ipa_predicate::remap_after_inlining (class ipa_fn_summary *info,
 		    gcc_checking_assert (offset_delta >= 0);
 		    gcc_assert (!c->agg_contents
 				|| c->by_ref || offset_delta == 0);
-		    ap.offset = c->agg_contents ? c->offset + offset_delta : 0;
+		    if (c->unknown_offset)
+		      ap.offset = -1;
+		    else
+		      ap.offset = c->agg_contents ? c->offset + offset_delta : 0;
 		    ap.agg_contents = c->agg_contents;
 		    ap.by_ref = c->by_ref;
 		    ap.maybe_modified
 		      = c->maybe_modified
 			|| (c->agg_contents && c->by_ref
 			    && !agg_preserved_map[c->operand_num]);
+		    ap.unknown_offset = c->unknown_offset;
 		    cond_predicate = add_condition (info, params_summary,
 						    operand_map[c->operand_num],
 						    c->type, &ap, c->code,
@@ -655,7 +669,7 @@ add_condition (class ipa_fn_summary *summary,
   struct condition *c;
   struct condition new_cond;
   HOST_WIDE_INT offset;
-  bool agg_contents, by_ref, maybe_modified;
+  bool agg_contents, by_ref, maybe_modified, unknown_offset;
   expr_eval_op *op;
 
   if (params_summary)
@@ -663,10 +677,11 @@ add_condition (class ipa_fn_summary *summary,
 
   if (aggpos)
     {
-      offset = aggpos->offset;
       agg_contents = aggpos->agg_contents;
+      offset = agg_contents ? aggpos->offset : 0;
       by_ref = aggpos->by_ref;
       maybe_modified = aggpos->maybe_modified;
+      unknown_offset = aggpos->unknown_offset;
     }
   else
     {
@@ -674,10 +689,13 @@ add_condition (class ipa_fn_summary *summary,
       agg_contents = false;
       by_ref = false;
       maybe_modified = false;
+      unknown_offset = false;
     }
 
   gcc_checking_assert (operand_num >= 0);
   gcc_checking_assert (!maybe_modified || (agg_contents && by_ref));
+  gcc_checking_assert (!unknown_offset || (agg_contents && offset == -1));
+  gcc_checking_assert (!agg_contents || unknown_offset || offset >= 0);
   for (i = 0; vec_safe_iterate (summary->conds, i, &c); i++)
     {
       if (c->operand_num == operand_num
@@ -689,7 +707,8 @@ add_condition (class ipa_fn_summary *summary,
 	  && (!agg_contents
 	      || (c->offset == offset
 		  && c->by_ref == by_ref
-		  && c->maybe_modified == maybe_modified)))
+		  && c->maybe_modified == maybe_modified
+		  && c->unknown_offset == unknown_offset)))
 	return ipa_predicate::predicate_testing_cond (i);
     }
   /* Too many conditions.  Give up and return constant true.  */
@@ -703,6 +722,7 @@ add_condition (class ipa_fn_summary *summary,
   new_cond.agg_contents = agg_contents;
   new_cond.by_ref = by_ref;
   new_cond.maybe_modified = maybe_modified;
+  new_cond.unknown_offset = unknown_offset;
   new_cond.offset = offset;
   new_cond.param_ops = vec_safe_copy (param_ops);
 

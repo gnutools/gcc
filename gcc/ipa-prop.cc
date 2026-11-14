@@ -1277,6 +1277,94 @@ parm_ref_data_pass_through_p (struct ipa_func_body_info *fbi, int index,
   return !modified;
 }
 
+/* Fallback for ipa_load_from_parm_agg when OP is a 1-byte integral (char)
+   load whose byte offset is unknown (for example due to a variable ARRAY_REF
+   index or pointer arithmetic from a parameter).  Use get_base_address to
+   strip component references down to a MEM_REF and walk backwards through
+   pointer adjustments to locate the parameter; if found, record *OFFSET_P as
+   -1 and set *UNKNOWN_OFFSET_P to true.  */
+
+static bool
+ipa_load_from_parm_agg_unknown_offset (struct ipa_func_body_info *fbi,
+				       vec<ipa_param_descriptor, va_gc>
+					 *descriptors,
+				       gimple *stmt, tree op, int *index_p,
+				       HOST_WIDE_INT *offset_p,
+				       poly_int64 *size_p, bool *by_ref_p,
+				       bool *guaranteed_unmodified,
+				       bool *unknown_offset_p)
+{
+  /* Currently we only work on STRING_CST when evaluating unknown-offset
+     conditions, so we do not record other cases (such as by-value
+     aggregates or general constructors).
+     TODO: Support general constructors.  */
+  tree type = TREE_TYPE (op);
+  if (TREE_CODE (type) != INTEGER_TYPE
+      || TYPE_PRECISION (type) != BITS_PER_UNIT)
+    return false;
+
+  tree base = get_base_address (op);
+  if (!base || TREE_CODE (base) != MEM_REF)
+    return false;
+
+  /* Strip pointer arithmetic and pointer conversions from the MEM_REF base
+     pointer (e.g. p[i] lowers to _2 = p_1(D) + _1; *_2).  */
+  tree ptr = TREE_OPERAND (base, 0);
+  int steps = 0;
+  while (TREE_CODE (ptr) == SSA_NAME && !SSA_NAME_IS_DEFAULT_DEF (ptr))
+    {
+      if (++steps > param_ipa_jump_function_lookups)
+	return false;
+
+      gimple *def = SSA_NAME_DEF_STMT (ptr);
+      if (is_gimple_assign (def)
+	  && (gimple_assign_rhs_code (def) == POINTER_PLUS_EXPR
+	      || gimple_assign_rhs_code (def) == SSA_NAME
+	      || (CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (def))
+		  && POINTER_TYPE_P (TREE_TYPE (gimple_assign_rhs1 (def)))
+		  && (TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (ptr)))
+		      == TYPE_ADDR_SPACE (TREE_TYPE
+					  (TREE_TYPE
+					   (gimple_assign_rhs1 (def))))))))
+	ptr = gimple_assign_rhs1 (def);
+      else
+	break;
+    }
+
+  if (TREE_CODE (ptr) != SSA_NAME)
+    return false;
+
+  int index = -1;
+  if (SSA_NAME_IS_DEFAULT_DEF (ptr))
+    {
+      tree parm = SSA_NAME_VAR (ptr);
+      if (parm && TREE_CODE (parm) == PARM_DECL)
+	index = ipa_get_param_decl_index_1 (descriptors, parm);
+    }
+  else
+    index = load_from_unmodified_param (fbi, descriptors,
+					SSA_NAME_DEF_STMT (ptr));
+
+  if (index < 0)
+    return false;
+
+  bool data_preserved = (gimple_vuse (stmt)
+			 ? parm_ref_data_preserved_p (fbi, index, stmt, op)
+			 : false);
+  if (!data_preserved && !guaranteed_unmodified)
+    return false;
+
+  *index_p = index;
+  *offset_p = -1;
+  *by_ref_p = true;
+  if (size_p)
+    *size_p = BITS_PER_UNIT;
+  if (guaranteed_unmodified)
+    *guaranteed_unmodified = data_preserved;
+  *unknown_offset_p = true;
+  return true;
+}
+
 /* Return true if we can prove that OP is a memory reference loading
    data from an aggregate passed as a parameter.
 
@@ -1285,6 +1373,10 @@ parm_ref_data_pass_through_p (struct ipa_func_body_info *fbi, int index,
    load in STMT.  If GUARANTEED_UNMODIFIED is not NULL, it will return true even
    if it cannot prove the value has not been modified, in that case it will
    store false to *GUARANTEED_UNMODIFIED, otherwise it will store true there.
+
+   If UNKNOWN_OFFSET_P is non-NULL, also accept 1-byte integral (char) loads at
+   unknown (variable) offsets through a parameter pointer; in that case store
+   true to *UNKNOWN_OFFSET_P and -1 to *OFFSET_P.
 
    INFO and PARMS_AINFO describe parameters of the current function (but the
    latter can be NULL), STMT is the load statement.  If function returns true,
@@ -1300,84 +1392,96 @@ ipa_load_from_parm_agg (struct ipa_func_body_info *fbi,
 			vec<ipa_param_descriptor, va_gc> *descriptors,
 			gimple *stmt, tree op, int *index_p,
 			HOST_WIDE_INT *offset_p, poly_int64 *size_p,
-			bool *by_ref_p, bool *guaranteed_unmodified)
+			bool *by_ref_p, bool *guaranteed_unmodified,
+			bool *unknown_offset_p)
 {
   int index;
   HOST_WIDE_INT size;
   bool reverse;
-  tree base = get_ref_base_and_extent_hwi (op, offset_p, &size, &reverse);
 
-  if (!base
-      || (*offset_p / BITS_PER_UNIT) > UINT_MAX)
-    return false;
+  if (unknown_offset_p)
+    *unknown_offset_p = false;
 
   /* We can not propagate across volatile loads.  */
   if (TREE_THIS_VOLATILE (op))
     return false;
 
-  if (DECL_P (base))
+  tree base = get_ref_base_and_extent_hwi (op, offset_p, &size, &reverse);
+
+  if (base && (*offset_p / BITS_PER_UNIT) <= UINT_MAX)
     {
-      int index = ipa_get_param_decl_index_1 (descriptors, base);
-      if (index >= 0
-	  && parm_preserved_before_stmt_p (fbi, index, stmt, op))
+      if (DECL_P (base))
 	{
-	  *index_p = index;
-	  *by_ref_p = false;
-	  if (size_p)
-	    *size_p = size;
-	  if (guaranteed_unmodified)
-	    *guaranteed_unmodified = true;
-	  return true;
+	  int index = ipa_get_param_decl_index_1 (descriptors, base);
+	  if (index >= 0
+	      && parm_preserved_before_stmt_p (fbi, index, stmt, op))
+	    {
+	      *index_p = index;
+	      *by_ref_p = false;
+	      if (size_p)
+		*size_p = size;
+	      if (guaranteed_unmodified)
+		*guaranteed_unmodified = true;
+	      return true;
+	    }
+	  return false;
 	}
-      return false;
+
+      if (TREE_CODE (base) == MEM_REF
+	  && TREE_CODE (TREE_OPERAND (base, 0)) == SSA_NAME
+	  && integer_zerop (TREE_OPERAND (base, 1)))
+	{
+	  if (SSA_NAME_IS_DEFAULT_DEF (TREE_OPERAND (base, 0)))
+	    {
+	      tree parm = SSA_NAME_VAR (TREE_OPERAND (base, 0));
+	      index = ipa_get_param_decl_index_1 (descriptors, parm);
+	    }
+	  else
+	    {
+	      /* This branch catches situations where a pointer parameter is
+		 not a gimple register, for example:
+
+		 void hip7(S*) (struct S * p)
+		 {
+		 void (*<T2e4>) (struct S *) D.1867;
+		 struct S * p.1;
+
+		 <bb 2>:
+		 p.1_1 = p;
+		 D.1867_2 = p.1_1->f;
+		 D.1867_2 ();
+		 gdp = &p;
+	      */
+
+	      gimple *def = SSA_NAME_DEF_STMT (TREE_OPERAND (base, 0));
+	      index = load_from_unmodified_param (fbi, descriptors, def);
+	    }
+
+	  if (index >= 0)
+	    {
+	      bool data_preserved = parm_ref_data_preserved_p (fbi, index, stmt,
+							       op);
+	      if (!data_preserved && !guaranteed_unmodified)
+		return false;
+
+	      *index_p = index;
+	      *by_ref_p = true;
+	      if (size_p)
+		*size_p = size;
+	      if (guaranteed_unmodified)
+		*guaranteed_unmodified = data_preserved;
+	      return true;
+	    }
+	}
     }
 
-  if (TREE_CODE (base) != MEM_REF
-	   || TREE_CODE (TREE_OPERAND (base, 0)) != SSA_NAME
-	   || !integer_zerop (TREE_OPERAND (base, 1)))
+  if (!unknown_offset_p)
     return false;
 
-  if (SSA_NAME_IS_DEFAULT_DEF (TREE_OPERAND (base, 0)))
-    {
-      tree parm = SSA_NAME_VAR (TREE_OPERAND (base, 0));
-      index = ipa_get_param_decl_index_1 (descriptors, parm);
-    }
-  else
-    {
-      /* This branch catches situations where a pointer parameter is not a
-	 gimple register, for example:
-
-	 void hip7(S*) (struct S * p)
-	 {
-	 void (*<T2e4>) (struct S *) D.1867;
-	 struct S * p.1;
-
-	 <bb 2>:
-	 p.1_1 = p;
-	 D.1867_2 = p.1_1->f;
-	 D.1867_2 ();
-	 gdp = &p;
-      */
-
-      gimple *def = SSA_NAME_DEF_STMT (TREE_OPERAND (base, 0));
-      index = load_from_unmodified_param (fbi, descriptors, def);
-    }
-
-  if (index >= 0)
-    {
-      bool data_preserved = parm_ref_data_preserved_p (fbi, index, stmt, op);
-      if (!data_preserved && !guaranteed_unmodified)
-	return false;
-
-      *index_p = index;
-      *by_ref_p = true;
-      if (size_p)
-	*size_p = size;
-      if (guaranteed_unmodified)
-	*guaranteed_unmodified = data_preserved;
-      return true;
-    }
-  return false;
+  return ipa_load_from_parm_agg_unknown_offset (fbi, descriptors, stmt, op,
+						index_p, offset_p, size_p,
+						by_ref_p, guaranteed_unmodified,
+						unknown_offset_p);
 }
 
 /* If STMT is an assignment that loads a value from a parameter declaration,
