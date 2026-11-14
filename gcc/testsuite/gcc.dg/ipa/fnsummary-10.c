@@ -190,6 +190,35 @@ test_else_lt130 (const unsigned char *p, int i)
 }
 
 int
+test_loop_z (const char *c)
+{
+  while (*c)
+    {
+      COLD_WORK ();
+      c++;
+    }
+  return 0;
+}
+
+int
+test_loop_pct (const char *c, int a, int b, int d)
+{
+  (void) a;
+  (void) b;
+  (void) d;
+  while (*c)
+    {
+      if (*c == '%')
+	{
+	  COLD_WORK ();
+	  return 1;
+	}
+      c++;
+    }
+  return 0;
+}
+
+int
 main (void)
 {
   volatile int i = 5;
@@ -226,6 +255,14 @@ main (void)
   if (test_eq (A300 "\0%bcdef", i301) != 1)
     __builtin_abort ();
 
+  /* Pointer loop (PHI induction variable) over > 256-char strings.  */
+  if (test_loop_z (Z300) != 0)
+    __builtin_abort ();
+  if (test_loop_pct (STR320, 1, 2, 3) != 0)
+    __builtin_abort ();
+  if (test_loop_pct ("ab%def", 1, 2, 3) != 1)
+    __builtin_abort ();
+
   return 0;
 }
 
@@ -249,6 +286,8 @@ main (void)
 /* { dg-final { scan-tree-dump "optimized:  Inlining test_else_le0/" "einline" } } */
 /* { dg-final { scan-tree-dump "optimized:  Inlining test_else_le_j/" "einline" } } */
 /* { dg-final { scan-tree-dump "optimized:  Inlining test_else_lt130/" "einline" } } */
+/* { dg-final { scan-tree-dump "optimized:  Inlining test_loop_z/" "einline" } } */
+/* { dg-final { scan-tree-dump-times "optimized:  Inlining test_loop_pct/" 1 "einline" } } */
 /* { dg-final { scan-tree-dump-not "  test_eq_neg \\(" "optimized" } } */
 /* { dg-final { scan-tree-dump-not "  test_ne_nul \\(" "optimized" } } */
 /* { dg-final { scan-tree-dump-not "  test_lt0 \\(" "optimized" } } */
@@ -261,3 +300,4 @@ main (void)
 /* { dg-final { scan-tree-dump-not "  test_else_le0 \\(" "optimized" } } */
 /* { dg-final { scan-tree-dump-not "  test_else_le_j \\(" "optimized" } } */
 /* { dg-final { scan-tree-dump-not "  test_else_lt130 \\(" "optimized" } } */
+/* { dg-final { scan-tree-dump-not "  test_loop_z \\(" "optimized" } } */

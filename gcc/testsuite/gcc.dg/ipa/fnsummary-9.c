@@ -229,6 +229,89 @@ chk_signed_to_uint (const signed char *p, int i)
 }
 
 int
+chk_phi_loop (const char *c, int a, int b, int d)
+{
+  (void) a;
+  (void) b;
+  (void) d;
+  while (*c)
+    {
+      if (*c == '~')
+	{
+	  COLD_WORK ();
+	  return 1;
+	}
+      c++;
+    }
+  return 0;
+}
+
+int
+chk_phi_diamond (const char *c, int flag, int a, int b)
+{
+  (void) a;
+  (void) b;
+  if (flag)
+    c += 2;
+  else
+    c += 1;
+  if (*c == '~')
+    {
+      COLD_WORK ();
+      return 1;
+    }
+  return 0;
+}
+
+int
+chk_phi_two_parms (const char *p, const char *q, int flag, int a)
+{
+  (void) a;
+  const char *c = flag ? p : q;
+  if (*c == '~')
+    {
+      COLD_WORK ();
+      return 1;
+    }
+  return 0;
+}
+
+int
+chk_phi_lit (const char *p, int flag, int a, int b)
+{
+  (void) a;
+  (void) b;
+  const char *c = flag ? p : "~bcdef";
+  if (*c == '~')
+    {
+      COLD_WORK ();
+      return 1;
+    }
+  return 0;
+}
+
+static int
+chk_phi_mod_helper (char *c)
+{
+  int found = 0;
+  while (*c)
+    {
+      if (*c == '$')
+	found = 1;
+      if (*c == 'a')
+	c[1] = '$';
+      c++;
+    }
+  return found;
+}
+
+__attribute__((noipa)) int
+chk_phi_mod_caller (char *buf)
+{
+  return chk_phi_mod_helper (buf);
+}
+
+int
 main (void)
 {
   volatile int i = 0;
@@ -318,6 +401,24 @@ main (void)
   if (chk_switch ("ab%def", i2) != 1)
     __builtin_abort ();
 
+  /* PHI handling: loop induction variable, diamond, two params, literal,
+     and loop modification soundness.  */
+  if (chk_phi_loop ("abcdef", 1, 2, 3) != 0)
+    __builtin_abort ();
+  if (chk_phi_loop ("ab~def", 1, 2, 3) != 1)
+    __builtin_abort ();
+  if (chk_phi_diamond ("abcdef", i, 1, 2) != 0)
+    __builtin_abort ();
+  if (chk_phi_diamond ("a~cdef", i, 1, 2) != 1)
+    __builtin_abort ();
+  if (chk_phi_two_parms ("abcdef", "~bcdef", 0, 0) != 1)
+    __builtin_abort ();
+  if (chk_phi_lit ("abcdef", 0, 1, 2) != 1)
+    __builtin_abort ();
+  char modbuf[] = "abcdef";
+  if (chk_phi_mod_caller (modbuf) != 1)
+    __builtin_abort ();
+
   return 0;
 }
 
@@ -345,3 +446,7 @@ main (void)
 /* { dg-final { scan-ipa-dump-times "Inlined chk_arr_ptr/" 1 "inline" } } */
 /* { dg-final { scan-ipa-dump "Known to be false:.*unknown_offset\\\] == 40" "inline" } } */
 /* { dg-final { scan-ipa-dump-not "Inlined chk_u_ge128_cast/" "inline" } } */
+/* { dg-final { scan-ipa-dump-times "Inlined chk_phi_loop/" 1 "inline" } } */
+/* { dg-final { scan-ipa-dump-times "Inlined chk_phi_diamond/" 1 "inline" } } */
+/* { dg-final { scan-ipa-dump-not "Inlined chk_phi_two_parms/" "inline" } } */
+/* { dg-final { scan-ipa-dump-not "Inlined chk_phi_lit/" "inline" } } */

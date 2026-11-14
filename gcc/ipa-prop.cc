@@ -1281,7 +1281,9 @@ parm_ref_data_pass_through_p (struct ipa_func_body_info *fbi, int index,
    load whose byte offset is unknown (for example due to a variable ARRAY_REF
    index or pointer arithmetic from a parameter).  Use get_base_address to
    strip component references down to a MEM_REF and walk backwards through
-   pointer adjustments to locate the parameter; if found, record *OFFSET_P as
+   pointer adjustments, copies, conversions and PHI nodes using a worklist and
+   a visited set of SSA_NAME versions, verifying that every reachable path
+   originates from the same function parameter.  If so, record *OFFSET_P as
    -1 and set *UNKNOWN_OFFSET_P to true.  */
 
 static bool
@@ -1307,54 +1309,115 @@ ipa_load_from_parm_agg_unknown_offset (struct ipa_func_body_info *fbi,
   if (!base || TREE_CODE (base) != MEM_REF)
     return false;
 
-  /* Strip pointer arithmetic and pointer conversions from the MEM_REF base
-     pointer (e.g. p[i] lowers to _2 = p_1(D) + _1; *_2).  */
-  tree ptr = TREE_OPERAND (base, 0);
+  tree start_ptr = TREE_OPERAND (base, 0);
+  if (TREE_CODE (start_ptr) != SSA_NAME)
+    return false;
+
+  /* Walk backwards through pointer adjustments, copies, conversions and PHIs,
+     verifying that all reachable definitions originate from the same function
+     parameter.  */
+  auto_vec<tree, 8> worklist;
+  hash_set<int_hash<unsigned, 0>> visited;
+  visited.add (SSA_NAME_VERSION (start_ptr));
+  worklist.quick_push (start_ptr);
+
+  int found_index = -1;
+  tree parm_ptr = NULL_TREE;
+  bool saw_phi = false;
   int steps = 0;
-  while (TREE_CODE (ptr) == SSA_NAME && !SSA_NAME_IS_DEFAULT_DEF (ptr))
+
+  while (!worklist.is_empty ())
     {
+      tree ptr = worklist.pop ();
+      if (SSA_NAME_IS_DEFAULT_DEF (ptr))
+	{
+	  tree parm = SSA_NAME_VAR (ptr);
+	  if (!parm || TREE_CODE (parm) != PARM_DECL)
+	    return false;
+	  int index = ipa_get_param_decl_index_1 (descriptors, parm);
+	  if (index < 0
+	      || (found_index != -1 && found_index != index))
+	    return false;
+	  found_index = index;
+	  parm_ptr = ptr;
+	  continue;
+	}
+
       if (++steps > param_ipa_jump_function_lookups)
 	return false;
 
       gimple *def = SSA_NAME_DEF_STMT (ptr);
-      if (is_gimple_assign (def)
-	  && (gimple_assign_rhs_code (def) == POINTER_PLUS_EXPR
-	      || gimple_assign_rhs_code (def) == SSA_NAME
-	      || (CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (def))
-		  && POINTER_TYPE_P (TREE_TYPE (gimple_assign_rhs1 (def)))
-		  && (TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (ptr)))
-		      == TYPE_ADDR_SPACE (TREE_TYPE
-					  (TREE_TYPE
-					   (gimple_assign_rhs1 (def))))))))
-	ptr = gimple_assign_rhs1 (def);
+      if (gphi *phi = dyn_cast <gphi *> (def))
+	{
+	  saw_phi = true;
+	  unsigned int n = gimple_phi_num_args (phi);
+	  for (unsigned int i = 0; i < n; i++)
+	    {
+	      tree arg = gimple_phi_arg_def (phi, i);
+	      if (TREE_CODE (arg) != SSA_NAME)
+		return false;
+	      if (!visited.add (SSA_NAME_VERSION (arg)))
+		worklist.safe_push (arg);
+	    }
+	}
+      else if (is_gimple_assign (def))
+	{
+	  enum tree_code rhs_code = gimple_assign_rhs_code (def);
+	  tree rhs1 = gimple_assign_rhs1 (def);
+	  if (rhs_code == POINTER_PLUS_EXPR
+	      || rhs_code == SSA_NAME
+	      || (CONVERT_EXPR_CODE_P (rhs_code)
+		  && POINTER_TYPE_P (TREE_TYPE (ptr))
+		  && POINTER_TYPE_P (TREE_TYPE (rhs1))))
+	    {
+	      if (TREE_CODE (rhs1) != SSA_NAME)
+		return false;
+	      if (!visited.add (SSA_NAME_VERSION (rhs1)))
+		worklist.safe_push (rhs1);
+	    }
+	  else if (rhs_code == ADDR_EXPR)
+	    {
+	      tree inner = get_base_address (TREE_OPERAND (rhs1, 0));
+	      if (!inner
+		  || TREE_CODE (inner) != MEM_REF
+		  || TREE_CODE (TREE_OPERAND (inner, 0)) != SSA_NAME)
+		return false;
+	      tree next = TREE_OPERAND (inner, 0);
+	      if (!visited.add (SSA_NAME_VERSION (next)))
+		worklist.safe_push (next);
+	    }
+	  else
+	    {
+	      int index = load_from_unmodified_param (fbi, descriptors, def);
+	      if (index < 0
+		  || (found_index != -1 && found_index != index))
+		return false;
+	      found_index = index;
+	      parm_ptr = ptr;
+	    }
+	}
       else
-	break;
+	return false;
     }
 
-  if (TREE_CODE (ptr) != SSA_NAME)
+  if (found_index < 0)
     return false;
 
-  int index = -1;
-  if (SSA_NAME_IS_DEFAULT_DEF (ptr))
-    {
-      tree parm = SSA_NAME_VAR (ptr);
-      if (parm && TREE_CODE (parm) == PARM_DECL)
-	index = ipa_get_param_decl_index_1 (descriptors, parm);
-    }
-  else
-    index = load_from_unmodified_param (fbi, descriptors,
-					SSA_NAME_DEF_STMT (ptr));
-
-  if (index < 0)
-    return false;
-
-  bool data_preserved = (gimple_vuse (stmt)
-			 ? parm_ref_data_preserved_p (fbi, index, stmt, op)
-			 : false);
+  /* When a PHI was crossed (for instance a pointer induction variable in a
+     loop), a store to ptr + 1 in a previous iteration aliases *ptr in the
+     next iteration even though both share the same SSA_NAME base, so check
+     preservation of the whole pointed-to object via
+     parm_ref_data_pass_through_p.  */
+  bool data_preserved
+    = (gimple_vuse (stmt)
+       ? (saw_phi
+	  ? parm_ref_data_pass_through_p (fbi, found_index, stmt, parm_ptr)
+	  : parm_ref_data_preserved_p (fbi, found_index, stmt, op))
+       : false);
   if (!data_preserved && !guaranteed_unmodified)
     return false;
 
-  *index_p = index;
+  *index_p = found_index;
   *offset_p = -1;
   *by_ref_p = true;
   if (size_p)
